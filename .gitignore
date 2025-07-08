@@ -3,6 +3,9 @@
 # dependencies
 node_modules/
 
+# Local Configs
+*.local.json
+
 # Expo
 .expo/
 dist/
