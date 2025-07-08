@@ -35,8 +35,42 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
 
 app-example
+
+# AI D&D Platform specific
+# API Keys and secrets
+.env
+.env.local
+.env.development.local
+.env.staging.local
+.env.production.local
+
+# AI model caches
+/cache/
+/models/
+
+# Generated images and audio
+/generated/
+/temp/
+
+# Logs
+logs/
+*.log
+
+# Test coverage
+coverage/
+*.lcov
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
