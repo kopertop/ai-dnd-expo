@@ -8,7 +8,19 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "type-check": "tsc --noEmit",
+    "build:development": "eas build --profile development",
+    "build:staging": "eas build --profile staging",
+    "build:production": "eas build --profile production",
+    "deploy:development": "./scripts/deploy.sh deploy development",
+    "deploy:staging": "./scripts/deploy.sh deploy staging",
+    "deploy:production": "./scripts/deploy.sh deploy production",
+    "submit:staging": "./scripts/deploy.sh submit staging",
+    "submit:production": "./scripts/deploy.sh submit production"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
