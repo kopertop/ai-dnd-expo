@@ -4,6 +4,7 @@ import { Animated, Easing, Image, ScrollView, StyleSheet, Text, TextInput, Touch
 
 import { ClassOption } from '../constants/classes';
 import { RaceOption } from '../constants/races';
+import { ABILITY_COLORS, SKILL_LIST } from '../constants/skills';
 import { PartialStatBlock, STAT_KEYS, StatBlock, StatKey } from '../constants/stats';
 import { newGameStyles } from '../styles/new-game.styles';
 
@@ -15,6 +16,7 @@ const POINT_BUY_COST: Record<number, number> = {
 const MIN_STAT = 8;
 const MAX_STAT = 15;
 const POINT_BUY_TOTAL = 27;
+const MAX_SKILLS = 4;
 
 function getPointBuyTotal(stats: StatBlock): number {
 	return STAT_KEYS.reduce((sum, key) => sum + POINT_BUY_COST[stats[key]], 0);
@@ -28,7 +30,7 @@ interface CharacterReviewProps {
 	baseStats: StatBlock; // before racial bonuses
 	racialBonuses: PartialStatBlock;
 	onBack: () => void;
-	onFinish: (finalData: { name: string; description: string; stats: StatBlock }) => void;
+	onFinish: (finalData: { name: string; description: string; stats: StatBlock; skills: string[] }) => void;
 }
 
 export const CharacterReview: React.FC<CharacterReviewProps> = ({
@@ -47,6 +49,7 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 	const pointsUsed = getPointBuyTotal(editableStats);
 	const pointsRemaining = POINT_BUY_TOTAL - pointsUsed;
 	const [invalidFields, setInvalidFields] = useState<{ name: boolean; description: boolean; points: boolean }>({ name: false, description: false, points: false });
+	const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
 	// Animated values for pulsing
 	const namePulse = useRef(new Animated.Value(0)).current;
@@ -95,6 +98,19 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 
 	const getTotal = (key: StatKey) => editableStats[key] + (racialBonuses[key] || 0);
 
+	const toggleSkill = (id: string) => {
+		setSelectedSkills((prev) => {
+			if (prev.includes(id)) {
+				return prev.filter((s) => s !== id);
+			} else if (prev.length < MAX_SKILLS) {
+				return [...prev, id];
+			}
+			return prev;
+		});
+	};
+
+	const isSkillSelected = (id: string) => selectedSkills.includes(id);
+
 	const validateAndStart = () => {
 		const nameValid = name.trim().length > 0;
 		const descValid = description.trim().length > 0;
@@ -104,7 +120,7 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 		if (!descValid) pulseAnim('description');
 		if (!pointsValid) pulseAnim('points');
 		if (nameValid && descValid && pointsValid) {
-			onFinish({ name, description, stats: editableStats });
+			onFinish({ name, description, stats: editableStats, skills: selectedSkills });
 		}
 	};
 
@@ -173,6 +189,35 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 								/>
 							</View>
 						</Animated.View>
+						<View style={styles.skillsChooserOuter}>
+							<Text style={styles.skillsChooserTitle}>Choose {MAX_SKILLS} Skills</Text>
+							<View style={styles.skillsGrid}>
+								{SKILL_LIST.map(skill => {
+									const selected = isSkillSelected(skill.id);
+									const disabled =
+										!selected
+										&& (
+											selectedSkills.length >= MAX_SKILLS
+											// Not at least 10 points in the ability
+											|| editableStats[skill.ability] < 10
+										);
+									return (
+										<TouchableOpacity
+											key={skill.id}
+											onPress={() => toggleSkill(skill.id)}
+											style={[
+												styles.skillIconCard,
+												selected && styles.skillIconCardSelected,
+												{ borderColor: ABILITY_COLORS[skill.ability], opacity: selected || !disabled ? 1 : 0.3 },
+											]}
+											disabled={disabled}
+										>
+											<Image source={skill.image} style={styles.skillIconFlat} />
+										</TouchableOpacity>
+									);
+								})}
+							</View>
+						</View>
 					</View>
 					<View style={styles.statBlockCol}>
 						<Animated.View style={[styles.animatedSection, { backgroundColor: pointsBg }]}>
@@ -215,6 +260,7 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 								</View>
 							))}
 						</View>
+
 					</View>
 				</View>
 			</View>
@@ -432,5 +478,63 @@ const styles = StyleSheet.create({
 	animatedSection: {
 		borderRadius: 6,
 		marginBottom: 8,
+	},
+	skillsChooserOuter: {
+		alignItems: 'center',
+		justifyContent: 'center',
+		marginTop: 40,
+		marginBottom: 24,
+		padding: 24,
+		backgroundColor: '#F5F2E6',
+		borderRadius: 18,
+		boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
+		maxWidth: 900,
+		alignSelf: 'center',
+	},
+	skillsChooserTitle: {
+		fontSize: 20,
+		fontWeight: 'bold',
+		marginBottom: 18,
+		color: '#8B2323',
+		textAlign: 'center',
+	},
+	skillsGrid: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		justifyContent: 'center',
+		gap: 20,
+		rowGap: 20,
+		columnGap: 20,
+		marginTop: 0,
+	},
+	skillIconCard: {
+		width: 64,
+		height: 64,
+		borderRadius: 0,
+		borderWidth: 0,
+		alignItems: 'center',
+		justifyContent: 'center',
+		backgroundColor: '#F9F6EF',
+		margin: 0,
+		padding: 0,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.08,
+		shadowRadius: 6,
+		elevation: 2,
+	},
+	skillIconCardSelected: {
+		width: 64 + 8,
+		height: 64 + 8,
+		backgroundColor: '#FFF8E1',
+		borderWidth: 8,
+		borderColor: '#C9B037',
+		shadowOpacity: 0.18,
+		shadowRadius: 10,
+	},
+	skillIconFlat: {
+		width: 64,
+		height: 64,
+		resizeMode: 'contain',
 	},
 });
