@@ -7,6 +7,7 @@ import { CharacterReview } from '../components/character-review';
 import { ClassChooser } from '../components/class-chooser';
 import { LocationChooser } from '../components/location-chooser';
 import { RaceChooser } from '../components/race-chooser';
+import { ConfirmModal } from '../components/ui/confirm-modal';
 import { WorldChooser } from '../components/world-chooser';
 import { ClassOption } from '../constants/classes';
 import { LocationOption } from '../constants/locations';
@@ -29,6 +30,8 @@ const NewGameScreen: React.FC = () => {
 	const [selectedClass, setSelectedClass] = useState<ClassOption | null>(null);
 	const [characterName, setCharacterName] = useState('');
 	const [customStory, setCustomStory] = useState('');
+	const [showConfirm, setShowConfirm] = useState(false);
+	const [pendingCharacter, setPendingCharacter] = useState<any>(null);
 
 	const handleWorldSelect = (world: WorldOption) => {
 		setSelectedWorld(world);
@@ -69,18 +72,19 @@ const NewGameScreen: React.FC = () => {
 		}
 	};
 
-	const handleStartGame = async () => {
-		if (!characterName || !selectedWorld || !selectedLocation || !selectedRace || !selectedClass) {
-			Alert.alert('Missing Information', 'Please fill in all required fields.');
-			return;
-		}
+	const handleCharacterFinish = (characterData: any) => {
+		setPendingCharacter(characterData);
+		setShowConfirm(true);
+	};
 
+	const handleConfirmStart = async () => {
+		if (!pendingCharacter || !selectedWorld || !selectedLocation || !selectedRace || !selectedClass) return;
 		const gameState = {
-			characterName,
+			characterName: pendingCharacter.name,
 			gameWorld: selectedWorld.name,
 			startingArea: selectedLocation.name,
-			startingLevels: 1, // Default to 1 for now, as character sheet is not fully editable here
-			numCharacters: 1, // Default to 1 for now
+			startingLevels: 1,
+			numCharacters: 1,
 			playerRace: selectedRace.name,
 			playerClass: selectedClass.name,
 			customStory,
@@ -88,12 +92,12 @@ const NewGameScreen: React.FC = () => {
 			selectedLocation,
 			selectedRace,
 			selectedClass,
-			fullCharacterSheet: null, // No full character sheet in this simplified flow
+			characterSheet: pendingCharacter,
 		};
-
 		try {
 			await AsyncStorage.setItem('gameState', JSON.stringify(gameState));
-			Alert.alert('Game Saved', 'Your game state has been saved locally.');
+			setShowConfirm(false);
+			setPendingCharacter(null);
 			router.replace('/');
 		} catch (error) {
 			console.error('Failed to save game state:', error);
@@ -167,7 +171,7 @@ const NewGameScreen: React.FC = () => {
 					baseStats={baseStats}
 					racialBonuses={racialBonuses}
 					onBack={handlePreviousStep}
-					onFinish={handleStartGame}
+					onFinish={handleCharacterFinish}
 				/>
 			);
 		default:
@@ -180,6 +184,15 @@ const NewGameScreen: React.FC = () => {
 			<Stack.Screen options={{ headerShown: false }} />
 			{renderStepIndicator()}
 			{renderStepContent()}
+			<ConfirmModal
+				visible={showConfirm}
+				title="Start Game?"
+				message="Are you sure you want to start the game with this character? This will save your progress."
+				onConfirm={handleConfirmStart}
+				onCancel={() => setShowConfirm(false)}
+				confirmLabel="Start"
+				cancelLabel="Cancel"
+			/>
 		</ThemedView>
 	);
 };

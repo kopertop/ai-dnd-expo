@@ -1,12 +1,28 @@
-import { Link, Stack } from 'expo-router';
-import React from 'react';
-import { StyleSheet, Text } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Link, Stack, router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
-
 const IndexScreen: React.FC = () => {
+	const [hasSavedGame, setHasSavedGame] = useState(false);
+	const [loading, setLoading] = useState(true);
+
+	useEffect(() => {
+		const checkSavedGame = async () => {
+			try {
+				const saved = await AsyncStorage.getItem('gameState');
+				setHasSavedGame(!!saved);
+			} catch {
+				setHasSavedGame(false);
+			}
+			setLoading(false);
+		};
+		checkSavedGame();
+	}, []);
+
 	return (
 		<>
 			<Stack.Screen options={{ title: 'Home' }} />
@@ -19,6 +35,11 @@ const IndexScreen: React.FC = () => {
 						<Text>Start a new game</Text>
 					</ThemedText>
 				</Link>
+				{!loading && hasSavedGame && (
+					<TouchableOpacity style={styles.continueBtn} onPress={() => router.push({ pathname: '/game' as any })}>
+						<Text style={styles.continueBtnText}>Continue Game</Text>
+					</TouchableOpacity>
+				)}
 			</ThemedView>
 		</>
 	);
@@ -36,5 +57,18 @@ const styles = StyleSheet.create({
 	link: {
 		marginTop: 15,
 		paddingVertical: 15,
+	},
+	continueBtn: {
+		marginTop: 20,
+		backgroundColor: '#C9B037',
+		paddingVertical: 15,
+		paddingHorizontal: 32,
+		borderRadius: 8,
+		alignItems: 'center',
+	},
+	continueBtnText: {
+		color: '#3B2F1B',
+		fontWeight: 'bold',
+		fontSize: 18,
 	},
 });
