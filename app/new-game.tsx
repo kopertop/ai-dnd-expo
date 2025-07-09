@@ -341,7 +341,7 @@ const NewGameScreen: React.FC = () => {
 		return (
 			<CharacterReview
 				name={characterName}
-				description={customStory || 'No background provided.'}
+				description={customStory}
 				race={selectedRace}
 				classOption={selectedClass}
 				baseStats={baseStats}

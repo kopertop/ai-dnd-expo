@@ -28,10 +28,10 @@ export const ClassChooser: React.FC<ClassChooserProps> = ({ onSelect, initialCla
 	const handleCustomSubmit = () => {
 		if (customName.trim() && customDesc.trim()) {
 			onSelect({
+				...CLASSES[CLASSES.length - 1],
 				id: 'custom',
 				name: customName,
 				description: customDesc,
-				image: require('../assets/images/custom.png'),
 				isCustom: true,
 			});
 		}
