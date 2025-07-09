@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { WORLDS, WorldOption } from '../constants/worlds';
+import { newGameStyles } from '../styles/new-game.styles';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const MAX_CONTAINER_WIDTH = 1024;
@@ -13,12 +14,11 @@ const CARD_WIDTH = IS_SMALL_SCREEN
 const CARD_HEIGHT = CARD_WIDTH * 2; // 1:2 aspect ratio
 
 interface WorldChooserProps {
-	visible: boolean;
 	onSelect: (world: WorldOption) => void;
 	initialWorldId?: string;
 }
 
-export const WorldChooser: React.FC<WorldChooserProps> = ({ visible, onSelect, initialWorldId }) => {
+export const WorldChooser: React.FC<WorldChooserProps> = ({ onSelect, initialWorldId }) => {
 	const [customName, setCustomName] = useState('');
 	const [customDesc, setCustomDesc] = useState('');
 	const [showCustomForm, setShowCustomForm] = useState(false);
@@ -47,80 +47,76 @@ export const WorldChooser: React.FC<WorldChooserProps> = ({ visible, onSelect, i
 	const customWorld = WORLDS.find(w => w.isCustom);
 
 	return (
-		<Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
-			<View style={styles.container}>
-				<Text style={styles.title}>Choose Your World</Text>
-				{showCustomForm ? (
-					<View style={styles.customForm}>
-						<Text style={styles.label}>World Name</Text>
-						<TextInput
-							style={styles.input}
-							placeholder="Enter world name"
-							value={customName}
-							onChangeText={setCustomName}
-						/>
-						<Text style={styles.label}>Description</Text>
-						<TextInput
-							style={[styles.input, styles.textArea]}
-							placeholder="Describe your world"
-							value={customDesc}
-							onChangeText={setCustomDesc}
-							multiline
-							numberOfLines={3}
-						/>
-						<TouchableOpacity style={styles.submitButton} onPress={handleCustomSubmit}>
-							<Text style={styles.submitButtonText}>Create World</Text>
-						</TouchableOpacity>
-					</View>
-				) : (
-					<ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-						<View style={styles.cardContainer}>
-							{IS_SMALL_SCREEN ? (
-								mainWorlds.map((world) => (
-									<View key={world.id} style={styles.singleCardRow}>
-										<TouchableOpacity
-											style={styles.card}
-											onPress={() => handleSelect(world)}
-										>
-											<Image source={world.image} style={styles.image} resizeMode="cover" />
-											<Text style={styles.cardTitle}>{world.name}</Text>
-											<Text style={styles.cardDesc}>{world.description}</Text>
-										</TouchableOpacity>
-									</View>
-								))
-							) : (
-								<View style={styles.cardRow}>
-									{mainWorlds.map((world) => (
-										<TouchableOpacity
-											key={world.id}
-											style={styles.card}
-											onPress={() => handleSelect(world)}
-										>
-											<Image source={world.image} style={styles.image} resizeMode="cover" />
-											<Text style={styles.cardTitle}>{world.name}</Text>
-											<Text style={styles.cardDesc}>{world.description}</Text>
-										</TouchableOpacity>
-									))}
-								</View>
-							)}
-							{customWorld && (
-								<View style={styles.customCardRow}>
-									<TouchableOpacity
-										key={customWorld.id}
-										style={[styles.card, styles.customCard]}
-										onPress={() => handleSelect(customWorld)}
-									>
-										<Image source={customWorld.image} style={styles.image} resizeMode="cover" />
-										<Text style={styles.cardTitle}>{customWorld.name}</Text>
-										<Text style={styles.cardDesc}>{customWorld.description}</Text>
-									</TouchableOpacity>
-								</View>
-							)}
+		<ScrollView contentContainerStyle={newGameStyles.scrollViewContent}>
+			<Text style={newGameStyles.title}>Choose Your World</Text>
+			{showCustomForm ? (
+				<View style={newGameStyles.sectionBox}>
+					<Text style={newGameStyles.label}>World Name</Text>
+					<TextInput
+						style={newGameStyles.input}
+						placeholder="Enter world name"
+						value={customName}
+						onChangeText={setCustomName}
+					/>
+					<Text style={newGameStyles.label}>Description</Text>
+					<TextInput
+						style={[newGameStyles.input, newGameStyles.textArea]}
+						placeholder="Describe your world"
+						value={customDesc}
+						onChangeText={setCustomDesc}
+						multiline
+						numberOfLines={3}
+					/>
+					<TouchableOpacity style={styles.submitButton} onPress={handleCustomSubmit}>
+						<Text style={styles.submitButtonText}>Create World</Text>
+					</TouchableOpacity>
+				</View>
+			) : (
+				<View style={styles.cardContainer}>
+					{IS_SMALL_SCREEN ? (
+						mainWorlds.map((world) => (
+							<View key={world.id} style={styles.singleCardRow}>
+								<TouchableOpacity
+									style={styles.card}
+									onPress={() => handleSelect(world)}
+								>
+									<Image source={world.image} style={styles.image} resizeMode="cover" />
+									<Text style={styles.cardTitle}>{world.name}</Text>
+									<Text style={styles.cardDesc}>{world.description}</Text>
+								</TouchableOpacity>
+							</View>
+						))
+					) : (
+						<View style={styles.cardRow}>
+							{mainWorlds.map((world) => (
+								<TouchableOpacity
+									key={world.id}
+									style={styles.card}
+									onPress={() => handleSelect(world)}
+								>
+									<Image source={world.image} style={styles.image} resizeMode="cover" />
+									<Text style={styles.cardTitle}>{world.name}</Text>
+									<Text style={styles.cardDesc}>{world.description}</Text>
+								</TouchableOpacity>
+							))}
 						</View>
-					</ScrollView>
-				)}
-			</View>
-		</Modal>
+					)}
+					{customWorld && (
+						<View style={styles.customCardRow}>
+							<TouchableOpacity
+								key={customWorld.id}
+								style={[styles.card, styles.customCard]}
+								onPress={() => handleSelect(customWorld)}
+							>
+								<Image source={customWorld.image} style={styles.image} resizeMode="cover" />
+								<Text style={styles.cardTitle}>{customWorld.name}</Text>
+								<Text style={styles.cardDesc}>{customWorld.description}</Text>
+							</TouchableOpacity>
+						</View>
+					)}
+				</View>
+			)}
+		</ScrollView>
 	);
 };
 

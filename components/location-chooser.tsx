@@ -1,26 +1,28 @@
 import React, { useState } from 'react';
-import { Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { LOCATIONS, LocationOption } from '../constants/locations';
+import { newGameStyles } from '../styles/new-game.styles';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const MAX_CONTAINER_WIDTH = 1024;
 const IS_SMALL_SCREEN = SCREEN_WIDTH < 600;
+const MIN_CARD_WIDTH = 256;
 const CARDS_PER_ROW = 5;
 const CARD_MARGIN = 16;
 const CARD_CONTAINER_WIDTH = IS_SMALL_SCREEN ? SCREEN_WIDTH : MAX_CONTAINER_WIDTH;
-const CARD_WIDTH = IS_SMALL_SCREEN
+const IDEAL_CARD_WIDTH = IS_SMALL_SCREEN
 	? SCREEN_WIDTH - CARD_MARGIN * 2
 	: Math.floor((CARD_CONTAINER_WIDTH - CARD_MARGIN * (CARDS_PER_ROW + 1)) / CARDS_PER_ROW);
-const CARD_HEIGHT = CARD_WIDTH; // 1:1 aspect ratio
+const CARD_WIDTH = Math.max(MIN_CARD_WIDTH, IDEAL_CARD_WIDTH);
+const IMAGE_HEIGHT = CARD_WIDTH; // 1:1 aspect ratio
 
 interface LocationChooserProps {
-	visible: boolean;
 	onSelect: (location: LocationOption) => void;
 	initialLocationId?: string;
 }
 
-export const LocationChooser: React.FC<LocationChooserProps> = ({ visible, onSelect, initialLocationId }) => {
+export const LocationChooser: React.FC<LocationChooserProps> = ({ onSelect, initialLocationId }) => {
 	const [customName, setCustomName] = useState('');
 	const [customDesc, setCustomDesc] = useState('');
 	const [showCustomForm, setShowCustomForm] = useState(false);
@@ -49,80 +51,76 @@ export const LocationChooser: React.FC<LocationChooserProps> = ({ visible, onSel
 	};
 
 	return (
-		<Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
-			<View style={styles.container}>
-				<Text style={styles.title}>Choose Your Starting Location</Text>
-				{showCustomForm ? (
-					<View style={styles.customForm}>
-						<Text style={styles.label}>Location Name</Text>
-						<TextInput
-							style={styles.input}
-							placeholder="Enter location name"
-							value={customName}
-							onChangeText={setCustomName}
-						/>
-						<Text style={styles.label}>Description</Text>
-						<TextInput
-							style={[styles.input, styles.textArea]}
-							placeholder="Describe your location"
-							value={customDesc}
-							onChangeText={setCustomDesc}
-							multiline
-							numberOfLines={3}
-						/>
-						<TouchableOpacity style={styles.submitButton} onPress={handleCustomSubmit}>
-							<Text style={styles.submitButtonText}>Create Location</Text>
-						</TouchableOpacity>
-					</View>
-				) : (
-					<ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-						<View style={styles.cardContainer}>
-							{IS_SMALL_SCREEN ? (
-								mainLocations.map((location) => (
-									<View key={location.id} style={styles.singleCardRow}>
-										<TouchableOpacity
-											style={styles.card}
-											onPress={() => handleSelect(location)}
-										>
-											<Image source={location.image} style={styles.image} resizeMode="cover" />
-											<Text style={styles.cardTitle}>{location.name}</Text>
-											<Text style={styles.cardDesc}>{location.description}</Text>
-										</TouchableOpacity>
-									</View>
-								))
-							) : (
-								<View style={styles.cardRow}>
-									{mainLocations.map((location) => (
-										<TouchableOpacity
-											key={location.id}
-											style={styles.card}
-											onPress={() => handleSelect(location)}
-										>
-											<Image source={location.image} style={styles.image} resizeMode="cover" />
-											<Text style={styles.cardTitle}>{location.name}</Text>
-											<Text style={styles.cardDesc}>{location.description}</Text>
-										</TouchableOpacity>
-									))}
-								</View>
-							)}
-							{customLocation && (
-								<View style={styles.customCardRow}>
-									<TouchableOpacity
-										key={customLocation.id}
-										style={[styles.card, styles.customCard]}
-										onPress={() => handleSelect(customLocation)}
-									>
-										<Image source={customLocation.image} style={styles.image} resizeMode="cover" />
-										<Text style={styles.cardTitle}>{customLocation.name}</Text>
-										<Text style={styles.cardDesc}>{customLocation.description}</Text>
-									</TouchableOpacity>
-								</View>
-							)}
+		<ScrollView contentContainerStyle={newGameStyles.scrollViewContent}>
+			<Text style={newGameStyles.title}>Choose Your Starting Location</Text>
+			{showCustomForm ? (
+				<View style={newGameStyles.sectionBox}>
+					<Text style={newGameStyles.label}>Location Name</Text>
+					<TextInput
+						style={newGameStyles.input}
+						placeholder="Enter location name"
+						value={customName}
+						onChangeText={setCustomName}
+					/>
+					<Text style={newGameStyles.label}>Description</Text>
+					<TextInput
+						style={[newGameStyles.input, newGameStyles.textArea]}
+						placeholder="Describe your location"
+						value={customDesc}
+						onChangeText={setCustomDesc}
+						multiline
+						numberOfLines={3}
+					/>
+					<TouchableOpacity style={styles.submitButton} onPress={handleCustomSubmit}>
+						<Text style={styles.submitButtonText}>Create Location</Text>
+					</TouchableOpacity>
+				</View>
+			) : (
+				<View style={styles.cardContainer}>
+					{IS_SMALL_SCREEN ? (
+						mainLocations.map((location) => (
+							<View key={location.id} style={styles.singleCardRow}>
+								<TouchableOpacity
+									style={styles.card}
+									onPress={() => handleSelect(location)}
+								>
+									<Image source={location.image} style={styles.image} resizeMode="cover" />
+									<Text style={styles.cardTitle}>{location.name}</Text>
+									<Text style={styles.cardDesc}>{location.description}</Text>
+								</TouchableOpacity>
+							</View>
+						))
+					) : (
+						<View style={styles.cardRow}>
+							{mainLocations.map((location) => (
+								<TouchableOpacity
+									key={location.id}
+									style={styles.card}
+									onPress={() => handleSelect(location)}
+								>
+									<Image source={location.image} style={styles.image} resizeMode="cover" />
+									<Text style={styles.cardTitle}>{location.name}</Text>
+									<Text style={styles.cardDesc}>{location.description}</Text>
+								</TouchableOpacity>
+							))}
 						</View>
-					</ScrollView>
-				)}
-			</View>
-		</Modal>
+					)}
+					{customLocation && (
+						<View style={styles.customCardRow}>
+							<TouchableOpacity
+								key={customLocation.id}
+								style={[styles.card, styles.customCard]}
+								onPress={() => handleSelect(customLocation)}
+							>
+								<Image source={customLocation.image} style={styles.image} resizeMode="cover" />
+								<Text style={styles.cardTitle}>{customLocation.name}</Text>
+								<Text style={styles.cardDesc}>{customLocation.description}</Text>
+							</TouchableOpacity>
+						</View>
+					)}
+				</View>
+			)}
+		</ScrollView>
 	);
 };
 
@@ -160,6 +158,7 @@ const styles = StyleSheet.create({
 		alignItems: 'stretch',
 		justifyContent: 'center',
 		marginBottom: 24,
+		flexWrap: 'wrap',
 	},
 	customCardRow: {
 		flexDirection: 'row',
@@ -168,12 +167,13 @@ const styles = StyleSheet.create({
 	},
 	card: {
 		width: CARD_WIDTH,
+		minWidth: MIN_CARD_WIDTH,
 		backgroundColor: '#F9F6EF',
 		borderWidth: 2,
 		borderColor: '#8B5C2A',
 		borderRadius: 14,
 		marginHorizontal: IS_SMALL_SCREEN ? 0 : CARD_MARGIN / 2,
-		marginBottom: IS_SMALL_SCREEN ? 0 : 0,
+		marginBottom: 10,
 		padding: 0,
 		alignItems: 'center',
 		shadowColor: '#8B5C2A',
@@ -185,12 +185,14 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	customCard: {
+		maxWidth: CARD_WIDTH,
 		marginTop: 0,
 		marginBottom: 0,
 	},
 	image: {
 		width: '100%',
-		height: CARD_HEIGHT,
+		height: IMAGE_HEIGHT,
+		aspectRatio: 1,
 		borderTopLeftRadius: 14,
 		borderTopRightRadius: 14,
 		borderBottomLeftRadius: 0,

@@ -14,7 +14,7 @@ const IndexScreen: React.FC = () => {
 				<ThemedText type="title">
 					<Text>Welcome to the AI D&D Platform</Text>
 				</ThemedText>
-				<Link href="/setup" style={styles.link}>
+				<Link href="/new-game" style={styles.link}>
 					<ThemedText type="link">
 						<Text>Start a new game</Text>
 					</ThemedText>
