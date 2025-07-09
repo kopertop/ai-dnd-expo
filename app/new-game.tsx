@@ -1,10 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, router } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Button, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 
 import { CharacterReview } from '../components/character-review';
-import { CharacterSheetBuilder } from '../components/character-sheet-builder';
 import { ClassChooser } from '../components/class-chooser';
 import { LocationChooser } from '../components/location-chooser';
 import { RaceChooser } from '../components/race-chooser';
@@ -16,10 +15,9 @@ import { StatBlock } from '../constants/stats';
 import { WorldOption } from '../constants/worlds';
 import { newGameStyles } from '../styles/new-game.styles';
 
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
-type WizardStep = 'world' | 'location' | 'race' | 'class' | 'character' | 'story' | 'summary';
+type WizardStep = 'world' | 'location' | 'race' | 'class' | 'character';
 
 const getDefaultBaseStats = (): StatBlock => ({ STR: 8, DEX: 8, CON: 8, INT: 8, WIS: 8, CHA: 8 });
 
@@ -29,53 +27,27 @@ const NewGameScreen: React.FC = () => {
 	const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
 	const [selectedRace, setSelectedRace] = useState<RaceOption | null>(null);
 	const [selectedClass, setSelectedClass] = useState<ClassOption | null>(null);
-	const [showCharacterBuilder, setShowCharacterBuilder] = useState(false);
-
 	const [characterName, setCharacterName] = useState('');
-	const [gameWorld, setGameWorld] = useState('');
-	const [startingArea, setStartingArea] = useState('');
-	const [startingLevels, setStartingLevels] = useState('1');
-	const [numCharacters, setNumCharacters] = useState('1');
-	const [playerRace, setPlayerRace] = useState('');
-	const [playerClass, setPlayerClass] = useState('');
 	const [customStory, setCustomStory] = useState('');
-	const [fullCharacterSheet, setFullCharacterSheet] = useState<object | null>(null);
 
 	const handleWorldSelect = (world: WorldOption) => {
 		setSelectedWorld(world);
-		setGameWorld(world.name);
 		setCurrentStep('location');
 	};
 
 	const handleLocationSelect = (location: LocationOption) => {
 		setSelectedLocation(location);
-		setStartingArea(location.name);
 		setCurrentStep('race');
 	};
 
 	const handleRaceSelect = (race: RaceOption) => {
 		setSelectedRace(race);
-		setPlayerRace(race.name);
 		setCurrentStep('class');
 	};
 
 	const handleClassSelect = (classOption: ClassOption) => {
 		setSelectedClass(classOption);
-		setPlayerClass(classOption.name);
 		setCurrentStep('character');
-	};
-
-	const handleNextStep = () => {
-		switch (currentStep) {
-		case 'character':
-			setCurrentStep('story');
-			break;
-		case 'story':
-			setCurrentStep('summary');
-			break;
-		default:
-			break;
-		}
 	};
 
 	const handlePreviousStep = () => {
@@ -92,37 +64,31 @@ const NewGameScreen: React.FC = () => {
 		case 'character':
 			setCurrentStep('class');
 			break;
-		case 'story':
-			setCurrentStep('character');
-			break;
-		case 'summary':
-			setCurrentStep('story');
-			break;
 		default:
 			break;
 		}
 	};
 
 	const handleStartGame = async () => {
-		if (!characterName || !gameWorld || !startingArea || !startingLevels || !numCharacters || !playerRace || !playerClass) {
+		if (!characterName || !selectedWorld || !selectedLocation || !selectedRace || !selectedClass) {
 			Alert.alert('Missing Information', 'Please fill in all required fields.');
 			return;
 		}
 
 		const gameState = {
 			characterName,
-			gameWorld,
-			startingArea,
-			startingLevels: parseInt(startingLevels, 10),
-			numCharacters: parseInt(numCharacters, 10),
-			playerRace,
-			playerClass,
+			gameWorld: selectedWorld.name,
+			startingArea: selectedLocation.name,
+			startingLevels: 1, // Default to 1 for now, as character sheet is not fully editable here
+			numCharacters: 1, // Default to 1 for now
+			playerRace: selectedRace.name,
+			playerClass: selectedClass.name,
 			customStory,
 			selectedWorld,
 			selectedLocation,
 			selectedRace,
 			selectedClass,
-			fullCharacterSheet,
+			fullCharacterSheet: null, // No full character sheet in this simplified flow
 		};
 
 		try {
@@ -135,22 +101,13 @@ const NewGameScreen: React.FC = () => {
 		}
 	};
 
-	const handleCharacterCreate = (characterData: { name: string; race: string; class: string; level: number; [key: string]: any }) => {
-		setFullCharacterSheet(characterData);
-		setCharacterName(characterData.name);
-		setPlayerRace(characterData.race);
-		setPlayerClass(characterData.class);
-		setStartingLevels(characterData.level.toString());
-		setShowCharacterBuilder(false);
-	};
-
 	const getStepNumber = (step: WizardStep): number => {
-		const steps = ['world', 'location', 'race', 'class', 'character', 'story', 'summary'];
+		const steps = ['world', 'location', 'race', 'class', 'character'];
 		return steps.indexOf(step);
 	};
 
 	const renderStepIndicator = () => {
-		const steps = ['world', 'location', 'race', 'class', 'character', 'story', 'summary'];
+		const steps = ['world', 'location', 'race', 'class', 'character'];
 		const currentStepIndex = getStepNumber(currentStep);
 
 		return (
@@ -179,20 +136,8 @@ const NewGameScreen: React.FC = () => {
 	};
 
 	const renderStepContent = () => {
-		if (showCharacterBuilder) {
-			return (
-				<CharacterSheetBuilder
-					onCharacterCreate={handleCharacterCreate}
-					onCancel={() => setShowCharacterBuilder(false)}
-					initialData={{
-						name: characterName,
-						race: playerRace,
-						class: playerClass,
-						level: parseInt(startingLevels) || 1,
-					}}
-				/>
-			);
-		}
+		let baseStats: StatBlock | undefined;
+		let racialBonuses: Partial<StatBlock> | undefined;
 
 		switch (currentStep) {
 		case 'world':
@@ -204,158 +149,36 @@ const NewGameScreen: React.FC = () => {
 		case 'class':
 			return <ClassChooser onSelect={handleClassSelect} />;
 		case 'character':
-			return renderCharacterStep();
-		case 'story':
-			return renderStoryStep();
-		case 'summary':
-			return renderSummaryStep();
+			if (!selectedRace || !selectedClass) {
+				return (
+					<View style={newGameStyles.sectionBox}>
+						<Text>Missing race or class selection.</Text>
+					</View>
+				);
+			}
+			baseStats = getDefaultBaseStats();
+			racialBonuses = selectedRace.statBonuses || {};
+			return (
+				<CharacterReview
+					name={characterName}
+					description={customStory}
+					race={selectedRace}
+					classOption={selectedClass}
+					baseStats={baseStats}
+					racialBonuses={racialBonuses}
+					onBack={handlePreviousStep}
+					onFinish={handleStartGame}
+				/>
+			);
 		default:
 			return null;
 		}
 	};
 
-	const renderCharacterStep = () => (
-		<ScrollView contentContainerStyle={newGameStyles.scrollViewContent}>
-			<ThemedText type="title" style={newGameStyles.title}>
-				<Text>Character Creation</Text>
-			</ThemedText>
-
-			<View style={newGameStyles.sectionBox}>
-				<ThemedText style={newGameStyles.label}>
-					<Text>Your Character Name:</Text>
-				</ThemedText>
-				<TextInput
-					style={newGameStyles.input}
-					placeholder="Enter your character's name"
-					value={characterName}
-					onChangeText={setCharacterName}
-				/>
-
-				<ThemedText style={newGameStyles.label}>
-					<Text>Starting Levels:</Text>
-				</ThemedText>
-				<TextInput
-					style={newGameStyles.input}
-					placeholder="e.g., 1"
-					keyboardType="numeric"
-					value={startingLevels}
-					onChangeText={setStartingLevels}
-				/>
-
-				<ThemedText style={newGameStyles.label}>
-					<Text>Number of Characters Playing (including yours):</Text>
-				</ThemedText>
-				<TextInput
-					style={newGameStyles.input}
-					placeholder="e.g., 4"
-					keyboardType="numeric"
-					value={numCharacters}
-					onChangeText={setNumCharacters}
-				/>
-			</View>
-
-			<View style={newGameStyles.sectionBox}>
-				<ThemedText type="subtitle" style={newGameStyles.sectionTitle}>
-					<Text>Your Character Details (D&D 5e)</Text>
-				</ThemedText>
-				<ThemedText style={newGameStyles.label}>
-					<Text>Race:</Text>
-				</ThemedText>
-				<TextInput
-					style={newGameStyles.input}
-					placeholder="e.g., Human, Elf, Dwarf"
-					value={playerRace}
-					onChangeText={setPlayerRace}
-				/>
-				<ThemedText style={newGameStyles.label}>
-					<Text>Class:</Text>
-				</ThemedText>
-				<TextInput
-					style={newGameStyles.input}
-					placeholder="e.g., Fighter, Wizard, Rogue"
-					value={playerClass}
-					onChangeText={setPlayerClass}
-				/>
-
-				<Button
-					title="Create Detailed Character Sheet"
-					onPress={() => setShowCharacterBuilder(true)}
-				/>
-
-				{fullCharacterSheet && (
-					<ThemedText style={newGameStyles.infoText}>
-						<Text>Full character sheet created for {characterName}</Text>
-					</ThemedText>
-				)}
-			</View>
-
-			<View style={newGameStyles.wizardNavigation}>
-				<Button title="Back" onPress={handlePreviousStep} />
-				<Button title="Next" onPress={handleNextStep} />
-			</View>
-		</ScrollView>
-	);
-
-	const renderStoryStep = () => (
-		<ScrollView contentContainerStyle={newGameStyles.scrollViewContent}>
-			<ThemedText type="title" style={newGameStyles.title}>
-				<Text>Story Selection</Text>
-			</ThemedText>
-
-			<View style={newGameStyles.sectionBox}>
-				<ThemedText style={newGameStyles.label}>
-					<Text>Custom Story (Optional):</Text>
-				</ThemedText>
-				<TextInput
-					style={[newGameStyles.input, newGameStyles.textArea]}
-					placeholder="Enter your custom story idea or leave blank for a generated one."
-					multiline
-					numberOfLines={4}
-					value={customStory}
-					onChangeText={setCustomStory}
-				/>
-				<ThemedText style={newGameStyles.infoText}>
-					<Text>Pre-defined stories will be available in a future update.</Text>
-				</ThemedText>
-			</View>
-
-			<View style={newGameStyles.wizardNavigation}>
-				<Button title="Back" onPress={handlePreviousStep} />
-				<Button title="Next" onPress={handleNextStep} />
-			</View>
-		</ScrollView>
-	);
-
-	const renderSummaryStep = () => {
-		if (!selectedRace || !selectedClass) {
-			return (
-				<View style={newGameStyles.sectionBox}>
-					<Text>Missing race or class selection.</Text>
-				</View>
-			);
-		}
-
-		const baseStats = getDefaultBaseStats();
-		const racialBonuses = selectedRace.statBonuses || {};
-
-		return (
-			<CharacterReview
-				name={characterName}
-				description={customStory}
-				race={selectedRace}
-				classOption={selectedClass}
-				baseStats={baseStats}
-				racialBonuses={racialBonuses}
-				onBack={handlePreviousStep}
-				onFinish={handleStartGame}
-			/>
-		);
-	};
-
 	return (
 		<ThemedView style={newGameStyles.container}>
 			<Stack.Screen options={{ headerShown: false }} />
-			{!showCharacterBuilder && renderStepIndicator()}
+			{renderStepIndicator()}
 			{renderStepContent()}
 		</ThemedView>
 	);
