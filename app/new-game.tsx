@@ -3,6 +3,7 @@ import { Stack, router } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Button, ScrollView, Text, TextInput, View } from 'react-native';
 
+import { CharacterReview } from '../components/character-review';
 import { CharacterSheetBuilder } from '../components/character-sheet-builder';
 import { ClassChooser } from '../components/class-chooser';
 import { LocationChooser } from '../components/location-chooser';
@@ -11,6 +12,7 @@ import { WorldChooser } from '../components/world-chooser';
 import { ClassOption } from '../constants/classes';
 import { LocationOption } from '../constants/locations';
 import { RaceOption } from '../constants/races';
+import { StatBlock } from '../constants/stats';
 import { WorldOption } from '../constants/worlds';
 import { newGameStyles } from '../styles/new-game.styles';
 
@@ -18,6 +20,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
 type WizardStep = 'world' | 'location' | 'race' | 'class' | 'character' | 'story' | 'summary';
+
+const getDefaultBaseStats = (): StatBlock => ({ STR: 8, DEX: 8, CON: 8, INT: 8, WIS: 8, CHA: 8 });
 
 const NewGameScreen: React.FC = () => {
 	const [currentStep, setCurrentStep] = useState<WizardStep>('world');
@@ -272,12 +276,12 @@ const NewGameScreen: React.FC = () => {
 					value={playerClass}
 					onChangeText={setPlayerClass}
 				/>
-				
+
 				<Button
 					title="Create Detailed Character Sheet"
 					onPress={() => setShowCharacterBuilder(true)}
 				/>
-				
+
 				{fullCharacterSheet && (
 					<ThemedText style={newGameStyles.infoText}>
 						<Text>Full character sheet created for {characterName}</Text>
@@ -322,42 +326,31 @@ const NewGameScreen: React.FC = () => {
 		</ScrollView>
 	);
 
-	const renderSummaryStep = () => (
-		<ScrollView contentContainerStyle={newGameStyles.scrollViewContent}>
-			<ThemedText type="title" style={newGameStyles.title}>
-				<Text>Game Summary</Text>
-			</ThemedText>
+	const renderSummaryStep = () => {
+		if (!selectedRace || !selectedClass) {
+			return (
+				<View style={newGameStyles.sectionBox}>
+					<Text>Missing race or class selection.</Text>
+				</View>
+			);
+		}
 
-			<View style={newGameStyles.sectionBox}>
-				<ThemedText style={newGameStyles.label}>
-					<Text>World: {selectedWorld?.name}</Text>
-				</ThemedText>
-				<ThemedText style={newGameStyles.label}>
-					<Text>Starting Location: {selectedLocation?.name}</Text>
-				</ThemedText>
-				<ThemedText style={newGameStyles.label}>
-					<Text>Race: {selectedRace?.name}</Text>
-				</ThemedText>
-				<ThemedText style={newGameStyles.label}>
-					<Text>Class: {selectedClass?.name}</Text>
-				</ThemedText>
-				<ThemedText style={newGameStyles.label}>
-					<Text>Character: {characterName}</Text>
-				</ThemedText>
-				<ThemedText style={newGameStyles.label}>
-					<Text>Level: {startingLevels}</Text>
-				</ThemedText>
-				<ThemedText style={newGameStyles.label}>
-					<Text>Party Size: {numCharacters}</Text>
-				</ThemedText>
-			</View>
+		const baseStats = getDefaultBaseStats();
+		const racialBonuses = selectedRace.statBonuses || {};
 
-			<View style={newGameStyles.wizardNavigation}>
-				<Button title="Back" onPress={handlePreviousStep} />
-				<Button title="Start Game" onPress={handleStartGame} />
-			</View>
-		</ScrollView>
-	);
+		return (
+			<CharacterReview
+				name={characterName}
+				description={customStory || 'No background provided.'}
+				race={selectedRace}
+				classOption={selectedClass}
+				baseStats={baseStats}
+				racialBonuses={racialBonuses}
+				onBack={handlePreviousStep}
+				onFinish={handleStartGame}
+			/>
+		);
+	};
 
 	return (
 		<ThemedView style={newGameStyles.container}>
