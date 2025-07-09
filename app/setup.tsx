@@ -3,7 +3,9 @@ import { Stack, router } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Button, ScrollView, Text, TextInput, View } from 'react-native';
 
+import { LocationChooser } from '../components/location-chooser';
 import { WorldChooser } from '../components/world-chooser';
+import { LocationOption } from '../constants/locations';
 import { WorldOption } from '../constants/worlds';
 import { setupStyles } from '../styles/setup.styles';
 
@@ -13,6 +15,8 @@ import { ThemedView } from '@/components/themed-view';
 const SetupScreen: React.FC = () => {
 	const [worldChooserVisible, setWorldChooserVisible] = useState(true);
 	const [selectedWorld, setSelectedWorld] = useState<WorldOption | null>(null);
+	const [locationChooserVisible, setLocationChooserVisible] = useState(false);
+	const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
 
 	const [characterName, setCharacterName] = useState('');
 	const [gameWorld, setGameWorld] = useState('');
@@ -27,6 +31,13 @@ const SetupScreen: React.FC = () => {
 		setSelectedWorld(world);
 		setGameWorld(world.name);
 		setWorldChooserVisible(false);
+		setLocationChooserVisible(true);
+	};
+
+	const handleLocationSelect = (location: LocationOption) => {
+		setSelectedLocation(location);
+		setStartingArea(location.name);
+		setLocationChooserVisible(false);
 	};
 
 	const handleStartGame = async () => {
@@ -45,6 +56,7 @@ const SetupScreen: React.FC = () => {
 			playerClass,
 			customStory,
 			selectedWorld,
+			selectedLocation,
 			// Add more game state as needed
 		};
 
@@ -62,7 +74,8 @@ const SetupScreen: React.FC = () => {
 		<ThemedView style={setupStyles.container}>
 			<Stack.Screen options={{ headerShown: false }} />
 			<WorldChooser visible={worldChooserVisible} onSelect={handleWorldSelect} />
-			{!worldChooserVisible && (
+			<LocationChooser visible={locationChooserVisible} onSelect={handleLocationSelect} />
+			{!worldChooserVisible && !locationChooserVisible && (
 				<ScrollView contentContainerStyle={setupStyles.scrollViewContent}>
 					<ThemedText type="title" style={setupStyles.title}>
 						<Text>AI D&D Platform</Text>
@@ -101,6 +114,7 @@ const SetupScreen: React.FC = () => {
 							placeholder="e.g., Tavern, Dungeon Entrance"
 							value={startingArea}
 							onChangeText={setStartingArea}
+							editable={selectedLocation?.isCustom}
 						/>
 
 						<ThemedText style={setupStyles.label}>
