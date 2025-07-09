@@ -10,36 +10,63 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-
 const audioSource = require('../assets/audio/background.mp3');
+
+const AudioButton: React.FC = () => {
+	const player = useAudioPlayer(audioSource);
+	const [isPlaying, setIsPlaying] = useState(player.playing);
+
+	useEffect(() => {
+		setIsPlaying(player.playing);
+	}, [player.playing]);
+
+	// Set up looping, volume, and try autoplay on mount
+	useEffect(() => {
+		if (!player) return;
+		player.loop = true;
+		player.volume = 0.5;
+		// Clean up on unmount
+		return () => {
+			player.pause();
+		};
+	}, [player]);
+
+	const handleToggleSound = async () => {
+		if (isPlaying) {
+			player.pause();
+			setIsPlaying(false);
+		} else {
+			try {
+				await player.play();
+				setIsPlaying(true);
+			} catch (e) {
+				console.error('PLAYBACK FAILED', e);
+			}
+		}
+	};
+
+	return (
+		<View pointerEvents="box-none" style={styles.soundButtonContainer}>
+			<TouchableOpacity
+				accessibilityLabel={isPlaying ? 'Mute background music' : 'Unmute background music'}
+				onPress={handleToggleSound}
+				style={styles.soundButton}
+			>
+				<Feather
+					name={player.playing ? 'volume-2' : 'volume-x'}
+					size={28}
+					color={player.playing ? '#4caf50' : '#f44336'}
+				/>
+			</TouchableOpacity>
+		</View>
+	);
+};
 
 const RootLayout: React.FC = () => {
 	const colorScheme = useColorScheme();
 	const [loaded] = useFonts({
 		SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
 	});
-
-	const [autoplayFailed, setAutoplayFailed] = useState(false);
-	const player = useAudioPlayer(audioSource, {
-		isLooping: true,
-		volume: 0.5,
-		autoPlay: true,
-	});
-
-	useEffect(() => {
-		if (player.error) {
-			setAutoplayFailed(true);
-		}
-	}, [player.error]);
-
-	const handleToggleSound = () => {
-		if (player.isPlaying) {
-			player.pause();
-		} else {
-			player.play();
-			setAutoplayFailed(false);
-		}
-	};
 
 	if (!loaded) {
 		// Async font loading only occurs in development.
@@ -55,17 +82,7 @@ const RootLayout: React.FC = () => {
 			</Stack>
 			<StatusBar style="auto" />
 			<View pointerEvents="box-none" style={styles.soundButtonContainer}>
-				<TouchableOpacity
-					accessibilityLabel={player.isPlaying ? 'Mute background music' : 'Unmute background music'}
-					onPress={handleToggleSound}
-					style={styles.soundButton}
-				>
-					<Feather
-						name={player.isPlaying ? 'volume-2' : 'volume-x'}
-						size={28}
-						color={player.isPlaying ? '#4caf50' : '#f44336'}
-					/>
-				</TouchableOpacity>
+				<AudioButton />
 			</View>
 		</ThemeProvider>
 	);
@@ -79,8 +96,6 @@ const styles = StyleSheet.create({
 		zIndex: 1000,
 	},
 	soundButton: {
-		backgroundColor: 'rgba(0,0,0,0.5)',
-		borderRadius: 24,
 		padding: 8,
 		alignItems: 'center',
 		justifyContent: 'center',

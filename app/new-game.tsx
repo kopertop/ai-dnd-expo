@@ -4,21 +4,27 @@ import React, { useState } from 'react';
 import { Alert, Button, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { CharacterSheetBuilder } from '../components/character-sheet-builder';
+import { ClassChooser } from '../components/class-chooser';
 import { LocationChooser } from '../components/location-chooser';
+import { RaceChooser } from '../components/race-chooser';
 import { WorldChooser } from '../components/world-chooser';
+import { ClassOption } from '../constants/classes';
 import { LocationOption } from '../constants/locations';
+import { RaceOption } from '../constants/races';
 import { WorldOption } from '../constants/worlds';
 import { newGameStyles } from '../styles/new-game.styles';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
-type WizardStep = 'world' | 'location' | 'character' | 'story' | 'summary';
+type WizardStep = 'world' | 'location' | 'race' | 'class' | 'character' | 'story' | 'summary';
 
 const NewGameScreen: React.FC = () => {
 	const [currentStep, setCurrentStep] = useState<WizardStep>('world');
 	const [selectedWorld, setSelectedWorld] = useState<WorldOption | null>(null);
 	const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
+	const [selectedRace, setSelectedRace] = useState<RaceOption | null>(null);
+	const [selectedClass, setSelectedClass] = useState<ClassOption | null>(null);
 	const [showCharacterBuilder, setShowCharacterBuilder] = useState(false);
 
 	const [characterName, setCharacterName] = useState('');
@@ -40,6 +46,18 @@ const NewGameScreen: React.FC = () => {
 	const handleLocationSelect = (location: LocationOption) => {
 		setSelectedLocation(location);
 		setStartingArea(location.name);
+		setCurrentStep('race');
+	};
+
+	const handleRaceSelect = (race: RaceOption) => {
+		setSelectedRace(race);
+		setPlayerRace(race.name);
+		setCurrentStep('class');
+	};
+
+	const handleClassSelect = (classOption: ClassOption) => {
+		setSelectedClass(classOption);
+		setPlayerClass(classOption.name);
 		setCurrentStep('character');
 	};
 
@@ -61,8 +79,14 @@ const NewGameScreen: React.FC = () => {
 		case 'location':
 			setCurrentStep('world');
 			break;
-		case 'character':
+		case 'race':
 			setCurrentStep('location');
+			break;
+		case 'class':
+			setCurrentStep('race');
+			break;
+		case 'character':
+			setCurrentStep('class');
 			break;
 		case 'story':
 			setCurrentStep('character');
@@ -92,6 +116,9 @@ const NewGameScreen: React.FC = () => {
 			customStory,
 			selectedWorld,
 			selectedLocation,
+			selectedRace,
+			selectedClass,
+			fullCharacterSheet,
 		};
 
 		try {
@@ -114,12 +141,12 @@ const NewGameScreen: React.FC = () => {
 	};
 
 	const getStepNumber = (step: WizardStep): number => {
-		const steps = ['world', 'location', 'character', 'story', 'summary'];
+		const steps = ['world', 'location', 'race', 'class', 'character', 'story', 'summary'];
 		return steps.indexOf(step);
 	};
 
 	const renderStepIndicator = () => {
-		const steps = ['world', 'location', 'character', 'story', 'summary'];
+		const steps = ['world', 'location', 'race', 'class', 'character', 'story', 'summary'];
 		const currentStepIndex = getStepNumber(currentStep);
 
 		return (
@@ -168,6 +195,10 @@ const NewGameScreen: React.FC = () => {
 			return <WorldChooser onSelect={handleWorldSelect} />;
 		case 'location':
 			return <LocationChooser onSelect={handleLocationSelect} />;
+		case 'race':
+			return <RaceChooser onSelect={handleRaceSelect} />;
+		case 'class':
+			return <ClassChooser onSelect={handleClassSelect} />;
 		case 'character':
 			return renderCharacterStep();
 		case 'story':
@@ -305,7 +336,13 @@ const NewGameScreen: React.FC = () => {
 					<Text>Starting Location: {selectedLocation?.name}</Text>
 				</ThemedText>
 				<ThemedText style={newGameStyles.label}>
-					<Text>Character: {characterName} - {playerRace} {playerClass}</Text>
+					<Text>Race: {selectedRace?.name}</Text>
+				</ThemedText>
+				<ThemedText style={newGameStyles.label}>
+					<Text>Class: {selectedClass?.name}</Text>
+				</ThemedText>
+				<ThemedText style={newGameStyles.label}>
+					<Text>Character: {characterName}</Text>
 				</ThemedText>
 				<ThemedText style={newGameStyles.label}>
 					<Text>Level: {startingLevels}</Text>

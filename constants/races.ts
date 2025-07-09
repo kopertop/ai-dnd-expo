@@ -70,30 +70,6 @@ export const RACES: RaceOption[] = [
 		image: require('../assets/images/races/eladrin.png'),
 	},
 	{
-		id: 'deva',
-		name: 'Deva',
-		description: 'Immortal spirits reborn in mortal form, wise and mystical.',
-		image: require('../assets/images/races/deva.png'),
-	},
-	{
-		id: 'shifter',
-		name: 'Shifter',
-		description: 'Descendants of lycanthropes, shifters are wild and primal.',
-		image: require('../assets/images/races/shifter.png'),
-	},
-	{
-		id: 'goliath',
-		name: 'Goliath',
-		description: 'Mountain-dwelling giants, strong and competitive.',
-		image: require('../assets/images/races/goliath.png'),
-	},
-	{
-		id: 'genasi',
-		name: 'Genasi',
-		description: 'Elemental beings, each tied to air, earth, fire, or water.',
-		image: require('../assets/images/races/genasi.png'),
-	},
-	{
 		id: 'custom',
 		name: 'Custom',
 		description: 'Create your own race! Name and describe your unique ancestry.',
