@@ -6,25 +6,25 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
 
-const NotFoundScreen: React.FC = () => {
+const IndexScreen: React.FC = () => {
 	return (
 		<>
-			<Stack.Screen options={{ title: 'Oops!' }} />
+			<Stack.Screen options={{ title: 'Home' }} />
 			<ThemedView style={styles.container}>
 				<ThemedText type="title">
-					<Text>This screen does not exist.</Text>
+					<Text>Welcome to the AI D&D Platform</Text>
 				</ThemedText>
-				<Link href="/" style={styles.link}>
+				<Link href="/setup" style={styles.link}>
 					<ThemedText type="link">
-						<Text>Go to home screen!</Text>
+						<Text>Start a new game</Text>
 					</ThemedText>
 				</Link>
 			</ThemedView>
 		</>
 	);
 };
-NotFoundScreen.displayName = 'NotFoundScreen';
-export default NotFoundScreen;
+IndexScreen.displayName = 'Home';
+export default IndexScreen;
 
 const styles = StyleSheet.create({
 	container: {

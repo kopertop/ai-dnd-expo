@@ -1,5 +1,12 @@
 {
   "name": "ai-dnd-expo",
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "listUnknownPackages": false
+      }
+    }
+  },
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
@@ -9,6 +16,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run lint && npm run typecheck && npx expo-doctor",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -24,7 +33,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
-    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-async-storage/async-storage": "2.1.2",
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
@@ -69,9 +78,12 @@
   },
   "eslintConfig": {
     "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+      "expo"
+    ],
+    "rules": {
+      "react/display-name": "off",
+      "react-native/no-raw-text": "off"
+    }
   },
   "private": true
 }

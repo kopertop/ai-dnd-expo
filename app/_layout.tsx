@@ -2,11 +2,13 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import React from 'react';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export default function RootLayout() {
+
+const RootLayout: React.FC = () => {
 	const colorScheme = useColorScheme();
 	const [loaded] = useFonts({
 		SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
@@ -26,4 +28,5 @@ export default function RootLayout() {
 			<StatusBar style="auto" />
 		</ThemeProvider>
 	);
-}
+};
+export default RootLayout;
