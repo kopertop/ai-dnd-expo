@@ -10,7 +10,7 @@
         "EXPO_PUBLIC_ENVIRONMENT": "development"
       },
       "ios": {
-        "resourceClass": "m1-medium"
+        "resourceClass": "m-medium"
       },
       "android": {
         "resourceClass": "medium"
@@ -23,7 +23,7 @@
       },
       "channel": "staging",
       "ios": {
-        "resourceClass": "m1-medium"
+        "resourceClass": "m-medium"
       },
       "android": {
         "resourceClass": "medium"
@@ -35,7 +35,7 @@
       },
       "channel": "production",
       "ios": {
-        "resourceClass": "m1-medium"
+        "resourceClass": "m-medium"
       },
       "android": {
         "resourceClass": "medium"
@@ -48,7 +48,7 @@
         "track": "internal"
       },
       "ios": {
-        "appleTeamId": "YOUR_APPLE_TEAM_ID"
+        "appleTeamId": "T2H2YPQXA9"
       }
     },
     "production": {
@@ -56,7 +56,7 @@
         "track": "production"
       },
       "ios": {
-        "appleTeamId": "YOUR_APPLE_TEAM_ID"
+        "appleTeamId": "T2H2YPQXA9"
       }
     }
   }

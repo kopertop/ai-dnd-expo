@@ -2,13 +2,13 @@ import Feather from '@expo/vector-icons/Feather';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { Colors } from '../constants/Colors';
 import { ABILITY_COLORS, SKILL_LIST } from '../constants/skills';
 import { newGameStyles } from '../styles/new-game.styles';
 import { ClassOption } from '../types/class-option';
 import { RaceOption } from '../types/race-option';
 import { PartialStatBlock, STAT_KEYS, StatBlock, StatKey } from '../types/stats';
 
-import { Colors } from '@/constants/colors';
 
 const POINT_BUY_COST: Record<number, number> = {
 	8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9,
@@ -19,7 +19,7 @@ const POINT_BUY_TOTAL = 27;
 const MAX_SKILLS = 4;
 
 function getPointBuyTotal(stats: StatBlock): number {
-	return STAT_KEYS.reduce((sum: number, key: StatKey) => sum + stats[key], 0);
+	return STAT_KEYS.reduce((sum: number, key: StatKey) => sum + POINT_BUY_COST[stats[key]], 0);
 }
 
 interface CharacterReviewProps {
