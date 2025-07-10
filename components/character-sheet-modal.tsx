@@ -66,27 +66,13 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 		<Modal visible={visible} animationType="slide" transparent>
 			<View style={styles.overlay}>
 				<ThemedView style={styles.modalBox}>
-					{/* Large portrait pinned top-left */}
-					<View style={styles.portraitPinned} pointerEvents="box-none">
-						<Image source={portraitSource} style={styles.portraitLarge} />
-					</View>
 					<ScrollView contentContainerStyle={styles.contentWithPortrait}>
 						<View style={styles.sheetRow}>
-							{/* Left: Info & Stats */}
+							{/* Left: Portrait & Stats */}
 							<View style={styles.leftCol}>
-								<View style={styles.infoRow}>
-									<Text style={styles.infoText}>{classOption.name}</Text>
-									<Text style={styles.infoText}>/ {race.name}</Text>
-									<Text style={styles.infoText}>/ Level {level}</Text>
+								<View style={styles.portraitBox}>
+									<Image source={portraitSource} style={styles.portraitLarge} />
 								</View>
-								<Text style={styles.nameText}>{name}</Text>
-								<Text style={styles.label}>Background</Text>
-								<Text style={styles.value}>{description}</Text>
-								<View style={styles.hpApRow}>
-									<Text style={styles.statText}>HP: {health} / {maxHealth}</Text>
-									<Text style={styles.statText}>AP: {actionPoints} / {maxActionPoints}</Text>
-								</View>
-								{/* Stats grid below portrait/info */}
 								<Text style={styles.label}>Stats</Text>
 								<View style={styles.statGridBelowPortrait}>
 									{STAT_KEYS.map((key) => (
@@ -99,7 +85,48 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 									))}
 								</View>
 							</View>
-							{/* Right: Gear & Skills */}
+							{/* Center: Info block above Inventory grid */}
+							<View style={styles.centerCol}>
+								{/* Info block */}
+								<View style={styles.infoBlock}>
+									<View style={styles.infoRow}>
+										<Text style={styles.infoText}>{classOption.name}</Text>
+										<Text style={styles.infoText}>/ {race.name}</Text>
+										<Text style={styles.infoText}>/ Level {level}</Text>
+									</View>
+									<Text style={styles.nameText}>{name}</Text>
+									<Text style={styles.label}>Background</Text>
+									<Text style={styles.value}>{description}</Text>
+									<View style={styles.hpApRow}>
+										<Text style={styles.statText}>HP: {health} / {maxHealth}</Text>
+										<Text style={styles.statText}>AP: {actionPoints} / {maxActionPoints}</Text>
+									</View>
+								</View>
+								<Text style={styles.label}>Inventory</Text>
+								<View style={styles.inventoryGridCenter}>
+									{inventoryItems.length === 0 ? (
+										<Text style={styles.emptyInventory}>No items</Text>
+									) : (
+										inventoryItems.map(item => (
+											<Pressable
+												key={item.id}
+												onPress={() => item.slot !== 'none' && setActiveSlot(item.slot)}
+												onHoverIn={() => Platform.OS === 'web' && setTooltipSkill(item.id)}
+												onHoverOut={() => Platform.OS === 'web' && setTooltipSkill(null)}
+												style={styles.inventoryItemBox}
+											>
+												<Image source={item.icon} style={styles.inventoryIconLarge} />
+												{tooltipSkill === item.id && (
+													<View style={styles.tooltip}>
+														<Text style={styles.tooltipText}>{item.name}</Text>
+													</View>
+												)}
+											</Pressable>
+										))
+									)}
+								</View>
+							</View>
+							{/* Right: Gear & Skills (unchanged) */}
 							<View style={styles.rightCol}>
 								<Text style={styles.label}>Gear</Text>
 								{/* Character-like gear layout */}
@@ -510,8 +537,6 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'flex-start',
 		width: '100%',
-		gap: 32,
-		paddingLeft: 220, // leave space for portrait
 	},
 	skillIconWrapper: {
 		width: 72,
@@ -633,5 +658,44 @@ const styles = StyleSheet.create({
 		color: '#3B2F1B',
 		fontWeight: 'bold',
 		fontSize: 14,
+	},
+	centerCol: {
+		flex: 1,
+		minWidth: 260,
+		maxWidth: 340,
+		alignItems: 'center',
+	},
+	inventoryGridCenter: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 12,
+		marginTop: 8,
+		marginBottom: 8,
+		minHeight: 48,
+		alignItems: 'center',
+		justifyContent: 'flex-start',
+	},
+	inventoryItemBox: {
+		alignItems: 'center',
+		marginRight: 12,
+		marginBottom: 8,
+		borderWidth: 1,
+		borderColor: '#8B5C2A',
+		borderStyle: 'dashed',
+		borderRadius: 8,
+		padding: 8,
+	},
+	inventoryIconLarge: {
+		width: 48,
+		height: 48,
+		marginBottom: 2,
+	},
+	infoBlock: {
+		backgroundColor: '#F9F6EF',
+		borderRadius: 10,
+		padding: 12,
+		marginBottom: 16,
+		width: '100%',
+		alignItems: 'center',
 	},
 });
