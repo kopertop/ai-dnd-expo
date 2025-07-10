@@ -5,7 +5,11 @@ import { GearSlotSchema, StatBlockSchema } from './stats';
 
 export const CharacterSchema = z.object({
 	id: z.string(),
+	level: z.number().int().default(1),
+	race: z.string(),
 	name: z.string(),
+	class: z.string(),
+	image: z.string().optional(),
 	description: z.string().optional(),
 	stats: StatBlockSchema,
 	skills: z.array(z.string()),
