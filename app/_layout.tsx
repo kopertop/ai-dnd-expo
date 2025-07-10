@@ -12,6 +12,20 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const audioSource = require('../assets/audio/background.mp3');
 
+const useMobileAudioAutoplay = () => {
+	const player = useAudioPlayer(audioSource);
+	useEffect(() => {
+		if (Platform.OS !== 'web' && player) {
+			player.loop = true;
+			player.volume = 0.5;
+			player.play();
+			return () => {
+				player.pause();
+			};
+		}
+	}, [player]);
+};
+
 const AudioButton: React.FC = () => {
 	const player = useAudioPlayer(audioSource);
 	const [isPlaying, setIsPlaying] = useState(player.playing);
@@ -68,6 +82,9 @@ const RootLayout: React.FC = () => {
 		SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
 	});
 
+	// Auto-play audio on mobile (non-web)
+	useMobileAudioAutoplay();
+
 	if (!loaded) {
 		// Async font loading only occurs in development.
 		return null;
@@ -81,9 +98,12 @@ const RootLayout: React.FC = () => {
 				<Stack.Screen name="+not-found" />
 			</Stack>
 			<StatusBar style="auto" />
-			<View pointerEvents="box-none" style={styles.soundButtonContainer}>
-				<AudioButton />
-			</View>
+			{/* Only show sound button on web */}
+			{Platform.OS === 'web' && (
+				<View pointerEvents="box-none" style={styles.soundButtonContainer}>
+					<AudioButton />
+				</View>
+			)}
 		</ThemeProvider>
 	);
 };
