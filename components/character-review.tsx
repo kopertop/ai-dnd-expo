@@ -2,7 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { Colors } from '../constants/Colors';
+import { Colors } from '../constants/colors';
 import { ABILITY_COLORS, SKILL_LIST } from '../constants/skills';
 import { newGameStyles } from '../styles/new-game.styles';
 import { ClassOption } from '../types/class-option';
