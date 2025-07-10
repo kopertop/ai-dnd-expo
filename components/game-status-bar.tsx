@@ -3,55 +3,49 @@ import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { getCharacterImage } from '@/hooks/use-game-state';
+import { GameState } from '@/types/game';
 
 interface GameStatusBarProps {
-	name: string;
-	className: string;
-	raceName: string;
-	raceImage: any;
-	health: number;
-	maxHealth: number;
-	actionPoints: number;
-	maxActionPoints: number;
-	level: number;
+	gameState: GameState;
 	style?: ViewStyle;
 	onPortraitPress?: () => void;
 }
 
 export const GameStatusBar: React.FC<GameStatusBarProps> = ({
-	name,
-	className,
-	raceName,
-	raceImage,
-	level,
-	health,
-	maxHealth,
-	actionPoints,
-	maxActionPoints,
+	gameState,
 	style,
 	onPortraitPress,
 }) => {
+	const playerCharacter = gameState.characters.find(c => c.id === gameState.playerCharacterId);
 	return (
 		<View style={[styles.statusBarWrapper, style]}>
 			{/* Portrait (left, hanging) */}
-			<TouchableOpacity style={styles.portraitWrapper} onPress={onPortraitPress} activeOpacity={0.7}>
-				<Image source={raceImage} style={styles.portrait} />
+			<TouchableOpacity
+				style={styles.portraitWrapper}
+				onPress={onPortraitPress}
+				activeOpacity={0.7}
+			>
+				<Image
+					source={getCharacterImage(playerCharacter)}
+					style={styles.portrait}
+				/>
 			</TouchableOpacity>
 			{/* Centered info */}
 			<View style={styles.centerCol}>
 				<View style={styles.statusBar}>
 					<View style={styles.infoRow}>
 						<ThemedText type="title" style={styles.nameText}>
-							<Text>{name}</Text>
+							<Text>{playerCharacter?.name}</Text>
 						</ThemedText>
 						<ThemedText style={styles.metaText}>
-							<Text>{raceName} / {className}</Text>
+							<Text>{playerCharacter?.race} / {playerCharacter?.class}</Text>
 						</ThemedText>
 						<ThemedText style={styles.statText}>
-							<Text>HP: {health} / {maxHealth}</Text>
+							<Text>HP: {playerCharacter?.health} / {playerCharacter?.maxHealth}</Text>
 						</ThemedText>
 						<ThemedText style={styles.statText}>
-							<Text>AP: {actionPoints} / {maxActionPoints}</Text>
+							<Text>AP: {playerCharacter?.actionPoints} / {playerCharacter?.maxActionPoints}</Text>
 						</ThemedText>
 					</View>
 				</View>
@@ -61,7 +55,7 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 				<View style={styles.diceIconContainer}>
 					<Feather name="hexagon" size={52} color="#C9B037" style={styles.diceIcon} />
 					<View style={styles.diceTextContainer}>
-						<Text style={styles.diceText}>{level}</Text>
+						<Text style={styles.diceText}>{playerCharacter?.level}</Text>
 					</View>
 				</View>
 			</View>

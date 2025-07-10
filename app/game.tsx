@@ -1,49 +1,20 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CharacterSheetModal } from '../components/character-sheet-modal';
+import { useGameState } from '../hooks/use-game-state';
+import { useInventoryManager } from '../hooks/use-inventory-manager';
 
 import { GameStatusBar } from '@/components/game-status-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { CLASSES } from '@/constants/classes';
-import { RACES } from '@/constants/races';
-
-interface GameState {
-	characterName: string;
-	playerRace: string;
-	playerClass: string;
-	gameWorld: string;
-	startingArea: string;
-	characterSheet: {
-		name: string;
-		description: string;
-		stats: Record<string, number>;
-		skills?: string[];
-	};
-}
 
 const GameScreen: React.FC = () => {
-	const [gameState, setGameState] = useState<GameState | null>(null);
-	const [loading, setLoading] = useState(true);
 	const [showSheet, setShowSheet] = useState(false);
-
-	useEffect(() => {
-		const loadGame = async () => {
-			try {
-				const saved = await AsyncStorage.getItem('gameState');
-				if (saved) {
-					setGameState(JSON.parse(saved));
-				}
-			} finally {
-				setLoading(false);
-			}
-		};
-		loadGame();
-	}, []);
+	const { loading, error, gameState, playerCharacter, playerPortrait } = useGameState();
+	const { inventory, equipped } = useInventoryManager();
 
 	if (loading) {
 		return (
@@ -66,110 +37,54 @@ const GameScreen: React.FC = () => {
 		);
 	}
 
-	const { characterName, playerRace, playerClass, gameWorld, startingArea, characterSheet } = gameState;
-	const raceObj = RACES.find(r => r.name === playerRace);
-	const classObj = CLASSES.find(c => c.name === playerClass);
-
 	return (
 		<SafeAreaView style={{ width: '100%', height: '100%' }}>
 			<Stack.Screen options={{ headerShown: false }} />
 			<GameStatusBar
-				name={characterName}
-				className={playerClass}
-				raceName={playerRace}
-				raceImage={raceObj?.image || require('@/assets/images/custom.png')}
-				level={1}
-				health={10}
-				maxHealth={10}
-				actionPoints={3}
-				maxActionPoints={3}
+				gameState={gameState}
 				onPortraitPress={() => setShowSheet(true)}
 				style={styles.statusBarPinned}
 			/>
 			<ScrollView contentContainerStyle={[styles.container, { paddingTop: 120 }]}>
 				<ThemedText type="title">
-					<Text>Welcome back, {characterName}!</Text>
+					<Text>Welcome back, {playerCharacter?.name || 'adventurer'}!</Text>
 				</ThemedText>
 				<View style={styles.infoBox}>
-					<ThemedText>
-						<Text>Race: {playerRace}</Text>
-					</ThemedText>
-					<ThemedText>
-						<Text>Class: {playerClass}</Text>
-					</ThemedText>
-					<ThemedText>
-						<Text>World: {gameWorld}</Text>
-					</ThemedText>
-					<ThemedText>
-						<Text>Starting Area: {startingArea}</Text>
-					</ThemedText>
+					{playerCharacter ? (
+						<>
+							<ThemedText>
+								<Text>Race: {playerCharacter.race} | Class: {playerCharacter.class} | Level {playerCharacter.level}</Text>
+							</ThemedText>
+							<ThemedText>
+								<Text>World: {gameState?.gameWorld} | Area: {gameState?.startingArea}</Text>
+							</ThemedText>
+						</>
+					) : (
+						<>
+							<ThemedText>
+								<Text>Your character sheet is loading...</Text>
+							</ThemedText>
+							<ThemedText>
+								<Text>Tap your portrait above to view details</Text>
+							</ThemedText>
+						</>
+					)}
 				</View>
 				<View style={styles.sheetBox}>
 					<ThemedText type="subtitle">
-						<Text>Character Sheet</Text>
+						<Text>Inventory Status</Text>
 					</ThemedText>
 					<ThemedText>
-						<Text>Name: {characterSheet.name}</Text>
+						<Text>Items: {inventory.length}</Text>
 					</ThemedText>
 					<ThemedText>
-						<Text>Description: {characterSheet.description}</Text>
+						<Text>Equipped: {Object.keys(equipped).length} slots</Text>
 					</ThemedText>
-					<ThemedText>
-						<Text>Stats:</Text>
-					</ThemedText>
-					<View style={styles.statsRow}>
-						{characterSheet.stats && Object.entries(characterSheet.stats).map(([key, value]) => (
-							<View key={key} style={styles.statItem}>
-								<ThemedText><Text>{key}: {value}</Text></ThemedText>
-							</View>
-						))}
-					</View>
-					{characterSheet.skills && characterSheet.skills.length > 0 && (
-						<ThemedText>
-							<Text>Skills: {characterSheet.skills.join(', ')}</Text>
-						</ThemedText>
-					)}
 				</View>
 			</ScrollView>
+			{/* Character sheet modal */}
 			<CharacterSheetModal
 				visible={showSheet}
-				characterSheet={{
-					...characterSheet,
-					statBonuses: raceObj?.statBonuses || {},
-					inventory: [
-						{
-							id: 'helm1',
-							name: 'Leather Helmet',
-							icon: require('../assets/images/items/leather-helmet.png'),
-							slot: 'helmet',
-							usable: false,
-							stats: { CON: 1 },
-						},
-						{
-							id: 'potion1',
-							name: 'Healing Potion',
-							icon: require('../assets/images/items/health-potion.png'),
-							slot: 'none',
-							usable: true,
-						},
-						{
-							id: 'boots1',
-							name: 'Leather Boots',
-							icon: require('../assets/images/items/leather-boots.png'),
-							slot: 'boots',
-							usable: false,
-							stats: { DEX: 1 },
-						},
-					],
-				}}
-				race={raceObj ? { name: raceObj.name, image: raceObj.image } : { name: playerRace, image: require('@/assets/images/custom.png') }}
-				classOption={classObj ? { name: classObj.name, image: classObj.image } : { name: playerClass, image: require('@/assets/images/custom.png') }}
-				portrait={raceObj?.image}
-				level={1}
-				health={10}
-				maxHealth={10}
-				actionPoints={3}
-				maxActionPoints={3}
 				onClose={() => setShowSheet(false)}
 			/>
 		</SafeAreaView>
@@ -212,6 +127,12 @@ const styles = StyleSheet.create({
 	statItem: {
 		marginRight: 16,
 		marginBottom: 8,
+	},
+	errorText: {
+		marginTop: 16,
+		marginBottom: 8,
+		color: '#dc3545',
+		textAlign: 'center',
 	},
 	statusBarPinned: {
 		width: '100%',

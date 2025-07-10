@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, router } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Text, View } from 'react-native';
@@ -9,6 +8,7 @@ import { LocationChooser } from '../components/location-chooser';
 import { RaceChooser } from '../components/race-chooser';
 import { ConfirmModal } from '../components/ui/confirm-modal';
 import { WorldChooser } from '../components/world-chooser';
+import { useGameState } from '../hooks/use-game-state';
 import { useInventoryManager } from '../hooks/use-inventory-manager';
 import { newGameStyles } from '../styles/new-game.styles';
 import { ClassOption } from '../types/class-option';
@@ -35,6 +35,7 @@ const NewGameScreen: React.FC = () => {
 	const [showConfirm, setShowConfirm] = useState(false);
 	const [pendingCharacter, setPendingCharacter] = useState<any>(null);
 
+	const { save } = useGameState();
 	const { addItem, equipItem } = useInventoryManager();
 
 	const handleWorldSelect = (world: WorldOption) => {
@@ -82,39 +83,94 @@ const NewGameScreen: React.FC = () => {
 	};
 
 	const handleConfirmStart = async () => {
-		if (!pendingCharacter || !selectedWorld || !selectedLocation || !selectedRace || !selectedClass) return;
+		console.log('🚀 Starting character creation...');
+		console.log('📝 Pending character:', pendingCharacter);
+		console.log('🌍 Selected world:', selectedWorld?.name);
+		console.log('📍 Selected location:', selectedLocation?.name);
+		console.log('🧙 Selected race:', selectedRace?.name);
+		console.log('⚔️ Selected class:', selectedClass?.name);
+		
+		if (!pendingCharacter || !selectedWorld || !selectedLocation || !selectedRace || !selectedClass) {
+			console.error('❌ Missing required data for character creation');
+			return;
+		}
+		
+		// Generate unique character ID
+		const characterId = `character-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+		console.log('🆔 Generated character ID:', characterId);
+		
+		// Create proper Character object that matches CharacterSchema
+		const character = {
+			id: characterId,
+			level: 1, // Always start at level 1
+			race: selectedRace.name, // Required field from race selection
+			name: pendingCharacter.name,
+			class: selectedClass.name, // Required field from class selection
+			description: pendingCharacter.description || '',
+			stats: pendingCharacter.stats,
+			skills: pendingCharacter.skills || [],
+			inventory: [], // Will be populated below
+			equipped: {
+				helmet: null,
+				chest: null,
+				arms: null,
+				legs: null,
+				boots: null,
+				mainHand: null,
+				offHand: null,
+				accessory: null,
+			},
+			health: pendingCharacter.health || 10,
+			maxHealth: pendingCharacter.maxHealth || 10,
+			actionPoints: pendingCharacter.actionPoints || 3,
+			maxActionPoints: pendingCharacter.maxActionPoints || 3,
+		};
+		console.log('👤 Created character object:', JSON.stringify(character, null, 2));
+
+		// Create proper GameState structure
 		const gameState = {
-			characterName: pendingCharacter.name,
+			characters: [character],
+			playerCharacterId: characterId,
 			gameWorld: selectedWorld.name,
 			startingArea: selectedLocation.name,
-			startingLevels: 1,
-			numCharacters: 1,
-			playerRace: selectedRace.name,
-			playerClass: selectedClass.name,
-			customStory,
-			selectedWorld,
-			selectedLocation,
-			selectedRace,
-			selectedClass,
-			characterSheet: pendingCharacter,
 		};
+		console.log('🎮 Created game state:', JSON.stringify(gameState, null, 2));
+
 		try {
-			await AsyncStorage.setItem('gameState', JSON.stringify(gameState));
+			// Save the properly structured game state using the new hook
+			await save(gameState);
 			setShowConfirm(false);
 			setPendingCharacter(null);
+			
+			// Now add items to inventory using the inventory manager
+			// (which can now successfully load the character)
+			console.log('🎒 Adding starting inventory items...');
 			await addItem('rations', 2);
 			await addItem('tent', 1);
 			await addItem('healing_potion', 2);
+			
 			// Add class-appropriate gear
-			if (selectedClass.id === 'fighter') await addItem('sword', 1);
-			if (selectedClass.id === 'wizard') await addItem('staff', 1);
-			if (selectedClass.id === 'rogue') await addItem('dagger', 1);
-			if (selectedClass.id === 'cleric') await addItem('mace', 1);
-			// Optionally, equip the main weapon
-			if (selectedClass.id === 'fighter') await equipItem('sword');
-			if (selectedClass.id === 'wizard') await equipItem('staff');
-			if (selectedClass.id === 'rogue') await equipItem('dagger');
-			if (selectedClass.id === 'cleric') await equipItem('mace');
+			console.log('⚔️ Adding class-specific equipment for:', selectedClass.id);
+			if (selectedClass.id === 'fighter') {
+				await addItem('sword', 1);
+				await equipItem('sword');
+				console.log('🗡️ Added and equipped sword for fighter');
+			}
+			if (selectedClass.id === 'wizard') {
+				await addItem('staff', 1);
+				await equipItem('staff');
+				console.log('🔮 Added and equipped staff for wizard');
+			}
+			console.log('✅ Character creation completed successfully!');
+			if (selectedClass.id === 'rogue') {
+				await addItem('dagger', 1);
+				await equipItem('dagger');
+			}
+			if (selectedClass.id === 'cleric') {
+				await addItem('mace', 1);
+				await equipItem('mace');
+			}
+			
 			router.replace('/');
 		} catch (error) {
 			console.error('Failed to save game state:', error);

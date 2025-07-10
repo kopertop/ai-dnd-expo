@@ -1,52 +1,20 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 
-import { ITEM_LIST } from '../constants/items';
-import { Character } from '../types/character';
-import { GameState, GameStateSchema } from '../types/game';
-import { InventoryEntry, Item } from '../types/items';
-import { GearSlot } from '../types/stats';
+import { useGameState } from './use-game-state';
 
-const GAME_STATE_KEY = 'gameState';
+import { ITEM_LIST } from '@/constants/items';
+import { Item, InventoryEntry } from '@/types/items';
+import { GearSlot } from '@/types/stats';
 
-export function useInventoryManager() {
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-	const [gameState, setGameState] = useState<GameState | null>(null);
-	const [character, setCharacter] = useState<Character | null>(null);
-
-	// Load game state and player character
-	const load = useCallback(async () => {
-		setLoading(true);
-		setError(null);
-		try {
-			const raw = await AsyncStorage.getItem(GAME_STATE_KEY);
-			if (!raw) throw new Error('No game state found');
-			const parsed = GameStateSchema.parse(JSON.parse(raw));
-			setGameState(parsed);
-			const char = parsed.characters.find(c => c.id === parsed.playerCharacterId);
-			if (!char) throw new Error('Player character not found');
-			setCharacter(char);
-		} catch (e: any) {
-			setError(e.message || 'Failed to load inventory');
-		}
-		setLoading(false);
-	}, []);
-
-	useEffect(() => {
-		load();
-	}, [load]);
-
-	// Save character back to game state
-	const saveCharacter = useCallback(async (update: Partial<Character>) => {
-		if (!gameState || !character) return;
-		const updatedChar = { ...character, ...update };
-		const updatedChars = gameState.characters.map(c => c.id === character.id ? updatedChar : c);
-		const newState = { ...gameState, characters: updatedChars };
-		await AsyncStorage.setItem(GAME_STATE_KEY, JSON.stringify(newState));
-		setGameState(newState);
-		setCharacter(updatedChar);
-	}, [gameState, character]);
+export const useInventoryManager = () => {
+	const { 
+		loading, 
+		error, 
+		gameState, 
+		playerCharacter: character, 
+		updatePlayerCharacter: saveCharacter,
+		load: refresh,
+	} = useGameState();
 
 	// Inventory helpers
 	const inventory: (InventoryEntry & { item: Item })[] = (character?.inventory || []).map(entry => ({
@@ -64,13 +32,18 @@ export function useInventoryManager() {
 		});
 	}
 
+	// Add item to inventory
 	const addItem = useCallback(async (itemId: string, quantity = 1) => {
 		if (!character) return;
-		const idx = character.inventory.findIndex(e => e.itemId === itemId);
-		let newInventory;
-		if (idx >= 0) {
+		const existingIdx = character.inventory.findIndex(e => e.itemId === itemId);
+		let newInventory: InventoryEntry[];
+		
+		if (existingIdx >= 0) {
 			newInventory = [...character.inventory];
-			newInventory[idx] = { ...newInventory[idx], quantity: newInventory[idx].quantity + quantity };
+			newInventory[existingIdx] = { 
+				...newInventory[existingIdx], 
+				quantity: newInventory[existingIdx].quantity + quantity, 
+			};
 		} else {
 			newInventory = [...character.inventory, { itemId, quantity }];
 		}
@@ -83,7 +56,10 @@ export function useInventoryManager() {
 		if (idx < 0) return;
 		const newInventory = [...character.inventory];
 		if (newInventory[idx].quantity > quantity) {
-			newInventory[idx] = { ...newInventory[idx], quantity: newInventory[idx].quantity - quantity };
+			newInventory[idx] = { 
+				...newInventory[idx], 
+				quantity: newInventory[idx].quantity - quantity, 
+			};
 		} else {
 			newInventory.splice(idx, 1);
 		}
@@ -94,6 +70,7 @@ export function useInventoryManager() {
 		if (!character) return;
 		const item = ITEM_LIST.find(i => i.id === itemId);
 		if (!item || item.slot === 'none') return;
+		
 		const newEquipped = { ...character.equipped, [item.slot]: itemId };
 		await saveCharacter({ equipped: newEquipped });
 	}, [character, saveCharacter]);
@@ -105,7 +82,6 @@ export function useInventoryManager() {
 	}, [character, saveCharacter]);
 
 	const useItem = useCallback(async (itemId: string) => {
-		// For now, just remove one from inventory
 		await removeItem(itemId, 1);
 		// TODO: trigger item effect
 	}, [removeItem]);
@@ -113,6 +89,8 @@ export function useInventoryManager() {
 	return {
 		loading,
 		error,
+		character,
+		gameState,
 		inventory,
 		equipped,
 		addItem,
@@ -120,6 +98,6 @@ export function useInventoryManager() {
 		equipItem,
 		unequipItem,
 		useItem,
-		refresh: load,
+		refresh,
 	};
-}
+};

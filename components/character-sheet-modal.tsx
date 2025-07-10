@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Image, ImageSourcePropType, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { useGameState } from '../hooks/use-game-state';
 import { useInventoryManager } from '../hooks/use-inventory-manager';
 import { Item as InventoryItem } from '../types/items';
 import { GearSlot } from '../types/stats';
@@ -11,54 +12,35 @@ import { STAT_KEYS } from '@/constants/stats';
 
 interface CharacterSheetModalProps {
 	visible: boolean;
-	characterSheet: {
-		name: string;
-		description: string;
-		stats: Record<string, number>;
-		skills?: string[];
-		statBonuses?: Record<string, number>;
-		inventory?: InventoryItem[];
-	};
-	race: { name: string; image: any };
-	classOption: { name: string; image: any };
-	portrait?: any;
-	level: number;
-	health: number;
-	maxHealth: number;
-	actionPoints: number;
-	maxActionPoints: number;
 	onClose: () => void;
 }
 
 export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 	visible,
-	characterSheet,
-	race,
-	classOption,
-	portrait,
-	level,
-	health,
-	maxHealth,
-	actionPoints,
-	maxActionPoints,
 	onClose,
 }) => {
 	const [tooltipSkill, setTooltipSkill] = useState<string | null>(null);
 	const [activeSlot, setActiveSlot] = useState<GearSlot | null>(null);
-	const [gear, setGear] = useState<Partial<Record<GearSlot, InventoryItem>>>({});
-	const { loading, error, inventory, equipped } = useInventoryManager();
+	const { playerCharacter, playerPortrait } = useGameState();
+	const { loading, error, inventory, equipped, equipItem, unequipItem } = useInventoryManager();
 
-	if (!characterSheet) return null;
-	const { name, description, stats, skills = [], statBonuses = {} } = characterSheet;
-	const portraitSource = portrait || race.image;
+	if (!playerCharacter) return null;
+	
+	const { name, description, stats, skills = [], race, class: characterClass, level, health, maxHealth, actionPoints, maxActionPoints } = playerCharacter;
+	const portraitSource = playerPortrait;
 
 	const handleSlotPress = (slot: GearSlot) => {
 		setActiveSlot(activeSlot === slot ? null : slot);
 	};
 
-	const handleAssignItem = (item: InventoryItem) => {
+	const handleAssignItem = async (item: InventoryItem) => {
 		if (!activeSlot) return;
-		setGear((prev) => ({ ...prev, [activeSlot]: item }));
+		await equipItem(item.id);
+		setActiveSlot(null);
+	};
+
+	const handleUnequipSlot = async (slot: GearSlot) => {
+		await unequipItem(slot);
 		setActiveSlot(null);
 	};
 
@@ -84,7 +66,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 										<View key={key} style={styles.statBox}>
 											<Text style={styles.statLabel}>{key}</Text>
 											<Text style={styles.statValue}>
-												{stats[key]}{statBonuses[key] ? ` (+${statBonuses[key]})` : ''}
+												{stats[key]}
 											</Text>
 										</View>
 									))}
@@ -95,8 +77,8 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 								{/* Info block */}
 								<View style={styles.infoBlock}>
 									<View style={styles.infoRow}>
-										<Text style={styles.infoText}>{classOption.name}</Text>
-										<Text style={styles.infoText}>/ {race.name}</Text>
+										<Text style={styles.infoText}>{characterClass}</Text>
+										<Text style={styles.infoText}>/ {race}</Text>
 										<Text style={styles.infoText}>/ Level {level}</Text>
 									</View>
 									<Text style={styles.nameText}>{name}</Text>
@@ -151,8 +133,8 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 											style={[styles.gearSlot, activeSlot === 'helmet' && styles.gearSlotActive]}
 											onPress={() => handleSlotPress('helmet')}
 										>
-											{gear['helmet'] ? (
-												<Image source={gear['helmet']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+											{equipped['helmet'] ? (
+												<Image source={equipped['helmet']!.icon as ImageSourcePropType} style={styles.gearIcon} />
 											) : (
 												<Image source={require('../assets/images/gear-slot/helmet.png') as ImageSourcePropType} style={styles.gearIcon} />
 											)}
@@ -166,8 +148,8 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 												style={[styles.gearSlot, styles.gearSlotArm, activeSlot === 'arms' && styles.gearSlotActive]}
 												onPress={() => handleSlotPress('arms')}
 											>
-												{gear['arms'] ? (
-													<Image source={gear['arms']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+												{equipped['arms'] ? (
+													<Image source={equipped['arms']!.icon as ImageSourcePropType} style={styles.gearIcon} />
 												) : (
 													<Image source={require('../assets/images/gear-slot/left-arm.png') as ImageSourcePropType} style={styles.gearIcon} />
 												)}
@@ -178,8 +160,8 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 											style={[styles.gearSlot, styles.gearSlotChest, activeSlot === 'chest' && styles.gearSlotActive]}
 											onPress={() => handleSlotPress('chest')}
 										>
-											{gear['chest'] ? (
-												<Image source={gear['chest']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+											{equipped['chest'] ? (
+												<Image source={equipped['chest']!.icon as ImageSourcePropType} style={styles.gearIcon} />
 											) : (
 												<Image source={require('../assets/images/gear-slot/chest.png') as ImageSourcePropType} style={styles.gearIcon} />
 											)}
@@ -190,8 +172,8 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 												style={[styles.gearSlot, styles.gearSlotArm, activeSlot === 'arms' && styles.gearSlotActive]}
 												onPress={() => handleSlotPress('arms')}
 											>
-												{gear['arms'] ? (
-													<Image source={gear['arms']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+												{equipped['arms'] ? (
+													<Image source={equipped['arms']!.icon as ImageSourcePropType} style={styles.gearIcon} />
 												) : (
 													<Image source={require('../assets/images/gear-slot/right-arm.png') as ImageSourcePropType} style={styles.gearIcon} />
 												)}
@@ -206,8 +188,8 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 											style={[styles.gearSlot, styles.gearSlotHand, activeSlot === 'mainHand' && styles.gearSlotActive]}
 											onPress={() => handleSlotPress('mainHand')}
 										>
-											{gear['mainHand'] ? (
-												<Image source={gear['mainHand']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+											{equipped['mainHand'] ? (
+												<Image source={equipped['mainHand']!.icon as ImageSourcePropType} style={styles.gearIcon} />
 											) : (
 												<Image source={require('../assets/images/gear-slot/main-hand.png') as ImageSourcePropType} style={styles.gearIcon} />
 											)}
@@ -217,8 +199,8 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 											style={[styles.gearSlot, activeSlot === 'legs' && styles.gearSlotActive]}
 											onPress={() => handleSlotPress('legs')}
 										>
-											{gear['legs'] ? (
-												<Image source={gear['legs']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+											{equipped['legs'] ? (
+												<Image source={equipped['legs']!.icon as ImageSourcePropType} style={styles.gearIcon} />
 											) : (
 												<Image source={require('../assets/images/gear-slot/legs.png') as ImageSourcePropType} style={styles.gearIcon} />
 											)}
@@ -229,8 +211,8 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 											style={[styles.gearSlot, styles.gearSlotHand, activeSlot === 'offHand' && styles.gearSlotActive]}
 											onPress={() => handleSlotPress('offHand')}
 										>
-											{gear['offHand'] ? (
-												<Image source={gear['offHand']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+											{equipped['offHand'] ? (
+												<Image source={equipped['offHand']!.icon as ImageSourcePropType} style={styles.gearIcon} />
 											) : (
 												<Image source={require('../assets/images/gear-slot/off-hand.png') as ImageSourcePropType} style={styles.gearIcon} />
 											)}
@@ -244,8 +226,8 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 											style={[styles.gearSlot, activeSlot === 'boots' && styles.gearSlotActive]}
 											onPress={() => handleSlotPress('boots')}
 										>
-											{gear['boots'] ? (
-												<Image source={gear['boots']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+											{equipped['boots'] ? (
+												<Image source={equipped['boots']!.icon as ImageSourcePropType} style={styles.gearIcon} />
 											) : (
 												<Image source={require('../assets/images/gear-slot/boots.png') as ImageSourcePropType} style={styles.gearIcon} />
 											)}
@@ -257,15 +239,8 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 								{activeSlot && (
 									<View style={styles.inventoryGrid}>
 										{/* Show unequip button if something is equipped in this slot */}
-										{gear[activeSlot] && (
-											<TouchableOpacity style={styles.unequipButton} onPress={() => {
-												setGear(prev => {
-													const newGear = { ...prev };
-													delete newGear[activeSlot];
-													return newGear;
-												});
-												setActiveSlot(null);
-											}}>
+										{equipped[activeSlot] && (
+											<TouchableOpacity style={styles.unequipButton} onPress={() => handleUnequipSlot(activeSlot)}>
 												<Text style={styles.unequipButtonText}>Unequip</Text>
 											</TouchableOpacity>
 										)}
