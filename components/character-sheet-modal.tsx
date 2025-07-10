@@ -215,6 +215,19 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 								{/* If a slot is active, show inventory items that can go in that slot */}
 								{activeSlot && (
 									<View style={styles.inventoryGrid}>
+										{/* Show unequip button if something is equipped in this slot */}
+										{gear[activeSlot] && (
+											<TouchableOpacity style={styles.unequipButton} onPress={() => {
+												setGear(prev => {
+													const newGear = { ...prev };
+													delete newGear[activeSlot];
+													return newGear;
+												});
+												setActiveSlot(null);
+											}}>
+												<Text style={styles.unequipButtonText}>Unequip</Text>
+											</TouchableOpacity>
+										)}
 										{inventoryItems.filter(i => i.slot === activeSlot).length === 0 ? (
 											<Text style={styles.emptyInventory}>No items for this slot</Text>
 										) : (
@@ -608,5 +621,17 @@ const styles = StyleSheet.create({
 	gearSlotHand: {
 		width: 60,
 		height: 60,
+	},
+	unequipButton: {
+		backgroundColor: '#C9B037',
+		paddingVertical: 8,
+		paddingHorizontal: 16,
+		borderRadius: 8,
+		marginBottom: 8,
+	},
+	unequipButtonText: {
+		color: '#3B2F1B',
+		fontWeight: 'bold',
+		fontSize: 14,
 	},
 });
