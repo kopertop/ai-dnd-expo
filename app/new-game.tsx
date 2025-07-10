@@ -9,6 +9,7 @@ import { LocationChooser } from '../components/location-chooser';
 import { RaceChooser } from '../components/race-chooser';
 import { ConfirmModal } from '../components/ui/confirm-modal';
 import { WorldChooser } from '../components/world-chooser';
+import { useInventoryManager } from '../hooks/use-inventory-manager';
 import { newGameStyles } from '../styles/new-game.styles';
 import { ClassOption } from '../types/class-option';
 import { LocationOption } from '../types/location-option';
@@ -17,6 +18,7 @@ import { StatBlock } from '../types/stats';
 import { WorldOption } from '../types/world-option';
 
 import { ThemedView } from '@/components/themed-view';
+
 
 type WizardStep = 'world' | 'location' | 'race' | 'class' | 'character';
 
@@ -32,6 +34,8 @@ const NewGameScreen: React.FC = () => {
 	const [customStory, setCustomStory] = useState('');
 	const [showConfirm, setShowConfirm] = useState(false);
 	const [pendingCharacter, setPendingCharacter] = useState<any>(null);
+
+	const { addItem, equipItem } = useInventoryManager();
 
 	const handleWorldSelect = (world: WorldOption) => {
 		setSelectedWorld(world);
@@ -98,6 +102,19 @@ const NewGameScreen: React.FC = () => {
 			await AsyncStorage.setItem('gameState', JSON.stringify(gameState));
 			setShowConfirm(false);
 			setPendingCharacter(null);
+			await addItem('rations', 2);
+			await addItem('tent', 1);
+			await addItem('healing_potion', 2);
+			// Add class-appropriate gear
+			if (selectedClass.id === 'fighter') await addItem('sword', 1);
+			if (selectedClass.id === 'wizard') await addItem('staff', 1);
+			if (selectedClass.id === 'rogue') await addItem('dagger', 1);
+			if (selectedClass.id === 'cleric') await addItem('mace', 1);
+			// Optionally, equip the main weapon
+			if (selectedClass.id === 'fighter') await equipItem('sword');
+			if (selectedClass.id === 'wizard') await equipItem('staff');
+			if (selectedClass.id === 'rogue') await equipItem('dagger');
+			if (selectedClass.id === 'cleric') await equipItem('mace');
 			router.replace('/');
 		} catch (error) {
 			console.error('Failed to save game state:', error);

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Image, ImageSourcePropType, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { useInventoryManager } from '../hooks/use-inventory-manager';
 import { Item as InventoryItem } from '../types/items';
 import { GearSlot } from '../types/stats';
 
@@ -45,9 +46,10 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 	const [tooltipSkill, setTooltipSkill] = useState<string | null>(null);
 	const [activeSlot, setActiveSlot] = useState<GearSlot | null>(null);
 	const [gear, setGear] = useState<Partial<Record<GearSlot, InventoryItem>>>({});
+	const { loading, error, inventory, equipped } = useInventoryManager();
 
 	if (!characterSheet) return null;
-	const { name, description, stats, skills = [], statBonuses = {}, inventory = [] } = characterSheet;
+	const { name, description, stats, skills = [], statBonuses = {} } = characterSheet;
 	const portraitSource = portrait || race.image;
 
 	const handleSlotPress = (slot: GearSlot) => {
@@ -60,8 +62,10 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 		setActiveSlot(null);
 	};
 
-	const equippedIds = Object.values(gear).map(i => i?.id);
-	const inventoryItems: InventoryItem[] = inventory.filter(i => !equippedIds.includes(i.id));
+	// Replace inventoryItems and equipped logic with values from the hook
+	// Use loading/error to show loading or error states
+	const inventoryItems = inventory.map(entry => entry.item);
+	const equippedItems = Object.entries(equipped).map(([slot, item]) => item).filter(Boolean);
 
 	return (
 		<Modal visible={visible} animationType="slide" transparent>
@@ -105,7 +109,11 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 								</View>
 								<Text style={styles.label}>Inventory</Text>
 								<View style={styles.inventoryGridCenter}>
-									{inventoryItems.length === 0 ? (
+									{loading ? (
+										<Text style={styles.emptyInventory}>Loading inventory...</Text>
+									) : error ? (
+										<Text style={styles.emptyInventory}>Error loading inventory: {error}</Text>
+									) : inventoryItems.length === 0 ? (
 										<Text style={styles.emptyInventory}>No items</Text>
 									) : (
 										inventoryItems.map(item => (
