@@ -4,7 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { CharacterSheetModal } from '@/components/character-sheet-modal';
+import { CharacterSheetModal } from '../components/character-sheet-modal';
+
 import { GameStatusBar } from '@/components/game-status-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -132,7 +133,43 @@ const GameScreen: React.FC = () => {
 			</ScrollView>
 			<CharacterSheetModal
 				visible={showSheet}
-				characterSheet={characterSheet}
+				characterSheet={{
+					...characterSheet,
+					statBonuses: raceObj?.statBonuses || {},
+					inventory: [
+						{
+							id: 'helm1',
+							name: 'Iron Helmet',
+							icon: require('../assets/images/gear-slot/inventory.png'),
+							slot: 'helmet',
+							usable: false,
+							stats: { CON: 1 },
+						},
+						{
+							id: 'potion1',
+							name: 'Healing Potion',
+							icon: require('../assets/images/gear-slot/inventory.png'),
+							slot: 'none',
+							usable: true,
+						},
+						{
+							id: 'boots1',
+							name: 'Leather Boots',
+							icon: require('../assets/images/gear-slot/inventory.png'),
+							slot: 'boots',
+							usable: false,
+							stats: { DEX: 1 },
+						},
+					],
+				}}
+				race={raceObj || { name: playerRace, image: require('@/assets/images/custom.png') }}
+				classOption={classObj || { name: playerClass, image: require('@/assets/images/custom.png') }}
+				portrait={raceObj?.image}
+				level={1}
+				health={10}
+				maxHealth={10}
+				actionPoints={3}
+				maxActionPoints={3}
 				onClose={() => setShowSheet(false)}
 			/>
 		</SafeAreaView>
