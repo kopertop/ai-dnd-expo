@@ -117,8 +117,13 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 											>
 												<Image source={item.icon} style={styles.inventoryIconLarge} />
 												{tooltipSkill === item.id && (
-													<View style={styles.tooltip}>
-														<Text style={styles.tooltipText}>{item.name}</Text>
+													<View style={styles.tooltipOverlay} pointerEvents="none">
+														<View style={styles.tooltipOverIconBg} />
+														<View style={styles.tooltipOverIconLabel}>
+															<Text style={styles.tooltipText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>
+																{item.name}
+															</Text>
+														</View>
 													</View>
 												)}
 											</Pressable>
@@ -280,8 +285,13 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 										>
 											<Image source={skill.image} style={styles.skillIconFlat} />
 											{tooltipSkill === skill.id && (
-												<View style={styles.tooltip}>
-													<Text style={styles.tooltipText}>{skill.name}</Text>
+												<View style={styles.tooltipOverlay} pointerEvents="none">
+													<View style={styles.tooltipOverIconBg} />
+													<View style={styles.tooltipOverIconLabel}>
+														<Text style={styles.tooltipText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>
+															{skill.name}
+														</Text>
+													</View>
 												</View>
 											)}
 										</Pressable>
@@ -479,10 +489,8 @@ const styles = StyleSheet.create({
 		justifyContent: 'flex-start',
 	},
 	skillIconCard: {
-		width: 56,
-		height: 56,
-		borderRadius: 8,
-		borderWidth: 3,
+		width: 60,
+		height: 60,
 		alignItems: 'center',
 		justifyContent: 'center',
 		backgroundColor: '#F9F6EF',
@@ -490,8 +498,8 @@ const styles = StyleSheet.create({
 		padding: 0,
 	},
 	skillIconFlat: {
-		width: 36,
-		height: 36,
+		width: 60,
+		height: 60,
 		resizeMode: 'contain',
 	},
 	skillName: {
@@ -570,9 +578,10 @@ const styles = StyleSheet.create({
 	},
 	tooltipText: {
 		color: '#FFF8E1',
-		fontSize: 15,
+		fontSize: 12,
 		fontWeight: 'bold',
 		textAlign: 'center',
+		maxWidth: 60,
 	},
 	statGridBelowPortrait: {
 		flexDirection: 'row',
@@ -697,5 +706,28 @@ const styles = StyleSheet.create({
 		marginBottom: 16,
 		width: '100%',
 		alignItems: 'center',
+	},
+	tooltipOverlay: {
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		right: 0,
+		bottom: 0,
+		alignItems: 'center',
+		justifyContent: 'center',
+		zIndex: 1,
+	},
+	tooltipOverIconBg: {
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		right: 0,
+		bottom: 0,
+		backgroundColor: 'rgba(0,0,0,0.5)',
+		borderRadius: 8,
+	},
+	tooltipOverIconLabel: {
+		position: 'relative',
+		zIndex: 2,
 	},
 });

@@ -139,8 +139,8 @@ const GameScreen: React.FC = () => {
 					inventory: [
 						{
 							id: 'helm1',
-							name: 'Iron Helmet',
-							icon: require('../assets/images/gear-slot/inventory.png'),
+							name: 'Leather Helmet',
+							icon: require('../assets/images/items/leather-helmet.png'),
 							slot: 'helmet',
 							usable: false,
 							stats: { CON: 1 },
@@ -148,14 +148,14 @@ const GameScreen: React.FC = () => {
 						{
 							id: 'potion1',
 							name: 'Healing Potion',
-							icon: require('../assets/images/gear-slot/inventory.png'),
+							icon: require('../assets/images/items/cloth-helmet.png'),
 							slot: 'none',
 							usable: true,
 						},
 						{
 							id: 'boots1',
 							name: 'Leather Boots',
-							icon: require('../assets/images/gear-slot/inventory.png'),
+							icon: require('../assets/images/items/leather-boots.png'),
 							slot: 'boots',
 							usable: false,
 							stats: { DEX: 1 },
