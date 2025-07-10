@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { LOCATIONS } from '../constants/locations';
-import { chooserCardConstants, chooserCardStyles } from '../styles/chooser-cards.styles';
+import { CARD_GAP, cardGridStyles, getCardsPerRow, getContainerWidth, SCREEN_WIDTH } from '../styles/card-grid.styles';
 import { newGameStyles } from '../styles/new-game.styles';
 import { LocationOption } from '../types/location-option';
-
-const { IS_SMALL_SCREEN } = chooserCardConstants;
 
 interface LocationChooserProps {
 	onSelect: (location: LocationOption) => void;
@@ -18,8 +16,13 @@ export const LocationChooser: React.FC<LocationChooserProps> = ({ onSelect, init
 	const [customDesc, setCustomDesc] = useState('');
 	const [showCustomForm, setShowCustomForm] = useState(false);
 
-	const mainLocations = LOCATIONS.filter(l => !l.isCustom);
-	const customLocation = LOCATIONS.find(l => l.isCustom);
+	// 1:1 aspect ratio for location cards
+	const width = SCREEN_WIDTH;
+	const cardsPerRow = getCardsPerRow(width);
+	const containerWidth = getContainerWidth(width);
+	const cardWidth = Math.floor((containerWidth - CARD_GAP * (cardsPerRow + 1)) / cardsPerRow);
+	const cardHeight = cardWidth; // 1:1 aspect ratio
+	const styles = cardGridStyles(width);
 
 	const handleSelect = (location: LocationOption) => {
 		if (location.isCustom) {
@@ -40,6 +43,8 @@ export const LocationChooser: React.FC<LocationChooserProps> = ({ onSelect, init
 			});
 		}
 	};
+
+	const allLocations = [...LOCATIONS.filter(l => !l.isCustom), ...LOCATIONS.filter(l => l.isCustom)];
 
 	return (
 		<ScrollView contentContainerStyle={newGameStyles.scrollViewContent}>
@@ -62,53 +67,27 @@ export const LocationChooser: React.FC<LocationChooserProps> = ({ onSelect, init
 						multiline
 						numberOfLines={3}
 					/>
-					<TouchableOpacity style={chooserCardStyles.submitButton} onPress={handleCustomSubmit}>
-						<Text style={chooserCardStyles.submitButtonText}>Create Location</Text>
+					<TouchableOpacity style={newGameStyles.submitButton} onPress={handleCustomSubmit}>
+						<Text style={newGameStyles.submitButtonText}>Create Location</Text>
 					</TouchableOpacity>
 				</View>
 			) : (
-				<View style={chooserCardStyles.cardContainer}>
-					{IS_SMALL_SCREEN ? (
-						mainLocations.map((location) => (
-							<View key={location.id} style={chooserCardStyles.singleCardRow}>
-								<TouchableOpacity
-									style={chooserCardStyles.card}
-									onPress={() => handleSelect(location)}
-								>
-									<Image source={location.image} style={chooserCardStyles.image} resizeMode="cover" />
-									<Text style={chooserCardStyles.cardTitle}>{location.name}</Text>
-									<Text style={chooserCardStyles.cardDesc}>{location.description}</Text>
-								</TouchableOpacity>
+				<View style={styles.cardContainer}>
+					{allLocations.map((location) => (
+						<TouchableOpacity
+							key={location.id}
+							style={[styles.card, { width: cardWidth, height: cardHeight }]}
+							onPress={() => handleSelect(location)}
+						>
+							<View style={styles.imageWrapper}>
+								<Image source={location.image} style={[styles.image, { width: '100%', height: '100%' }]} resizeMode="cover" />
+								<View style={styles.overlay}>
+									<Text style={styles.cardTitle}>{location.name}</Text>
+									<Text style={styles.cardDesc}>{location.description}</Text>
+								</View>
 							</View>
-						))
-					) : (
-						<View style={chooserCardStyles.cardRow}>
-							{mainLocations.map((location) => (
-								<TouchableOpacity
-									key={location.id}
-									style={chooserCardStyles.card}
-									onPress={() => handleSelect(location)}
-								>
-									<Image source={location.image} style={chooserCardStyles.image} resizeMode="cover" />
-									<Text style={chooserCardStyles.cardTitle}>{location.name}</Text>
-									<Text style={chooserCardStyles.cardDesc}>{location.description}</Text>
-								</TouchableOpacity>
-							))}
-						</View>
-					)}
-					{customLocation && (
-						<View style={chooserCardStyles.customCardRow}>
-							<TouchableOpacity
-								key={customLocation.id}
-								style={[chooserCardStyles.card, chooserCardStyles.customCard]}
-								onPress={() => handleSelect(customLocation)}
-							>
-								<Image source={customLocation.image} style={chooserCardStyles.image} resizeMode="cover" />
-								<Text style={chooserCardStyles.cardTitle}>{customLocation.name}</Text>
-								<Text style={chooserCardStyles.cardDesc}>{customLocation.description}</Text>
-							</TouchableOpacity>
-						</View>
-					)}
+						</TouchableOpacity>
+					))}
 				</View>
 			)}
 		</ScrollView>

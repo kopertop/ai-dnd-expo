@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { RACES } from '../constants/races';
-import { chooserCardConstants, chooserCardStyles } from '../styles/chooser-cards.styles';
+import { CARD_GAP, cardGridStyles, getCardsPerRow, getContainerWidth, SCREEN_WIDTH } from '../styles/card-grid.styles';
 import { newGameStyles } from '../styles/new-game.styles';
 import { RaceOption } from '../types/race-option';
-
-const { IS_SMALL_SCREEN } = chooserCardConstants;
 
 interface RaceChooserProps {
 	onSelect: (race: RaceOption) => void;
@@ -17,6 +15,14 @@ export const RaceChooser: React.FC<RaceChooserProps> = ({ onSelect, initialRaceI
 	const [customName, setCustomName] = useState('');
 	const [customDesc, setCustomDesc] = useState('');
 	const [showCustomForm, setShowCustomForm] = useState(false);
+
+	// 1:1 aspect ratio for race cards
+	const width = SCREEN_WIDTH;
+	const cardsPerRow = getCardsPerRow(width);
+	const containerWidth = getContainerWidth(width);
+	const cardWidth = Math.floor((containerWidth - CARD_GAP * (cardsPerRow + 1)) / cardsPerRow);
+	const cardHeight = cardWidth; // 1:1 aspect ratio
+	const styles = cardGridStyles(width);
 
 	const handleSelect = (race: RaceOption) => {
 		if (race.isCustom) {
@@ -38,8 +44,7 @@ export const RaceChooser: React.FC<RaceChooserProps> = ({ onSelect, initialRaceI
 		}
 	};
 
-	const mainRaces = RACES.filter(r => !r.isCustom);
-	const customRace = RACES.find(r => r.isCustom);
+	const allRaces = [...RACES.filter(r => !r.isCustom), ...RACES.filter(r => r.isCustom)];
 
 	return (
 		<ScrollView contentContainerStyle={newGameStyles.scrollViewContent}>
@@ -62,53 +67,27 @@ export const RaceChooser: React.FC<RaceChooserProps> = ({ onSelect, initialRaceI
 						multiline
 						numberOfLines={3}
 					/>
-					<TouchableOpacity style={chooserCardStyles.submitButton} onPress={handleCustomSubmit}>
-						<Text style={chooserCardStyles.submitButtonText}>Create Race</Text>
+					<TouchableOpacity style={newGameStyles.submitButton} onPress={handleCustomSubmit}>
+						<Text style={newGameStyles.submitButtonText}>Create Race</Text>
 					</TouchableOpacity>
 				</View>
 			) : (
-				<View style={chooserCardStyles.cardContainer}>
-					{IS_SMALL_SCREEN ? (
-						mainRaces.map((race) => (
-							<View key={race.id} style={chooserCardStyles.singleCardRow}>
-								<TouchableOpacity
-									style={chooserCardStyles.card}
-									onPress={() => handleSelect(race)}
-								>
-									<Image source={race.image} style={chooserCardStyles.image} resizeMode="cover" />
-									<Text style={chooserCardStyles.cardTitle}>{race.name}</Text>
-									<Text style={chooserCardStyles.cardDesc}>{race.description}</Text>
-								</TouchableOpacity>
+				<View style={styles.cardContainer}>
+					{allRaces.map((race) => (
+						<TouchableOpacity
+							key={race.id}
+							style={[styles.card, { width: cardWidth, height: cardHeight }]}
+							onPress={() => handleSelect(race)}
+						>
+							<View style={styles.imageWrapper}>
+								<Image source={race.image} style={[styles.image, { width: '100%', height: '100%' }]} resizeMode="cover" />
+								<View style={styles.overlay}>
+									<Text style={styles.cardTitle}>{race.name}</Text>
+									<Text style={styles.cardDesc}>{race.description}</Text>
+								</View>
 							</View>
-						))
-					) : (
-						<View style={chooserCardStyles.cardRow}>
-							{mainRaces.map((race) => (
-								<TouchableOpacity
-									key={race.id}
-									style={chooserCardStyles.card}
-									onPress={() => handleSelect(race)}
-								>
-									<Image source={race.image} style={chooserCardStyles.image} resizeMode="cover" />
-									<Text style={chooserCardStyles.cardTitle}>{race.name}</Text>
-									<Text style={chooserCardStyles.cardDesc}>{race.description}</Text>
-								</TouchableOpacity>
-							))}
-						</View>
-					)}
-					{customRace && (
-						<View style={chooserCardStyles.customCardRow}>
-							<TouchableOpacity
-								key={customRace.id}
-								style={[chooserCardStyles.card, chooserCardStyles.customCard]}
-								onPress={() => handleSelect(customRace)}
-							>
-								<Image source={customRace.image} style={chooserCardStyles.image} resizeMode="cover" />
-								<Text style={chooserCardStyles.cardTitle}>{customRace.name}</Text>
-								<Text style={chooserCardStyles.cardDesc}>{customRace.description}</Text>
-							</TouchableOpacity>
-						</View>
-					)}
+						</TouchableOpacity>
+					))}
 				</View>
 			)}
 		</ScrollView>

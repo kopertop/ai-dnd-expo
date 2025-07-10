@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Image, ImageSourcePropType, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Image, ImageSourcePropType, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, Dimensions } from 'react-native';
 
 import { useGameState } from '../hooks/use-game-state';
 import { useInventoryManager } from '../hooks/use-inventory-manager';
@@ -21,8 +21,22 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 }) => {
 	const [tooltipSkill, setTooltipSkill] = useState<string | null>(null);
 	const [activeSlot, setActiveSlot] = useState<GearSlot | null>(null);
+	const [screenData, setScreenData] = useState(Dimensions.get('window'));
 	const { playerCharacter, playerPortrait } = useGameState();
 	const { loading, error, inventory, equipped, equipItem, unequipItem } = useInventoryManager();
+
+	// Track screen dimensions for responsive layout
+	useEffect(() => {
+		const onChange = (result: { window: any; screen: any }) => {
+			setScreenData(result.window);
+		};
+
+		const subscription = Dimensions.addEventListener('change', onChange);
+		return () => subscription?.remove();
+	}, []);
+
+	// Determine if we should use mobile layout (stacked) or desktop layout (side-by-side)
+	const isMobile = screenData.width < 768; // Bootstrap md breakpoint
 
 	if (!playerCharacter) return null;
 
@@ -53,18 +67,18 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 	return (
 		<Modal visible={visible} animationType="slide" transparent>
 			<View style={styles.overlay}>
-				<ThemedView style={styles.modalBox}>
-					<ScrollView contentContainerStyle={styles.contentWithPortrait}>
-						<View style={styles.sheetRow}>
-							{/* Left: Portrait & Stats */}
-							<View style={styles.leftCol}>
+				<ThemedView style={[styles.modalBox, isMobile && styles.modalBoxMobile]}>
+					<ScrollView contentContainerStyle={isMobile ? styles.contentMobile : styles.contentWithPortrait}>
+						<View style={isMobile ? styles.sheetColumn : styles.sheetRow}>
+							{/* Portrait & Stats */}
+							<View style={isMobile ? styles.mobileSection : styles.leftCol}>
 								<View style={styles.portraitBox}>
-									<Image source={portraitSource as ImageSourcePropType} style={styles.portraitLarge} />
+									<Image source={portraitSource as ImageSourcePropType} style={isMobile ? styles.portraitMobile : styles.portraitLarge} />
 								</View>
 								<Text style={styles.label}>Stats</Text>
-								<View style={styles.statGridBelowPortrait}>
+								<View style={isMobile ? styles.statGridMobile : styles.statGridBelowPortrait}>
 									{STAT_KEYS.map((key) => (
-										<View key={key} style={styles.statBox}>
+										<View key={key} style={isMobile ? styles.statBoxMobile : styles.statBox}>
 											<Text style={styles.statLabel}>{key}</Text>
 											<Text style={styles.statValue}>
 												{stats[key]}
@@ -73,8 +87,8 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 									))}
 								</View>
 							</View>
-							{/* Center: Info block above Inventory grid */}
-							<View style={styles.centerCol}>
+							{/* Info block above Inventory grid */}
+							<View style={isMobile ? styles.mobileSection : styles.centerCol}>
 								{/* Info block */}
 								<View style={styles.infoBlock}>
 									<View style={styles.infoRow}>
@@ -91,7 +105,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 									</View>
 								</View>
 								<Text style={styles.label}>Inventory</Text>
-								<View style={styles.inventoryGridCenter}>
+								<View style={isMobile ? styles.inventoryGridMobile : styles.inventoryGridCenter}>
 									{loading ? (
 										<Text style={styles.emptyInventory}>Loading inventory...</Text>
 									) : error ? (
@@ -107,6 +121,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 											return (
 												<Pressable
 													key={String(item.id)}
+													android_ripple={isMobile ? { color: '#C9B037', borderless: false } : undefined}
 													onPress={() => {
 														if (activeSlot && canEquip) {
 															// If this item is already equipped in the active slot, unequip it
@@ -120,10 +135,10 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 															setActiveSlot(item.slot as GearSlot);
 														}
 													}}
-													onHoverIn={() => Platform.OS === 'web' && setTooltipSkill(item.id as string)}
-													onHoverOut={() => Platform.OS === 'web' && setTooltipSkill(null)}
+													onHoverIn={() => Platform.OS === 'web' && !isMobile && setTooltipSkill(item.id as string)}
+													onHoverOut={() => Platform.OS === 'web' && !isMobile && setTooltipSkill(null)}
 													style={[
-														styles.inventoryItemBox,
+														isMobile ? styles.inventoryItemBoxMobile : styles.inventoryItemBox,
 														isEquipped && styles.inventoryItemEquipped,
 														!isCompatible && styles.inventoryItemIncompatible,
 													]}
@@ -150,8 +165,8 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 									)}
 								</View>
 							</View>
-							{/* Right: Gear & Skills (unchanged) */}
-							<View style={styles.rightCol}>
+							{/* Gear & Skills */}
+							<View style={isMobile ? styles.mobileSection : styles.rightCol}>
 								<Text style={styles.label}>Gear</Text>
 								{/* Character-like gear layout */}
 								<View style={styles.gearCharLayout}>
@@ -291,7 +306,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 							</View>
 						</View>
 					</ScrollView>
-					<TouchableOpacity style={styles.closeButton} onPress={onClose}>
+					<TouchableOpacity style={isMobile ? styles.closeButtonMobile : styles.closeButton} onPress={onClose}>
 						<Text style={styles.closeButtonText}>Close</Text>
 					</TouchableOpacity>
 				</ThemedView>
@@ -758,5 +773,90 @@ const styles = StyleSheet.create({
 		color: '#8B5C2A',
 		textAlign: 'center',
 		marginBottom: 8,
+	},
+	// Mobile responsive styles
+	modalBoxMobile: {
+		width: '95%',
+		maxWidth: '95%',
+		maxHeight: '95%',
+		padding: 16,
+	},
+	contentMobile: {
+		flexDirection: 'column',
+		alignItems: 'stretch',
+		width: '100%',
+	},
+	sheetColumn: {
+		flexDirection: 'column',
+		alignItems: 'stretch',
+		width: '100%',
+		gap: 24,
+	},
+	mobileSection: {
+		width: '100%',
+		alignItems: 'center',
+		marginBottom: 24,
+	},
+	portraitMobile: {
+		width: 120,
+		height: 120,
+		borderRadius: 16,
+		borderWidth: 2,
+		borderColor: '#C9B037',
+		backgroundColor: '#F9F6EF',
+	},
+	statGridMobile: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 8,
+		marginTop: 8,
+		marginBottom: 8,
+		alignItems: 'center',
+		justifyContent: 'center',
+		maxWidth: '100%',
+	},
+	statBoxMobile: {
+		alignItems: 'center',
+		marginVertical: 0,
+		padding: 6,
+		borderWidth: 2,
+		borderColor: '#8B5C2A',
+		borderRadius: 8,
+		backgroundColor: '#F9F6EF',
+		width: 70,
+		marginRight: 6,
+		marginBottom: 6,
+	},
+	inventoryGridMobile: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 8,
+		marginTop: 8,
+		marginBottom: 8,
+		minHeight: 48,
+		alignItems: 'center',
+		justifyContent: 'center',
+		maxWidth: '100%',
+	},
+	inventoryItemBoxMobile: {
+		alignItems: 'center',
+		marginRight: 8,
+		marginBottom: 8,
+		borderWidth: 1,
+		borderColor: '#8B5C2A',
+		borderStyle: 'dashed',
+		borderRadius: 8,
+		padding: 12,
+		minWidth: 64,
+		minHeight: 64,
+	},
+	closeButtonMobile: {
+		marginTop: 16,
+		alignSelf: 'center',
+		backgroundColor: '#C9B037',
+		paddingVertical: 12,
+		paddingHorizontal: 40,
+		borderRadius: 8,
+		minHeight: 48, // Better touch target
 	},
 });

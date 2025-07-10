@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { CLASSES } from '../constants/classes';
-import { chooserCardConstants, chooserCardStyles } from '../styles/chooser-cards.styles';
+import { CARD_GAP, cardGridStyles, getCardsPerRow, getContainerWidth, SCREEN_WIDTH } from '../styles/card-grid.styles';
 import { newGameStyles } from '../styles/new-game.styles';
 import { ClassOption } from '../types/class-option';
-
-const { IS_SMALL_SCREEN } = chooserCardConstants;
 
 interface ClassChooserProps {
 	onSelect: (classOption: ClassOption) => void;
@@ -17,6 +15,14 @@ export const ClassChooser: React.FC<ClassChooserProps> = ({ onSelect, initialCla
 	const [customName, setCustomName] = useState('');
 	const [customDesc, setCustomDesc] = useState('');
 	const [showCustomForm, setShowCustomForm] = useState(false);
+
+	// 1:1 aspect ratio for class cards
+	const width = SCREEN_WIDTH;
+	const cardsPerRow = getCardsPerRow(width);
+	const containerWidth = getContainerWidth(width);
+	const cardWidth = Math.floor((containerWidth - CARD_GAP * (cardsPerRow + 1)) / cardsPerRow);
+	const cardHeight = cardWidth; // 1:1 aspect ratio
+	const styles = cardGridStyles(width);
 
 	const handleSelect = (classOption: ClassOption) => {
 		if (classOption.isCustom) {
@@ -38,8 +44,7 @@ export const ClassChooser: React.FC<ClassChooserProps> = ({ onSelect, initialCla
 		}
 	};
 
-	const mainClasses = CLASSES.filter(c => !c.isCustom);
-	const customClass = CLASSES.find(c => c.isCustom);
+	const allClasses = [...CLASSES.filter(c => !c.isCustom), ...CLASSES.filter(c => c.isCustom)];
 
 	return (
 		<ScrollView contentContainerStyle={newGameStyles.scrollViewContent}>
@@ -62,53 +67,27 @@ export const ClassChooser: React.FC<ClassChooserProps> = ({ onSelect, initialCla
 						multiline
 						numberOfLines={3}
 					/>
-					<TouchableOpacity style={chooserCardStyles.submitButton} onPress={handleCustomSubmit}>
-						<Text style={chooserCardStyles.submitButtonText}>Create Class</Text>
+					<TouchableOpacity style={newGameStyles.submitButton} onPress={handleCustomSubmit}>
+						<Text style={newGameStyles.submitButtonText}>Create Class</Text>
 					</TouchableOpacity>
 				</View>
 			) : (
-				<View style={chooserCardStyles.cardContainer}>
-					{IS_SMALL_SCREEN ? (
-						mainClasses.map((classOption) => (
-							<View key={classOption.id} style={chooserCardStyles.singleCardRow}>
-								<TouchableOpacity
-									style={chooserCardStyles.card}
-									onPress={() => handleSelect(classOption)}
-								>
-									<Image source={classOption.image} style={chooserCardStyles.image} resizeMode="cover" />
-									<Text style={chooserCardStyles.cardTitle}>{classOption.name}</Text>
-									<Text style={chooserCardStyles.cardDesc}>{classOption.description}</Text>
-								</TouchableOpacity>
+				<View style={styles.cardContainer}>
+					{allClasses.map((classOption) => (
+						<TouchableOpacity
+							key={classOption.id}
+							style={[styles.card, { width: cardWidth, height: cardHeight }]}
+							onPress={() => handleSelect(classOption)}
+						>
+							<View style={styles.imageWrapper}>
+								<Image source={classOption.image} style={[styles.image, { width: '100%', height: '100%' }]} resizeMode="cover" />
+								<View style={styles.overlay}>
+									<Text style={styles.cardTitle}>{classOption.name}</Text>
+									<Text style={styles.cardDesc}>{classOption.description}</Text>
+								</View>
 							</View>
-						))
-					) : (
-						<View style={chooserCardStyles.cardRow}>
-							{mainClasses.map((classOption) => (
-								<TouchableOpacity
-									key={classOption.id}
-									style={chooserCardStyles.card}
-									onPress={() => handleSelect(classOption)}
-								>
-									<Image source={classOption.image} style={chooserCardStyles.image} resizeMode="cover" />
-									<Text style={chooserCardStyles.cardTitle}>{classOption.name}</Text>
-									<Text style={chooserCardStyles.cardDesc}>{classOption.description}</Text>
-								</TouchableOpacity>
-							))}
-						</View>
-					)}
-					{customClass && (
-						<View style={chooserCardStyles.customCardRow}>
-							<TouchableOpacity
-								key={customClass.id}
-								style={[chooserCardStyles.card, chooserCardStyles.customCard]}
-								onPress={() => handleSelect(customClass)}
-							>
-								<Image source={customClass.image} style={chooserCardStyles.image} resizeMode="cover" />
-								<Text style={chooserCardStyles.cardTitle}>{customClass.name}</Text>
-								<Text style={chooserCardStyles.cardDesc}>{customClass.description}</Text>
-							</TouchableOpacity>
-						</View>
-					)}
+						</TouchableOpacity>
+					))}
 				</View>
 			)}
 		</ScrollView>

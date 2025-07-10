@@ -148,7 +148,10 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 	});
 
 	return (
-		<ScrollView contentContainerStyle={[newGameStyles.scrollViewContent, styles.container]}>
+		<ScrollView contentContainerStyle={[
+			newGameStyles.scrollViewContent,
+			styles.container,
+		]}>
 			<Text style={newGameStyles.title}>Review Character Sheet</Text>
 			<View style={styles.centerWrapper}>
 				<View style={styles.sheetRow}>

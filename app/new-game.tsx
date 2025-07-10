@@ -1,6 +1,6 @@
 import { Stack, router } from 'expo-router';
-import React, { useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Dimensions, PanResponder, ScrollView, Text, View } from 'react-native';
 
 import { CharacterReview } from '../components/character-review';
 import { ClassChooser } from '../components/class-chooser';
@@ -34,9 +34,45 @@ const NewGameScreen: React.FC = () => {
 	const [customStory, setCustomStory] = useState('');
 	const [showConfirm, setShowConfirm] = useState(false);
 	const [pendingCharacter, setPendingCharacter] = useState<any>(null);
+	const [screenData, setScreenData] = useState(Dimensions.get('window'));
 
 	const { save } = useGameState();
 	const { addItem, equipItem } = useInventoryManager();
+
+	// Track screen dimensions for responsive layout
+	useEffect(() => {
+		const onChange = (result: { window: any; screen: any }) => {
+			setScreenData(result.window);
+		};
+
+		const subscription = Dimensions.addEventListener('change', onChange);
+		return () => subscription?.remove();
+	}, []);
+
+	// Determine if we should use mobile layout
+	const isMobile = screenData.width < 768; // Bootstrap md breakpoint
+
+	// Pan responder for swipe gestures
+	const panResponder = PanResponder.create({
+		onMoveShouldSetPanResponder: (evt, gestureState) => {
+			// Only respond to horizontal swipes that are significant
+			return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 20;
+		},
+		onPanResponderGrant: () => {
+			// Gesture started
+		},
+		onPanResponderMove: () => {
+			// Optional: Add visual feedback during swipe
+		},
+		onPanResponderRelease: (evt, gestureState) => {
+			// Swipe right (positive dx) = go back
+			if (gestureState.dx > 50 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy)) {
+				handlePreviousStep();
+			}
+			// Swipe left (negative dx) could be used for forward navigation if desired
+			// For now, we'll only implement back navigation
+		},
+	});
 
 	const handleWorldSelect = (world: WorldOption) => {
 		setSelectedWorld(world);
@@ -89,16 +125,16 @@ const NewGameScreen: React.FC = () => {
 		console.log('📍 Selected location:', selectedLocation?.name);
 		console.log('🧙 Selected race:', selectedRace?.name);
 		console.log('⚔️ Selected class:', selectedClass?.name);
-		
+
 		if (!pendingCharacter || !selectedWorld || !selectedLocation || !selectedRace || !selectedClass) {
 			console.error('❌ Missing required data for character creation');
 			return;
 		}
-		
+
 		// Generate unique character ID
 		const characterId = `character-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 		console.log('🆔 Generated character ID:', characterId);
-		
+
 		// Create proper Character object that matches CharacterSchema
 		const character = {
 			id: characterId,
@@ -141,14 +177,14 @@ const NewGameScreen: React.FC = () => {
 			await save(gameState);
 			setShowConfirm(false);
 			setPendingCharacter(null);
-			
+
 			// Now add items to inventory using the inventory manager
 			// (which can now successfully load the character)
 			console.log('🎒 Adding starting inventory items...');
 			await addItem('rations', 2);
 			await addItem('tent', 1);
 			await addItem('healing_potion', 2);
-			
+
 			// Add class-appropriate gear
 			console.log('⚔️ Adding class-specific equipment for:', selectedClass.id);
 			if (selectedClass.id === 'fighter') {
@@ -170,7 +206,7 @@ const NewGameScreen: React.FC = () => {
 				await addItem('mace', 1);
 				await equipItem('mace');
 			}
-			
+
 			router.replace('/');
 		} catch (error) {
 			console.error('Failed to save game state:', error);
@@ -188,20 +224,20 @@ const NewGameScreen: React.FC = () => {
 		const currentStepIndex = getStepNumber(currentStep);
 
 		return (
-			<View style={newGameStyles.stepIndicator}>
+			<View style={isMobile ? newGameStyles.stepIndicatorMobile : newGameStyles.stepIndicator}>
 				{steps.map((step, index) => (
 					<React.Fragment key={step}>
 						<View
 							style={[
-								newGameStyles.stepDot,
-								index === currentStepIndex && newGameStyles.stepDotActive,
+								isMobile ? newGameStyles.stepDotMobile : newGameStyles.stepDot,
+								index === currentStepIndex && (isMobile ? newGameStyles.stepDotActiveMobile : newGameStyles.stepDotActive),
 								index < currentStepIndex && newGameStyles.stepDotCompleted,
 							]}
 						/>
 						{index < steps.length - 1 && (
 							<View
 								style={[
-									newGameStyles.stepLine,
+									isMobile ? newGameStyles.stepLineMobile : newGameStyles.stepLine,
 									index < currentStepIndex && newGameStyles.stepLineCompleted,
 								]}
 							/>
@@ -218,17 +254,33 @@ const NewGameScreen: React.FC = () => {
 
 		switch (currentStep) {
 		case 'world':
-			return <WorldChooser onSelect={handleWorldSelect} />;
+			return (
+				<View style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}>
+					<WorldChooser onSelect={handleWorldSelect} />
+				</View>
+			);
 		case 'location':
-			return <LocationChooser onSelect={handleLocationSelect} />;
+			return (
+				<View style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}>
+					<LocationChooser onSelect={handleLocationSelect} />
+				</View>
+			);
 		case 'race':
-			return <RaceChooser onSelect={handleRaceSelect} />;
+			return (
+				<View style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}>
+					<RaceChooser onSelect={handleRaceSelect} />
+				</View>
+			);
 		case 'class':
-			return <ClassChooser onSelect={handleClassSelect} />;
+			return (
+				<View style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}>
+					<ClassChooser onSelect={handleClassSelect} />
+				</View>
+			);
 		case 'character':
 			if (!selectedRace || !selectedClass) {
 				return (
-					<View style={newGameStyles.sectionBox}>
+					<View style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}>
 						<Text>Missing race or class selection.</Text>
 					</View>
 				);
@@ -236,16 +288,18 @@ const NewGameScreen: React.FC = () => {
 			baseStats = getDefaultBaseStats();
 			racialBonuses = selectedRace.statBonuses || {};
 			return (
-				<CharacterReview
-					name={characterName}
-					description={customStory}
-					race={selectedRace}
-					classOption={selectedClass}
-					baseStats={baseStats}
-					racialBonuses={racialBonuses}
-					onBack={handlePreviousStep}
-					onFinish={handleCharacterFinish}
-				/>
+				<View style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}>
+					<CharacterReview
+						name={characterName}
+						description={customStory}
+						race={selectedRace}
+						classOption={selectedClass}
+						baseStats={baseStats}
+						racialBonuses={racialBonuses}
+						onBack={handlePreviousStep}
+						onFinish={handleCharacterFinish}
+					/>
+				</View>
 			);
 		default:
 			return null;
@@ -253,10 +307,24 @@ const NewGameScreen: React.FC = () => {
 	};
 
 	return (
-		<ThemedView style={newGameStyles.container}>
-			<Stack.Screen options={{ headerShown: false }} />
-			{renderStepIndicator()}
-			{renderStepContent()}
+		<ThemedView style={[
+			newGameStyles.container,
+			isMobile && newGameStyles.containerMobile,
+		]}>
+			<Stack.Screen options={{ headerShown: !isMobile }} />
+			<View {...panResponder.panHandlers} style={{ flex: 1 }}>
+				<ScrollView
+					contentContainerStyle={[
+						newGameStyles.scrollViewContent,
+						isMobile && newGameStyles.scrollViewContentMobile,
+					]}
+					showsVerticalScrollIndicator={true}
+					bounces={false}
+				>
+					{renderStepIndicator()}
+					{renderStepContent()}
+				</ScrollView>
+			</View>
 			<ConfirmModal
 				visible={showConfirm}
 				title="Start Game?"
