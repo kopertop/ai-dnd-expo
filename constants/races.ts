@@ -1,6 +1,6 @@
 import { ImageSourcePropType } from 'react-native';
 
-import { PartialStatBlock } from './stats';
+import { PartialStatBlock } from '../types/stats';
 
 export interface RaceOption {
 	id: string;

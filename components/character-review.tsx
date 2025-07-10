@@ -5,8 +5,8 @@ import { Animated, Easing, Image, ScrollView, StyleSheet, Text, TextInput, Touch
 import { ClassOption } from '../constants/classes';
 import { RaceOption } from '../constants/races';
 import { ABILITY_COLORS, SKILL_LIST } from '../constants/skills';
-import { PartialStatBlock, STAT_KEYS, StatBlock, StatKey } from '../constants/stats';
 import { newGameStyles } from '../styles/new-game.styles';
+import { PartialStatBlock, STAT_KEYS, StatBlock, StatKey } from '../types/stats';
 
 import { Colors } from '@/constants/colors';
 
@@ -19,7 +19,7 @@ const POINT_BUY_TOTAL = 27;
 const MAX_SKILLS = 4;
 
 function getPointBuyTotal(stats: StatBlock): number {
-	return STAT_KEYS.reduce((sum, key) => sum + POINT_BUY_COST[stats[key]], 0);
+	return STAT_KEYS.reduce((sum: number, key: StatKey) => sum + stats[key], 0);
 }
 
 interface CharacterReviewProps {

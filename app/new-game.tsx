@@ -12,9 +12,9 @@ import { WorldChooser } from '../components/world-chooser';
 import { ClassOption } from '../constants/classes';
 import { LocationOption } from '../constants/locations';
 import { RaceOption } from '../constants/races';
-import { StatBlock } from '../constants/stats';
 import { WorldOption } from '../constants/worlds';
 import { newGameStyles } from '../styles/new-game.styles';
+import { StatBlock } from '../types/stats';
 
 import { ThemedView } from '@/components/themed-view';
 

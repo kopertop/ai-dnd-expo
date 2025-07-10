@@ -1,6 +1,6 @@
 import { ImageSourcePropType } from 'react-native';
 
-import { StatKey } from './stats';
+import { StatKey } from '../types/stats';
 
 export interface ClassOption {
 	id: string;
