@@ -25,7 +25,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 	const { loading, error, inventory, equipped, equipItem, unequipItem } = useInventoryManager();
 
 	if (!playerCharacter) return null;
-	
+
 	const { name, description, stats, skills = [], race, class: characterClass, level, health, maxHealth, actionPoints, maxActionPoints } = playerCharacter;
 	const portraitSource = playerPortrait;
 
@@ -44,10 +44,11 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 		setActiveSlot(null);
 	};
 
-	// Replace inventoryItems and equipped logic with values from the hook
-	// Use loading/error to show loading or error states
-	const inventoryItems = inventory.map(entry => entry.item);
-	const equippedItems = Object.entries(equipped).map(([slot, item]) => item).filter(Boolean);
+	// Use inventory with equipped status for display
+	// Items are already sorted with equipped items first
+	const filteredInventory = activeSlot
+		? inventory.filter(entry => entry.item.slot === activeSlot)
+		: inventory;
 
 	return (
 		<Modal visible={visible} animationType="slide" transparent>
@@ -95,30 +96,57 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 										<Text style={styles.emptyInventory}>Loading inventory...</Text>
 									) : error ? (
 										<Text style={styles.emptyInventory}>Error loading inventory: {error}</Text>
-									) : inventoryItems.length === 0 ? (
+									) : filteredInventory.length === 0 ? (
 										<Text style={styles.emptyInventory}>No items</Text>
 									) : (
-										inventoryItems.map(item => (
-											<Pressable
-												key={String(item.id)}
-												onPress={() => item.slot !== 'none' && setActiveSlot(item.slot as GearSlot)}
-												onHoverIn={() => Platform.OS === 'web' && setTooltipSkill(item.id as string)}
-												onHoverOut={() => Platform.OS === 'web' && setTooltipSkill(null)}
-												style={styles.inventoryItemBox}
-											>
-												<Image source={item.icon as ImageSourcePropType} style={styles.inventoryIconLarge} />
-												{tooltipSkill === item.id && (
-													<View style={styles.tooltipOverlay} pointerEvents="none">
-														<View style={styles.tooltipOverIconBg} />
-														<View style={styles.tooltipOverIconLabel}>
-															<Text style={styles.tooltipText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>
-																{item.name}
-															</Text>
+										filteredInventory.map(entry => {
+											const { item, isEquipped } = entry;
+											const isCompatible = !activeSlot || item.slot === activeSlot || item.slot === 'none';
+											const canEquip = item.slot !== 'none' && isCompatible;
+
+											return (
+												<Pressable
+													key={String(item.id)}
+													onPress={() => {
+														if (activeSlot && canEquip) {
+															// If this item is already equipped in the active slot, unequip it
+															if (isEquipped && entry.equippedSlot === activeSlot) {
+																handleUnequipSlot(activeSlot);
+															} else {
+																// Otherwise equip it
+																handleAssignItem(item);
+															}
+														} else if (!activeSlot && item.slot !== 'none') {
+															setActiveSlot(item.slot as GearSlot);
+														}
+													}}
+													onHoverIn={() => Platform.OS === 'web' && setTooltipSkill(item.id as string)}
+													onHoverOut={() => Platform.OS === 'web' && setTooltipSkill(null)}
+													style={[
+														styles.inventoryItemBox,
+														isEquipped && styles.inventoryItemEquipped,
+														!isCompatible && styles.inventoryItemIncompatible,
+													]}
+												>
+													<Image source={item.icon as ImageSourcePropType} style={styles.inventoryIconLarge} />
+													{isEquipped && (
+														<View style={styles.equippedIndicator}>
+															<Text style={styles.equippedText}>*</Text>
 														</View>
-													</View>
-												)}
-											</Pressable>
-										))
+													)}
+													{tooltipSkill === item.id && (
+														<View style={styles.tooltipOverlay} pointerEvents="none">
+															<View style={styles.tooltipOverIconBg} />
+															<View style={styles.tooltipOverIconLabel}>
+																<Text style={styles.tooltipText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>
+																	{item.name}
+																</Text>
+															</View>
+														</View>
+													)}
+												</Pressable>
+											);
+										})
 									)}
 								</View>
 							</View>
@@ -235,27 +263,6 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 										</TouchableOpacity>
 									</View>
 								</View>
-								{/* If a slot is active, show inventory items that can go in that slot */}
-								{activeSlot && (
-									<View style={styles.inventoryGrid}>
-										{/* Show unequip button if something is equipped in this slot */}
-										{equipped[activeSlot] && (
-											<TouchableOpacity style={styles.unequipButton} onPress={() => handleUnequipSlot(activeSlot)}>
-												<Text style={styles.unequipButtonText}>Unequip</Text>
-											</TouchableOpacity>
-										)}
-										{inventoryItems.filter(i => i.slot === activeSlot).length === 0 ? (
-											<Text style={styles.emptyInventory}>No items for this slot</Text>
-										) : (
-											inventoryItems.filter(i => i.slot === activeSlot).map(item => (
-												<TouchableOpacity key={String(item.id)} style={styles.inventoryItem} onPress={() => handleAssignItem(item)}>
-													<Image source={item.icon as ImageSourcePropType} style={styles.inventoryIcon} />
-													<Text style={styles.inventoryName}>{item.name}</Text>
-												</TouchableOpacity>
-											))
-										)}
-									</View>
-								)}
 								{/* Skills grid below gear */}
 								<Text style={styles.label}>Skills</Text>
 								<View style={styles.skillsGrid}>
@@ -713,5 +720,43 @@ const styles = StyleSheet.create({
 	tooltipOverIconLabel: {
 		position: 'relative',
 		zIndex: 2,
+	},
+	inventoryItemEquipped: {
+		borderWidth: 3,
+		borderColor: '#C9B037',
+		backgroundColor: '#FFF8E1',
+	},
+	inventoryItemIncompatible: {
+		opacity: 0.4,
+		backgroundColor: '#F5F5F5',
+	},
+	equippedIndicator: {
+		position: 'absolute',
+		top: 2,
+		right: 2,
+		backgroundColor: '#C9B037',
+		borderRadius: 8,
+		width: 16,
+		height: 16,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	equippedText: {
+		color: '#3B2F1B',
+		fontSize: 12,
+		fontWeight: 'bold',
+	},
+	gearSlotActions: {
+		marginTop: 12,
+		padding: 12,
+		backgroundColor: '#F9F6EF',
+		borderRadius: 8,
+		alignItems: 'center',
+	},
+	gearSlotInstructions: {
+		fontSize: 14,
+		color: '#8B5C2A',
+		textAlign: 'center',
+		marginBottom: 8,
 	},
 });

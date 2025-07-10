@@ -1,4 +1,5 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
+import { Platform } from 'react-native';
 
 import { useGameState } from './use-game-state';
 
@@ -16,11 +17,41 @@ export const useInventoryManager = () => {
 		load: refresh,
 	} = useGameState();
 
-	// Inventory helpers
-	const inventory: (InventoryEntry & { item: Item })[] = (character?.inventory || []).map(entry => ({
-		...entry,
-		item: ITEM_LIST.find(i => i.id === entry.itemId)!,
-	}));
+	// Check if an item is equipped
+	const isItemEquipped = useCallback((itemId: string): boolean => {
+		if (!character?.equipped) return false;
+		return Object.values(character.equipped).includes(itemId);
+	}, [character]);
+
+	// Get equipped slot for an item
+	const getEquippedSlot = useCallback((itemId: string): GearSlot | null => {
+		if (!character?.equipped) return null;
+		for (const [slot, equippedItemId] of Object.entries(character.equipped)) {
+			if (equippedItemId === itemId) return slot as GearSlot;
+		}
+		return null;
+	}, [character]);
+
+	// Inventory helpers with equipped status and sorting
+	const inventory: (InventoryEntry & { item: Item; isEquipped: boolean; equippedSlot: GearSlot | null })[] = 
+		(character?.inventory || [])
+			.map(entry => {
+				const item = ITEM_LIST.find(i => i.id === entry.itemId)!;
+				const isEquipped = isItemEquipped(entry.itemId);
+				const equippedSlot = getEquippedSlot(entry.itemId);
+				return {
+					...entry,
+					item,
+					isEquipped,
+					equippedSlot,
+				};
+			})
+			.sort((a, b) => {
+				// Sort equipped items first, then by item name
+				if (a.isEquipped && !b.isEquipped) return -1;
+				if (!a.isEquipped && b.isEquipped) return 1;
+				return a.item.name.localeCompare(b.item.name);
+			});
 
 	const equipped: Partial<Record<GearSlot, Item>> = {};
 	if (character?.equipped) {
@@ -86,6 +117,91 @@ export const useInventoryManager = () => {
 		// TODO: trigger item effect
 	}, [removeItem]);
 
+	// Add global window commands for web development (console commands)
+	useEffect(() => {
+		if (Platform.OS === 'web' && typeof window !== 'undefined') {
+			// Add global command to add inventory items
+			(window as any).addInventoryItem = async (itemId: string, quantity = 1) => {
+				try {
+					const item = ITEM_LIST.find(i => i.id === itemId);
+					if (!item) {
+						console.error(`❌ Item "${itemId}" not found. Available items:`, ITEM_LIST.map(i => i.id));
+						return;
+					}
+					await addItem(itemId, quantity);
+					console.log(`✅ Added ${quantity}x ${item.name} to inventory`);
+				} catch (error) {
+					console.error('❌ Failed to add item:', error);
+				}
+			};
+
+			// Add global command to equip items
+			(window as any).equipInventoryItem = async (itemId: string) => {
+				try {
+					const item = ITEM_LIST.find(i => i.id === itemId);
+					if (!item) {
+						console.error(`❌ Item "${itemId}" not found. Available items:`, ITEM_LIST.map(i => i.id));
+						return;
+					}
+					if (item.slot === 'none') {
+						console.error(`❌ Item "${item.name}" cannot be equipped (slot: none)`);
+						return;
+					}
+					await equipItem(itemId);
+					console.log(`✅ Equipped ${item.name} to ${item.slot}`);
+				} catch (error) {
+					console.error('❌ Failed to equip item:', error);
+				}
+			};
+
+			// Add global command to list all available items
+			(window as any).listItems = () => {
+				console.log('📦 Available items:');
+				ITEM_LIST.forEach(item => {
+					console.log(`  ${item.id}: ${item.name} (slot: ${item.slot})`);
+				});
+			};
+
+			// Add global command to show current inventory
+			(window as any).showInventory = () => {
+				console.log('🎒 Current inventory:');
+				if (inventory.length === 0) {
+					console.log('  (empty)');
+					return;
+				}
+				inventory.forEach(entry => {
+					const equipped = entry.isEquipped ? ' ⚡EQUIPPED' : '';
+					console.log(`  ${entry.quantity}x ${entry.item.name}${equipped}`);
+				});
+			};
+
+			// Add helpful command list
+			(window as any).inventoryHelp = () => {
+				console.log('🔧 Inventory Console Commands:');
+				console.log('  addInventoryItem(itemId, quantity) - Add items to inventory');
+				console.log('  equipInventoryItem(itemId) - Equip an item');
+				console.log('  listItems() - Show all available items');
+				console.log('  showInventory() - Show current inventory');
+				console.log('  inventoryHelp() - Show this help');
+				console.log('');
+				console.log('Example: addInventoryItem("sword", 1)');
+			};
+
+			console.log('🔧 Inventory console commands loaded! Type inventoryHelp() for commands.');
+
+			// Cleanup function to remove global commands
+			return () => {
+				if (typeof window !== 'undefined') {
+					delete (window as any).addInventoryItem;
+					delete (window as any).equipInventoryItem;
+					delete (window as any).listItems;
+					delete (window as any).showInventory;
+					delete (window as any).inventoryHelp;
+				}
+			};
+		}
+	}, [addItem, equipItem, inventory]);
+
 	return {
 		loading,
 		error,
@@ -99,5 +215,7 @@ export const useInventoryManager = () => {
 		unequipItem,
 		useItem,
 		refresh,
+		isItemEquipped,
+		getEquippedSlot,
 	};
 };
