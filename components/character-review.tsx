@@ -31,6 +31,7 @@ interface CharacterReviewProps {
 	racialBonuses: PartialStatBlock;
 	onBack: () => void;
 	onFinish: (finalData: { name: string; description: string; stats: StatBlock; skills: string[] }) => void;
+	skills: string[];
 }
 
 export const CharacterReview: React.FC<CharacterReviewProps> = ({
@@ -42,6 +43,7 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 	racialBonuses,
 	onBack,
 	onFinish,
+	skills,
 }) => {
 	const [editableStats, setEditableStats] = useState<StatBlock>({ ...baseStats });
 	const [name, setName] = useState(initialName);
@@ -49,7 +51,6 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 	const pointsUsed = getPointBuyTotal(editableStats);
 	const pointsRemaining = POINT_BUY_TOTAL - pointsUsed;
 	const [invalidFields, setInvalidFields] = useState<{ name: boolean; description: boolean; points: boolean }>({ name: false, description: false, points: false });
-	const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
 	// Animated values for pulsing
 	const namePulse = useRef(new Animated.Value(0)).current;
@@ -98,19 +99,6 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 
 	const getTotal = (key: StatKey) => editableStats[key] + (racialBonuses[key] || 0);
 
-	const toggleSkill = (id: string) => {
-		setSelectedSkills((prev) => {
-			if (prev.includes(id)) {
-				return prev.filter((s) => s !== id);
-			} else if (prev.length < MAX_SKILLS) {
-				return [...prev, id];
-			}
-			return prev;
-		});
-	};
-
-	const isSkillSelected = (id: string) => selectedSkills.includes(id);
-
 	const validateAndStart = () => {
 		const nameValid = name.trim().length > 0;
 		const descValid = description.trim().length > 0;
@@ -120,7 +108,7 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 		if (!descValid) pulseAnim('description');
 		if (!pointsValid) pulseAnim('points');
 		if (nameValid && descValid && pointsValid) {
-			onFinish({ name, description, stats: editableStats, skills: selectedSkills });
+			onFinish({ name, description, stats: editableStats, skills });
 		}
 	};
 
@@ -192,31 +180,17 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 								/>
 							</View>
 						</Animated.View>
+						{/* Display selected skills as a read-only list */}
 						<View style={styles.skillsChooserOuter}>
-							<Text style={styles.skillsChooserTitle}>Choose {MAX_SKILLS} Skills</Text>
+							<Text style={styles.skillsChooserTitle}>Selected Skills</Text>
 							<View style={styles.skillsGrid}>
-								{SKILL_LIST.map(skill => {
-									const selected = isSkillSelected(skill.id);
-									const disabled =
-										!selected
-										&& (
-											selectedSkills.length >= MAX_SKILLS
-											// Not at least 10 points in the ability
-											|| editableStats[skill.ability as StatKey] < 10
-										);
+								{skills.map(skillId => {
+									const skill = SKILL_LIST.find(s => s.id === skillId);
+									if (!skill) return null;
 									return (
-										<TouchableOpacity
-											key={skill.id}
-											onPress={() => toggleSkill(skill.id)}
-											style={[
-												styles.skillIconCard,
-												selected && styles.skillIconCardSelected,
-												{ borderColor: ABILITY_COLORS[skill.ability as StatKey], opacity: selected || !disabled ? 1 : 0.3 },
-											]}
-											disabled={disabled}
-										>
-											<Image source={skill.image} style={styles.skillIconFlat} />
-										</TouchableOpacity>
+										<View key={skill.id} style={[styles.skillPill, { backgroundColor: ABILITY_COLORS[skill.ability as keyof typeof ABILITY_COLORS] || '#ccc' }] }>
+											<Text style={styles.skillPillText}>{skill.name}</Text>
+										</View>
 									);
 								})}
 							</View>
@@ -539,5 +513,18 @@ const styles = StyleSheet.create({
 		width: 64,
 		height: 64,
 		resizeMode: 'contain',
+	},
+	skillPill: {
+		paddingVertical: 8,
+		paddingHorizontal: 12,
+		borderRadius: 15,
+		alignItems: 'center',
+		justifyContent: 'center',
+		margin: 5,
+	},
+	skillPillText: {
+		fontSize: 14,
+		fontWeight: 'bold',
+		color: '#3B2F1B',
 	},
 });

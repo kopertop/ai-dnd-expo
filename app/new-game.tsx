@@ -6,6 +6,7 @@ import { CharacterReview } from '../components/character-review';
 import { ClassChooser } from '../components/class-chooser';
 import { LocationChooser } from '../components/location-chooser';
 import { RaceChooser } from '../components/race-chooser';
+import { SkillChooser } from '../components/skill-chooser';
 import { ConfirmModal } from '../components/ui/confirm-modal';
 import { WorldChooser } from '../components/world-chooser';
 import { useGameState } from '../hooks/use-game-state';
@@ -14,13 +15,14 @@ import { newGameStyles } from '../styles/new-game.styles';
 import { ClassOption } from '../types/class-option';
 import { LocationOption } from '../types/location-option';
 import { RaceOption } from '../types/race-option';
+import { Skill } from '../types/skill';
 import { StatBlock } from '../types/stats';
 import { WorldOption } from '../types/world-option';
 
 import { ThemedView } from '@/components/themed-view';
 
 
-type WizardStep = 'world' | 'location' | 'race' | 'class' | 'character';
+type WizardStep = 'world' | 'location' | 'race' | 'class' | 'skills' | 'character';
 
 const getDefaultBaseStats = (): StatBlock => ({ STR: 8, DEX: 8, CON: 8, INT: 8, WIS: 8, CHA: 8 });
 
@@ -30,6 +32,7 @@ const NewGameScreen: React.FC = () => {
 	const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
 	const [selectedRace, setSelectedRace] = useState<RaceOption | null>(null);
 	const [selectedClass, setSelectedClass] = useState<ClassOption | null>(null);
+	const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
 	const [characterName, setCharacterName] = useState('');
 	const [customStory, setCustomStory] = useState('');
 	const [showConfirm, setShowConfirm] = useState(false);
@@ -91,26 +94,12 @@ const NewGameScreen: React.FC = () => {
 
 	const handleClassSelect = (classOption: ClassOption) => {
 		setSelectedClass(classOption);
-		setCurrentStep('character');
+		setCurrentStep('skills');
 	};
 
-	const handlePreviousStep = () => {
-		switch (currentStep) {
-		case 'location':
-			setCurrentStep('world');
-			break;
-		case 'race':
-			setCurrentStep('location');
-			break;
-		case 'class':
-			setCurrentStep('race');
-			break;
-		case 'character':
-			setCurrentStep('class');
-			break;
-		default:
-			break;
-		}
+	const handleSkillsSelect = (skills: Skill[]) => {
+		setSelectedSkills(skills);
+		setCurrentStep('character');
 	};
 
 	const handleCharacterFinish = (characterData: any) => {
@@ -144,7 +133,7 @@ const NewGameScreen: React.FC = () => {
 			class: selectedClass.name, // Required field from class selection
 			description: pendingCharacter.description || '',
 			stats: pendingCharacter.stats,
-			skills: pendingCharacter.skills || [],
+			skills: selectedSkills.map(s => s.id), // Use selectedSkills
 			inventory: [], // Will be populated below
 			equipped: {
 				helmet: null,
@@ -214,13 +203,22 @@ const NewGameScreen: React.FC = () => {
 		}
 	};
 
+	// Add this function to handle going back a step
+	const handlePreviousStep = () => {
+		const steps: WizardStep[] = ['world', 'location', 'race', 'class', 'skills', 'character'];
+		const currentIndex = steps.indexOf(currentStep);
+		if (currentIndex > 0) {
+			setCurrentStep(steps[currentIndex - 1]);
+		}
+	};
+
 	const getStepNumber = (step: WizardStep): number => {
-		const steps = ['world', 'location', 'race', 'class', 'character'];
+		const steps = ['world', 'location', 'race', 'class', 'skills', 'character'];
 		return steps.indexOf(step);
 	};
 
 	const renderStepIndicator = () => {
-		const steps = ['world', 'location', 'race', 'class', 'character'];
+		const steps = ['world', 'location', 'race', 'class', 'skills', 'character'];
 		const currentStepIndex = getStepNumber(currentStep);
 
 		return (
@@ -277,6 +275,12 @@ const NewGameScreen: React.FC = () => {
 					<ClassChooser onSelect={handleClassSelect} />
 				</View>
 			);
+		case 'skills':
+			return (
+				<View style={{ flex: 1, position: 'relative' }}>
+					<SkillChooser onSelect={handleSkillsSelect} initialSkills={selectedSkills} maxSkills={4} />
+				</View>
+			);
 		case 'character':
 			if (!selectedRace || !selectedClass) {
 				return (
@@ -298,6 +302,7 @@ const NewGameScreen: React.FC = () => {
 						racialBonuses={racialBonuses}
 						onBack={handlePreviousStep}
 						onFinish={handleCharacterFinish}
+						skills={selectedSkills.map(s => s.id)}
 					/>
 				</View>
 			);

@@ -250,6 +250,14 @@ export const newGameStyles = StyleSheet.create({
 		marginTop: 8,
 		alignItems: 'center',
 	},
+	submitButtonDisabled: {
+		backgroundColor: DnDTheme.parchmentDark,
+		paddingVertical: 10,
+		paddingHorizontal: 24,
+		borderRadius: 8,
+		marginTop: 8,
+		alignItems: 'center',
+	},
 	submitButtonText: {
 		color: DnDTheme.textDark,
 		fontWeight: 'bold',
