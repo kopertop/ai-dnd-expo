@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Dimensions, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { WORLDS, WorldOption } from '../constants/worlds';
+import { WORLDS } from '../constants/worlds';
 import { newGameStyles } from '../styles/new-game.styles';
+import { WorldOption } from '../types/world-option';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const MAX_CONTAINER_WIDTH = 1024;

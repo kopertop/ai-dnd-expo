@@ -1,15 +1,5 @@
-import { ImageSourcePropType } from 'react-native';
 
-import { PartialStatBlock } from '../types/stats';
-
-export interface RaceOption {
-	id: string;
-	name: string;
-	description: string;
-	image: ImageSourcePropType;
-	isCustom?: boolean;
-	statBonuses?: PartialStatBlock;
-}
+import { RaceOption } from '../types/race-option';
 
 export const RACES: RaceOption[] = [
 	{

@@ -148,7 +148,7 @@ const GameScreen: React.FC = () => {
 						{
 							id: 'potion1',
 							name: 'Healing Potion',
-							icon: require('../assets/images/items/cloth-helmet.png'),
+							icon: require('../assets/images/items/health-potion.png'),
 							slot: 'none',
 							usable: true,
 						},
@@ -162,8 +162,8 @@ const GameScreen: React.FC = () => {
 						},
 					],
 				}}
-				race={raceObj || { name: playerRace, image: require('@/assets/images/custom.png') }}
-				classOption={classObj || { name: playerClass, image: require('@/assets/images/custom.png') }}
+				race={raceObj ? { name: raceObj.name, image: raceObj.image } : { name: playerRace, image: require('@/assets/images/custom.png') }}
+				classOption={classObj ? { name: classObj.name, image: classObj.image } : { name: playerClass, image: require('@/assets/images/custom.png') }}
 				portrait={raceObj?.image}
 				level={1}
 				health={10}

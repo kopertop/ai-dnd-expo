@@ -2,10 +2,10 @@ import Feather from '@expo/vector-icons/Feather';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { ClassOption } from '../constants/classes';
-import { RaceOption } from '../constants/races';
 import { ABILITY_COLORS, SKILL_LIST } from '../constants/skills';
 import { newGameStyles } from '../styles/new-game.styles';
+import { ClassOption } from '../types/class-option';
+import { RaceOption } from '../types/race-option';
 import { PartialStatBlock, STAT_KEYS, StatBlock, StatKey } from '../types/stats';
 
 import { Colors } from '@/constants/colors';
@@ -199,7 +199,7 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 										&& (
 											selectedSkills.length >= MAX_SKILLS
 											// Not at least 10 points in the ability
-											|| editableStats[skill.ability] < 10
+											|| editableStats[skill.ability as StatKey] < 10
 										);
 									return (
 										<TouchableOpacity
@@ -208,7 +208,7 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 											style={[
 												styles.skillIconCard,
 												selected && styles.skillIconCardSelected,
-												{ borderColor: ABILITY_COLORS[skill.ability], opacity: selected || !disabled ? 1 : 0.3 },
+												{ borderColor: ABILITY_COLORS[skill.ability as StatKey], opacity: selected || !disabled ? 1 : 0.3 },
 											]}
 											disabled={disabled}
 										>

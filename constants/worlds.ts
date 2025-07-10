@@ -1,12 +1,4 @@
-import { ImageSourcePropType } from 'react-native';
-
-export interface WorldOption {
-	id: string;
-	name: string;
-	description: string;
-	image: ImageSourcePropType;
-	isCustom?: boolean;
-}
+import { WorldOption } from '../types/world-option';
 
 export const WORLDS: WorldOption[] = [
 	{

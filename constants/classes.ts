@@ -1,16 +1,5 @@
-import { ImageSourcePropType } from 'react-native';
 
-import { StatKey } from '../types/stats';
-
-export interface ClassOption {
-	id: string;
-	name: string;
-	description: string;
-	image: ImageSourcePropType;
-	isCustom?: boolean;
-	primaryStats: StatKey[];
-	secondaryStats?: StatKey[];
-}
+import { ClassOption } from '../types/class-option';
 
 export const CLASSES: ClassOption[] = [
 	{

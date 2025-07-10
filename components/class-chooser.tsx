@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { CLASSES, ClassOption } from '../constants/classes';
+import { CLASSES } from '../constants/classes';
 import { chooserCardConstants, chooserCardStyles } from '../styles/chooser-cards.styles';
 import { newGameStyles } from '../styles/new-game.styles';
+import { ClassOption } from '../types/class-option';
 
 const { IS_SMALL_SCREEN } = chooserCardConstants;
 

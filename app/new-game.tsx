@@ -9,12 +9,12 @@ import { LocationChooser } from '../components/location-chooser';
 import { RaceChooser } from '../components/race-chooser';
 import { ConfirmModal } from '../components/ui/confirm-modal';
 import { WorldChooser } from '../components/world-chooser';
-import { ClassOption } from '../constants/classes';
-import { LocationOption } from '../constants/locations';
-import { RaceOption } from '../constants/races';
-import { WorldOption } from '../constants/worlds';
 import { newGameStyles } from '../styles/new-game.styles';
+import { ClassOption } from '../types/class-option';
+import { LocationOption } from '../types/location-option';
+import { RaceOption } from '../types/race-option';
 import { StatBlock } from '../types/stats';
+import { WorldOption } from '../types/world-option';
 
 import { ThemedView } from '@/components/themed-view';
 

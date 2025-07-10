@@ -1,12 +1,4 @@
-import { ImageSourcePropType } from 'react-native';
-
-export interface LocationOption {
-	id: string;
-	name: string;
-	description: string;
-	image: ImageSourcePropType;
-	isCustom?: boolean;
-}
+import { LocationOption } from '../types/location-option';
 
 export const LOCATIONS: LocationOption[] = [
 	{

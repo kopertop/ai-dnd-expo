@@ -1,5 +1,7 @@
 // D&D 4e Skills by Ability Score with color coding
 
+import { Skill } from '../types/skill';
+
 export type AbilityKey = 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
 
 export const ABILITY_COLORS: Record<AbilityKey, string> = {
@@ -10,13 +12,6 @@ export const ABILITY_COLORS: Record<AbilityKey, string> = {
 	WIS: '#2E8B8B', // Teal/Sage
 	CHA: '#8B008B', // Purple/Magenta
 };
-
-export interface Skill {
-	id: string;
-	name: string;
-	ability: AbilityKey;
-	image: any; // require()
-}
 
 export const SKILL_LIST: Skill[] = [
 	{ id: 'athletics', name: 'Athletics', ability: 'STR', image: require('../assets/images/skills/athletics.png') },
