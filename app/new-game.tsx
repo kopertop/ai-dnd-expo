@@ -1,5 +1,5 @@
 import { Stack, router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Dimensions, PanResponder, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { AttributePicker } from '../components/attribute-picker';
@@ -53,8 +53,8 @@ const NewGameScreen: React.FC = () => {
 		return () => subscription?.remove();
 	}, []);
 
-	// Determine if we should use mobile layout
-	const isMobile = screenData.width < 768; // Bootstrap md breakpoint
+	// Memoized mobile layout detection to prevent unnecessary re-renders
+	const isMobile = useMemo(() => screenData.width < 768, [screenData.width]);
 
 	// Pan responder for swipe gestures
 	const panResponder = PanResponder.create({
@@ -110,13 +110,6 @@ const NewGameScreen: React.FC = () => {
 
 
 	const handleConfirmStart = async () => {
-		console.log('🚀 Starting character creation...');
-		console.log('📝 Pending character:', pendingCharacter);
-		console.log('🌍 Selected world:', selectedWorld?.name);
-		console.log('📍 Selected location:', selectedLocation?.name);
-		console.log('🧙 Selected race:', selectedRace?.name);
-		console.log('⚔️ Selected class:', selectedClass?.name);
-
 		if (!pendingCharacter || !selectedWorld || !selectedLocation || !selectedRace || !selectedClass) {
 			console.error('❌ Missing required data for character creation');
 			return;
@@ -124,7 +117,6 @@ const NewGameScreen: React.FC = () => {
 
 		// Generate unique character ID
 		const characterId = `character-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-		console.log('🆔 Generated character ID:', characterId);
 
 		// Create proper Character object that matches CharacterSchema
 		const character = {
@@ -152,7 +144,6 @@ const NewGameScreen: React.FC = () => {
 			actionPoints: pendingCharacter.actionPoints || 3,
 			maxActionPoints: pendingCharacter.maxActionPoints || 3,
 		};
-		console.log('👤 Created character object:', JSON.stringify(character, null, 2));
 
 		// Create proper GameState structure
 		const gameState = {
@@ -161,7 +152,6 @@ const NewGameScreen: React.FC = () => {
 			gameWorld: selectedWorld.name,
 			startingArea: selectedLocation.name,
 		};
-		console.log('🎮 Created game state:', JSON.stringify(gameState, null, 2));
 
 		try {
 			// Save the properly structured game state using the new hook
@@ -171,24 +161,19 @@ const NewGameScreen: React.FC = () => {
 
 			// Now add items to inventory using the inventory manager
 			// (which can now successfully load the character)
-			console.log('🎒 Adding starting inventory items...');
 			await addItem('rations', 2);
 			await addItem('tent', 1);
 			await addItem('healing_potion', 2);
 
 			// Add class-appropriate gear
-			console.log('⚔️ Adding class-specific equipment for:', selectedClass.id);
 			if (selectedClass.id === 'fighter') {
 				await addItem('sword', 1);
 				await equipItem('sword');
-				console.log('🗡️ Added and equipped sword for fighter');
 			}
 			if (selectedClass.id === 'wizard') {
 				await addItem('staff', 1);
 				await equipItem('staff');
-				console.log('🔮 Added and equipped staff for wizard');
 			}
-			console.log('✅ Character creation completed successfully!');
 			if (selectedClass.id === 'rogue') {
 				await addItem('dagger', 1);
 				await equipItem('dagger');
@@ -408,13 +393,6 @@ const NewGameScreen: React.FC = () => {
 									stats: selectedAttributes,
 									skills: selectedSkills.map(s => s.id),
 								};
-								
-								console.log('🚀 Starting character creation...');
-								console.log('📝 Character data:', characterData);
-								console.log('🌍 Selected world:', selectedWorld?.name);
-								console.log('📍 Selected location:', selectedLocation?.name);
-								console.log('🧙 Selected race:', selectedRace?.name);
-								console.log('⚔️ Selected class:', selectedClass?.name);
 
 								if (!selectedWorld || !selectedLocation || !selectedRace || !selectedClass || !selectedAttributes) {
 									console.error('❌ Missing required data for character creation');
@@ -425,7 +403,6 @@ const NewGameScreen: React.FC = () => {
 								try {
 									// Generate unique character ID
 									const characterId = `character-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-									console.log('🆔 Generated character ID:', characterId);
 
 									// Create proper Character object that matches CharacterSchema
 									const character = {
@@ -453,7 +430,6 @@ const NewGameScreen: React.FC = () => {
 										actionPoints: 3, // Default starting action points  
 										maxActionPoints: 3,
 									};
-									console.log('👤 Created character object:', JSON.stringify(character, null, 2));
 
 									// Create proper GameState structure
 									const gameState = {
@@ -462,29 +438,24 @@ const NewGameScreen: React.FC = () => {
 										gameWorld: selectedWorld.name,
 										startingArea: selectedLocation.name,
 									};
-									console.log('🎮 Created game state:', JSON.stringify(gameState, null, 2));
 
 									// Save the properly structured game state using the new hook
 									await save(gameState);
 									
 									// Now add items to inventory using the inventory manager
 									// (which can now successfully load the character)
-									console.log('🎒 Adding starting inventory items...');
 									await addItem('rations', 2);
 									await addItem('tent', 1);
 									await addItem('healing_potion', 2);
 									
 									// Add class-appropriate gear
-									console.log('⚔️ Adding class-specific equipment for:', selectedClass.id);
 									if (selectedClass.id === 'fighter') {
 										await addItem('sword', 1);
 										await equipItem('sword');
-										console.log('🗡️ Added and equipped sword for fighter');
 									}
 									if (selectedClass.id === 'wizard') {
 										await addItem('staff', 1);
 										await equipItem('staff');
-										console.log('🔮 Added and equipped staff for wizard');
 									}
 									if (selectedClass.id === 'rogue') {
 										await addItem('dagger', 1);
@@ -494,8 +465,6 @@ const NewGameScreen: React.FC = () => {
 										await addItem('mace', 1);
 										await equipItem('mace');
 									}
-									
-									console.log('✅ Character creation completed successfully!');
 									router.replace('/game');
 								} catch (error) {
 									console.error('Failed to save game state:', error);

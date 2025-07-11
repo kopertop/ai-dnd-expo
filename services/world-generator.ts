@@ -394,8 +394,8 @@ export const generateWorldForGameState = (gameWorld: string, startingArea: strin
 		worldName: gameWorld,
 		startingArea,
 		seed,
-		worldSize: { width: 200, height: 200 }, // 200x200 tile world
-		regionSize: { width: 50, height: 50 }, // 50x50 tile regions
+		worldSize: { width: 100, height: 100 }, // Reduced from 200x200 for mobile performance 
+		regionSize: { width: 25, height: 25 }, // Reduced from 50x50 for mobile performance
 	};
 
 	const generator = new WorldGenerator(config);

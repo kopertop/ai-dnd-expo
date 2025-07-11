@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Platform } from 'react-native';
 
 import { useGameState } from './use-game-state';
@@ -32,9 +32,9 @@ export const useInventoryManager = () => {
 		return null;
 	}, [character]);
 
-	// Inventory helpers with equipped status and sorting
-	const inventory: (InventoryEntry & { item: Item; isEquipped: boolean; equippedSlot: GearSlot | null })[] = 
-		(character?.inventory || [])
+	// Memoized inventory with equipped status and sorting for performance
+	const inventory = useMemo(() => {
+		return (character?.inventory || [])
 			.map(entry => {
 				const item = ITEM_LIST.find(i => i.id === entry.itemId)!;
 				const isEquipped = isItemEquipped(entry.itemId);
@@ -52,6 +52,7 @@ export const useInventoryManager = () => {
 				if (!a.isEquipped && b.isEquipped) return 1;
 				return a.item.name.localeCompare(b.item.name);
 			});
+	}, [character?.inventory, isItemEquipped, getEquippedSlot]);
 
 	const equipped: Partial<Record<GearSlot, Item>> = {};
 	if (character?.equipped) {
@@ -129,7 +130,6 @@ export const useInventoryManager = () => {
 						return;
 					}
 					await addItem(itemId, quantity);
-					console.log(`✅ Added ${quantity}x ${item.name} to inventory`);
 				} catch (error) {
 					console.error('❌ Failed to add item:', error);
 				}

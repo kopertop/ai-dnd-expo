@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -19,6 +19,32 @@ const GameScreen: React.FC = () => {
 	const [worldState, setWorldState] = useState<GameWorldState | null>(null);
 	const { loading, gameState, save } = useGameState();
 	const [saveError, setSaveError] = useState<string | null>(null);
+
+	// Debounced save to prevent excessive saves on frequent player moves
+	const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const debouncedSave = useCallback(async (gameStateToSave: typeof gameState) => {
+		if (saveTimeoutRef.current) {
+			clearTimeout(saveTimeoutRef.current);
+		}
+		saveTimeoutRef.current = setTimeout(async () => {
+			if (gameStateToSave) {
+				try {
+					await save(gameStateToSave);
+				} catch (error) {
+					setSaveError('Failed to save game state');
+				}
+			}
+		}, 500); // Debounce for 500ms
+	}, [save]);
+
+	// Cleanup timeout on unmount to prevent memory leaks
+	useEffect(() => {
+		return () => {
+			if (saveTimeoutRef.current) {
+				clearTimeout(saveTimeoutRef.current);
+			}
+		};
+	}, []);
 
 	// Track screen dimensions for responsive layout
 	useEffect(() => {
@@ -83,13 +109,13 @@ const GameScreen: React.FC = () => {
 
 		setWorldState(updatedWorldState);
 
-		// Save updated world state
+		// Save updated world state with debouncing
 		if (gameState) {
 			const updatedGameState = {
 				...gameState,
 				worldState: updatedWorldState,
 			};
-			await save(updatedGameState);
+			await debouncedSave(updatedGameState);
 		}
 	};
 

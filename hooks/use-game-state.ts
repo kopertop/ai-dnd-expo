@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { RACES } from '@/constants/races';
 import { Character } from '@/types/character';
@@ -30,28 +30,21 @@ export const useGameState = () => {
 
 	// Load game state from AsyncStorage
 	const load = useCallback(async () => {
-		console.log('🎮 GameState: Starting load...');
 		setLoading(true);
 		setError(null);
 		try {
 			const raw = await AsyncStorage.getItem(GAME_STATE_KEY);
-			console.log('📦 AsyncStorage data:', raw ? `Found ${raw.length} characters` : 'No data');
 			if (!raw) throw new Error('No game state found');
 			
 			const rawData = JSON.parse(raw);
-			console.log('📋 Parsed raw data:', JSON.stringify(rawData, null, 2));
 			
 			// Validate with schema
 			const parsed = GameStateSchema.parse(rawData);
-			console.log('✅ Schema validation passed');
 			setGameState(parsed);
 			
 			// Extract player character
 			const char = parsed.characters.find(c => c.id === parsed.playerCharacterId);
-			console.log('👤 Looking for character:', parsed.playerCharacterId);
-			console.log('👥 Available characters:', parsed.characters.map(c => c.id));
 			if (!char) throw new Error('Player character not found');
-			console.log('🎯 Found character:', char.name, 'Level', char.level, char.race, char.class);
 			setPlayerCharacter(char);
 		} catch (e: any) {
 			console.error('❌ GameState load error:', e);
@@ -70,9 +63,7 @@ export const useGameState = () => {
 	// Save game state to AsyncStorage
 	const save = useCallback(async (newGameState: GameState) => {
 		try {
-			console.log('💾 Saving game state...');
 			await AsyncStorage.setItem(GAME_STATE_KEY, JSON.stringify(newGameState));
-			console.log('✅ Game state saved successfully');
 			setGameState(newGameState);
 			
 			// Update player character
@@ -101,7 +92,6 @@ export const useGameState = () => {
 
 	// Clear all game data
 	const clear = useCallback(async () => {
-		console.log('🗑️ Clearing game state...');
 		await AsyncStorage.removeItem(GAME_STATE_KEY);
 		setGameState(null);
 		setPlayerCharacter(null);
@@ -113,8 +103,8 @@ export const useGameState = () => {
 		load();
 	}, [load]);
 
-	// Get character portrait image
-	const playerPortrait = getCharacterImage(playerCharacter);
+	// Memoized character portrait image for performance
+	const playerPortrait = useMemo(() => getCharacterImage(playerCharacter), [playerCharacter]);
 
 	return {
 		loading,

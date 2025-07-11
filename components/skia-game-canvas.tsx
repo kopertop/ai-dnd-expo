@@ -5,7 +5,7 @@ import {
 	Rect,
 	useCanvasRef,
 } from '@shopify/react-native-skia';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
@@ -40,6 +40,20 @@ export const SkiaGameCanvas: React.FC<SkiaGameCanvasProps> = ({
 	const [tiles, setTiles] = useState<TileData[]>([]);
 	const [playerPosition, setPlayerPosition] = useState({ x: 5, y: 5 });
 	const [cameraPosition, setCameraPosition] = useState({ x: 0, y: 0 });
+
+	// Memoized visible tiles for performance (viewport culling)
+	const visibleTiles = useMemo(() => {
+		const buffer = 2; // Extra tiles around viewport for smooth scrolling
+		const minX = Math.floor(-cameraPosition.x / TILE_SIZE) - buffer;
+		const maxX = Math.ceil((screenWidth - cameraPosition.x) / TILE_SIZE) + buffer;
+		const minY = Math.floor(-cameraPosition.y / TILE_SIZE) - buffer;
+		const maxY = Math.ceil((screenHeight - cameraPosition.y) / TILE_SIZE) + buffer;
+
+		return tiles.filter(tile => 
+			tile.x >= minX && tile.x <= maxX && 
+			tile.y >= minY && tile.y <= maxY,
+		);
+	}, [tiles, cameraPosition.x, cameraPosition.y, screenWidth, screenHeight]);
 
 	// Initialize test world
 	const createTestWorld = useCallback(() => {
@@ -149,8 +163,8 @@ export const SkiaGameCanvas: React.FC<SkiaGameCanvasProps> = ({
 		<GestureDetector gesture={tapGesture}>
 			<Canvas ref={canvasRef} style={{ flex: 1 }}>
 				<Group transform={[{ translateX: cameraPosition.x }, { translateY: cameraPosition.y }]}>
-					{/* Render tiles */}
-					{tiles.map((tile, index) => (
+					{/* Render tiles - only visible ones for performance */}
+					{visibleTiles.map((tile, index) => (
 						<Rect
 							key={`${tile.x}-${tile.y}-${index}`}
 							x={tile.x * TILE_SIZE}
@@ -161,8 +175,8 @@ export const SkiaGameCanvas: React.FC<SkiaGameCanvasProps> = ({
 						/>
 					))}
 
-					{/* Render tile borders */}
-					{tiles.map((tile, index) => (
+					{/* Render tile borders - only visible ones for performance */}
+					{visibleTiles.map((tile, index) => (
 						<Rect
 							key={`border-${tile.x}-${tile.y}-${index}`}
 							x={tile.x * TILE_SIZE}
