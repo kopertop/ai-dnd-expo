@@ -1,20 +1,90 @@
 import { Stack } from 'expo-router';
-import React, { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CharacterSheetModal } from '../components/character-sheet-modal';
+import { GameCanvas } from '../components/game-canvas';
 import { useGameState } from '../hooks/use-game-state';
 import { useInventoryManager } from '../hooks/use-inventory-manager';
+import { generateWorldForGameState } from '../services/world-generator';
 
 import { GameStatusBar } from '@/components/game-status-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { GameWorldState, Position } from '@/types/world-map';
 
 const GameScreen: React.FC = () => {
 	const [showSheet, setShowSheet] = useState(false);
-	const { loading, error, gameState, playerCharacter, playerPortrait } = useGameState();
+	const [worldState, setWorldState] = useState<GameWorldState | null>(null);
+	const [screenData, setScreenData] = useState(Dimensions.get('window'));
+	const { loading, error, gameState, playerCharacter, save } = useGameState();
 	const { inventory, equipped } = useInventoryManager();
+
+	// Track screen dimensions for responsive layout
+	useEffect(() => {
+		const onChange = (result: { window: any; screen: any }) => {
+			setScreenData(result.window);
+		};
+
+		const subscription = Dimensions.addEventListener('change', onChange);
+		return () => subscription?.remove();
+	}, []);
+
+	// Generate or load world state when game state is available
+	useEffect(() => {
+		if (gameState && !worldState) {
+			console.log('🗺️ Initializing world state...');
+			
+			// Check if world state already exists in game state
+			if (gameState.worldState) {
+				console.log('📖 Loading existing world state');
+				setWorldState(gameState.worldState);
+			} else {
+				console.log('🌍 Generating new world');
+				const newWorldState = generateWorldForGameState(gameState.gameWorld, gameState.startingArea);
+				setWorldState(newWorldState);
+				
+				// Save the generated world back to game state
+				const updatedGameState = {
+					...gameState,
+					worldState: newWorldState,
+				};
+				save(updatedGameState).catch(console.error);
+			}
+		}
+	}, [gameState, worldState]);
+
+	const handlePlayerMove = async (newPosition: Position) => {
+		if (!worldState) return;
+
+		console.log('🚶 Player moving to:', newPosition);
+		
+		const updatedWorldState = {
+			...worldState,
+			playerPosition: {
+				...worldState.playerPosition,
+				position: newPosition,
+				lastUpdated: Date.now(),
+			},
+		};
+
+		setWorldState(updatedWorldState);
+
+		// Save updated world state
+		if (gameState) {
+			const updatedGameState = {
+				...gameState,
+				worldState: updatedWorldState,
+			};
+			await save(updatedGameState);
+		}
+	};
+
+	const handleTileClick = (position: Position) => {
+		console.log('🎯 Tile clicked:', position);
+		// Could be used for movement, interaction, etc.
+	};
 
 	if (loading) {
 		return (
@@ -37,51 +107,38 @@ const GameScreen: React.FC = () => {
 		);
 	}
 
+	// Show loading while world is being generated
+	if (!worldState) {
+		return (
+			<ThemedView style={styles.container}>
+				<ActivityIndicator size="large" color="#C9B037" />
+				<ThemedText>
+					<Text>Generating world map...</Text>
+				</ThemedText>
+			</ThemedView>
+		);
+	}
+
 	return (
 		<SafeAreaView style={{ width: '100%', height: '100%' }}>
 			<Stack.Screen options={{ headerShown: false }} />
+			
+			{/* Game Status Bar */}
 			<GameStatusBar
 				gameState={gameState}
 				onPortraitPress={() => setShowSheet(true)}
 				style={styles.statusBarPinned}
 			/>
-			<ScrollView contentContainerStyle={[styles.container, { paddingTop: 120 }]}>
-				<ThemedText type="title">
-					<Text>Welcome back, {playerCharacter?.name || 'adventurer'}!</Text>
-				</ThemedText>
-				<View style={styles.infoBox}>
-					{playerCharacter ? (
-						<>
-							<ThemedText>
-								<Text>Race: {playerCharacter.race} | Class: {playerCharacter.class} | Level {playerCharacter.level}</Text>
-							</ThemedText>
-							<ThemedText>
-								<Text>World: {gameState?.gameWorld} | Area: {gameState?.startingArea}</Text>
-							</ThemedText>
-						</>
-					) : (
-						<>
-							<ThemedText>
-								<Text>Your character sheet is loading...</Text>
-							</ThemedText>
-							<ThemedText>
-								<Text>Tap your portrait above to view details</Text>
-							</ThemedText>
-						</>
-					)}
-				</View>
-				<View style={styles.sheetBox}>
-					<ThemedText type="subtitle">
-						<Text>Inventory Status</Text>
-					</ThemedText>
-					<ThemedText>
-						<Text>Items: {inventory.length}</Text>
-					</ThemedText>
-					<ThemedText>
-						<Text>Equipped: {Object.keys(equipped).length} slots</Text>
-					</ThemedText>
-				</View>
-			</ScrollView>
+
+			{/* Main Game Canvas */}
+			<View style={styles.gameContainer}>
+				<GameCanvas
+					worldState={worldState}
+					onPlayerMove={handlePlayerMove}
+					onTileClick={handleTileClick}
+				/>
+			</View>
+
 			{/* Character sheet modal */}
 			<CharacterSheetModal
 				visible={showSheet}
@@ -95,44 +152,17 @@ export default GameScreen;
 
 const styles = StyleSheet.create({
 	container: {
-		flexGrow: 1,
+		flex: 1,
 		alignItems: 'center',
 		justifyContent: 'center',
 		padding: 20,
-		backgroundColor: 'transparent',
+		backgroundColor: '#F9F6EF',
 	},
-	infoBox: {
-		marginTop: 24,
-		marginBottom: 16,
-		padding: 16,
-		borderRadius: 10,
-		backgroundColor: '#F5F2E6',
+	gameContainer: {
+		flex: 1,
 		width: '100%',
-		maxWidth: 500,
-	},
-	sheetBox: {
-		marginTop: 12,
-		padding: 16,
-		borderRadius: 10,
-		backgroundColor: '#FFF8E1',
-		width: '100%',
-		maxWidth: 500,
-	},
-	statsRow: {
-		flexDirection: 'row',
-		flexWrap: 'wrap',
-		gap: 12,
-		marginTop: 8,
-	},
-	statItem: {
-		marginRight: 16,
-		marginBottom: 8,
-	},
-	errorText: {
-		marginTop: 16,
-		marginBottom: 8,
-		color: '#dc3545',
-		textAlign: 'center',
+		marginTop: 120, // Space for status bar
+		backgroundColor: '#2c5530',
 	},
 	statusBarPinned: {
 		width: '100%',
