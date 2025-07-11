@@ -73,7 +73,7 @@ export const AttributePicker: React.FC<AttributePickerProps> = ({ classOption, i
 					Points Left: {pointsRemaining}
 				</Text>
 				<View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', width: containerWidth, alignSelf: 'center' }}>
-					{STAT_KEYS.map((key, idx) => (
+					{STAT_KEYS.map((key) => (
 						<View key={key} style={[styles.card, {
 							width: cardWidth,
 							height: cardHeight,

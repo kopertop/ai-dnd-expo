@@ -8,10 +8,9 @@ import { ClassOption } from '../types/class-option';
 
 interface ClassChooserProps {
 	onSelect: (classOption: ClassOption) => void;
-	initialClassId?: string;
 }
 
-export const ClassChooser: React.FC<ClassChooserProps> = ({ onSelect, initialClassId }) => {
+export const ClassChooser: React.FC<ClassChooserProps> = ({ onSelect }) => {
 	const [customName, setCustomName] = useState('');
 	const [customDesc, setCustomDesc] = useState('');
 	const [showCustomForm, setShowCustomForm] = useState(false);

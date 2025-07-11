@@ -8,10 +8,9 @@ import { RaceOption } from '../types/race-option';
 
 interface RaceChooserProps {
 	onSelect: (race: RaceOption) => void;
-	initialRaceId?: string;
 }
 
-export const RaceChooser: React.FC<RaceChooserProps> = ({ onSelect, initialRaceId }) => {
+export const RaceChooser: React.FC<RaceChooserProps> = ({ onSelect }) => {
 	const [customName, setCustomName] = useState('');
 	const [customDesc, setCustomDesc] = useState('');
 	const [showCustomForm, setShowCustomForm] = useState(false);

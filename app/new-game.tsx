@@ -25,7 +25,6 @@ import { ThemedView } from '@/components/themed-view';
 
 type WizardStep = 'world' | 'location' | 'race' | 'class' | 'attributes' | 'skills' | 'character';
 
-const getDefaultBaseStats = (): StatBlock => ({ STR: 8, DEX: 8, CON: 8, INT: 8, WIS: 8, CHA: 8 });
 
 const NewGameScreen: React.FC = () => {
 	const [currentStep, setCurrentStep] = useState<WizardStep>('world');
@@ -109,10 +108,6 @@ const NewGameScreen: React.FC = () => {
 		setCurrentStep('character');
 	};
 
-	const handleCharacterFinish = (characterData: any) => {
-		setPendingCharacter(characterData);
-		setShowConfirm(true);
-	};
 
 	const handleConfirmStart = async () => {
 		console.log('🚀 Starting character creation...');
@@ -254,8 +249,6 @@ const NewGameScreen: React.FC = () => {
 	};
 
 	const renderStepContent = () => {
-		let baseStats: StatBlock | undefined;
-		let racialBonuses: Partial<StatBlock> | undefined;
 
 		switch (currentStep) {
 		case 'world':

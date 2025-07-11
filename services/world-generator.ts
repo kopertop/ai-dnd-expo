@@ -127,7 +127,6 @@ export class WorldGenerator {
 	}
 
 	generateWorld(): GameWorldState {
-		console.log('🌍 Generating world:', this.config.worldName);
     
 		const worldMap = this.createWorldMap();
 		const playerPosition = this.createInitialPlayerPosition(worldMap);
@@ -148,7 +147,6 @@ export class WorldGenerator {
 			},
 		};
 
-		console.log('✅ World generation complete');
 		return gameWorldState;
 	}
 
@@ -199,11 +197,11 @@ export class WorldGenerator {
 		};
 
 		const tiles = this.generateRegionTiles(bounds, biome);
-		const pointsOfInterest = this.generatePOIs(bounds, biome);
+		const pointsOfInterest = this.generatePOIs(bounds);
 
 		return {
 			id: regionId,
-			name: this.generateRegionName(biome, regionX, regionY),
+			name: this.generateRegionName(biome),
 			biome,
 			bounds,
 			tiles,
@@ -280,7 +278,7 @@ export class WorldGenerator {
 		return terrain !== 'water' && terrain !== 'mountain';
 	}
 
-	private generatePOIs(bounds: { topLeft: Position; bottomRight: Position }, biome: BiomeType): PointOfInterest[] {
+	private generatePOIs(bounds: { topLeft: Position; bottomRight: Position }): PointOfInterest[] {
 		const pois: PointOfInterest[] = [];
 		const regionArea = (bounds.bottomRight.x - bounds.topLeft.x) * (bounds.bottomRight.y - bounds.topLeft.y);
 		const poiCount = Math.floor(regionArea / 400); // Roughly 1 POI per 400 tiles
@@ -291,7 +289,7 @@ export class WorldGenerator {
       
 			const poi: PointOfInterest = {
 				id: `poi-${x}-${y}`,
-				name: this.generatePOIName(biome),
+				name: this.generatePOIName(),
 				type: this.random.choice(['settlement', 'landmark', 'resource', 'dungeon']),
 				position: { x, y },
 				discovered: false,
@@ -316,7 +314,7 @@ export class WorldGenerator {
 		return areaMap[startingArea] || 'temperate_forest';
 	}
 
-	private generateRegionName(biome: BiomeType, x: number, y: number): string {
+	private generateRegionName(biome: BiomeType): string {
 		const prefixes: Record<BiomeType, string[]> = {
 			temperate_forest: ['Verdant', 'Whispering', 'Ancient', 'Misty'],
 			tropical_forest: ['Lush', 'Emerald', 'Wild', 'Tangled'],
@@ -347,7 +345,7 @@ export class WorldGenerator {
 		return `${prefix} ${suffix}`;
 	}
 
-	private generatePOIName(biome: BiomeType): string {
+	private generatePOIName(): string {
 		const names = [
 			'Ancient Ruins', 'Trader\'s Rest', 'Hidden Shrine', 'Bandit Camp',
 			'Crystal Cave', 'Forgotten Temple', 'Merchant\'s Guild', 'Old Watchtower',

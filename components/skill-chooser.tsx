@@ -96,7 +96,7 @@ export const SkillChooser: React.FC<SkillChooserProps> = ({ onSelect, initialSki
 					<Text style={newGameStyles.title}>Choose {maxSkills} Skills</Text>
 					{/* Top slots */}
 					<View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 24, width: containerWidth, alignSelf: 'center' }}>
-						{selectedSkills.map((skill, idx) => (
+						{selectedSkills.map((skill) => (
 							<TouchableOpacity
 								key={skill.id}
 								style={[styles.card, { width: topSlotWidth, height: topSlotHeight, borderColor: '#C9B037', borderWidth: 4, marginHorizontal: CARD_GAP / 2 }]}

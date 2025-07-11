@@ -53,30 +53,6 @@ export const SkiaGameCanvas: React.FC<SkiaGameCanvasProps> = ({
 	const [tiles, setTiles] = useState<TileData[]>([]);
 	const [playerPosition, setPlayerPosition] = useState({ x: 5, y: 5 });
 
-	// Initialize test world
-	useEffect(() => {
-		if (worldState) {
-			loadWorldData(worldState);
-		} else {
-			createTestWorld();
-		}
-	}, [worldState]);
-
-	// Center camera on player initially
-	useEffect(() => {
-		const centerX = -playerPosition.x * TILE_SIZE + screenWidth / 2;
-		const centerY = -playerPosition.y * TILE_SIZE + screenHeight / 2;
-
-		cameraX.value = withTiming(centerX, {
-			duration: 300,
-			easing: Easing.inOut(Easing.ease),
-		});
-		cameraY.value = withTiming(centerY, {
-			duration: 300,
-			easing: Easing.inOut(Easing.ease),
-		});
-	}, [playerPosition, screenWidth, screenHeight, cameraX, cameraY]);
-
 	const createTestWorld = useCallback(() => {
 		const newTiles: TileData[] = [];
 
@@ -141,6 +117,30 @@ export const SkiaGameCanvas: React.FC<SkiaGameCanvasProps> = ({
 		}
 	}, [playerX, playerY]);
 
+	// Initialize test world
+	useEffect(() => {
+		if (worldState) {
+			loadWorldData(worldState);
+		} else {
+			createTestWorld();
+		}
+	}, [worldState, loadWorldData, createTestWorld]);
+
+	// Center camera on player initially
+	useEffect(() => {
+		const centerX = -playerPosition.x * TILE_SIZE + screenWidth / 2;
+		const centerY = -playerPosition.y * TILE_SIZE + screenHeight / 2;
+
+		cameraX.value = withTiming(centerX, {
+			duration: 300,
+			easing: Easing.inOut(Easing.ease),
+		});
+		cameraY.value = withTiming(centerY, {
+			duration: 300,
+			easing: Easing.inOut(Easing.ease),
+		});
+	}, [playerPosition, screenWidth, screenHeight, cameraX, cameraY]);
+
 	// Handle player movement
 	const movePlayer = useCallback((newPos: Position) => {
 		if (!onPlayerMove) return;
@@ -196,7 +196,7 @@ export const SkiaGameCanvas: React.FC<SkiaGameCanvasProps> = ({
 	return (
 		<GestureDetector gesture={tapGesture}>
 			<Canvas ref={canvasRef} style={{ flex: 1 }}>
-				<Group transform={[{ translateX: cameraX }, { translateY: cameraY }]}>
+				<Group transform={[{ translateX: cameraX.value }, { translateY: cameraY.value }]}>
 					{/* Render tiles */}
 					{tiles.map((tile, index) => (
 						<Rect

@@ -8,10 +8,9 @@ import { LocationOption } from '../types/location-option';
 
 interface LocationChooserProps {
 	onSelect: (location: LocationOption) => void;
-	initialLocationId?: string;
 }
 
-export const LocationChooser: React.FC<LocationChooserProps> = ({ onSelect, initialLocationId }) => {
+export const LocationChooser: React.FC<LocationChooserProps> = ({ onSelect }) => {
 	const [customName, setCustomName] = useState('');
 	const [customDesc, setCustomDesc] = useState('');
 	const [showCustomForm, setShowCustomForm] = useState(false);
