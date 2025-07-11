@@ -60,13 +60,28 @@ const GameScreen: React.FC = () => {
 
 		console.log('🚶 Player moving to:', newPosition);
 		
+		// Calculate facing direction based on movement
+		const currentPos = worldState.playerPosition.position;
+		let facing = worldState.playerPosition.facing;
+		
+		if (newPosition.x > currentPos.x) facing = 'east';
+		else if (newPosition.x < currentPos.x) facing = 'west';
+		else if (newPosition.y > currentPos.y) facing = 'south';
+		else if (newPosition.y < currentPos.y) facing = 'north';
+		
 		const updatedWorldState = {
 			...worldState,
 			playerPosition: {
 				...worldState.playerPosition,
 				position: newPosition,
+				facing: facing as 'north' | 'south' | 'east' | 'west',
 				lastUpdated: Date.now(),
 			},
+			// Mark the new tile as explored
+			exploredTiles: [
+				...worldState.exploredTiles,
+				`tile-${newPosition.x}-${newPosition.y}`,
+			].filter((tile, index, arr) => arr.indexOf(tile) === index), // Remove duplicates
 		};
 
 		setWorldState(updatedWorldState);
