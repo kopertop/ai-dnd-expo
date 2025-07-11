@@ -2,6 +2,7 @@ import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Dimensions, PanResponder, ScrollView, Text, View } from 'react-native';
 
+import { AttributePicker } from '../components/attribute-picker';
 import { CharacterReview } from '../components/character-review';
 import { ClassChooser } from '../components/class-chooser';
 import { LocationChooser } from '../components/location-chooser';
@@ -22,7 +23,7 @@ import { WorldOption } from '../types/world-option';
 import { ThemedView } from '@/components/themed-view';
 
 
-type WizardStep = 'world' | 'location' | 'race' | 'class' | 'skills' | 'character';
+type WizardStep = 'world' | 'location' | 'race' | 'class' | 'attributes' | 'skills' | 'character';
 
 const getDefaultBaseStats = (): StatBlock => ({ STR: 8, DEX: 8, CON: 8, INT: 8, WIS: 8, CHA: 8 });
 
@@ -32,6 +33,7 @@ const NewGameScreen: React.FC = () => {
 	const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
 	const [selectedRace, setSelectedRace] = useState<RaceOption | null>(null);
 	const [selectedClass, setSelectedClass] = useState<ClassOption | null>(null);
+	const [selectedAttributes, setSelectedAttributes] = useState<StatBlock | null>(null);
 	const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
 	const [characterName, setCharacterName] = useState('');
 	const [customStory, setCustomStory] = useState('');
@@ -94,6 +96,11 @@ const NewGameScreen: React.FC = () => {
 
 	const handleClassSelect = (classOption: ClassOption) => {
 		setSelectedClass(classOption);
+		setCurrentStep('attributes');
+	};
+
+	const handleAttributesConfirm = (attributes: StatBlock) => {
+		setSelectedAttributes(attributes);
 		setCurrentStep('skills');
 	};
 
@@ -205,7 +212,7 @@ const NewGameScreen: React.FC = () => {
 
 	// Add this function to handle going back a step
 	const handlePreviousStep = () => {
-		const steps: WizardStep[] = ['world', 'location', 'race', 'class', 'skills', 'character'];
+		const steps: WizardStep[] = ['world', 'location', 'race', 'class', 'attributes', 'skills', 'character'];
 		const currentIndex = steps.indexOf(currentStep);
 		if (currentIndex > 0) {
 			setCurrentStep(steps[currentIndex - 1]);
@@ -213,12 +220,12 @@ const NewGameScreen: React.FC = () => {
 	};
 
 	const getStepNumber = (step: WizardStep): number => {
-		const steps = ['world', 'location', 'race', 'class', 'skills', 'character'];
+		const steps = ['world', 'location', 'race', 'class', 'attributes', 'skills', 'character'];
 		return steps.indexOf(step);
 	};
 
 	const renderStepIndicator = () => {
-		const steps = ['world', 'location', 'race', 'class', 'skills', 'character'];
+		const steps = ['world', 'location', 'race', 'class', 'attributes', 'skills', 'character'];
 		const currentStepIndex = getStepNumber(currentStep);
 
 		return (
@@ -275,6 +282,13 @@ const NewGameScreen: React.FC = () => {
 					<ClassChooser onSelect={handleClassSelect} />
 				</View>
 			);
+		case 'attributes':
+			if (!selectedClass) return null;
+			return (
+				<View style={{ flex: 1, position: 'relative' }}>
+					<AttributePicker classOption={selectedClass} onConfirm={handleAttributesConfirm} />
+				</View>
+			);
 		case 'skills':
 			return (
 				<View style={{ flex: 1, position: 'relative' }}>
@@ -282,14 +296,14 @@ const NewGameScreen: React.FC = () => {
 				</View>
 			);
 		case 'character':
-			if (!selectedRace || !selectedClass) {
+			if (!selectedRace || !selectedClass || !selectedAttributes) {
 				return (
 					<View style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}>
-						<Text>Missing race or class selection.</Text>
+						<Text>Missing race, class, or attributes selection.</Text>
 					</View>
 				);
 			}
-			baseStats = getDefaultBaseStats();
+			baseStats = selectedAttributes;
 			racialBonuses = selectedRace.statBonuses || {};
 			return (
 				<View style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}>
