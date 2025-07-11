@@ -16,7 +16,6 @@ const POINT_BUY_COST: Record<number, number> = {
 const MIN_STAT = 8;
 const MAX_STAT = 15;
 const POINT_BUY_TOTAL = 27;
-const MAX_SKILLS = 4;
 
 function getPointBuyTotal(stats: StatBlock): number {
 	return STAT_KEYS.reduce((sum: number, key: StatKey) => sum + POINT_BUY_COST[stats[key]], 0);
@@ -170,13 +169,17 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 						<Animated.View style={[styles.animatedSection, { backgroundColor: descBg }]}>
 							<View>
 								<TextInput
-									style={[styles.backgroundInput, invalidFields.description && styles.inputError]}
+									style={[
+										styles.backgroundInput,
+										invalidFields.description && styles.inputError,
+										{ height: 800 },
+									]}
 									placeholder="Background / Description"
 									value={description}
 									onChangeText={handleDescChange}
 									multiline
-									numberOfLines={5}
-									maxLength={400}
+									numberOfLines={20}
+									maxLength={1000}
 								/>
 							</View>
 						</Animated.View>
@@ -320,7 +323,8 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 		color: '#3B2F1B',
 		marginBottom: 12,
-		minHeight: 80,
+		minHeight: 800,
+		height: 800,
 		borderWidth: 1,
 		borderColor: '#C9B037',
 		padding: 8,

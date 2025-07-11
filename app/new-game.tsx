@@ -1,15 +1,15 @@
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Dimensions, PanResponder, ScrollView, Text, View } from 'react-native';
+import { Alert, Dimensions, PanResponder, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { AttributePicker } from '../components/attribute-picker';
-import { CharacterReview } from '../components/character-review';
 import { ClassChooser } from '../components/class-chooser';
 import { LocationChooser } from '../components/location-chooser';
 import { RaceChooser } from '../components/race-chooser';
 import { SkillChooser } from '../components/skill-chooser';
 import { ConfirmModal } from '../components/ui/confirm-modal';
 import { WorldChooser } from '../components/world-chooser';
+import { generateRandomBackground } from '../constants/backgrounds';
 import { useGameState } from '../hooks/use-game-state';
 import { useInventoryManager } from '../hooks/use-inventory-manager';
 import { newGameStyles } from '../styles/new-game.styles';
@@ -303,21 +303,81 @@ const NewGameScreen: React.FC = () => {
 					</View>
 				);
 			}
-			baseStats = selectedAttributes;
-			racialBonuses = selectedRace.statBonuses || {};
+			// Handler for generating a random background
+			const handleRandomBackground = (raceName: string, className: string) => {
+				const randomBg = generateRandomBackground(raceName, className);
+				setCustomStory(randomBg);
+			};
 			return (
-				<View style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}>
-					<CharacterReview
-						name={characterName}
-						description={customStory}
-						race={selectedRace}
-						classOption={selectedClass}
-						baseStats={baseStats}
-						racialBonuses={racialBonuses}
-						onBack={handlePreviousStep}
-						onFinish={handleCharacterFinish}
-						skills={selectedSkills.map(s => s.id)}
-					/>
+				<View style={{ flex: 1, position: 'relative' }}>
+					<ScrollView contentContainerStyle={[newGameStyles.scrollViewContent, { paddingBottom: 96 }]}
+						keyboardShouldPersistTaps="handled"
+					>
+						<Text style={newGameStyles.title}>Finalize Your Character</Text>
+						<View style={{ marginBottom: 24 }}>
+							<Text style={newGameStyles.label}>Character Name</Text>
+							<TextInput
+								style={newGameStyles.input}
+								placeholder="Enter character name"
+								value={characterName}
+								onChangeText={setCharacterName}
+								maxLength={32}
+							/>
+						</View>
+						<View style={{ marginBottom: 24 }}>
+							<Text style={newGameStyles.label}>Background / Description</Text>
+							<TouchableOpacity
+								style={[newGameStyles.submitButton, { marginBottom: 10, width: '100%' }]}
+								onPress={() => handleRandomBackground(selectedRace.name, selectedClass.name)}
+							>
+								<Text style={newGameStyles.submitButtonText}>Generate Random Background</Text>
+							</TouchableOpacity>
+							<TextInput
+								style={[newGameStyles.input, newGameStyles.textArea]}
+								placeholder="Describe your character's background, goals, or story..."
+								value={customStory}
+								onChangeText={setCustomStory}
+								multiline
+								numberOfLines={5}
+								maxLength={400}
+							/>
+						</View>
+					</ScrollView>
+					<View style={{
+						position: 'absolute',
+						left: 0,
+						right: 0,
+						bottom: 0,
+						backgroundColor: 'rgba(255,255,255,0.95)',
+						padding: 0,
+						margin: 0,
+						alignItems: 'center',
+						borderColor: '#eee',
+						zIndex: 100,
+					}}>
+						<TouchableOpacity
+							style={[
+								characterName.trim() && customStory.trim() ? newGameStyles.submitButton : newGameStyles.submitButtonDisabled,
+								{
+									width: '100%',
+									margin: 0,
+									opacity: 1,
+									borderRadius: 0,
+									borderTopLeftRadius: 0,
+									borderTopRightRadius: 0,
+								},
+							]}
+							disabled={!(characterName.trim() && customStory.trim())}
+							onPress={() => handleCharacterFinish({
+								name: characterName,
+								description: customStory,
+								stats: selectedAttributes,
+								skills: selectedSkills.map(s => s.id),
+							})}
+						>
+							<Text style={newGameStyles.submitButtonText}>Start Game</Text>
+						</TouchableOpacity>
+					</View>
 				</View>
 			);
 		default:
