@@ -6,6 +6,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -16,11 +17,21 @@ const useMobileAudioAutoplay = () => {
 	const player = useAudioPlayer(audioSource);
 	useEffect(() => {
 		if (Platform.OS !== 'web' && player) {
-			player.loop = true;
-			player.volume = 0.5;
-			player.play();
+			try {
+				player.loop = true;
+				player.volume = 0.5;
+				player.play();
+			} catch (error) {
+				console.warn('Audio autoplay failed:', error);
+			}
 			return () => {
-				player.pause();
+				try {
+					if (player && typeof player.pause === 'function') {
+						player.pause();
+					}
+				} catch (error) {
+					console.warn('Audio pause failed:', error);
+				}
 			};
 		}
 	}, [player]);
@@ -37,25 +48,35 @@ const AudioButton: React.FC = () => {
 	// Set up looping, volume, and try autoplay on mount
 	useEffect(() => {
 		if (!player) return;
-		player.loop = true;
-		player.volume = 0.5;
+		try {
+			player.loop = true;
+			player.volume = 0.5;
+		} catch (error) {
+			console.warn('Audio setup failed:', error);
+		}
 		// Clean up on unmount
 		return () => {
-			player.pause();
+			try {
+				if (player && typeof player.pause === 'function') {
+					player.pause();
+				}
+			} catch (error) {
+				console.warn('Audio cleanup failed:', error);
+			}
 		};
 	}, [player]);
 
 	const handleToggleSound = async () => {
-		if (isPlaying) {
-			player.pause();
-			setIsPlaying(false);
-		} else {
-			try {
+		try {
+			if (isPlaying) {
+				player.pause();
+				setIsPlaying(false);
+			} else {
 				await player.play();
 				setIsPlaying(true);
-			} catch (e) {
-				console.error('PLAYBACK FAILED', e);
 			}
+		} catch (error) {
+			console.warn('Audio toggle failed:', error);
 		}
 	};
 
@@ -91,20 +112,22 @@ const RootLayout: React.FC = () => {
 	}
 
 	return (
-		<ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-			<Stack initialRouteName="index">
-				<Stack.Screen name="index" options={{ headerShown: false }} />
-				<Stack.Screen name="new-game" options={{ headerShown: false }} />
-				<Stack.Screen name="+not-found" />
-			</Stack>
-			<StatusBar style="auto" />
-			{/* Only show sound button on web */}
-			{Platform.OS === 'web' && (
-				<View pointerEvents="box-none" style={styles.soundButtonContainer}>
-					<AudioButton />
-				</View>
-			)}
-		</ThemeProvider>
+		<GestureHandlerRootView style={{ flex: 1 }}>
+			<ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+				<Stack initialRouteName="index">
+					<Stack.Screen name="index" options={{ headerShown: false }} />
+					<Stack.Screen name="new-game" options={{ headerShown: false }} />
+					<Stack.Screen name="+not-found" />
+				</Stack>
+				<StatusBar style="auto" />
+				{/* Only show sound button on web */}
+				{Platform.OS === 'web' && (
+					<View pointerEvents="box-none" style={styles.soundButtonContainer}>
+						<AudioButton />
+					</View>
+				)}
+			</ThemeProvider>
+		</GestureHandlerRootView>
 	);
 };
 

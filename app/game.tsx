@@ -1,12 +1,11 @@
 import { Stack } from 'expo-router';
-import React, { useState, useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CharacterSheetModal } from '../components/character-sheet-modal';
 import { GameCanvas } from '../components/game-canvas';
 import { useGameState } from '../hooks/use-game-state';
-import { useInventoryManager } from '../hooks/use-inventory-manager';
 import { generateWorldForGameState } from '../services/world-generator';
 
 import { GameStatusBar } from '@/components/game-status-bar';
@@ -14,61 +13,63 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { GameWorldState, Position } from '@/types/world-map';
 
+
 const GameScreen: React.FC = () => {
 	const [showSheet, setShowSheet] = useState(false);
 	const [worldState, setWorldState] = useState<GameWorldState | null>(null);
-	const [screenData, setScreenData] = useState(Dimensions.get('window'));
-	const { loading, error, gameState, playerCharacter, save } = useGameState();
-	const { inventory, equipped } = useInventoryManager();
+	const { loading, gameState, save } = useGameState();
+	const [saveError, setSaveError] = useState<string | null>(null);
 
 	// Track screen dimensions for responsive layout
 	useEffect(() => {
-		const onChange = (result: { window: any; screen: any }) => {
-			setScreenData(result.window);
-		};
-
-		const subscription = Dimensions.addEventListener('change', onChange);
-		return () => subscription?.remove();
+		// Responsive layout logic placeholder (currently unused)
+		// If needed, add logic to handle screen size changes here
 	}, []);
 
 	// Generate or load world state when game state is available
 	useEffect(() => {
 		if (gameState && !worldState) {
-			console.log('🗺️ Initializing world state...');
-			
+			console.warn('🗺️ Initializing world state...');
 			// Check if world state already exists in game state
 			if (gameState.worldState) {
-				console.log('📖 Loading existing world state');
+				console.warn('📖 Loading existing world state');
 				setWorldState(gameState.worldState);
 			} else {
-				console.log('🌍 Generating new world');
+				console.warn('🌍 Generating new world');
 				const newWorldState = generateWorldForGameState(gameState.gameWorld, gameState.startingArea);
 				setWorldState(newWorldState);
-				
 				// Save the generated world back to game state
 				const updatedGameState = {
-					...gameState,
-					worldState: newWorldState,
+	  ...gameState,
+	  worldState: newWorldState,
 				};
-				save(updatedGameState).catch(console.error);
+				save(updatedGameState)
+	  .catch((err) => {
+						setSaveError('Failed to save world state. Changes may not persist.');
+						console.error(err);
+	  });
 			}
 		}
-	}, [gameState, worldState]);
+	}, [gameState, worldState, save]);
 
 	const handlePlayerMove = async (newPosition: Position) => {
 		if (!worldState) return;
 
-		console.log('🚶 Player moving to:', newPosition);
-		
+		console.warn('🚶 Player moving to:', newPosition);
+
 		// Calculate facing direction based on movement
 		const currentPos = worldState.playerPosition.position;
-		let facing = worldState.playerPosition.facing;
-		
-		if (newPosition.x > currentPos.x) facing = 'east';
-		else if (newPosition.x < currentPos.x) facing = 'west';
-		else if (newPosition.y > currentPos.y) facing = 'south';
-		else if (newPosition.y < currentPos.y) facing = 'north';
-		
+		let facing: 'north' | 'south' | 'east' | 'west' = worldState.playerPosition.facing;
+		if (newPosition.x > currentPos.x && newPosition.y === currentPos.y) facing = 'east';
+		else if (newPosition.x < currentPos.x && newPosition.y === currentPos.y) facing = 'west';
+		else if (newPosition.y > currentPos.y && newPosition.x === currentPos.x) facing = 'south';
+		else if (newPosition.y < currentPos.y && newPosition.x === currentPos.x) facing = 'north';
+		// If movement is diagonal or teleport, keep previous facing
+
+		// Mark the new tile as explored, using a Set for deduplication
+		const newTile = `tile-${newPosition.x}-${newPosition.y}`;
+		const exploredSet = new Set(worldState.exploredTiles);
+		exploredSet.add(newTile);
 		const updatedWorldState = {
 			...worldState,
 			playerPosition: {
@@ -77,11 +78,7 @@ const GameScreen: React.FC = () => {
 				facing: facing as 'north' | 'south' | 'east' | 'west',
 				lastUpdated: Date.now(),
 			},
-			// Mark the new tile as explored
-			exploredTiles: [
-				...worldState.exploredTiles,
-				`tile-${newPosition.x}-${newPosition.y}`,
-			].filter((tile, index, arr) => arr.indexOf(tile) === index), // Remove duplicates
+			exploredTiles: Array.from(exploredSet),
 		};
 
 		setWorldState(updatedWorldState);
@@ -97,7 +94,7 @@ const GameScreen: React.FC = () => {
 	};
 
 	const handleTileClick = (position: Position) => {
-		console.log('🎯 Tile clicked:', position);
+		console.warn('🎯 Tile clicked:', position);
 		// Could be used for movement, interaction, etc.
 	};
 
@@ -114,30 +111,46 @@ const GameScreen: React.FC = () => {
 
 	if (!gameState) {
 		return (
-			<ThemedView style={styles.container}>
+	  <ThemedView style={styles.container}>
 				<ThemedText type="title">
-					<Text>No saved game found.</Text>
+		  <Text>No saved game found.</Text>
 				</ThemedText>
-			</ThemedView>
+				<ThemedText style={{ marginTop: 8 }}>
+		  <Text>Please start a new game from the main menu.</Text>
+				</ThemedText>
+				{saveError && (
+	  <ThemedText style={{ marginTop: 12, color: 'red' }}>
+						{saveError}
+	  </ThemedText>
+				)}
+	  </ThemedView>
 		);
 	}
 
 	// Show loading while world is being generated
 	if (!worldState) {
 		return (
-			<ThemedView style={styles.container}>
+	  <ThemedView style={styles.container}>
 				<ActivityIndicator size="large" color="#C9B037" />
 				<ThemedText>
-					<Text>Generating world map...</Text>
+		  <Text>Generating world map...</Text>
 				</ThemedText>
-			</ThemedView>
+				<ThemedText style={{ marginTop: 8 }}>
+		  <Text>If this takes too long, try restarting the app or starting a new game.</Text>
+				</ThemedText>
+				{saveError && (
+	  <ThemedText style={{ marginTop: 12, color: 'red' }}>
+						{saveError}
+	  </ThemedText>
+				)}
+	  </ThemedView>
 		);
 	}
 
 	return (
-		<SafeAreaView style={{ width: '100%', height: '100%' }}>
+	  <SafeAreaView style={{ width: '100%', height: '100%' }}>
 			<Stack.Screen options={{ headerShown: false }} />
-			
+
 			{/* Game Status Bar */}
 			<GameStatusBar
 				gameState={gameState}
@@ -159,7 +172,14 @@ const GameScreen: React.FC = () => {
 				visible={showSheet}
 				onClose={() => setShowSheet(false)}
 			/>
-		</SafeAreaView>
+
+			{/* Save error feedback */}
+			{saveError && (
+	  <ThemedText style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', color: 'red', zIndex: 999 }}>
+					{saveError}
+	  </ThemedText>
+			)}
+	  </SafeAreaView>
 	);
 };
 
@@ -176,7 +196,7 @@ const styles = StyleSheet.create({
 	gameContainer: {
 		flex: 1,
 		width: '100%',
-		marginTop: 120, // Space for status bar
+		// Removed marginTop so the map starts directly below the header bar
 		backgroundColor: '#2c5530',
 	},
 	statusBarPinned: {

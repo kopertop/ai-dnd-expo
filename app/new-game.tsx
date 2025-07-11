@@ -295,7 +295,7 @@ const NewGameScreen: React.FC = () => {
 					<SkillChooser onSelect={handleSkillsSelect} initialSkills={selectedSkills} maxSkills={4} />
 				</View>
 			);
-		case 'character':
+		case 'character': {
 			if (!selectedRace || !selectedClass || !selectedAttributes) {
 				return (
 					<View style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}>
@@ -336,7 +336,7 @@ const NewGameScreen: React.FC = () => {
 							<TextInput
 								style={[
 									newGameStyles.input,
-									isMobile && { fontSize: 16, paddingVertical: 12 }
+									isMobile && { fontSize: 16, paddingVertical: 12 },
 								]}
 								placeholder="Enter character name"
 								value={characterName}
@@ -355,7 +355,7 @@ const NewGameScreen: React.FC = () => {
 										marginBottom: 10, 
 										width: '100%',
 										paddingVertical: isMobile ? 14 : 10,
-									}
+									},
 								]}
 								onPress={() => handleRandomBackground(selectedRace.name, selectedClass.name)}
 							>
@@ -373,7 +373,7 @@ const NewGameScreen: React.FC = () => {
 										textAlignVertical: 'top',
 										borderWidth: 2,
 										borderRadius: 8,
-									}
+									},
 								]}
 								placeholder="Describe your character's background, goals, or story..."
 								value={customStory}
@@ -515,6 +515,7 @@ const NewGameScreen: React.FC = () => {
 					</View>
 				</View>
 			);
+		}
 		default:
 			return null;
 		}

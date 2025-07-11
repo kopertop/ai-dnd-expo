@@ -1,6 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { getCharacterImage } from '@/hooks/use-game-state';
@@ -19,7 +20,7 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 }) => {
 	const playerCharacter = gameState.characters.find(c => c.id === gameState.playerCharacterId);
 	return (
-		<View style={[styles.statusBarWrapper, style]}>
+		<SafeAreaView style={[styles.statusBarWrapper, style]}>
 			{/* Portrait (left, hanging) */}
 			<TouchableOpacity
 				style={styles.portraitWrapper}
@@ -59,7 +60,7 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 					</View>
 				</View>
 			</View>
-		</View>
+		</SafeAreaView>
 	);
 };
 
