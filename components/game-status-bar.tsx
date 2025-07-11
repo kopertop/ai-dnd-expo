@@ -1,6 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -18,45 +18,83 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 	style,
 	onPortraitPress,
 }) => {
+	const [screenData, setScreenData] = useState(Dimensions.get('window'));
 	const playerCharacter = gameState.characters.find(c => c.id === gameState.playerCharacterId);
+	
+	// Track screen dimensions for responsive layout
+	useEffect(() => {
+		const onChange = (result: { window: any; screen: any }) => {
+			setScreenData(result.window);
+		};
+
+		const subscription = Dimensions.addEventListener('change', onChange);
+		return () => subscription?.remove();
+	}, []);
+
+	// Determine if we should use mobile layout
+	const isMobile = screenData.width < 768;
+
 	return (
-		<SafeAreaView style={[styles.statusBarWrapper, style]}>
+		<SafeAreaView style={[styles.statusBarWrapper, isMobile && styles.statusBarWrapperMobile, style]}>
 			{/* Portrait (left, hanging) */}
 			<TouchableOpacity
-				style={styles.portraitWrapper}
+				style={[styles.portraitWrapper, isMobile && styles.portraitWrapperMobile]}
 				onPress={onPortraitPress}
 				activeOpacity={0.7}
 			>
 				<Image
 					source={getCharacterImage(playerCharacter)}
-					style={styles.portrait}
+					style={[styles.portrait, isMobile && styles.portraitMobile]}
 				/>
 			</TouchableOpacity>
 			{/* Centered info */}
-			<View style={styles.centerCol}>
-				<View style={styles.statusBar}>
-					<View style={styles.infoRow}>
-						<ThemedText type="title" style={styles.nameText}>
-							<Text>{playerCharacter?.name}</Text>
-						</ThemedText>
-						<ThemedText style={styles.metaText}>
-							<Text>{playerCharacter?.race} / {playerCharacter?.class}</Text>
-						</ThemedText>
-						<ThemedText style={styles.statText}>
-							<Text>HP: {playerCharacter?.health} / {playerCharacter?.maxHealth}</Text>
-						</ThemedText>
-						<ThemedText style={styles.statText}>
-							<Text>AP: {playerCharacter?.actionPoints} / {playerCharacter?.maxActionPoints}</Text>
-						</ThemedText>
-					</View>
+			<View style={[styles.centerCol, isMobile && styles.centerColMobile]}>
+				<View style={[styles.statusBar, isMobile && styles.statusBarMobile]}>
+					{isMobile ? (
+						// Mobile layout - stacked vertically
+						<View style={styles.infoCol}>
+							<View style={styles.infoRowMobile}>
+								<ThemedText type="title" style={styles.nameTextMobile}>
+									<Text>{playerCharacter?.name}</Text>
+								</ThemedText>
+								<ThemedText style={styles.metaTextMobile}>
+									<Text>{playerCharacter?.race} / {playerCharacter?.class}</Text>
+								</ThemedText>
+							</View>
+							<View style={styles.statsRowMobile}>
+								<ThemedText style={styles.statTextMobile}>
+									<Text>HP: {playerCharacter?.health}/{playerCharacter?.maxHealth}</Text>
+								</ThemedText>
+								<ThemedText style={styles.statTextMobile}>
+									<Text>AP: {playerCharacter?.actionPoints}/{playerCharacter?.maxActionPoints}</Text>
+								</ThemedText>
+							</View>
+						</View>
+					) : (
+						// Desktop layout - horizontal
+						<View style={styles.infoRow}>
+							<ThemedText type="title" style={styles.nameText}>
+								<Text>{playerCharacter?.name}</Text>
+							</ThemedText>
+							<ThemedText style={styles.metaText}>
+								<Text>{playerCharacter?.race} / {playerCharacter?.class}</Text>
+							</ThemedText>
+							<ThemedText style={styles.statText}>
+								<Text>HP: {playerCharacter?.health} / {playerCharacter?.maxHealth}</Text>
+							</ThemedText>
+							<ThemedText style={styles.statText}>
+								<Text>AP: {playerCharacter?.actionPoints} / {playerCharacter?.maxActionPoints}</Text>
+							</ThemedText>
+						</View>
+					)}
 				</View>
 			</View>
 			{/* Dice (right, inside the bar, centered) */}
-			<View style={styles.diceWrapper}>
-				<View style={styles.diceIconContainer}>
-					<Feather name="hexagon" size={52} color="#C9B037" style={styles.diceIcon} />
+			<View style={[styles.diceWrapper, isMobile && styles.diceWrapperMobile]}>
+				<View style={[styles.diceIconContainer, isMobile && styles.diceIconContainerMobile]}>
+					<Feather name="hexagon" size={isMobile ? 40 : 52} color="#C9B037" style={styles.diceIcon} />
 					<View style={styles.diceTextContainer}>
-						<Text style={styles.diceText}>{playerCharacter?.level}</Text>
+						<Text style={[styles.diceText, isMobile && styles.diceTextMobile]}>{playerCharacter?.level}</Text>
 					</View>
 				</View>
 			</View>
@@ -68,7 +106,7 @@ const styles = StyleSheet.create({
 	statusBarWrapper: {
 		width: '100%',
 		flexDirection: 'row',
-		alignItems: 'center', // changed from flex-end
+		alignItems: 'center',
 		justifyContent: 'center',
 		marginBottom: 16,
 		position: 'relative',
@@ -79,15 +117,23 @@ const styles = StyleSheet.create({
 		shadowOpacity: 0.08,
 		shadowRadius: 6,
 	},
+	statusBarWrapperMobile: {
+		minHeight: 80, // Reduced height for mobile
+		paddingVertical: 8,
+		marginBottom: 8,
+	},
 	portraitWrapper: {
 		position: 'absolute',
 		left: 0,
-		bottom: -64, // start a bit below the top of the bar
+		bottom: -64,
 		zIndex: 11,
 		width: 120,
 		alignItems: 'center',
-		// Make the portrait hang below the bar
-		// The portrait itself will have a negative marginTop
+	},
+	portraitWrapperMobile: {
+		left: 8,
+		bottom: -40, // Less hanging effect on mobile
+		width: 80,
 	},
 	portrait: {
 		width: 120,
@@ -96,7 +142,14 @@ const styles = StyleSheet.create({
 		borderWidth: 2,
 		borderColor: '#C9B037',
 		backgroundColor: '#F9F6EF',
-		marginTop: -28, // pull the portrait down to hang below the bar
+		marginTop: -28,
+	},
+	portraitMobile: {
+		width: 80,
+		height: 80,
+		borderRadius: 12,
+		borderWidth: 2,
+		marginTop: -20,
 	},
 	centerCol: {
 		flex: 1,
@@ -104,11 +157,19 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		marginHorizontal: 90,
 	},
+	centerColMobile: {
+		marginHorizontal: 40, // Reduced margins for mobile
+		marginLeft: 100, // Account for smaller portrait
+	},
 	statusBar: {
 		backgroundColor: 'transparent',
 		alignItems: 'center',
 		justifyContent: 'center',
 		minHeight: 64,
+	},
+	statusBarMobile: {
+		minHeight: 50,
+		paddingVertical: 4,
 	},
 	infoRow: {
 		flexDirection: 'row',
@@ -116,14 +177,41 @@ const styles = StyleSheet.create({
 		gap: 16,
 		marginBottom: 4,
 	},
+	infoCol: {
+		flexDirection: 'column',
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: 4,
+	},
+	infoRowMobile: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+		marginBottom: 2,
+	},
+	statsRowMobile: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 12,
+	},
 	nameText: {
 		fontSize: 22,
 		fontWeight: 'bold',
 		color: '#8B2323',
 		marginRight: 12,
 	},
+	nameTextMobile: {
+		fontSize: 16,
+		fontWeight: 'bold',
+		color: '#8B2323',
+		marginRight: 6,
+	},
 	metaText: {
 		fontSize: 16,
+		color: '#8B5C2A',
+	},
+	metaTextMobile: {
+		fontSize: 12,
 		color: '#8B5C2A',
 	},
 	statText: {
@@ -131,11 +219,20 @@ const styles = StyleSheet.create({
 		color: '#3B2F1B',
 		marginRight: 16,
 	},
+	statTextMobile: {
+		fontSize: 12,
+		color: '#3B2F1B',
+		fontWeight: '600',
+	},
 	diceWrapper: {
 		width: 90,
 		alignItems: 'center',
 		justifyContent: 'center',
 		display: 'flex',
+	},
+	diceWrapperMobile: {
+		width: 50,
+		marginRight: 8,
 	},
 	diceIconContainer: {
 		alignItems: 'center',
@@ -143,6 +240,10 @@ const styles = StyleSheet.create({
 		position: 'relative',
 		width: 52,
 		height: 52,
+	},
+	diceIconContainerMobile: {
+		width: 40,
+		height: 40,
 	},
 	diceTextContainer: {
 		position: 'absolute',
@@ -165,5 +266,8 @@ const styles = StyleSheet.create({
 		fontSize: 20,
 		color: '#8B2323',
 		includeFontPadding: false,
+	},
+	diceTextMobile: {
+		fontSize: 16,
 	},
 });
