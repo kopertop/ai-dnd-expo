@@ -50,6 +50,7 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 	const pointsUsed = getPointBuyTotal(editableStats);
 	const pointsRemaining = POINT_BUY_TOTAL - pointsUsed;
 	const [invalidFields, setInvalidFields] = useState<{ name: boolean; description: boolean; points: boolean }>({ name: false, description: false, points: false });
+	const [inputHeight, setInputHeight] = useState(350);
 
 	// Animated values for pulsing
 	const namePulse = useRef(new Animated.Value(0)).current;
@@ -172,14 +173,18 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 									style={[
 										styles.backgroundInput,
 										invalidFields.description && styles.inputError,
-										{ height: 800 },
 									]}
-									placeholder="Background / Description"
+									placeholder="Background / Description (Tell us about your character's background, goals, personality, or story...)"
 									value={description}
 									onChangeText={handleDescChange}
 									multiline
-									numberOfLines={20}
+									scrollEnabled={true}
+									textAlignVertical="top"
 									maxLength={1000}
+									onContentSizeChange={e => {
+										const newHeight = Math.max(300, Math.min(500, e.nativeEvent.contentSize.height + 20));
+										setInputHeight(newHeight);
+									}}
 								/>
 							</View>
 						</Animated.View>
@@ -320,17 +325,21 @@ const styles = StyleSheet.create({
 		borderRadius: 6,
 	},
 	backgroundInput: {
-		fontSize: 16,
+		fontSize: 18,
 		color: '#3B2F1B',
 		marginBottom: 12,
-		minHeight: 800,
-		height: 800,
+		minHeight: 300,
+		maxHeight: 500,
+		height: 350,
 		borderWidth: 1,
 		borderColor: '#C9B037',
-		padding: 8,
+		padding: 16,
 		backgroundColor: '#F9F6EF',
 		borderRadius: 6,
 		textAlignVertical: 'top',
+		width: '100%',
+		alignSelf: 'stretch',
+		lineHeight: 26,
 	},
 	statBlockCol: {
 		alignItems: 'center',

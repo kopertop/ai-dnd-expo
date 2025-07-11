@@ -309,51 +309,92 @@ const NewGameScreen: React.FC = () => {
 				setCustomStory(randomBg);
 			};
 			return (
-				<View style={{ flex: 1, position: 'relative' }}>
-					<ScrollView contentContainerStyle={[newGameStyles.scrollViewContent, { paddingBottom: 96 }]}
+				<View style={{ flex: 1, flexDirection: 'column' }}>
+					{/* Header Section */}
+					<View style={{ 
+						paddingHorizontal: isMobile ? 16 : 24,
+						paddingTop: isMobile ? 16 : 24,
+						paddingBottom: isMobile ? 8 : 12,
+					}}>
+						<Text style={isMobile ? newGameStyles.titleMobile : newGameStyles.title}>Finalize Your Character</Text>
+					</View>
+					
+					{/* Scrollable Content */}
+					<ScrollView 
+						style={{ flex: 1 }}
+						contentContainerStyle={{
+							paddingHorizontal: isMobile ? 16 : 24,
+							paddingBottom: isMobile ? 20 : 24,
+							flexGrow: 1,
+						}}
 						keyboardShouldPersistTaps="handled"
+						showsVerticalScrollIndicator={true}
 					>
-						<Text style={newGameStyles.title}>Finalize Your Character</Text>
-						<View style={{ marginBottom: 24 }}>
+						{/* Character Name Section */}
+						<View style={{ marginBottom: isMobile ? 16 : 24 }}>
 							<Text style={newGameStyles.label}>Character Name</Text>
 							<TextInput
-								style={newGameStyles.input}
+								style={[
+									newGameStyles.input,
+									isMobile && { fontSize: 16, paddingVertical: 12 }
+								]}
 								placeholder="Enter character name"
 								value={characterName}
 								onChangeText={setCharacterName}
 								maxLength={32}
 							/>
 						</View>
-						<View style={{ marginBottom: 24 }}>
+						
+						{/* Background Section - Flexible */}
+						<View style={{ flex: 1, flexDirection: 'column' }}>
 							<Text style={newGameStyles.label}>Background / Description</Text>
 							<TouchableOpacity
-								style={[newGameStyles.submitButton, { marginBottom: 10, width: '100%' }]}
+								style={[
+									newGameStyles.submitButton, 
+									{ 
+										marginBottom: 10, 
+										width: '100%',
+										paddingVertical: isMobile ? 14 : 10,
+									}
+								]}
 								onPress={() => handleRandomBackground(selectedRace.name, selectedClass.name)}
 							>
 								<Text style={newGameStyles.submitButtonText}>Generate Random Background</Text>
 							</TouchableOpacity>
 							<TextInput
-								style={[newGameStyles.input, newGameStyles.textArea]}
+								style={[
+									newGameStyles.input, 
+									{
+										flex: 1,
+										minHeight: isMobile ? 200 : 150,
+										fontSize: 18,
+										padding: 16,
+										lineHeight: 26,
+										textAlignVertical: 'top',
+										borderWidth: 2,
+										borderRadius: 8,
+									}
+								]}
 								placeholder="Describe your character's background, goals, or story..."
 								value={customStory}
 								onChangeText={setCustomStory}
 								multiline
-								numberOfLines={5}
+								scrollEnabled={true}
 								maxLength={400}
 							/>
 						</View>
 					</ScrollView>
+					{/* Fixed Bottom Button */}
 					<View style={{
-						position: 'absolute',
-						left: 0,
-						right: 0,
-						bottom: 0,
-						backgroundColor: 'rgba(255,255,255,0.95)',
-						padding: 0,
-						margin: 0,
-						alignItems: 'center',
-						borderColor: '#eee',
-						zIndex: 100,
+						backgroundColor: isMobile ? 'rgba(249, 246, 239, 0.98)' : 'rgba(255,255,255,0.95)',
+						padding: isMobile ? 16 : 12,
+						borderTopWidth: isMobile ? 2 : 1,
+						borderTopColor: isMobile ? '#C9B037' : '#eee',
+						shadowColor: '#000',
+						shadowOffset: { width: 0, height: -2 },
+						shadowOpacity: 0.1,
+						shadowRadius: 4,
+						elevation: 8,
 					}}>
 						<TouchableOpacity
 							style={[
@@ -361,10 +402,9 @@ const NewGameScreen: React.FC = () => {
 								{
 									width: '100%',
 									margin: 0,
-									opacity: 1,
-									borderRadius: 0,
-									borderTopLeftRadius: 0,
-									borderTopRightRadius: 0,
+									borderRadius: 8,
+									paddingVertical: isMobile ? 16 : 12,
+									minHeight: isMobile ? 54 : 'auto',
 								},
 							]}
 							disabled={!(characterName.trim() && customStory.trim())}
@@ -375,7 +415,7 @@ const NewGameScreen: React.FC = () => {
 								skills: selectedSkills.map(s => s.id),
 							})}
 						>
-							<Text style={newGameStyles.submitButtonText}>Start Game</Text>
+							<Text style={[newGameStyles.submitButtonText, isMobile && { fontSize: 18 }]}>Start Game</Text>
 						</TouchableOpacity>
 					</View>
 				</View>
