@@ -46,19 +46,19 @@ const RootLayout: React.FC = () => {
 		<GestureHandlerRootView style={{ flex: 1 }}>
 			<AudioProvider>
 				<ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-				<Stack initialRouteName="index">
-					<Stack.Screen name="index" options={{ headerShown: false }} />
-					<Stack.Screen name="new-game" options={{ headerShown: false }} />
-					<Stack.Screen name="+not-found" />
-				</Stack>
-				<StatusBar style="auto" />
-				{/* Only show sound button on web */}
-				{Platform.OS === 'web' && (
-					<View pointerEvents="box-none" style={styles.soundButtonContainer}>
-						<AudioButton />
-					</View>
-				)}
-			</ThemeProvider>
+					<Stack initialRouteName="index">
+						<Stack.Screen name="index" options={{ headerShown: false }} />
+						<Stack.Screen name="new-game" options={{ headerShown: false }} />
+						<Stack.Screen name="+not-found" />
+					</Stack>
+					<StatusBar style="auto" />
+					{/* Only show sound button on web */}
+					{Platform.OS === 'web' && (
+						<View pointerEvents="box-none" style={styles.soundButtonContainer}>
+							<AudioButton />
+						</View>
+					)}
+				</ThemeProvider>
 			</AudioProvider>
 		</GestureHandlerRootView>
 	);
