@@ -178,8 +178,8 @@ export const useVoiceRecognition = (
 			}, 1000);
 		};
 
-		// Uncomment for demo mode
-		// simulateTranscription();
+		// Enable demo mode for testing
+		simulateTranscription();
 	}, [isListening, options]);
 
 	/**
@@ -202,11 +202,12 @@ export const useVoiceRecognition = (
 			
 			recordingRef.current = { isRecording: true };
 			
-			// For demo purposes, set a placeholder transcript
+			// For demo purposes, simulate a realistic D&D action
 			setTimeout(() => {
 				if (isListening) {
-					setTranscript('Voice recording captured (transcription not available on this platform)');
-					options.onTranscription?.('Voice recording captured', true);
+					const demoAction = 'I want to attack the goblin with my sword';
+					setTranscript(demoAction);
+					options.onTranscription?.(demoAction, true);
 				}
 			}, 2000);
 
