@@ -1,5 +1,5 @@
 import { Stack, router } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { Alert, PanResponder, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { AttributePicker } from '../components/attribute-picker';
