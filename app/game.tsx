@@ -1,7 +1,6 @@
 import { Stack } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Dimensions, StyleSheet, Text, View } from 'react-native';
 
 import { CharacterSheetModal } from '../components/character-sheet-modal';
 import { GameCanvas } from '../components/game-canvas';
@@ -66,14 +65,14 @@ const GameScreen: React.FC = () => {
 				setWorldState(newWorldState);
 				// Save the generated world back to game state
 				const updatedGameState = {
-	  ...gameState,
-	  worldState: newWorldState,
+					...gameState,
+					worldState: newWorldState,
 				};
 				save(updatedGameState)
-	  .catch((err) => {
+					.catch((err) => {
 						setSaveError('Failed to save world state. Changes may not persist.');
 						console.error(err);
-	  });
+					});
 			}
 		}
 	}, [gameState, worldState, save]);
@@ -137,51 +136,53 @@ const GameScreen: React.FC = () => {
 
 	if (!gameState) {
 		return (
-	  <ThemedView style={styles.container}>
+			<ThemedView style={styles.container}>
 				<ThemedText type="title">
-		  <Text>No saved game found.</Text>
+					<Text>No saved game found.</Text>
 				</ThemedText>
 				<ThemedText style={{ marginTop: 8 }}>
-		  <Text>Please start a new game from the main menu.</Text>
+					<Text>Please start a new game from the main menu.</Text>
 				</ThemedText>
 				{saveError && (
-	  <ThemedText style={{ marginTop: 12, color: 'red' }}>
+					<ThemedText style={{ marginTop: 12, color: 'red' }}>
 						{saveError}
-	  </ThemedText>
+					</ThemedText>
 				)}
-	  </ThemedView>
+			</ThemedView>
 		);
 	}
 
 	// Show loading while world is being generated
 	if (!worldState) {
 		return (
-	  <ThemedView style={styles.container}>
+			<ThemedView style={styles.container}>
 				<ActivityIndicator size="large" color="#C9B037" />
 				<ThemedText>
-		  <Text>Generating world map...</Text>
+					<Text>Generating world map...</Text>
 				</ThemedText>
 				<ThemedText style={{ marginTop: 8 }}>
-		  <Text>If this takes too long, try restarting the app or starting a new game.</Text>
+					<Text>If this takes too long, try restarting the app or starting a new game.</Text>
 				</ThemedText>
 				{saveError && (
-	  <ThemedText style={{ marginTop: 12, color: 'red' }}>
+					<ThemedText style={{ marginTop: 12, color: 'red' }}>
 						{saveError}
-	  </ThemedText>
+					</ThemedText>
 				)}
-	  </ThemedView>
+			</ThemedView>
 		);
 	}
 
+	const isMobile = Dimensions.get('window').width < 768;
+
 	return (
-	  <SafeAreaView style={{ width: '100%', height: '100%' }}>
+		<View style={{ width: '100%', height: '100%' }}>
 			<Stack.Screen options={{ headerShown: false }} />
 
 			{/* Game Status Bar */}
 			<GameStatusBar
 				gameState={gameState}
 				onPortraitPress={() => setShowSheet(true)}
-				style={styles.statusBarPinned}
+				style={isMobile ? styles.statusBarPinnedMobile : styles.statusBarPinned}
 			/>
 
 			{/* Main Game Canvas */}
@@ -201,11 +202,11 @@ const GameScreen: React.FC = () => {
 
 			{/* Save error feedback */}
 			{saveError && (
-	  <ThemedText style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', color: 'red', zIndex: 999 }}>
+				<ThemedText style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', color: 'red', zIndex: 999 }}>
 					{saveError}
-	  </ThemedText>
+				</ThemedText>
 			)}
-	  </SafeAreaView>
+		</View>
 	);
 };
 
@@ -229,6 +230,17 @@ const styles = StyleSheet.create({
 		width: '100%',
 		position: 'absolute',
 		top: 0,
+		left: 0,
+		right: 0,
+		zIndex: 100,
+	},
+	statusBarPinnedMobile: {
+		width: '100%',
+		position: 'absolute',
+		height: 65,
+		paddingTop: 10,
+		paddingBottom: 20,
+		bottom: 0,
 		left: 0,
 		right: 0,
 		zIndex: 100,

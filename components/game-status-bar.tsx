@@ -1,7 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { getCharacterImage } from '@/hooks/use-game-state';
@@ -20,7 +19,7 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 }) => {
 	const [screenData, setScreenData] = useState(Dimensions.get('window'));
 	const playerCharacter = gameState.characters.find(c => c.id === gameState.playerCharacterId);
-	
+
 	// Track screen dimensions for responsive layout
 	useEffect(() => {
 		const onChange = (result: { window: any; screen: any }) => {
@@ -35,7 +34,10 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 	const isMobile = screenData.width < 768;
 
 	return (
-		<SafeAreaView style={[styles.statusBarWrapper, isMobile && styles.statusBarWrapperMobile, style]}>
+		<View style={[
+			isMobile ? styles.statusBarWrapperMobile : styles.statusBarWrapper,
+			style,
+		]}>
 			{/* Portrait (left, hanging) */}
 			<TouchableOpacity
 				style={[styles.portraitWrapper, isMobile && styles.portraitWrapperMobile]}
@@ -98,7 +100,7 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 					</View>
 				</View>
 			</View>
-		</SafeAreaView>
+		</View>
 	);
 };
 
@@ -118,9 +120,17 @@ const styles = StyleSheet.create({
 		shadowRadius: 6,
 	},
 	statusBarWrapperMobile: {
-		minHeight: 80, // Reduced height for mobile
-		paddingVertical: 8,
-		marginBottom: 8,
+		paddingVertical: 2,
+		margin: 0,
+		padding: 0,
+		width: '100%',
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		position: 'relative',
+		zIndex: 10,
+		elevation: 2,
+		backgroundColor: '#FFF8E1',
 	},
 	portraitWrapper: {
 		position: 'absolute',
@@ -132,8 +142,12 @@ const styles = StyleSheet.create({
 	},
 	portraitWrapperMobile: {
 		left: 8,
-		bottom: -40, // Less hanging effect on mobile
+		top: -32,
 		width: 80,
+		position: 'absolute',
+		zIndex: 11,
+		alignItems: 'center',
+
 	},
 	portrait: {
 		width: 120,
@@ -149,7 +163,7 @@ const styles = StyleSheet.create({
 		height: 80,
 		borderRadius: 12,
 		borderWidth: 2,
-		marginTop: -20,
+		marginTop: 0, // No negative margin - keep it contained
 	},
 	centerCol: {
 		flex: 1,
@@ -158,8 +172,8 @@ const styles = StyleSheet.create({
 		marginHorizontal: 90,
 	},
 	centerColMobile: {
-		marginHorizontal: 40, // Reduced margins for mobile
-		marginLeft: 100, // Account for smaller portrait
+		marginHorizontal: 30, // Further reduced margins for mobile
+		marginLeft: 95, // Account for smaller portrait
 	},
 	statusBar: {
 		backgroundColor: 'transparent',
@@ -168,8 +182,8 @@ const styles = StyleSheet.create({
 		minHeight: 64,
 	},
 	statusBarMobile: {
-		minHeight: 50,
-		paddingVertical: 4,
+		minHeight: 30,
+		paddingVertical: 1,
 	},
 	infoRow: {
 		flexDirection: 'row',
@@ -181,18 +195,18 @@ const styles = StyleSheet.create({
 		flexDirection: 'column',
 		alignItems: 'center',
 		justifyContent: 'center',
-		gap: 4,
+		gap: 2,
 	},
 	infoRowMobile: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		gap: 8,
-		marginBottom: 2,
+		marginBottom: 0,
 	},
 	statsRowMobile: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		gap: 12,
+		gap: 10,
 	},
 	nameText: {
 		fontSize: 22,
