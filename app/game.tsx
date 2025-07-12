@@ -11,6 +11,7 @@ import { DMChatInterface } from '@/components/dm-chat-interface';
 import { GameStatusBar } from '@/components/game-status-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { VoiceChatButton } from '@/components/voice-chat-button';
 import { useDungeonMaster } from '@/hooks/use-dungeon-master';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { GameWorldState, Position } from '@/types/world-map';
@@ -216,13 +217,21 @@ const GameScreen: React.FC = () => {
 				onClose={() => setShowSheet(false)}
 			/>
 
+			{/* Voice Chat Button */}
+			<VoiceChatButton
+				onVoiceInput={dmAgent.sendVoiceMessage}
+				isDisabled={dmAgent.isLoading}
+				position={isMobile ? 'bottom-right' : 'top-right'}
+			/>
+
 			{/* Dungeon Master Chat Interface */}
-			<View style={styles.dmChatContainer}>
+			<View style={isMobile ? styles.dmChatContainerMobile : styles.dmChatContainer}>
 				<DMChatInterface
 					messages={dmAgent.messages}
 					onSendMessage={dmAgent.sendMessage}
 					isLoading={dmAgent.isLoading}
 					placeholder="Describe your action..."
+					isMobile={isMobile}
 				/>
 			</View>
 
@@ -281,6 +290,14 @@ const styles = StyleSheet.create({
 	dmChatContainer: {
 		position: 'absolute',
 		bottom: 0,
+		left: 0,
+		right: 0,
+		zIndex: 200,
+		maxHeight: '50%',
+	},
+	dmChatContainerMobile: {
+		position: 'absolute',
+		top: 70, // Below the status bar
 		left: 0,
 		right: 0,
 		zIndex: 200,

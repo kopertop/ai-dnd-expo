@@ -6,5 +6,6 @@ export const DnDTheme = {
 	gold: '#C9B037', // gold accent
 	deepRed: '#8B2323', // deep red accent
 	textDark: '#3B2F1B', // dark brown for text
+	textLight: '#FFFFFF', // white for text
 	sectionBg: '#F9F6EF', // slightly off-white for section backgrounds
 };

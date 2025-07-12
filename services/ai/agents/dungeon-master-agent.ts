@@ -151,7 +151,7 @@ export class DungeonMasterAgent {
 		const type: DMMessage['type'] = 'narration';
 
 		switch (intent.action) {
-		case 'attack':
+		case 'attack': {
 			const attackRoll = this.diceRoller.roll('1d20');
 			const damageRoll = this.diceRoller.roll('1d8');
 				
@@ -172,8 +172,9 @@ export class DungeonMasterAgent {
 				content = `Your attack misses! The ${intent.target || 'enemy'} dodges your strike.`;
 			}
 			break;
+		}
 
-		case 'skill_check':
+		case 'skill_check': {
 			const skillRoll = this.diceRoller.roll('1d20');
 			toolCalls.push({
 				type: 'dice_roll',
@@ -188,6 +189,7 @@ export class DungeonMasterAgent {
 				content = `Your ${intent.parameters.skill} check (${skillRoll.total}) fails.`;
 			}
 			break;
+		}
 
 		case 'cast_spell':
 			// Check spell slots, then execute
@@ -215,7 +217,7 @@ export class DungeonMasterAgent {
 	private async executeToolCalls(toolCalls: ToolCall[]): Promise<void> {
 		for (const toolCall of toolCalls) {
 			switch (toolCall.type) {
-			case 'character_update':
+			case 'character_update': {
 				const updateParams: any = toolCall.parameters;
 				if (updateParams.type && updateParams.operation && updateParams.target && updateParams.value !== undefined) {
 					await this.characterUpdater.updateCharacter(
@@ -224,6 +226,7 @@ export class DungeonMasterAgent {
 					);
 				}
 				break;
+			}
 			case 'rule_lookup':
 				toolCall.result = await this.ruleEngine.lookupRule(toolCall.parameters.rule);
 				break;

@@ -1,26 +1,28 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-	View,
+	ActivityIndicator,
+	KeyboardAvoidingView,
+	Platform,
+	ScrollView,
 	Text,
 	TextInput,
 	TouchableOpacity,
-	ScrollView,
-	StyleSheet,
-	KeyboardAvoidingView,
-	Platform,
-	ActivityIndicator,
+	View,
 } from 'react-native';
 
 import { Colors } from '@/constants/colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { DMMessage } from '@/services/ai/agents/dungeon-master-agent';
+import styles from '@/styles/dm-chat-interface.styles';
+import { DnDTheme } from '@/styles/dnd-theme';
 
 interface DMChatInterfaceProps {
 	messages: DMMessage[];
 	onSendMessage: (message: string) => Promise<void>;
 	isLoading?: boolean;
 	placeholder?: string;
+	isMobile?: boolean;
 }
 
 export const DMChatInterface: React.FC<DMChatInterfaceProps> = ({
@@ -28,14 +30,13 @@ export const DMChatInterface: React.FC<DMChatInterfaceProps> = ({
 	onSendMessage,
 	isLoading = false,
 	placeholder = 'What do you do?',
+	isMobile = false,
 }) => {
 	const [inputText, setInputText] = useState('');
 	const [isExpanded, setIsExpanded] = useState(false);
 	const scrollViewRef = useRef<ScrollView>(null);
 	const colorScheme = useColorScheme();
 	const colors = Colors[colorScheme ?? 'light'];
-
-	const styles = createStyles(colors);
 
 	// Scroll to bottom when new messages arrive
 	useEffect(() => {
@@ -55,7 +56,7 @@ export const DMChatInterface: React.FC<DMChatInterfaceProps> = ({
 	const renderMessage = (message: DMMessage, index: number) => {
 		const isPlayer = message.type === 'system' && message.content.startsWith('Player:');
 		const isSystem = message.type === 'system';
-		
+
 		return (
 			<View key={message.id || index} style={[
 				styles.messageContainer,
@@ -65,7 +66,7 @@ export const DMChatInterface: React.FC<DMChatInterfaceProps> = ({
 				{message.speaker && (
 					<Text style={styles.speaker}>{message.speaker}</Text>
 				)}
-				
+
 				{/* Message Content */}
 				<Text style={[
 					styles.messageText,
@@ -101,9 +102,9 @@ export const DMChatInterface: React.FC<DMChatInterfaceProps> = ({
 
 				{/* Timestamp */}
 				<Text style={styles.timestamp}>
-					{new Date(message.timestamp).toLocaleTimeString([], { 
-						hour: '2-digit', 
-						minute: '2-digit', 
+					{new Date(message.timestamp).toLocaleTimeString([], {
+						hour: '2-digit',
+						minute: '2-digit',
 					})}
 				</Text>
 			</View>
@@ -118,22 +119,25 @@ export const DMChatInterface: React.FC<DMChatInterfaceProps> = ({
 	];
 
 	return (
-		<KeyboardAvoidingView 
-			style={styles.container}
+		<KeyboardAvoidingView
+			style={[
+				styles.container,
+				{ opacity: isExpanded ? 1 : 0.7 },
+			]}
 			behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
 		>
 			{/* Header */}
 			<View style={styles.header}>
-				<TouchableOpacity 
+				<TouchableOpacity
 					onPress={() => setIsExpanded(!isExpanded)}
 					style={styles.headerButton}
 				>
-					<Feather name="message-square" size={20} color={colors.text} />
+					<Feather name="message-square" size={20} color={DnDTheme.textDark} />
 					<Text style={styles.headerTitle}>Dungeon Master</Text>
-					<Feather 
-						name={isExpanded ? 'chevron-down' : 'chevron-up'} 
-						size={20} 
-						color={colors.text} 
+					<Feather
+						name={isMobile ? (isExpanded ? 'chevron-up' : 'chevron-down') : (isExpanded ? 'chevron-down' : 'chevron-up')}
+						size={20}
+						color={colors.text}
 					/>
 				</TouchableOpacity>
 			</View>
@@ -157,7 +161,7 @@ export const DMChatInterface: React.FC<DMChatInterfaceProps> = ({
 						) : (
 							messages.map(renderMessage)
 						)}
-						
+
 						{/* Loading indicator */}
 						{isLoading && (
 							<View style={styles.loadingContainer}>
@@ -203,10 +207,10 @@ export const DMChatInterface: React.FC<DMChatInterfaceProps> = ({
 							onPress={handleSendMessage}
 							disabled={!inputText.trim() || isLoading}
 						>
-							<Feather 
-								name="send" 
-								size={20} 
-								color={(!inputText.trim() || isLoading) ? colors.text + '50' : colors.background} 
+							<Feather
+								name="send"
+								size={20}
+								color={DnDTheme.textLight}
 							/>
 						</TouchableOpacity>
 					</View>
@@ -215,166 +219,3 @@ export const DMChatInterface: React.FC<DMChatInterfaceProps> = ({
 		</KeyboardAvoidingView>
 	);
 };
-
-const createStyles = (colors: any) => StyleSheet.create({
-	container: {
-		backgroundColor: colors.background,
-		borderTopWidth: 1,
-		borderTopColor: colors.text + '20',
-	},
-	header: {
-		paddingHorizontal: 16,
-		paddingVertical: 12,
-		borderBottomWidth: 1,
-		borderBottomColor: colors.text + '20',
-	},
-	headerButton: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 8,
-	},
-	headerTitle: {
-		flex: 1,
-		fontSize: 16,
-		fontWeight: '600',
-		color: colors.text,
-	},
-	messagesContainer: {
-		maxHeight: 300,
-		backgroundColor: colors.background,
-	},
-	messagesContent: {
-		padding: 16,
-		gap: 12,
-	},
-	emptyState: {
-		alignItems: 'center',
-		padding: 20,
-	},
-	emptyText: {
-		fontSize: 16,
-		color: colors.text + 'CC',
-		textAlign: 'center',
-		fontStyle: 'italic',
-	},
-	messageContainer: {
-		padding: 12,
-		borderRadius: 12,
-		maxWidth: '85%',
-	},
-	playerMessage: {
-		alignSelf: 'flex-end',
-		backgroundColor: colors.tint + '20',
-		borderBottomRightRadius: 4,
-	},
-	dmMessage: {
-		alignSelf: 'flex-start',
-		backgroundColor: colors.text + '10',
-		borderBottomLeftRadius: 4,
-	},
-	speaker: {
-		fontSize: 12,
-		fontWeight: '600',
-		color: colors.tint,
-		marginBottom: 4,
-	},
-	messageText: {
-		fontSize: 15,
-		lineHeight: 20,
-		color: colors.text,
-	},
-	systemText: {
-		fontStyle: 'italic',
-		color: colors.text + 'CC',
-	},
-	toolResults: {
-		marginTop: 8,
-		gap: 4,
-	},
-	toolCall: {
-		padding: 6,
-		backgroundColor: colors.background,
-		borderRadius: 6,
-		borderLeftWidth: 3,
-		borderLeftColor: colors.tint,
-	},
-	diceRoll: {
-		fontSize: 13,
-		color: colors.text,
-		fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-	},
-	characterUpdate: {
-		fontSize: 13,
-		color: colors.tint,
-	},
-	ruleLookup: {
-		fontSize: 13,
-		color: colors.text + 'CC',
-	},
-	timestamp: {
-		fontSize: 11,
-		color: colors.text + '80',
-		marginTop: 4,
-		textAlign: 'right',
-	},
-	loadingContainer: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 8,
-		padding: 12,
-	},
-	loadingText: {
-		fontSize: 14,
-		color: colors.text + 'CC',
-		fontStyle: 'italic',
-	},
-	quickActions: {
-		paddingHorizontal: 16,
-		paddingVertical: 8,
-		borderBottomWidth: 1,
-		borderBottomColor: colors.text + '20',
-	},
-	quickActionButton: {
-		paddingHorizontal: 12,
-		paddingVertical: 6,
-		marginRight: 8,
-		backgroundColor: colors.tint + '20',
-		borderRadius: 16,
-		borderWidth: 1,
-		borderColor: colors.tint + '40',
-	},
-	quickActionText: {
-		fontSize: 12,
-		color: colors.tint,
-		fontWeight: '500',
-	},
-	inputContainer: {
-		flexDirection: 'row',
-		padding: 16,
-		gap: 12,
-		alignItems: 'flex-end',
-	},
-	textInput: {
-		flex: 1,
-		borderWidth: 1,
-		borderColor: colors.text + '30',
-		borderRadius: 20,
-		paddingHorizontal: 16,
-		paddingVertical: 12,
-		fontSize: 16,
-		color: colors.text,
-		backgroundColor: colors.background,
-		maxHeight: 100,
-	},
-	sendButton: {
-		width: 44,
-		height: 44,
-		borderRadius: 22,
-		backgroundColor: colors.tint,
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-	sendButtonDisabled: {
-		backgroundColor: colors.text + '20',
-	},
-});

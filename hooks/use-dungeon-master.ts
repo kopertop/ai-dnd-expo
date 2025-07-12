@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 
+import { useDMVoice } from '@/hooks/use-text-to-speech';
 import { DungeonMasterAgent, DMMessage, DMContext } from '@/services/ai/agents/dungeon-master-agent';
 import { useGemmaModel } from '@/services/ai/models/gemma-integration';
 import { Character } from '@/types/character';
@@ -9,9 +10,11 @@ export interface UseDungeonMasterReturn {
 	messages: DMMessage[];
 	isLoading: boolean;
 	sendMessage: (message: string) => Promise<void>;
+	sendVoiceMessage: (message: string) => Promise<void>;
 	clearHistory: () => void;
 	agent: DungeonMasterAgent | null;
 	error: string | null;
+	dmVoice: ReturnType<typeof useDMVoice>;
 }
 
 export interface DungeonMasterConfig {
@@ -32,6 +35,9 @@ export const useDungeonMaster = (config: DungeonMasterConfig): UseDungeonMasterR
 		temperature: 0.7,
 		enableOfflineMode: true,
 	});
+
+	// Initialize DM voice for TTS
+	const dmVoice = useDMVoice();
 
 	// Initialize DM agent when dependencies are available
 	useEffect(() => {
@@ -95,6 +101,11 @@ export const useDungeonMaster = (config: DungeonMasterConfig): UseDungeonMasterR
 			
 			setMessages(prev => [...prev, dmResponse]);
 
+			// Automatically speak DM responses
+			if (dmResponse.content && dmResponse.content.trim()) {
+				await speakDMResponse(dmResponse);
+			}
+
 			// Auto-save if enabled
 			if (config.autoSave) {
 				// This would integrate with the game state saving system
@@ -120,21 +131,61 @@ export const useDungeonMaster = (config: DungeonMasterConfig): UseDungeonMasterR
 		}
 	}, [config.autoSave]);
 
+	/**
+	 * Send voice message with immediate text display
+	 */
+	const sendVoiceMessage = useCallback(async (playerInput: string) => {
+		// Voice messages work the same as text messages, but indicate voice origin
+		await sendMessage(playerInput);
+	}, [sendMessage]);
+
+	/**
+	 * Speak DM response using appropriate voice preset
+	 */
+	const speakDMResponse = useCallback(async (dmMessage: DMMessage) => {
+		try {
+			switch (dmMessage.type) {
+			case 'narration':
+				await dmVoice.speakAsNarrator(dmMessage.content);
+				break;
+			case 'dialogue':
+				await dmVoice.speakAsCharacter(dmMessage.content, dmMessage.speaker);
+				break;
+			case 'action_result':
+				if (dmMessage.content.includes('attack') || dmMessage.content.includes('damage')) {
+					await dmVoice.speakCombatAction(dmMessage.content);
+				} else {
+					await dmVoice.speakAsNarrator(dmMessage.content);
+				}
+				break;
+			default:
+				await dmVoice.speakAsNarrator(dmMessage.content);
+				break;
+			}
+		} catch (error) {
+			console.error('Error speaking DM response:', error);
+		}
+	}, [dmVoice]);
+
 	const clearHistory = useCallback(() => {
 		setMessages([]);
 		setError(null);
 		if (agentRef.current) {
 			agentRef.current.clearHistory();
 		}
-	}, []);
+		// Stop any ongoing TTS
+		dmVoice.stop();
+	}, [dmVoice]);
 
 	return {
 		messages,
 		isLoading,
 		sendMessage,
+		sendVoiceMessage,
 		clearHistory,
 		agent: agentRef.current,
 		error,
+		dmVoice,
 	};
 };
 
