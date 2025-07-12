@@ -1,5 +1,7 @@
+import Feather from '@expo/vector-icons/Feather';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Image, ImageSourcePropType, Modal, Platform, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, ImageSourcePropType, Modal, Platform, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 import { useGameState } from '../hooks/use-game-state';
 import { useInventoryManager } from '../hooks/use-inventory-manager';
@@ -9,6 +11,7 @@ import { GearSlot } from '../types/stats';
 import { ThemedView } from '@/components/themed-view';
 import { SKILL_LIST } from '@/constants/skills';
 import { STAT_KEYS } from '@/constants/stats';
+import { useAudio } from '@/hooks/use-audio-player';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import styles from '@/styles/character-sheet-modal.styles';
 
@@ -24,6 +27,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 	const [tooltipSkill, setTooltipSkill] = useState<string | null>(null);
 	const [activeSlot, setActiveSlot] = useState<GearSlot | null>(null);
 	const { isMobile } = useScreenSize();
+	const { togglePlayPause, isPlaying } = useAudio();
 	const { playerCharacter, playerPortrait } = useGameState();
 	const { loading, error, inventory, equipped, equipItem, unequipItem } = useInventoryManager();
 
@@ -45,6 +49,27 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 	const handleUnequipSlot = async (slot: GearSlot) => {
 		await unequipItem(slot);
 		setActiveSlot(null);
+	};
+
+	const handleMainMenu = () => {
+		Alert.alert(
+			'Return to Main Menu',
+			'Are you sure you want to return to the main menu? Any unsaved progress will be lost.',
+			[
+				{
+					text: 'Cancel',
+					style: 'cancel',
+				},
+				{
+					text: 'Return to Menu',
+					style: 'destructive',
+					onPress: () => {
+						onClose();
+						router.replace('/');
+					},
+				},
+			],
+		);
 	};
 
 	// Use inventory with equipped status for display
@@ -297,9 +322,47 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 							</View>
 						</View>
 					</ScrollView>
-					<TouchableOpacity style={isMobile ? styles.closeButtonMobile : styles.closeButton} onPress={onClose}>
-						<Text style={styles.closeButtonText}>Close</Text>
-					</TouchableOpacity>
+					{/* Button row */}
+					<View style={isMobile ? styles.buttonRowMobile : styles.buttonRow}>
+						{/* Music control button */}
+						<TouchableOpacity
+							style={isMobile ? styles.actionButtonMobile : styles.actionButton}
+							onPress={togglePlayPause}
+							accessibilityLabel={isPlaying ? 'Mute background music' : 'Unmute background music'}
+						>
+							<Feather
+								name={isPlaying ? 'volume-2' : 'volume-x'}
+								size={isMobile ? 16 : 18}
+								color={isPlaying ? '#4caf50' : '#f44336'}
+								style={{ marginRight: 6 }}
+							/>
+							<Text style={[styles.actionButtonText, { color: isPlaying ? '#4caf50' : '#f44336' }]}>
+								{isPlaying ? 'Mute' : 'Unmute'}
+							</Text>
+						</TouchableOpacity>
+
+						{/* Main menu button */}
+						<TouchableOpacity
+							style={isMobile ? styles.actionButtonMobile : styles.actionButton}
+							onPress={handleMainMenu}
+						>
+							<Feather
+								name="home"
+								size={isMobile ? 16 : 18}
+								color="#3B2F1B"
+								style={{ marginRight: 6 }}
+							/>
+							<Text style={styles.actionButtonText}>Main Menu</Text>
+						</TouchableOpacity>
+
+						{/* Close button */}
+						<TouchableOpacity
+							style={isMobile ? styles.closeButtonMobile : styles.closeButton}
+							onPress={onClose}
+						>
+							<Text style={styles.closeButtonText}>Close</Text>
+						</TouchableOpacity>
+					</View>
 				</ThemedView>
 			</View>
 		</Modal>
