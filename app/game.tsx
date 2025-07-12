@@ -7,9 +7,11 @@ import { GameCanvas } from '../components/game-canvas';
 import { useGameState } from '../hooks/use-game-state';
 import { generateWorldForGameState } from '../services/world-generator';
 
+import { DMChatInterface } from '@/components/dm-chat-interface';
 import { GameStatusBar } from '@/components/game-status-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useDungeonMaster } from '@/hooks/use-dungeon-master';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { GameWorldState, Position } from '@/types/world-map';
 
@@ -20,6 +22,14 @@ const GameScreen: React.FC = () => {
 	const { isMobile } = useScreenSize();
 	const { loading, gameState, save } = useGameState();
 	const [saveError, setSaveError] = useState<string | null>(null);
+
+	// Initialize Dungeon Master agent
+	const playerCharacter = gameState ? gameState.characters.find(c => c.id === gameState.playerCharacterId) : null;
+	const dmAgent = useDungeonMaster({
+		worldState,
+		playerCharacter: playerCharacter || null,
+		autoSave: true,
+	});
 
 	// Debounced save to prevent excessive saves on frequent player moves
 	const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -109,6 +119,12 @@ const GameScreen: React.FC = () => {
 		};
 
 		setWorldState(updatedWorldState);
+
+		// Notify DM agent of player movement
+		if (dmAgent.agent) {
+			const movementDescription = `Player moves ${facing} to position (${newPosition.x}, ${newPosition.y})`;
+			dmAgent.sendMessage(movementDescription).catch(console.error);
+		}
 
 		// Save updated world state with debouncing
 		if (gameState) {
@@ -200,10 +216,27 @@ const GameScreen: React.FC = () => {
 				onClose={() => setShowSheet(false)}
 			/>
 
+			{/* Dungeon Master Chat Interface */}
+			<View style={styles.dmChatContainer}>
+				<DMChatInterface
+					messages={dmAgent.messages}
+					onSendMessage={dmAgent.sendMessage}
+					isLoading={dmAgent.isLoading}
+					placeholder="Describe your action..."
+				/>
+			</View>
+
 			{/* Save error feedback */}
 			{saveError && (
 				<ThemedText style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', color: 'red', zIndex: 999 }}>
 					{saveError}
+				</ThemedText>
+			)}
+
+			{/* DM error feedback */}
+			{dmAgent.error && (
+				<ThemedText style={{ position: 'absolute', bottom: 48, left: 0, right: 0, textAlign: 'center', color: 'orange', zIndex: 999 }}>
+					<Text>DM: {dmAgent.error}</Text>
 				</ThemedText>
 			)}
 		</View>
@@ -244,5 +277,13 @@ const styles = StyleSheet.create({
 		left: 0,
 		right: 0,
 		zIndex: 100,
+	},
+	dmChatContainer: {
+		position: 'absolute',
+		bottom: 0,
+		left: 0,
+		right: 0,
+		zIndex: 200,
+		maxHeight: '50%',
 	},
 });
