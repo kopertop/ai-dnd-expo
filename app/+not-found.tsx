@@ -1,32 +1,40 @@
 import { Link, Stack } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import React from 'react';
+import { StyleSheet, Text } from 'react-native';
 
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
 
-export default function NotFoundScreen() {
-  return (
-    <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
-      <ThemedView style={styles.container}>
-        <ThemedText type="title">This screen does not exist.</ThemedText>
-        <Link href="/" style={styles.link}>
-          <ThemedText type="link">Go to home screen!</ThemedText>
-        </Link>
-      </ThemedView>
-    </>
-  );
-}
+
+const NotFoundScreen: React.FC = () => {
+	return (
+		<>
+			<Stack.Screen options={{ title: 'Oops!' }} />
+			<ThemedView style={styles.container}>
+				<ThemedText type="title">
+					<Text>This screen does not exist.</Text>
+				</ThemedText>
+				<Link href="/" style={styles.link}>
+					<ThemedText type="link">
+						<Text>Go to home screen!</Text>
+					</ThemedText>
+				</Link>
+			</ThemedView>
+		</>
+	);
+};
+NotFoundScreen.displayName = 'NotFoundScreen';
+export default NotFoundScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
-  },
+	container: {
+		flex: 1,
+		alignItems: 'center',
+		justifyContent: 'center',
+		padding: 20,
+	},
+	link: {
+		marginTop: 15,
+		paddingVertical: 15,
+	},
 });
