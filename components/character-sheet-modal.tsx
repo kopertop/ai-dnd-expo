@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Dimensions, Image, ImageSourcePropType, Modal, Platform, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Image, ImageSourcePropType, Modal, Platform, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 import { useGameState } from '../hooks/use-game-state';
 import { useInventoryManager } from '../hooks/use-inventory-manager';
@@ -9,6 +9,7 @@ import { GearSlot } from '../types/stats';
 import { ThemedView } from '@/components/themed-view';
 import { SKILL_LIST } from '@/constants/skills';
 import { STAT_KEYS } from '@/constants/stats';
+import { useScreenSize } from '@/hooks/use-screen-size';
 import styles from '@/styles/character-sheet-modal.styles';
 
 interface CharacterSheetModalProps {
@@ -22,22 +23,9 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 }) => {
 	const [tooltipSkill, setTooltipSkill] = useState<string | null>(null);
 	const [activeSlot, setActiveSlot] = useState<GearSlot | null>(null);
-	const [screenData, setScreenData] = useState(Dimensions.get('window'));
+	const { isMobile } = useScreenSize();
 	const { playerCharacter, playerPortrait } = useGameState();
 	const { loading, error, inventory, equipped, equipItem, unequipItem } = useInventoryManager();
-
-	// Track screen dimensions for responsive layout
-	useEffect(() => {
-		const onChange = (result: { window: any; screen: any }) => {
-			setScreenData(result.window);
-		};
-
-		const subscription = Dimensions.addEventListener('change', onChange);
-		return () => subscription?.remove();
-	}, []);
-
-	// Determine if we should use mobile layout (stacked) or desktop layout (side-by-side)
-	const isMobile = screenData.width < 768; // Bootstrap md breakpoint
 
 	if (!playerCharacter) return null;
 

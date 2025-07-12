@@ -1,6 +1,6 @@
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Dimensions, PanResponder, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, PanResponder, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { AttributePicker } from '../components/attribute-picker';
 import { ClassChooser } from '../components/class-chooser';
@@ -21,6 +21,7 @@ import { StatBlock } from '../types/stats';
 import { WorldOption } from '../types/world-option';
 
 import { ThemedView } from '@/components/themed-view';
+import { useScreenSize } from '@/hooks/use-screen-size';
 
 
 type WizardStep = 'world' | 'location' | 'race' | 'class' | 'attributes' | 'skills' | 'character';
@@ -38,23 +39,10 @@ const NewGameScreen: React.FC = () => {
 	const [customStory, setCustomStory] = useState('');
 	const [showConfirm, setShowConfirm] = useState(false);
 	const [pendingCharacter, setPendingCharacter] = useState<any>(null);
-	const [screenData, setScreenData] = useState(Dimensions.get('window'));
+	const { isMobile } = useScreenSize();
 
 	const { save } = useGameState();
 	const { addItem, equipItem } = useInventoryManager();
-
-	// Track screen dimensions for responsive layout
-	useEffect(() => {
-		const onChange = (result: { window: any; screen: any }) => {
-			setScreenData(result.window);
-		};
-
-		const subscription = Dimensions.addEventListener('change', onChange);
-		return () => subscription?.remove();
-	}, []);
-
-	// Memoized mobile layout detection to prevent unnecessary re-renders
-	const isMobile = useMemo(() => screenData.width < 768, [screenData.width]);
 
 	// Pan responder for swipe gestures
 	const panResponder = PanResponder.create({

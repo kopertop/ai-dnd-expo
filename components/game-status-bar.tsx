@@ -1,9 +1,10 @@
 import Feather from '@expo/vector-icons/Feather';
-import React, { useEffect, useState } from 'react';
-import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
+import React from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { getCharacterImage } from '@/hooks/use-game-state';
+import { useScreenSize } from '@/hooks/use-screen-size';
 import { GameState } from '@/types/game';
 
 interface GameStatusBarProps {
@@ -17,21 +18,8 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 	style,
 	onPortraitPress,
 }) => {
-	const [screenData, setScreenData] = useState(Dimensions.get('window'));
+	const { isMobile } = useScreenSize();
 	const playerCharacter = gameState.characters.find(c => c.id === gameState.playerCharacterId);
-
-	// Track screen dimensions for responsive layout
-	useEffect(() => {
-		const onChange = (result: { window: any; screen: any }) => {
-			setScreenData(result.window);
-		};
-
-		const subscription = Dimensions.addEventListener('change', onChange);
-		return () => subscription?.remove();
-	}, []);
-
-	// Determine if we should use mobile layout
-	const isMobile = screenData.width < 768;
 
 	return (
 		<View style={[

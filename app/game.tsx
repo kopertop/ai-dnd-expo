@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { CharacterSheetModal } from '../components/character-sheet-modal';
 import { GameCanvas } from '../components/game-canvas';
@@ -10,12 +10,14 @@ import { generateWorldForGameState } from '../services/world-generator';
 import { GameStatusBar } from '@/components/game-status-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useScreenSize } from '@/hooks/use-screen-size';
 import { GameWorldState, Position } from '@/types/world-map';
 
 
 const GameScreen: React.FC = () => {
 	const [showSheet, setShowSheet] = useState(false);
 	const [worldState, setWorldState] = useState<GameWorldState | null>(null);
+	const { isMobile } = useScreenSize();
 	const { loading, gameState, save } = useGameState();
 	const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -171,8 +173,6 @@ const GameScreen: React.FC = () => {
 			</ThemedView>
 		);
 	}
-
-	const isMobile = Dimensions.get('window').width < 768;
 
 	return (
 		<View style={{ width: '100%', height: '100%' }}>
