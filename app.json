@@ -44,7 +44,8 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-audio"
+      "expo-audio",
+      "expo-speech-recognition"
     ],
     "experiments": {
       "typedRoutes": true
@@ -55,9 +56,7 @@
         "projectId": "f082f538-7adb-4504-a251-729b293f0cf6"
       }
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.1.0",
     "updates": {
       "url": "https://u.expo.dev/f082f538-7adb-4504-a251-729b293f0cf6"
     }

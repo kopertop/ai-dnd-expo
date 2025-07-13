@@ -35,12 +35,14 @@ export const VoiceChatButton: React.FC<VoiceChatButtonProps> = ({
 		language: 'en-US',
 		maxDuration: 15000, // 15 seconds max
 		onTranscription: (text, isFinal) => {
+			console.log(`🎤 VoiceChatButton onTranscription: "${text}", isFinal: ${isFinal}`);
 			if (isFinal && text.trim()) {
+				console.log('✅ Calling handleVoiceInput');
 				handleVoiceInput(text);
 			}
 		},
 		onError: (error) => {
-			console.error('Voice recognition error:', error);
+			console.error('❌ Voice recognition error:', error);
 			Alert.alert('Voice Recognition Error', error);
 		},
 	});
@@ -54,15 +56,18 @@ export const VoiceChatButton: React.FC<VoiceChatButtonProps> = ({
 	 */
 	const handleVoiceInput = useCallback(async (transcript: string) => {
 		try {
+			console.log(`🗣️ handleVoiceInput called with: "${transcript}"`);
 			setShowTranscript(true);
+			console.log('📞 Calling onVoiceInput prop');
 			await onVoiceInput(transcript);
 			
 			// Hide transcript after a delay
 			setTimeout(() => {
+				console.log('👻 Hiding transcript');
 				setShowTranscript(false);
 			}, 3000);
 		} catch (error) {
-			console.error('Error processing voice input:', error);
+			console.error('❌ Error processing voice input:', error);
 			Alert.alert('Error', 'Failed to process voice command');
 		}
 	}, [onVoiceInput]);
@@ -73,20 +78,30 @@ export const VoiceChatButton: React.FC<VoiceChatButtonProps> = ({
 	const toggleVoiceRecording = useCallback(async () => {
 		if (isDisabled) return;
 
+		console.log(`🎛️ toggleVoiceRecording called, isListening: ${voiceRecognition.isListening}`);
+
 		if (voiceRecognition.isListening) {
+			console.log('🛑 Stopping voice recognition');
 			await voiceRecognition.stopListening();
 		} else {
 			// Check permissions first
 			if (!voiceRecognition.hasPermission) {
+				console.log('🔐 Requesting microphone permission');
 				const granted = await voiceRecognition.requestPermission();
-				if (!granted) return;
+				if (!granted) {
+					console.log('❌ Permission denied');
+					return;
+				}
+				console.log('✅ Permission granted');
 			}
 
 			// Stop any current TTS
 			if (dmVoice.isSpeaking) {
+				console.log('🔇 Stopping current TTS');
 				dmVoice.stop();
 			}
 
+			console.log('🎤 Starting voice recognition');
 			await voiceRecognition.startListening();
 		}
 	}, [isDisabled, voiceRecognition, dmVoice]);

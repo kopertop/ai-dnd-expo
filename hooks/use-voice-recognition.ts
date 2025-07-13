@@ -1,6 +1,7 @@
 import * as Audio from 'expo-audio';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, Alert } from 'react-native';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 
 export interface VoiceRecognitionOptions {
 	language?: string;
@@ -38,17 +39,19 @@ export const useVoiceRecognition = (
 
 	// Check if speech recognition is supported
 	useEffect(() => {
-		// iOS has native speech recognition, Android/Web will use fallback
+		// For now, assume iOS has speech recognition support
 		setIsSupported(Platform.OS === 'ios');
+		console.log('🎤 Speech recognition support (iOS):', Platform.OS === 'ios');
 	}, []);
 
 	/**
-	 * Request microphone permissions
+	 * Request microphone permissions (using audio for now)
 	 */
 	const requestPermission = useCallback(async (): Promise<boolean> => {
 		try {
 			const { granted } = await Audio.requestRecordingPermissionsAsync();
 			setHasPermission(granted);
+			console.log('🔐 Audio permission:', granted);
 			
 			if (!granted) {
 				Alert.alert(
@@ -60,7 +63,7 @@ export const useVoiceRecognition = (
 			
 			return granted;
 		} catch (err) {
-			console.error('Permission request failed:', err);
+			console.error('❌ Permission request failed:', err);
 			setError('Failed to request microphone permission');
 			return false;
 		}
@@ -71,8 +74,14 @@ export const useVoiceRecognition = (
 	 */
 	useEffect(() => {
 		const checkPermissions = async () => {
-			const { granted } = await Audio.getRecordingPermissionsAsync();
-			setHasPermission(granted);
+			try {
+				const { granted } = await Audio.getRecordingPermissionsAsync();
+				setHasPermission(granted);
+				console.log('🔍 Current audio permission:', granted);
+			} catch (err) {
+				console.log('❌ Could not check permissions:', err);
+				setHasPermission(false);
+			}
 		};
 		checkPermissions();
 	}, []);
@@ -83,6 +92,7 @@ export const useVoiceRecognition = (
 	const startListening = useCallback(async () => {
 		if (isListening) return;
 		
+		console.log('🎤 startListening called');
 		setError(null);
 		setTranscript('');
 
@@ -93,14 +103,17 @@ export const useVoiceRecognition = (
 				if (!granted) return;
 			}
 
-			if (Platform.OS === 'ios') {
-				// Use iOS Speech Recognition
+			if (isSupported) {
+				// Use real iOS speech recognition
+				console.log('🎯 Using iOS speech recognition');
 				await startIOSSpeechRecognition();
 			} else {
-				// Fallback to audio recording for other platforms
+				// Fallback to audio recording for unsupported platforms
+				console.log('🤖 Using fallback audio recording');
 				await startAudioRecording();
 			}
 
+			console.log('📡 Setting isListening to true');
 			setIsListening(true);
 
 			// Set maximum duration timeout
@@ -128,7 +141,7 @@ export const useVoiceRecognition = (
 				timeoutRef.current = null;
 			}
 
-			if (Platform.OS === 'ios') {
+			if (isSupported) {
 				await stopIOSSpeechRecognition();
 			} else {
 				await stopAudioRecording();
@@ -142,53 +155,66 @@ export const useVoiceRecognition = (
 	}, [isListening]);
 
 	/**
-	 * iOS Speech Recognition implementation
+	 * iOS Speech Recognition using expo-speech-recognition
 	 */
 	const startIOSSpeechRecognition = useCallback(async () => {
-		// Note: This would typically use react-native-voice or a similar library
-		// For now, we'll simulate with a fallback approach
-		console.log('Starting iOS Speech Recognition...');
+		console.log('🎯 Starting iOS speech recognition...');
 		
-		// Simulate speech recognition with audio recording
-		// In a real implementation, you'd use:
-		// import Voice from '@react-native-voice/voice';
-		// Voice.start(options.language || 'en-US');
-		
-		// For demo purposes, we'll start audio recording and simulate transcription
-		await startAudioRecording();
-		
-		// Simulate partial transcription updates
-		const simulateTranscription = () => {
-			const phrases = [
-				'I want to...',
-				'I want to attack the...',
-				'I want to attack the goblin',
-				'I want to attack the goblin with my sword',
-			];
+		try {
+			// Request speech recognition permissions
+			const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+			if (!granted) {
+				throw new Error('Speech recognition permission not granted');
+			}
 			
-			let index = 0;
-			const interval = setInterval(() => {
-				if (index < phrases.length && isListening) {
-					setTranscript(phrases[index]);
-					options.onTranscription?.(phrases[index], index === phrases.length - 1);
-					index++;
-				} else {
-					clearInterval(interval);
-				}
-			}, 1000);
-		};
+			// Start speech recognition
+			ExpoSpeechRecognitionModule.start({
+				lang: options.language || 'en-US',
+				interimResults: true,
+				maxAlternatives: 1,
+				continuous: false,
+			});
+			
+		} catch (err) {
+			console.error('❌ Failed to start speech recognition:', err);
+			setError('Failed to start speech recognition');
+		}
+	}, [options]);
 
-		// Enable demo mode for testing
-		simulateTranscription();
-	}, [isListening, options]);
+	// Set up speech recognition event listeners
+	useSpeechRecognitionEvent('result', (event) => {
+		console.log('🎤 Speech recognition result:', event);
+		if (event.results && event.results.length > 0) {
+			const transcript = event.results[0].transcript;
+			const isFinal = event.isFinal;
+			console.log(`📝 Transcript: "${transcript}", isFinal: ${isFinal}`);
+			setTranscript(transcript);
+			options.onTranscription?.(transcript, isFinal);
+		}
+	});
+
+	useSpeechRecognitionEvent('error', (event) => {
+		console.error('❌ Speech recognition error:', event);
+		setError(event.message);
+		setIsListening(false);
+		options.onError?.(event.message);
+	});
+
+	useSpeechRecognitionEvent('end', () => {
+		console.log('🛑 Speech recognition ended');
+		setIsListening(false);
+	});
 
 	/**
 	 * Stop iOS Speech Recognition
 	 */
 	const stopIOSSpeechRecognition = useCallback(async () => {
-		console.log('Stopping iOS Speech Recognition...');
-		// Voice.stop();
-		await stopAudioRecording();
+		console.log('🛑 Stopping iOS speech recognition...');
+		try {
+			ExpoSpeechRecognitionModule.stop();
+		} catch (err) {
+			console.error('❌ Failed to stop speech recognition:', err);
+		}
 	}, []);
 
 	/**
@@ -203,11 +229,16 @@ export const useVoiceRecognition = (
 			recordingRef.current = { isRecording: true };
 			
 			// For demo purposes, simulate a realistic D&D action
+			console.log('⏰ Setting 2-second timeout for fallback transcription');
 			setTimeout(() => {
 				if (isListening) {
 					const demoAction = 'I want to attack the goblin with my sword';
+					console.log(`📝 Fallback transcription: "${demoAction}"`);
 					setTranscript(demoAction);
+					console.log('🎤 Calling onTranscription with isFinal: true');
 					options.onTranscription?.(demoAction, true);
+				} else {
+					console.log('❌ Fallback transcription skipped - not listening');
 				}
 			}, 2000);
 
