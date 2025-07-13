@@ -7,12 +7,11 @@ import { GameCanvas } from '../components/game-canvas';
 import { useGameState } from '../hooks/use-game-state';
 import { generateWorldForGameState } from '../services/world-generator';
 
-import { TurnBasedChat } from '@/components/turn-based-chat';
 import { GameStatusBar } from '@/components/game-status-bar';
 import { LiveTranscriptDisplay } from '@/components/live-transcript-display';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { VoiceChatButton } from '@/components/voice-chat-button';
+import { TurnBasedChat } from '@/components/turn-based-chat';
 import { useDungeonMaster } from '@/hooks/use-dungeon-master';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { GameWorldState, Position } from '@/types/world-map';
@@ -100,17 +99,17 @@ const GameScreen: React.FC = () => {
 		if (gameState && playerCharacter && dmAgent.agent && !hasInitialized && dmAgent.messages.length === 1 && !dmAgent.isLoading) {
 			console.log('🎭 Generating custom DM greeting...');
 			setHasInitialized(true);
-			
+
 			const generateInitialGreeting = () => {
 				const name = playerCharacter.name;
 				const race = playerCharacter.race;
 				const playerClass = playerCharacter.class;
-				const location = gameState.startingArea || "a mysterious location";
-				
+				const location = gameState.startingArea || 'a mysterious location';
+
 				// Create contextual greeting based on character and location
 				const locationLower = location.toLowerCase();
-				let greeting = "";
-				
+				let greeting = '';
+
 				if (locationLower.includes('tavern') || locationLower.includes('inn')) {
 					if (playerClass.toLowerCase().includes('wizard') || playerClass.toLowerCase().includes('mage')) {
 						greeting = `You push open the heavy wooden door and step into ${location}. The warm glow of candlelight dances across your weathered spellbook as you lower your hood, revealing your ${race.toLowerCase()} features. Your keen eyes scan the dimly lit common room, noting potential allies nursing their ales and shadowy figures who might pose a threat. The scent of roasted meat and old ale fills your nostrils as you consider your next move, ${name}.`;
@@ -130,13 +129,13 @@ const GameScreen: React.FC = () => {
 				} else {
 					greeting = `You find yourself in ${location}, ${name}. Your ${race.toLowerCase()} heritage and training as a ${playerClass.toLowerCase()} have prepared you for this moment. You take a moment to assess your surroundings and consider your options.`;
 				}
-				
-				return greeting + "\n\nWhat would you like to do?";
+
+				return greeting + '\n\nWhat would you like to do?';
 			};
 
 			const initialMessage = generateInitialGreeting();
 			console.log('📝 Custom greeting generated:', initialMessage.substring(0, 100) + '...');
-			
+
 			// Replace the welcome message with our custom greeting
 			dmAgent.replaceWelcomeMessage(initialMessage);
 			console.log('✅ Custom greeting replaced, switching to player turn');
@@ -208,11 +207,11 @@ const GameScreen: React.FC = () => {
 	const handleChatMessage = async (message: string, speakerId: string) => {
 		// Send message through DM agent
 		await dmAgent.sendMessage(`${speakerId}: ${message}`);
-		
+
 		// Switch to DM's turn after player acts
 		if (speakerId === 'player') {
 			setActiveCharacter('dm');
-			
+
 			// After DM responds, switch back to player
 			// This will be handled by the DM response completion
 			setTimeout(() => {
@@ -315,12 +314,14 @@ const GameScreen: React.FC = () => {
 			/>
 
 			{/* Voice Chat Button */}
+			{/*
 			<VoiceChatButton
 				onVoiceInput={dmAgent.sendVoiceMessage}
 				isDisabled={dmAgent.isLoading}
 				position={isMobile ? 'bottom-right' : 'top-right'}
 				onTranscriptChange={handleTranscriptChange}
 			/>
+			*/}
 
 
 			{/* Save error feedback */}

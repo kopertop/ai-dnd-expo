@@ -4,8 +4,9 @@
  */
 
 import { Feather } from '@expo/vector-icons';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+	Dimensions,
 	Image,
 	KeyboardAvoidingView,
 	Platform,
@@ -47,15 +48,17 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 	dmMessages,
 	onSendMessage,
 	activeCharacter,
-	onTurnChange,
 	isLoading = false,
 }) => {
 	const [inputText, setInputText] = useState('');
-	const [isExpanded, setIsExpanded] = useState(true); // Always open
 	const companions = useSimpleCompanions();
 	const scrollViewRef = useRef<ScrollView>(null);
 	const { width: screenWidth } = useWindowDimensions();
 	const isMobile = screenWidth < 768;
+	const { height: windowHeight } = Dimensions.get('window');
+	const BOTTOM_BAR_HEIGHT = 100; // Adjust if your bottom bar is a different height
+	const TOP_OFFSET = 80; // Matches your 'top: 80' in styles
+	const chatHeight = windowHeight - BOTTOM_BAR_HEIGHT - TOP_OFFSET;
 
 	// Convert DM messages to chat format
 	const chatMessages: ChatMessage[] = dmMessages.map((msg, index) => {
@@ -117,30 +120,6 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 		return companion?.name || 'Companion';
 	};
 
-	const getAvailableCharacters = () => {
-		const characters = [
-			{ id: 'dm', name: 'Dungeon Master', image: require('../assets/images/dungeon-master.png') },
-		];
-
-		if (playerCharacter) {
-			characters.push({
-				id: 'player',
-				name: playerCharacter.name,
-				image: playerCharacter.image ? { uri: playerCharacter.image } : RaceByID.human.image,
-			});
-		}
-
-		companions.activeCompanions.forEach(companion => {
-			characters.push({
-				id: companion.id,
-				name: companion.name,
-				image: companion.image ? { uri: companion.image } : RaceByID.human.image,
-			});
-		});
-
-		return characters;
-	};
-
 	const renderMessage = (message: ChatMessage) => {
 		const isPlayer = message.speakerId === 'player' || companions.activeCompanions.some(c => c.id === message.speakerId);
 		const isDM = message.speakerId === 'dm';
@@ -187,9 +166,28 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 		);
 	};
 
+	// Auto-scroll to bottom when a new message is added
+	useEffect(() => {
+		if (scrollViewRef.current) {
+			scrollViewRef.current.scrollToEnd({ animated: true });
+		}
+	}, [chatMessages.length]);
+
 	return (
-		<View style={[styles.container, isMobile ? styles.containerMobile : styles.containerDesktop]}>
-			<View style={styles.chatContainer}>
+		<View
+			style={[
+				styles.container,
+				isMobile
+					? { ...styles.containerMobile, height: chatHeight }
+					: styles.containerDesktop,
+			]}
+		>
+			<View style={[
+				styles.chatContainer,
+				{
+					height: chatHeight,
+				},
+			]}>
 				{/* Chat Header */}
 				<View style={styles.chatHeader}>
 					<Feather name="message-circle" size={20} color="#000" />
@@ -265,7 +263,6 @@ const styles = StyleSheet.create({
 		backgroundColor: 'rgba(249, 246, 239, 0.95)', // Parchment background
 		borderRadius: 16,
 		overflow: 'hidden',
-		maxHeight: 400,
 		borderWidth: 2,
 		borderColor: '#C9B037',
 	},
@@ -290,7 +287,6 @@ const styles = StyleSheet.create({
 		fontStyle: 'italic',
 	},
 	messagesContainer: {
-		maxHeight: 250,
 		padding: 12,
 	},
 	messageContainer: {
