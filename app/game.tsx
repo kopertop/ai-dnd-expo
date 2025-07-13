@@ -208,6 +208,7 @@ const GameScreen: React.FC = () => {
 				gameState={gameState}
 				onPortraitPress={() => setShowSheet(true)}
 				style={isMobile ? styles.statusBarPinnedMobile : styles.statusBarPinned}
+				activeCharacter="dm" // Test with DM active - you can change this
 			/>
 
 			{/* Main Game Canvas */}

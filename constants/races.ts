@@ -80,3 +80,8 @@ export const RACES: RaceOption[] = [
 		isCustom: true,
 	},
 ];
+
+export const RaceByID: Record<string, RaceOption> = RACES.reduce((acc, race) => {
+	acc[race.id] = race;
+	return acc;
+}, {} as Record<string, RaceOption>);
