@@ -3,16 +3,17 @@
  * Integrates with DM system for recruiting companions in taverns
  */
 
-import React, { useState, useEffect } from 'react';
+import { Feather } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
 import {
-	View,
+	Alert,
 	Modal,
 	ScrollView,
-	TouchableOpacity,
 	StyleSheet,
-	Alert,
+	Text,
+	TouchableOpacity,
+	View,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -92,8 +93,8 @@ export const TavernCompanionRecruitment: React.FC<TavernCompanionRecruitmentProp
 	visible,
 	onClose,
 	onCompanionRecruited,
-	tavernName = "The Prancing Pony",
-	locationDescription = "A cozy tavern filled with the warm glow of firelight and the murmur of conversation.",
+	tavernName = 'The Prancing Pony',
+	locationDescription = 'A cozy tavern filled with the warm glow of firelight and the murmur of conversation.',
 }) => {
 	const colorScheme = useColorScheme();
 	const colors = Colors[colorScheme ?? 'light'];
@@ -111,7 +112,7 @@ export const TavernCompanionRecruitment: React.FC<TavernCompanionRecruitmentProp
 			// Pick 2-3 random companions for this tavern visit
 			const shuffled = [...TAVERN_COMPANION_TEMPLATES].sort(() => 0.5 - Math.random());
 			const selected = shuffled.slice(0, Math.floor(Math.random() * 2) + 2); // 2-3 companions
-			
+
 			setAvailableCompanions(selected);
 			setSelectedCompanion(null);
 		}
@@ -142,7 +143,7 @@ export const TavernCompanionRecruitment: React.FC<TavernCompanionRecruitmentProp
 					[{ text: 'Great!', onPress: () => {
 						onCompanionRecruited?.(newCompanion);
 						onClose();
-					}}]
+					}}],
 				);
 			} else {
 				Alert.alert('Error', 'Failed to add companion to party');
@@ -161,7 +162,7 @@ export const TavernCompanionRecruitment: React.FC<TavernCompanionRecruitmentProp
 			return;
 		}
 
-		const costDescription = template.cost.type === 'gold' 
+		const costDescription = template.cost.type === 'gold'
 			? `Pay ${template.cost.amount} gold pieces`
 			: template.cost.description;
 
@@ -171,7 +172,7 @@ export const TavernCompanionRecruitment: React.FC<TavernCompanionRecruitmentProp
 			[
 				{ text: 'Cancel', style: 'cancel' },
 				{ text: 'Recruit', onPress: () => handleRecruitCompanion(template) },
-			]
+			],
 		);
 	};
 
@@ -187,63 +188,75 @@ export const TavernCompanionRecruitment: React.FC<TavernCompanionRecruitmentProp
 					selectedCompanion?.name === template.name && styles.companionCardSelected,
 				]}
 				onPress={() => setSelectedCompanion(
-					selectedCompanion?.name === template.name ? null : template
+					selectedCompanion?.name === template.name ? null : template,
 				)}
 			>
-			<View style={styles.companionHeader}>
-				<View style={styles.companionInfo}>
-					<ThemedText style={styles.companionName}>{template.name}</ThemedText>
-					<ThemedText style={styles.companionClass}>
-						Level {template.level} {template.race} {template.class}
-					</ThemedText>
-				</View>
-				<View style={styles.companionTypeBadge}>
-					<ThemedText style={styles.companionTypeText}>
-						{template.companionType.toUpperCase()}
-					</ThemedText>
-				</View>
-			</View>
-
-			<ThemedText style={styles.companionDescription}>
-				{template.description}
-			</ThemedText>
-
-			{selectedCompanion?.name === template.name && (
-				<View style={styles.expandedContent}>
-					<View style={styles.personalitySection}>
-						<ThemedText style={styles.sectionLabel}>Personality:</ThemedText>
-						<ThemedText style={styles.personalityText}>{template.personality}</ThemedText>
-					</View>
-
-					<View style={styles.catchphrasesSection}>
-						<ThemedText style={styles.sectionLabel}>Says things like:</ThemedText>
-						{template.catchphrases.map((phrase, index) => (
-							<ThemedText key={index} style={styles.catchphrase}>
-								"{phrase}"
-							</ThemedText>
-						))}
-					</View>
-
-					<View style={styles.costSection}>
-						<ThemedText style={styles.sectionLabel}>Cost:</ThemedText>
-						<ThemedText style={styles.costText}>
-							{template.cost?.type === 'gold' 
-								? `${template.cost.amount} gold pieces`
-								: template.cost?.description || 'Free'
-							}
+				<View style={styles.companionHeader}>
+					<View style={styles.companionInfo}>
+						<ThemedText style={styles.companionName}>{template.name}</ThemedText>
+						<ThemedText style={styles.companionClass}>
+							<Text>
+								Level {template.level} {template.race} {template.class}
+							</Text>
 						</ThemedText>
 					</View>
-
-					<TouchableOpacity
-						style={styles.recruitButton}
-						onPress={() => handlePayCost(template)}
-					>
-						<Feather name="user-plus" size={20} color={colors.text} />
-						<ThemedText style={styles.recruitButtonText}>Recruit</ThemedText>
-					</TouchableOpacity>
+					<View style={styles.companionTypeBadge}>
+						<ThemedText style={styles.companionTypeText}>
+							{template.companionType.toUpperCase()}
+						</ThemedText>
+					</View>
 				</View>
-			)}
-		</TouchableOpacity>
+
+				<ThemedText style={styles.companionDescription}>
+					{template.description}
+				</ThemedText>
+
+				{selectedCompanion?.name === template.name && (
+					<View style={styles.expandedContent}>
+						<View style={styles.personalitySection}>
+							<ThemedText style={styles.sectionLabel}>
+								<Text>Personality:</Text>
+							</ThemedText>
+							<ThemedText style={styles.personalityText}>{template.personality}</ThemedText>
+						</View>
+
+						<View style={styles.catchphrasesSection}>
+							<ThemedText style={styles.sectionLabel}>
+								<Text>Says things like:</Text>
+							</ThemedText>
+							{template.catchphrases.map((phrase, index) => (
+								<ThemedText key={index} style={styles.catchphrase}>
+									<Text>
+										&quot;{phrase}&quot;
+									</Text>
+								</ThemedText>
+							))}
+						</View>
+
+						<View style={styles.costSection}>
+							<ThemedText style={styles.sectionLabel}>
+								<Text>Cost:</Text>
+							</ThemedText>
+							<ThemedText style={styles.costText}>
+								{template.cost?.type === 'gold'
+									? `${template.cost.amount} gold pieces`
+									: template.cost?.description || 'Free'
+								}
+							</ThemedText>
+						</View>
+
+						<TouchableOpacity
+							style={styles.recruitButton}
+							onPress={() => handlePayCost(template)}
+						>
+							<Feather name="user-plus" size={20} color={colors.text} />
+							<ThemedText style={styles.recruitButtonText}>
+								<Text>Recruit</Text>
+							</ThemedText>
+						</TouchableOpacity>
+					</View>
+				)}
+			</TouchableOpacity>
 		);
 	};
 
@@ -260,7 +273,9 @@ export const TavernCompanionRecruitment: React.FC<TavernCompanionRecruitmentProp
 					<View style={styles.header}>
 						<View style={styles.headerContent}>
 							<ThemedText style={styles.title}>{tavernName}</ThemedText>
-							<ThemedText style={styles.subtitle}>Looking for Companions</ThemedText>
+							<ThemedText style={styles.subtitle}>
+								<Text>Looking for Companions</Text>
+							</ThemedText>
 						</View>
 						<TouchableOpacity style={styles.closeButton} onPress={onClose}>
 							<Feather name="x" size={24} color={colors.text} />
@@ -269,7 +284,9 @@ export const TavernCompanionRecruitment: React.FC<TavernCompanionRecruitmentProp
 
 					{/* Description */}
 					<ThemedText style={styles.description}>
-						{locationDescription} You scan the room for potential companions who might join your adventure.
+						<Text>
+							{locationDescription} You scan the room for potential companions who might join your adventure.
+						</Text>
 					</ThemedText>
 
 					{/* Available Companions */}
@@ -277,7 +294,7 @@ export const TavernCompanionRecruitment: React.FC<TavernCompanionRecruitmentProp
 						{companions.isLoading ? (
 							<View style={styles.emptyState}>
 								<ThemedText style={styles.emptyStateText}>
-									Looking for available companions...
+									<Text>Looking for available companions...</Text>
 								</ThemedText>
 							</View>
 						) : availableCompanions.length > 0 ? (
@@ -286,10 +303,10 @@ export const TavernCompanionRecruitment: React.FC<TavernCompanionRecruitmentProp
 							<View style={styles.emptyState}>
 								<Feather name="users" size={48} color={colors.text} />
 								<ThemedText style={styles.emptyStateText}>
-									No adventurers are looking for work today.
+									<Text>No adventurers are looking for work today.</Text>
 								</ThemedText>
 								<ThemedText style={styles.emptyStateSubtext}>
-									Try again later or visit another tavern.
+									<Text>Try again later or visit another tavern.</Text>
 								</ThemedText>
 							</View>
 						)}
@@ -298,7 +315,7 @@ export const TavernCompanionRecruitment: React.FC<TavernCompanionRecruitmentProp
 					{/* Footer */}
 					<View style={styles.footer}>
 						<ThemedText style={styles.footerText}>
-							Tap a character to learn more, then recruit them to join your party.
+							<Text>Tap a character to learn more, then recruit them to join your party.</Text>
 						</ThemedText>
 					</View>
 				</ThemedView>

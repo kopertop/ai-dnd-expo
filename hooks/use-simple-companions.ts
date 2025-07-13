@@ -3,10 +3,9 @@
  * Works with existing Character system
  */
 
-import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback, useEffect, useState } from 'react';
 
-import type { Character } from '@/types/character';
 import type { Companion, CompanionTemplate, PartyConfiguration } from '@/types/companion';
 
 const COMPANIONS_STORAGE_KEY = 'ai-dnd-companions';
@@ -181,7 +180,7 @@ export function useSimpleCompanions(): CompanionManager {
 	 */
 	const updateDerivedState = useCallback((companions: Companion[], partyConfig: PartyConfiguration) => {
 		const activeCompanions = companions.filter(comp => 
-			partyConfig.activeCompanions.includes(comp.id)
+			partyConfig.activeCompanions.includes(comp.id),
 		);
 
 		setState(prev => ({
@@ -233,7 +232,7 @@ export function useSimpleCompanions(): CompanionManager {
 			setState(prev => ({ 
 				...prev, 
 				error: 'Failed to load companion data', 
-				isLoading: false 
+				isLoading: false, 
 			}));
 		}
 	}, [updateDerivedState]);
@@ -294,7 +293,7 @@ export function useSimpleCompanions(): CompanionManager {
 		};
 
 		const newCompanions = state.companions.map(comp =>
-			comp.id === companionId ? { ...comp, isActive: true } : comp
+			comp.id === companionId ? { ...comp, isActive: true } : comp,
 		);
 
 		updateDerivedState(newCompanions, newPartyConfig);
@@ -317,7 +316,7 @@ export function useSimpleCompanions(): CompanionManager {
 		};
 
 		const newCompanions = state.companions.map(comp =>
-			comp.id === companionId ? { ...comp, isActive: false } : comp
+			comp.id === companionId ? { ...comp, isActive: false } : comp,
 		);
 
 		updateDerivedState(newCompanions, newPartyConfig);
@@ -330,13 +329,13 @@ export function useSimpleCompanions(): CompanionManager {
 	 */
 	const updateCompanion = useCallback(async (
 		companionId: string, 
-		updates: Partial<Companion>
+		updates: Partial<Companion>,
 	): Promise<boolean> => {
 		const companion = getCompanion(companionId);
 		if (!companion) return false;
 
 		const newCompanions = state.companions.map(comp =>
-			comp.id === companionId ? { ...comp, ...updates } : comp
+			comp.id === companionId ? { ...comp, ...updates } : comp,
 		);
 
 		updateDerivedState(newCompanions, state.partyConfig);

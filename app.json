@@ -10,7 +10,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "buildNumber": 3,
+      "buildNumber": "4",
       "supportsTablet": true,
       "bundleIdentifier": "org.coredumped.ai-dnd",
       "infoPlist": {

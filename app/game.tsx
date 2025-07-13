@@ -8,7 +8,6 @@ import { useGameState } from '../hooks/use-game-state';
 import { generateWorldForGameState } from '../services/world-generator';
 
 import { GameStatusBar } from '@/components/game-status-bar';
-import { LiveTranscriptDisplay } from '@/components/live-transcript-display';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TurnBasedChat } from '@/components/turn-based-chat';
@@ -20,8 +19,6 @@ import { GameWorldState, Position } from '@/types/world-map';
 const GameScreen: React.FC = () => {
 	const [showSheet, setShowSheet] = useState(false);
 	const [worldState, setWorldState] = useState<GameWorldState | null>(null);
-	const [liveTranscript, setLiveTranscript] = useState('');
-	const [isListening, setIsListening] = useState(false);
 	const [activeCharacter, setActiveCharacter] = useState<'dm' | 'player' | string>('dm');
 	const [hasInitialized, setHasInitialized] = useState(false);
 	const { isMobile } = useScreenSize();
@@ -195,11 +192,6 @@ const GameScreen: React.FC = () => {
 		// Could be used for movement, interaction, etc.
 	};
 
-	const handleTranscriptChange = (transcript: string, listening: boolean) => {
-		setLiveTranscript(transcript);
-		setIsListening(listening);
-	};
-
 	const handleTurnChange = (newActiveCharacter: 'dm' | 'player' | string) => {
 		setActiveCharacter(newActiveCharacter);
 	};
@@ -296,16 +288,9 @@ const GameScreen: React.FC = () => {
 				onClose={() => setShowSheet(false)}
 			/>
 
-			{/* Live Transcript Display */}
-			<LiveTranscriptDisplay
-				transcript={liveTranscript}
-				isListening={isListening}
-				isVisible={isListening || liveTranscript.length > 0}
-			/>
-
 			{/* Turn-Based Chat */}
 			<TurnBasedChat
-				playerCharacter={playerCharacter}
+				playerCharacter={playerCharacter || null}
 				dmMessages={dmAgent.messages}
 				onSendMessage={handleChatMessage}
 				activeCharacter={activeCharacter}

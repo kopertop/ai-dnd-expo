@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Stack, router } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, PanResponder, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -42,9 +41,8 @@ const NewGameScreen: React.FC = () => {
 	const { isMobile } = useScreenSize();
 
 	const { save } = useGameState();
-	// TODO: Restore inventory manager
-	const addItem = async () => {};
-	const equipItem = async () => {};
+	const addItem = async (item: string, quantity: number) => {};
+	const equipItem = async (item: string) => {};
 
 	// Pan responder for swipe gestures
 	const panResponder = PanResponder.create({
@@ -279,16 +277,16 @@ const NewGameScreen: React.FC = () => {
 			return (
 				<View style={{ flex: 1, flexDirection: 'column' }}>
 					{/* Header Section */}
-					<View style={{ 
+					<View style={{
 						paddingHorizontal: isMobile ? 16 : 24,
 						paddingTop: isMobile ? 16 : 24,
 						paddingBottom: isMobile ? 8 : 12,
 					}}>
 						<Text style={isMobile ? newGameStyles.titleMobile : newGameStyles.title}>Finalize Your Character</Text>
 					</View>
-					
+
 					{/* Scrollable Content */}
-					<ScrollView 
+					<ScrollView
 						style={{ flex: 1 }}
 						contentContainerStyle={{
 							paddingHorizontal: isMobile ? 16 : 24,
@@ -312,15 +310,15 @@ const NewGameScreen: React.FC = () => {
 								maxLength={32}
 							/>
 						</View>
-						
+
 						{/* Background Section - Flexible */}
 						<View style={{ flex: 1, flexDirection: 'column' }}>
 							<Text style={newGameStyles.label}>Background / Description</Text>
 							<TouchableOpacity
 								style={[
-									newGameStyles.submitButton, 
-									{ 
-										marginBottom: 10, 
+									newGameStyles.submitButton,
+									{
+										marginBottom: 10,
 										width: '100%',
 										paddingVertical: isMobile ? 14 : 10,
 									},
@@ -331,7 +329,7 @@ const NewGameScreen: React.FC = () => {
 							</TouchableOpacity>
 							<TextInput
 								style={[
-									newGameStyles.input, 
+									newGameStyles.input,
 									{
 										flex: 1,
 										minHeight: isMobile ? 200 : 150,
@@ -417,7 +415,7 @@ const NewGameScreen: React.FC = () => {
 										},
 										health: 10, // Default starting health
 										maxHealth: 10,
-										actionPoints: 3, // Default starting action points  
+										actionPoints: 3, // Default starting action points
 										maxActionPoints: 3,
 									};
 
@@ -431,13 +429,13 @@ const NewGameScreen: React.FC = () => {
 
 									// Save the properly structured game state using the new hook
 									await save(gameState);
-									
+
 									// Now add items to inventory using the inventory manager
 									// (which can now successfully load the character)
 									await addItem('rations', 2);
 									await addItem('tent', 1);
 									await addItem('healing_potion', 2);
-									
+
 									// Add class-appropriate gear
 									if (selectedClass.id === 'fighter') {
 										await addItem('sword', 1);
