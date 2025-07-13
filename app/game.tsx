@@ -9,6 +9,7 @@ import { generateWorldForGameState } from '../services/world-generator';
 
 import { DMChatInterface } from '@/components/dm-chat-interface';
 import { GameStatusBar } from '@/components/game-status-bar';
+import { LiveTranscriptDisplay } from '@/components/live-transcript-display';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { VoiceChatButton } from '@/components/voice-chat-button';
@@ -20,6 +21,8 @@ import { GameWorldState, Position } from '@/types/world-map';
 const GameScreen: React.FC = () => {
 	const [showSheet, setShowSheet] = useState(false);
 	const [worldState, setWorldState] = useState<GameWorldState | null>(null);
+	const [liveTranscript, setLiveTranscript] = useState('');
+	const [isListening, setIsListening] = useState(false);
 	const { isMobile } = useScreenSize();
 	const { loading, gameState, save } = useGameState();
 	const [saveError, setSaveError] = useState<string | null>(null);
@@ -142,6 +145,11 @@ const GameScreen: React.FC = () => {
 		// Could be used for movement, interaction, etc.
 	};
 
+	const handleTranscriptChange = (transcript: string, listening: boolean) => {
+		setLiveTranscript(transcript);
+		setIsListening(listening);
+	};
+
 	if (loading) {
 		return (
 			<ThemedView style={styles.container}>
@@ -217,11 +225,19 @@ const GameScreen: React.FC = () => {
 				onClose={() => setShowSheet(false)}
 			/>
 
+			{/* Live Transcript Display */}
+			<LiveTranscriptDisplay
+				transcript={liveTranscript}
+				isListening={isListening}
+				isVisible={isListening || liveTranscript.length > 0}
+			/>
+
 			{/* Voice Chat Button */}
 			<VoiceChatButton
 				onVoiceInput={dmAgent.sendVoiceMessage}
 				isDisabled={dmAgent.isLoading}
 				position={isMobile ? 'bottom-right' : 'top-right'}
+				onTranscriptChange={handleTranscriptChange}
 			/>
 
 			{/* Dungeon Master Chat Interface */}

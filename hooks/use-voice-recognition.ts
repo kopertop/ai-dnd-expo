@@ -117,7 +117,7 @@ export const useVoiceRecognition = (
 			setIsListening(true);
 
 			// Set maximum duration timeout
-			const maxDuration = options.maxDuration || 30000; // 30 seconds default
+			const maxDuration = options.maxDuration || 60000; // 60 seconds default for better UX
 			timeoutRef.current = setTimeout(() => {
 				stopListening();
 			}, maxDuration);
@@ -167,13 +167,17 @@ export const useVoiceRecognition = (
 				throw new Error('Speech recognition permission not granted');
 			}
 			
-			// Start speech recognition
+			// Start speech recognition with iOS optimized settings
 			ExpoSpeechRecognitionModule.start({
 				lang: options.language || 'en-US',
 				interimResults: true,
-				maxAlternatives: 1,
-				continuous: false,
+				maxAlternatives: 3,
+				continuous: true, // Allow continuous recognition
+				requiresOnDeviceRecognition: true, // Use on-device recognition for iOS
+				addsPunctuation: false, // Don't add punctuation to avoid delays
 			});
+			
+			console.log('🎤 Speech recognition start() called');
 			
 		} catch (err) {
 			console.error('❌ Failed to start speech recognition:', err);
@@ -181,28 +185,58 @@ export const useVoiceRecognition = (
 		}
 	}, [options]);
 
-	// Set up speech recognition event listeners
+	// Set up speech recognition event listeners with comprehensive logging
+	useSpeechRecognitionEvent('start', (event) => {
+		console.log('🎤 SPEECH RECOGNITION STARTED EVENT:', event);
+		setIsListening(true);
+	});
+
+	useSpeechRecognitionEvent('audiostart', (event) => {
+		console.log('🔊 AUDIO CAPTURE STARTED:', event);
+	});
+
+	useSpeechRecognitionEvent('speechstart', (event) => {
+		console.log('🗣️ SPEECH INPUT DETECTED:', event);
+	});
+
 	useSpeechRecognitionEvent('result', (event) => {
-		console.log('🎤 Speech recognition result:', event);
+		console.log('🎤 SPEECH RECOGNITION RESULT:', JSON.stringify(event, null, 2));
 		if (event.results && event.results.length > 0) {
 			const transcript = event.results[0].transcript;
 			const isFinal = event.isFinal;
-			console.log(`📝 Transcript: "${transcript}", isFinal: ${isFinal}`);
+			console.log(`📝 TRANSCRIPT: "${transcript}", isFinal: ${isFinal}`);
 			setTranscript(transcript);
 			options.onTranscription?.(transcript, isFinal);
 		}
 	});
 
+	useSpeechRecognitionEvent('speechend', (event) => {
+		console.log('🤐 SPEECH INPUT ENDED:', event);
+	});
+
+	useSpeechRecognitionEvent('audioend', (event) => {
+		console.log('🔇 AUDIO CAPTURE ENDED:', event);
+	});
+
+	useSpeechRecognitionEvent('end', (event) => {
+		console.log('🛑 SPEECH RECOGNITION ENDED:', event);
+		setIsListening(false);
+	});
+
 	useSpeechRecognitionEvent('error', (event) => {
-		console.error('❌ Speech recognition error:', event);
+		console.error('❌ SPEECH RECOGNITION ERROR:', JSON.stringify(event, null, 2));
+		
+		// Handle "no-speech" error more gracefully - it's often not a real error
+		if (event.error === 'no-speech') {
+			console.log('🔇 No speech detected - this is normal, continuing...');
+			setError(null); // Don't show error for no speech
+			// Don't stop listening, let it continue
+			return;
+		}
+		
 		setError(event.message);
 		setIsListening(false);
 		options.onError?.(event.message);
-	});
-
-	useSpeechRecognitionEvent('end', () => {
-		console.log('🛑 Speech recognition ended');
-		setIsListening(false);
 	});
 
 	/**

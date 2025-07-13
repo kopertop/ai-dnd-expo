@@ -18,12 +18,14 @@ interface VoiceChatButtonProps {
 	onVoiceInput: (transcript: string) => Promise<void>;
 	isDisabled?: boolean;
 	position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
+	onTranscriptChange?: (transcript: string, isListening: boolean) => void;
 }
 
 export const VoiceChatButton: React.FC<VoiceChatButtonProps> = ({
 	onVoiceInput,
 	isDisabled = false,
 	position = 'top-right',
+	onTranscriptChange,
 }) => {
 	const colorScheme = useColorScheme();
 	const colors = Colors[colorScheme ?? 'light'];
@@ -33,9 +35,13 @@ export const VoiceChatButton: React.FC<VoiceChatButtonProps> = ({
 
 	const voiceRecognition = useVoiceRecognition({
 		language: 'en-US',
-		maxDuration: 15000, // 15 seconds max
+		maxDuration: 30000, // 30 seconds max
 		onTranscription: (text, isFinal) => {
 			console.log(`🎤 VoiceChatButton onTranscription: "${text}", isFinal: ${isFinal}`);
+			
+			// Notify parent about transcript changes
+			onTranscriptChange?.(text, voiceRecognition.isListening);
+			
 			if (isFinal && text.trim()) {
 				console.log('✅ Calling handleVoiceInput');
 				handleVoiceInput(text);
@@ -48,6 +54,11 @@ export const VoiceChatButton: React.FC<VoiceChatButtonProps> = ({
 	});
 
 	const dmVoice = useDMVoice();
+
+	// Notify parent when listening state changes
+	useEffect(() => {
+		onTranscriptChange?.(voiceRecognition.transcript, voiceRecognition.isListening);
+	}, [voiceRecognition.isListening, voiceRecognition.transcript, onTranscriptChange]);
 
 	const styles = createStyles(colors, position);
 
