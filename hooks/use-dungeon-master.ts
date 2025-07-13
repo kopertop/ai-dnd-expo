@@ -15,6 +15,7 @@ export interface UseDungeonMasterReturn {
 	agent: DungeonMasterAgent | null;
 	error: string | null;
 	dmVoice: ReturnType<typeof useDMVoice>;
+	replaceWelcomeMessage: (newContent: string) => void;
 }
 
 export interface DungeonMasterConfig {
@@ -42,6 +43,8 @@ export const useDungeonMaster = (config: DungeonMasterConfig): UseDungeonMasterR
 	// Initialize DM agent when dependencies are available
 	useEffect(() => {
 		if (config.worldState && config.playerCharacter) {
+			console.log('🎲 Initializing DM agent for:', config.playerCharacter.name);
+			
 			const context: DMContext = {
 				worldState: config.worldState,
 				playerCharacter: config.playerCharacter,
@@ -52,7 +55,7 @@ export const useDungeonMaster = (config: DungeonMasterConfig): UseDungeonMasterR
 
 			agentRef.current = new DungeonMasterAgent(context, gemmaModel);
 			
-			// Add welcome message
+			// Add simple welcome message (will be customized by game.tsx)
 			const welcomeMessage: DMMessage = {
 				id: 'welcome',
 				content: `Welcome to your adventure, ${config.playerCharacter.name}! You find yourself in ${config.worldState.worldMap.name}. What would you like to do?`,
@@ -61,9 +64,26 @@ export const useDungeonMaster = (config: DungeonMasterConfig): UseDungeonMasterR
 				speaker: 'Dungeon Master',
 			};
 			
+			console.log('💬 Adding initial welcome message');
 			setMessages([welcomeMessage]);
 		}
 	}, [config.worldState, config.playerCharacter]);
+
+	// Add method to replace welcome message
+	const replaceWelcomeMessage = useCallback((newContent: string) => {
+		setMessages(prevMessages => {
+			if (prevMessages.length > 0 && prevMessages[0].id === 'welcome') {
+				const updatedMessage: DMMessage = {
+					...prevMessages[0],
+					content: newContent,
+					timestamp: Date.now(),
+				};
+				console.log('🔄 Replacing welcome message with custom greeting');
+				return [updatedMessage, ...prevMessages.slice(1)];
+			}
+			return prevMessages;
+		});
+	}, []);
 
 	// Update agent context when world state or character changes
 	useEffect(() => {
@@ -186,6 +206,7 @@ export const useDungeonMaster = (config: DungeonMasterConfig): UseDungeonMasterR
 		agent: agentRef.current,
 		error,
 		dmVoice,
+		replaceWelcomeMessage,
 	};
 };
 
