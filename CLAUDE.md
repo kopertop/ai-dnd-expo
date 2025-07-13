@@ -19,6 +19,7 @@ This is an AI-powered Dungeons & Dragons platform built with React Native/Expo. 
 - `npx expo run:android` - Build and run locally on Android
 - `npx expo run:ios` - Build and run locally on iOS
 - `npx expo prebuild` - Generate native code (for ejected projects)
+- `npx testflight` - Build and deploy to testflight
 
 ### Project Reset
 - `npm run reset-project` - Moves current app to app-example and creates blank app directory
