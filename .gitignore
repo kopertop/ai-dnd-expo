@@ -24,6 +24,7 @@ expo-env.d.ts
 # Native build directories
 ios/
 android/
+build-*.ipa
 
 # Metro
 .metro-health-check*

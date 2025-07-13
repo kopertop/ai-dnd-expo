@@ -123,5 +123,16 @@ This is an AI-powered Dungeons & Dragons platform built with React Native/Expo. 
 ### Important Files for AI Development
 - `AI-INSTRUCTIONS.md` - Comprehensive AI development guidelines
 - `TODO.md` - Detailed development roadmap and feature planning
+- `OVERNIGHT-PROGRESS.md` - Status of overnight development work (cleaned up)
+- `COMPANION-DEMO.md` - Working tavern companion recruitment system
+- `/components/tavern-companion-recruitment.tsx` - Functional companion system
+- `/hooks/use-simple-companions.ts` - Companion management logic
 - Future: `/services/ai/agents/` - AI agent implementations
 - Future: `/services/ai/prompts/` - Prompt templates and management
+
+### Current Working Features
+- **Tavern Companion Recruitment** - Fully integrated with DM chat interface
+- **Location-aware Quick Actions** - Context-sensitive DM chat buttons
+- **Companion Management** - Party system with persistence
+- **Voice Chat** - Real-time speech recognition and TTS
+- **DM Agent** - AI-powered dungeon master with tool calling

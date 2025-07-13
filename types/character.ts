@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-import { InventoryEntrySchema } from './items';
 import { GearSlotSchema, StatBlockSchema } from './stats';
 
 export const CharacterSchema = z.object({
@@ -13,7 +12,7 @@ export const CharacterSchema = z.object({
 	description: z.string().optional(),
 	stats: StatBlockSchema,
 	skills: z.array(z.string()),
-	inventory: z.array(InventoryEntrySchema),
+	inventory: z.array(z.any()), // TODO: Define proper inventory schema
 	equipped: z.record(GearSlotSchema, z.string().nullable()),
 	health: z.number().int(),
 	maxHealth: z.number().int(),

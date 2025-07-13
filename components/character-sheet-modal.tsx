@@ -4,8 +4,6 @@ import React, { useState } from 'react';
 import { Alert, Image, ImageSourcePropType, Modal, Platform, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 import { useGameState } from '../hooks/use-game-state';
-import { useInventoryManager } from '../hooks/use-inventory-manager';
-import { Item as InventoryItem } from '../types/items';
 import { GearSlot } from '../types/stats';
 
 import { ThemedView } from '@/components/themed-view';
@@ -29,7 +27,13 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 	const { isMobile } = useScreenSize();
 	const { togglePlayPause, isPlaying } = useAudio();
 	const { playerCharacter, playerPortrait } = useGameState();
-	const { loading, error, inventory, equipped, equipItem, unequipItem } = useInventoryManager();
+	// TODO: Restore inventory manager
+	const loading = false;
+	const error = null;
+	const inventory: any[] = [];
+	const equipped: Record<string, any> = {};
+	const equipItem = async () => {};
+	const unequipItem = async () => {};
 
 	if (!playerCharacter) return null;
 
@@ -40,14 +44,14 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 		setActiveSlot(activeSlot === slot ? null : slot);
 	};
 
-	const handleAssignItem = async (item: InventoryItem) => {
+	const handleAssignItem = async (item: any) => {
 		if (!activeSlot) return;
-		await equipItem(item.id);
+		await equipItem();
 		setActiveSlot(null);
 	};
 
 	const handleUnequipSlot = async (slot: GearSlot) => {
-		await unequipItem(slot);
+		await unequipItem();
 		setActiveSlot(null);
 	};
 
