@@ -3,410 +3,410 @@
  * Similar to transcript overlay but for turn-based gameplay
  */
 
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  TextInput, 
-  ScrollView, 
-  StyleSheet, 
-  Image, 
-  KeyboardAvoidingView, 
-  Platform,
-  useWindowDimensions 
-} from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import React, { useRef, useState } from 'react';
+import {
+	Image,
+	KeyboardAvoidingView,
+	Platform,
+	ScrollView,
+	StyleSheet,
+	Text,
+	TextInput,
+	TouchableOpacity,
+	useWindowDimensions,
+	View,
+} from 'react-native';
 
+import { Colors } from '@/constants/colors';
 import { RaceByID } from '@/constants/races';
 import { useSimpleCompanions } from '@/hooks/use-simple-companions';
 import { DMMessage } from '@/services/ai/agents/dungeon-master-agent';
 import type { Character } from '@/types/character';
 
 interface ChatMessage {
-  id: string;
-  speakerId: 'dm' | 'player' | string; // 'dm', 'player', or companion ID
-  speakerName: string;
-  content: string;
-  timestamp: number;
-  type: 'action' | 'dialogue' | 'system';
+	id: string;
+	speakerId: 'dm' | 'player' | string; // 'dm', 'player', or companion ID
+	speakerName: string;
+	content: string;
+	timestamp: number;
+	type: 'action' | 'dialogue' | 'system';
 }
 
 interface TurnBasedChatProps {
-  playerCharacter: Character | null;
-  dmMessages: DMMessage[];
-  onSendMessage: (message: string, speakerId: string) => Promise<void>;
-  activeCharacter: 'dm' | 'player' | string;
-  onTurnChange: (newActiveCharacter: 'dm' | 'player' | string) => void;
-  isLoading?: boolean;
+	playerCharacter: Character | null;
+	dmMessages: DMMessage[];
+	onSendMessage: (message: string, speakerId: string) => Promise<void>;
+	activeCharacter: 'dm' | 'player' | string;
+	onTurnChange: (newActiveCharacter: 'dm' | 'player' | string) => void;
+	isLoading?: boolean;
 }
 
 export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
-  playerCharacter,
-  dmMessages,
-  onSendMessage,
-  activeCharacter,
-  onTurnChange,
-  isLoading = false,
+	playerCharacter,
+	dmMessages,
+	onSendMessage,
+	activeCharacter,
+	onTurnChange,
+	isLoading = false,
 }) => {
-  const [inputText, setInputText] = useState('');
-  const [isExpanded, setIsExpanded] = useState(true); // Always open
-  const companions = useSimpleCompanions();
-  const scrollViewRef = useRef<ScrollView>(null);
-  const { width: screenWidth } = useWindowDimensions();
-  const isMobile = screenWidth < 768;
+	const [inputText, setInputText] = useState('');
+	const [isExpanded, setIsExpanded] = useState(true); // Always open
+	const companions = useSimpleCompanions();
+	const scrollViewRef = useRef<ScrollView>(null);
+	const { width: screenWidth } = useWindowDimensions();
+	const isMobile = screenWidth < 768;
 
-  // Convert DM messages to chat format
-  const chatMessages: ChatMessage[] = dmMessages.map((msg, index) => {
-    // Default to DM unless explicitly identified as player
-    let speakerId = 'dm';
-    let speakerName = 'Dungeon Master';
-    let content = msg.content;
+	// Convert DM messages to chat format
+	const chatMessages: ChatMessage[] = dmMessages.map((msg, index) => {
+		// Default to DM unless explicitly identified as player
+		let speakerId = 'dm';
+		let speakerName = 'Dungeon Master';
+		let content = msg.content;
 
-    // Check if message starts with a speaker prefix like "player: content"
-    const speakerMatch = content.match(/^(player|dm):\s*(.*)/i);
-    if (speakerMatch) {
-      const [, speaker, messageContent] = speakerMatch;
-      speakerId = speaker.toLowerCase() === 'player' ? 'player' : 'dm';
-      speakerName = speakerId === 'player' ? (playerCharacter?.name || 'Player') : 'Dungeon Master';
-      content = messageContent;
-    } else if (msg.speaker === 'Player') {
-      // Only mark as player if explicitly marked as such
-      speakerId = 'player';
-      speakerName = playerCharacter?.name || 'Player';
-      // Remove "Player:" prefix if present
-      content = content.replace(/^Player:\s*/, '');
-    }
-    // All other messages default to DM (including msg.speaker === 'Dungeon Master')
+		// Check if message starts with a speaker prefix like "player: content"
+		const speakerMatch = content.match(/^(player|dm):\s*(.*)/i);
+		if (speakerMatch) {
+			const [, speaker, messageContent] = speakerMatch;
+			speakerId = speaker.toLowerCase() === 'player' ? 'player' : 'dm';
+			speakerName = speakerId === 'player' ? (playerCharacter?.name || 'Player') : 'Dungeon Master';
+			content = messageContent;
+		} else if (msg.speaker === 'Player') {
+			// Only mark as player if explicitly marked as such
+			speakerId = 'player';
+			speakerName = playerCharacter?.name || 'Player';
+			// Remove "Player:" prefix if present
+			content = content.replace(/^Player:\s*/, '');
+		}
+		// All other messages default to DM (including msg.speaker === 'Dungeon Master')
 
-    return {
-      id: msg.id || `msg-${index}`,
-      speakerId,
-      speakerName,
-      content,
-      timestamp: msg.timestamp,
-      type: 'dialogue',
-    };
-  });
+		return {
+			id: msg.id || `msg-${index}`,
+			speakerId,
+			speakerName,
+			content,
+			timestamp: msg.timestamp,
+			type: 'dialogue',
+		};
+	});
 
-  const handleSendMessage = async () => {
-    if (inputText.trim() && !isLoading) {
-      const message = inputText.trim();
-      setInputText('');
-      await onSendMessage(message, activeCharacter);
-    }
-  };
+	const handleSendMessage = async () => {
+		if (inputText.trim() && !isLoading) {
+			const message = inputText.trim();
+			setInputText('');
+			await onSendMessage(message, activeCharacter);
+		}
+	};
 
-  const getSpeakerImage = (speakerId: string) => {
-    if (speakerId === 'dm') {
-      return require('../assets/images/dungeon-master.png');
-    }
-    if (speakerId === 'player') {
-      return playerCharacter?.image ? { uri: playerCharacter.image } : RaceByID.human.image;
-    }
-    // Companion
-    const companion = companions.activeCompanions.find(c => c.id === speakerId);
-    return companion?.image ? { uri: companion.image } : RaceByID.human.image;
-  };
+	const getSpeakerImage = (speakerId: string) => {
+		if (speakerId === 'dm') {
+			return require('../assets/images/dungeon-master.png');
+		}
+		if (speakerId === 'player') {
+			return playerCharacter?.image ? { uri: playerCharacter.image } : RaceByID.human.image;
+		}
+		// Companion
+		const companion = companions.activeCompanions.find(c => c.id === speakerId);
+		return companion?.image ? { uri: companion.image } : RaceByID.human.image;
+	};
 
-  const getSpeakerName = (speakerId: string) => {
-    if (speakerId === 'dm') return 'Dungeon Master';
-    if (speakerId === 'player') return playerCharacter?.name || 'Player';
-    const companion = companions.activeCompanions.find(c => c.id === speakerId);
-    return companion?.name || 'Companion';
-  };
+	const getSpeakerName = (speakerId: string) => {
+		if (speakerId === 'dm') return 'Dungeon Master';
+		if (speakerId === 'player') return playerCharacter?.name || 'Player';
+		const companion = companions.activeCompanions.find(c => c.id === speakerId);
+		return companion?.name || 'Companion';
+	};
 
-  const getAvailableCharacters = () => {
-    const characters = [
-      { id: 'dm', name: 'Dungeon Master', image: require('../assets/images/dungeon-master.png') },
-    ];
-    
-    if (playerCharacter) {
-      characters.push({
-        id: 'player',
-        name: playerCharacter.name,
-        image: playerCharacter.image ? { uri: playerCharacter.image } : RaceByID.human.image,
-      });
-    }
+	const getAvailableCharacters = () => {
+		const characters = [
+			{ id: 'dm', name: 'Dungeon Master', image: require('../assets/images/dungeon-master.png') },
+		];
 
-    companions.activeCompanions.forEach(companion => {
-      characters.push({
-        id: companion.id,
-        name: companion.name,
-        image: companion.image ? { uri: companion.image } : RaceByID.human.image,
-      });
-    });
+		if (playerCharacter) {
+			characters.push({
+				id: 'player',
+				name: playerCharacter.name,
+				image: playerCharacter.image ? { uri: playerCharacter.image } : RaceByID.human.image,
+			});
+		}
 
-    return characters;
-  };
+		companions.activeCompanions.forEach(companion => {
+			characters.push({
+				id: companion.id,
+				name: companion.name,
+				image: companion.image ? { uri: companion.image } : RaceByID.human.image,
+			});
+		});
 
-  const renderMessage = (message: ChatMessage) => {
-    const isPlayer = message.speakerId === 'player' || companions.activeCompanions.some(c => c.id === message.speakerId);
-    const isDM = message.speakerId === 'dm';
-    
-    return (
-      <View key={message.id} style={[
-        styles.messageContainer,
-        isPlayer ? styles.playerMessageContainer : styles.dmMessageContainer
-      ]}>
-        <View style={[
-          styles.messageContent,
-          isPlayer ? styles.playerMessageContent : styles.dmMessageContent
-        ]}>
-          {isDM && (
-            <Image source={getSpeakerImage(message.speakerId)} style={styles.speakerAvatar} />
-          )}
-          <View style={[
-            styles.messageBubble,
-            isPlayer ? styles.playerBubble : styles.dmBubble
-          ]}>
-            <View style={styles.messageHeader}>
-              <Text style={[
-                styles.speakerName,
-                isPlayer ? styles.playerSpeakerName : styles.dmSpeakerName
-              ]}>
-                {getSpeakerName(message.speakerId)}
-              </Text>
-              <Text style={styles.timestamp}>
-                {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </Text>
-            </View>
-            <Text style={[
-              styles.messageText,
-              isPlayer ? styles.playerMessageText : styles.dmMessageText
-            ]}>
-              {message.content}
-            </Text>
-          </View>
-          {isPlayer && (
-            <Image source={getSpeakerImage(message.speakerId)} style={styles.speakerAvatar} />
-          )}
-        </View>
-      </View>
-    );
-  };
+		return characters;
+	};
 
-  return (
-    <View style={[styles.container, isMobile ? styles.containerMobile : styles.containerDesktop]}>
-      <View style={styles.chatContainer}>
-        {/* Chat Header */}
-        <View style={styles.chatHeader}>
-          <Feather name="message-circle" size={20} color="#000" />
-          <Text style={styles.headerTitle}>Party Chat</Text>
-          <Text style={styles.turnIndicatorText}>
-            {getSpeakerName(activeCharacter)}'s Turn
-          </Text>
-        </View>
+	const renderMessage = (message: ChatMessage) => {
+		const isPlayer = message.speakerId === 'player' || companions.activeCompanions.some(c => c.id === message.speakerId);
+		const isDM = message.speakerId === 'dm';
 
-        {/* Messages */}
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.messagesContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {chatMessages.map(renderMessage)}
-        </ScrollView>
+		return (
+			<View key={message.id} style={[
+				styles.messageContainer,
+				isPlayer ? styles.playerMessageContainer : styles.dmMessageContainer,
+			]}>
+				<View style={[
+					styles.messageContent,
+					isPlayer ? styles.playerMessageContent : styles.dmMessageContent,
+				]}>
+					{isDM && (
+						<Image source={getSpeakerImage(message.speakerId)} style={styles.speakerAvatar} />
+					)}
+					<View style={[
+						styles.messageBubble,
+						isPlayer ? styles.playerBubble : styles.dmBubble,
+					]}>
+						<View style={styles.messageHeader}>
+							<Text style={[
+								styles.speakerName,
+								isPlayer ? styles.playerSpeakerName : styles.dmSpeakerName,
+							]}>
+								{getSpeakerName(message.speakerId)}
+							</Text>
+							<Text style={styles.timestamp}>
+								{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+							</Text>
+						</View>
+						<Text style={[
+							styles.messageText,
+							isPlayer ? styles.playerMessageText : styles.dmMessageText,
+						]}>
+							{message.content}
+						</Text>
+					</View>
+					{isPlayer && (
+						<Image source={getSpeakerImage(message.speakerId)} style={styles.speakerAvatar} />
+					)}
+				</View>
+			</View>
+		);
+	};
 
-        {/* Input Area - Only show if it's player's turn */}
-        {(activeCharacter === 'player' || companions.activeCompanions.some(c => c.id === activeCharacter)) && (
-          <KeyboardAvoidingView 
-            style={styles.inputContainer}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          >
-            <TextInput
-              style={styles.textInput}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder={`What does ${getSpeakerName(activeCharacter)} do?`}
-              placeholderTextColor="#999"
-              multiline={false}
-              maxLength={500}
-              onSubmitEditing={handleSendMessage}
-              returnKeyType="send"
-              blurOnSubmit={false}
-            />
-            <TouchableOpacity
-              style={styles.micButton}
-              onPress={() => {/* TODO: Add mic functionality */}}
-            >
-              <Feather name="mic" size={20} color="#8B2323" />
-            </TouchableOpacity>
-          </KeyboardAvoidingView>
-        )}
+	return (
+		<View style={[styles.container, isMobile ? styles.containerMobile : styles.containerDesktop]}>
+			<View style={styles.chatContainer}>
+				{/* Chat Header */}
+				<View style={styles.chatHeader}>
+					<Feather name="message-circle" size={20} color="#000" />
+					<Text style={styles.headerTitle}>Party Chat</Text>
+					<Text style={styles.turnIndicatorText}>
+						{getSpeakerName(activeCharacter)}&apos;s Turn
+					</Text>
+				</View>
 
-        {/* DM Turn Indicator */}
-        {activeCharacter === 'dm' && (
-          <View style={styles.dmTurnIndicator}>
-            <Text style={styles.dmTurnText}>Waiting for Dungeon Master...</Text>
-          </View>
-        )}
-      </View>
-    </View>
-  );
+				{/* Messages */}
+				<ScrollView
+					ref={scrollViewRef}
+					style={styles.messagesContainer}
+					showsVerticalScrollIndicator={false}
+				>
+					{chatMessages.map(renderMessage)}
+				</ScrollView>
+
+				{/* Input Area - Only show if it's player's turn */}
+				{(activeCharacter === 'player' || companions.activeCompanions.some(c => c.id === activeCharacter)) && (
+					<KeyboardAvoidingView
+						style={styles.inputContainer}
+						behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+					>
+						<TextInput
+							style={styles.textInput}
+							value={inputText}
+							onChangeText={setInputText}
+							placeholder={`What does ${getSpeakerName(activeCharacter)} do?`}
+							placeholderTextColor="#999"
+							multiline={false}
+							maxLength={500}
+							onSubmitEditing={handleSendMessage}
+							returnKeyType="send"
+							blurOnSubmit={false}
+						/>
+						<TouchableOpacity
+							style={styles.micButton}
+							onPress={() => {/* TODO: Add mic functionality */ }}
+						>
+							<Feather name="mic" size={20} color="#8B2323" />
+						</TouchableOpacity>
+					</KeyboardAvoidingView>
+				)}
+
+				{/* DM Turn Indicator */}
+				{activeCharacter === 'dm' && (
+					<View style={styles.dmTurnIndicator}>
+						<Text style={styles.dmTurnText}>Waiting for Dungeon Master...</Text>
+					</View>
+				)}
+			</View>
+		</View>
+	);
 };
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    top: 80,
-    zIndex: 300,
-  },
-  containerDesktop: {
-    right: 16, // Fixed to right side
-    width: 500, // Max width 500px
-    maxWidth: 500,
-  },
-  containerMobile: {
-    left: 16,
-    right: 16,
-  },
-  chatContainer: {
-    backgroundColor: 'rgba(249, 246, 239, 0.95)', // Parchment background
-    borderRadius: 16,
-    overflow: 'hidden',
-    maxHeight: 400,
-    borderWidth: 2,
-    borderColor: '#C9B037',
-  },
-  chatHeader: {
-    backgroundColor: '#FFD700',
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerTitle: {
-    color: '#000',
-    fontSize: 16,
-    fontWeight: 'bold',
-    flex: 1,
-    marginLeft: 8,
-  },
-  turnIndicatorText: {
-    color: '#8B2323',
-    fontSize: 12,
-    fontWeight: '600',
-    fontStyle: 'italic',
-  },
-  messagesContainer: {
-    maxHeight: 250,
-    padding: 12,
-  },
-  messageContainer: {
-    marginBottom: 12,
-  },
-  playerMessageContainer: {
-    alignItems: 'flex-end',
-  },
-  dmMessageContainer: {
-    alignItems: 'flex-start',
-  },
-  messageContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    maxWidth: '80%',
-    gap: 8,
-  },
-  playerMessageContent: {
-    flexDirection: 'row-reverse',
-  },
-  dmMessageContent: {
-    flexDirection: 'row',
-  },
-  messageHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  speakerAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#C9B037',
-  },
-  speakerName: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    flex: 1,
-  },
-  playerSpeakerName: {
-    color: '#4A90E2',
-  },
-  dmSpeakerName: {
-    color: '#8B2323',
-  },
-  timestamp: {
-    color: '#8B5C2A',
-    fontSize: 9,
-  },
-  messageBubble: {
-    padding: 10,
-    borderRadius: 16,
-    minWidth: 60,
-    maxWidth: 250,
-  },
-  playerBubble: {
-    backgroundColor: '#4A90E2',
-    borderBottomRightRadius: 4,
-  },
-  dmBubble: {
-    backgroundColor: '#E8E8E8',
-    borderBottomLeftRadius: 4,
-  },
-  messageText: {
-    fontSize: 14,
-    lineHeight: 18,
-  },
-  playerMessageText: {
-    color: '#FFF',
-  },
-  dmMessageText: {
-    color: '#3B2F1B',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    padding: 12,
-    gap: 8,
-    alignItems: 'flex-end',
-    borderTopWidth: 1,
-    borderTopColor: '#C9B037',
-    backgroundColor: '#FFF8E1',
-  },
-  textInput: {
-    flex: 1,
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    color: '#3B2F1B',
-    fontSize: 14,
-    height: 40,
-    borderWidth: 1,
-    borderColor: '#C9B037',
-  },
-  micButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#C9B037',
-    marginLeft: 8,
-  },
-  dmTurnIndicator: {
-    padding: 16,
-    backgroundColor: '#FFF8E1',
-    borderTopWidth: 1,
-    borderTopColor: '#C9B037',
-    alignItems: 'center',
-  },
-  dmTurnText: {
-    color: '#8B5C2A',
-    fontSize: 14,
-    fontStyle: 'italic',
-  },
+	container: {
+		position: 'absolute',
+		top: 80,
+		zIndex: 300,
+	},
+	containerDesktop: {
+		right: 16, // Fixed to right side
+		width: 500, // Max width 500px
+		maxWidth: 500,
+	},
+	containerMobile: {
+		left: 16,
+		right: 16,
+	},
+	chatContainer: {
+		backgroundColor: 'rgba(249, 246, 239, 0.95)', // Parchment background
+		borderRadius: 16,
+		overflow: 'hidden',
+		maxHeight: 400,
+		borderWidth: 2,
+		borderColor: '#C9B037',
+	},
+	chatHeader: {
+		backgroundColor: '#FFD700',
+		padding: 12,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	headerTitle: {
+		color: '#000',
+		fontSize: 16,
+		fontWeight: 'bold',
+		flex: 1,
+		marginLeft: 8,
+	},
+	turnIndicatorText: {
+		color: '#8B2323',
+		fontSize: 12,
+		fontWeight: '600',
+		fontStyle: 'italic',
+	},
+	messagesContainer: {
+		maxHeight: 250,
+		padding: 12,
+	},
+	messageContainer: {
+		marginBottom: 12,
+	},
+	playerMessageContainer: {
+		alignItems: 'flex-end',
+	},
+	dmMessageContainer: {
+		alignItems: 'flex-start',
+	},
+	messageContent: {
+		flexDirection: 'row',
+		alignItems: 'flex-end',
+		maxWidth: '80%',
+		gap: 8,
+	},
+	playerMessageContent: {
+		flexDirection: 'row-reverse',
+	},
+	dmMessageContent: {
+		flexDirection: 'row',
+	},
+	messageHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		marginBottom: 4,
+	},
+	speakerAvatar: {
+		width: 24,
+		height: 24,
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: '#C9B037',
+	},
+	speakerName: {
+		fontSize: 11,
+		fontWeight: 'bold',
+		flex: 1,
+	},
+	playerSpeakerName: {
+		color: '#8B2323',
+	},
+	dmSpeakerName: {
+		color: '#8B2323',
+	},
+	timestamp: {
+		color: Colors.light.textSecondary,
+		fontSize: 9,
+	},
+	messageBubble: {
+		padding: 10,
+		borderRadius: 16,
+		width: '100%',
+	},
+	playerBubble: {
+		backgroundColor: Colors.light.backgroundSecondary,
+		borderBottomRightRadius: 4,
+	},
+	dmBubble: {
+		backgroundColor: Colors.light.backgroundHighlight,
+		borderBottomLeftRadius: 4,
+	},
+	messageText: {
+		fontSize: 14,
+		lineHeight: 18,
+	},
+	playerMessageText: {
+		color: '#3B2F1B',
+	},
+	dmMessageText: {
+		color: '#3B2F1B',
+	},
+	inputContainer: {
+		flexDirection: 'row',
+		padding: 12,
+		gap: 8,
+		alignItems: 'flex-end',
+		borderTopWidth: 1,
+		borderTopColor: '#C9B037',
+		backgroundColor: '#FFF8E1',
+	},
+	textInput: {
+		flex: 1,
+		backgroundColor: '#FFF',
+		borderRadius: 20,
+		paddingHorizontal: 16,
+		paddingVertical: 10,
+		color: '#3B2F1B',
+		fontSize: 14,
+		height: 40,
+		borderWidth: 1,
+		borderColor: '#C9B037',
+	},
+	micButton: {
+		width: 40,
+		height: 40,
+		borderRadius: 20,
+		backgroundColor: '#FFF',
+		alignItems: 'center',
+		justifyContent: 'center',
+		borderWidth: 1,
+		borderColor: '#C9B037',
+		marginLeft: 8,
+	},
+	dmTurnIndicator: {
+		padding: 16,
+		backgroundColor: '#FFF8E1',
+		borderTopWidth: 1,
+		borderTopColor: '#C9B037',
+		alignItems: 'center',
+	},
+	dmTurnText: {
+		color: '#8B5C2A',
+		fontSize: 14,
+		fontStyle: 'italic',
+	},
 });
