@@ -30,7 +30,7 @@
     "deploy:production": "./scripts/deploy.sh deploy production",
     "submit:staging": "./scripts/deploy.sh submit staging",
     "submit:production": "./scripts/deploy.sh submit production",
-    "postversion": "node -e \"const fs = require('fs'); const pkg = require('./package.json'); const app = JSON.parse(fs.readFileSync('./app.json', 'utf8')); app.expo.runtimeVersion = pkg.version; fs.writeFileSync('./app.json', JSON.stringify(app, null, 2) + '\\n');\""
+    "postversion": "node -e \"const fs = require('fs'); const pkg = require('./package.json'); const app = JSON.parse(fs.readFileSync('./app.json', 'utf8')); app.expo.version = pkg.version; fs.writeFileSync('./app.json', JSON.stringify(app, null, 2) + '\\n');\""
   },
   "dependencies": {
     "@eslint/compat": "^1.2.8",
