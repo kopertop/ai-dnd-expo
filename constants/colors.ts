@@ -14,6 +14,17 @@ export const Colors = {
 		icon: '#687076',
 		tabIconDefault: '#687076',
 		tabIconSelected: tintColorLight,
+		// Extended properties for companion/quest systems
+		primary: '#C9B037',
+		secondary: '#237823',
+		success: '#22c55e',
+		warning: '#eab308',
+		error: '#ef4444',
+		backgroundSecondary: '#f8fafc',
+		textSecondary: '#64748b',
+		border: '#e2e8f0',
+		primaryTranslucent: '#C9B03720',
+		primaryText: '#ffffff',
 	},
 	dark: {
 		text: '#ECEDEE',
@@ -22,7 +33,19 @@ export const Colors = {
 		icon: '#9BA1A6',
 		tabIconDefault: '#9BA1A6',
 		tabIconSelected: tintColorDark,
+		// Extended properties for companion/quest systems
+		primary: '#C9B037',
+		secondary: '#237823',
+		success: '#16a34a',
+		warning: '#ca8a04',
+		error: '#dc2626',
+		backgroundSecondary: '#1f2937',
+		textSecondary: '#9ca3af',
+		border: '#374151',
+		primaryTranslucent: '#C9B03720',
+		primaryText: '#ffffff',
 	},
+	// Keep legacy properties for backwards compatibility
 	primary: '#C9B037',
 	secondary: '#237823',
 };

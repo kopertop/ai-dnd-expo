@@ -248,6 +248,7 @@ const GameScreen: React.FC = () => {
 					isLoading={dmAgent.isLoading}
 					placeholder="Describe your action..."
 					isMobile={isMobile}
+					currentLocation="The Rusty Dragon Tavern" // TODO: Determine dynamically from worldState
 				/>
 			</View>
 

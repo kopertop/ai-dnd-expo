@@ -4,7 +4,7 @@ import { DnDTheme } from './dnd-theme';
 
 export default StyleSheet.create({
 	container: {
-		marginTop: -45,
+		marginTop: -30,
 		backgroundColor: DnDTheme.parchment,
 		borderTopWidth: 1,
 		borderTopColor: DnDTheme.borderBrown,

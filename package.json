@@ -22,6 +22,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "type-check": "tsc --noEmit",
+    "build:local": "eas build --profile development",
     "build:development": "eas build --profile development",
     "build:staging": "eas build --profile staging",
     "build:production": "eas build --profile production",
@@ -30,7 +31,7 @@
     "deploy:production": "./scripts/deploy.sh deploy production",
     "submit:staging": "./scripts/deploy.sh submit staging",
     "submit:production": "./scripts/deploy.sh submit production",
-    "postversion": "node -e \"const fs = require('fs'); const pkg = require('./package.json'); const app = JSON.parse(fs.readFileSync('./app.json', 'utf8')); app.expo.version = pkg.version; fs.writeFileSync('./app.json', JSON.stringify(app, null, 2) + '\\n');\""
+    "postversion": "node -e \"const fs = require('fs'); const pkg = require('./package.json'); const app = JSON.parse(fs.readFileSync('./app.json', 'utf8')); app.expo.version = pkg.version; app.expo.runtimeVersion = pkg.version; app.expo.ios.buildNumber++; fs.writeFileSync('./app.json', JSON.stringify(app, null, 2) + '\\n');\""
   },
   "dependencies": {
     "@eslint/compat": "^1.2.8",

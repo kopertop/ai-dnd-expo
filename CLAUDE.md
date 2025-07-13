@@ -49,7 +49,7 @@ This is an AI-powered Dungeons & Dragons platform built with React Native/Expo. 
 
 ### Theming System
 - Light/dark mode support via `useColorScheme` hook
-- Colors defined in `/constants/Colors.ts`
+- Colors defined in `/constants/colors.ts`
 - `ThemedText` and `ThemedView` components for theme-aware UI
 - `useThemeColor` hook for accessing theme colors
 
@@ -61,9 +61,9 @@ This is an AI-powered Dungeons & Dragons platform built with React Native/Expo. 
 ## Key Files
 - `app/_layout.tsx` - Root layout with theme provider
 - `app/(tabs)/_layout.tsx` - Tab navigation layout
-- `components/ThemedText.tsx` & `components/ThemedView.tsx` - Core themed components
-- `hooks/useThemeColor.ts` - Theme color resolution
-- `constants/Colors.ts` - Color definitions
+- `components/themed-text.tsx` & `components/themed-view.tsx` - Core themed components
+- `hooks/use-theme-colors.ts` - Theme color resolution
+- `constants/colors.ts` - Color definitions
 - `tsconfig.json` - TypeScript config with path aliases
 
 ## Development Notes
