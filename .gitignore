@@ -79,3 +79,6 @@ coverage/
 
 # OS
 Thumbs.db
+
+# Models files are huge and downloaded at build time
+assets/models/

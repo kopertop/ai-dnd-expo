@@ -30,15 +30,15 @@ export const useDungeonMaster = (config: DungeonMasterConfig): UseDungeonMasterR
 	const [error, setError] = useState<string | null>(null);
 	const agentRef = useRef<DungeonMasterAgent | null>(null);
 	
-	// Initialize Gemma ONNX model with balanced configuration
+	// Initialize AI model with transformers.js
 	const gemmaModel = useGemmaModel({
-		modelPath: 'https://huggingface.co/onnx-community/gemma-3n-E2B-it-ONNX/resolve/main/onnx/model.onnx',
-		maxTokens: 150,
+		modelName: 'Xenova/gpt2',
+		maxTokens: 50,
 		temperature: 0.7,
 		topP: 0.9,
 		useOnDevice: true,
 		progressCallback: (progress) => {
-			console.log('🔄 Gemma ONNX model loading:', progress);
+			console.log('🔄 AI model loading:', progress);
 		},
 	});
 

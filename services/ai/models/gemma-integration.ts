@@ -1,33 +1,26 @@
 /**
- * Gemma 3n-E2B ONNX Integration for D&D
+ * AI Text Generation for D&D using Transformers.js
  *
- * This file provides on-device AI inference using ONNX Runtime
- * with the Gemma 3n-E2B model for D&D game mastering.
+ * This file provides on-device AI text generation using @fugood/transformers
+ * which is a React Native compatible fork of @huggingface/transformers.
  *
  * Features:
- * - On-device inference with ONNX Runtime
- * - Gemma 3n-E2B model optimized for mobile
+ * - On-device text generation with transformers.js
  * - D&D-specific prompt formatting
- * - Tokenization and response parsing
+ * - Progress tracking and caching
  * - Fallback to rule-based responses
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { pipeline, TextGenerationPipeline, env } from '@fugood/transformers';
 
-// Conditional ONNX import with fallback
-let InferenceSession: any = null;
-let Tensor: any = null;
-
-try {
-	const onnx = require('onnxruntime-react-native');
-	InferenceSession = onnx.InferenceSession;
-	Tensor = onnx.Tensor;
-} catch (error) {
-	console.warn('⚠️ ONNX Runtime not available, using fallback mode:', error);
-}
+// Configure environment for React Native - try WebAssembly backend
+env.backends.onnx.wasm.numThreads = 1;
+env.allowLocalModels = true;
+env.allowRemoteModels = true;
 
 export interface GemmaModelConfig {
-	modelPath?: string;
+	modelName?: string;
 	maxTokens?: number;
 	temperature?: number;
 	topP?: number;
@@ -57,13 +50,13 @@ export interface GemmaCapabilities {
 }
 
 /**
- * Hook for Gemma ONNX model integration
+ * Hook for AI text generation using transformers.js
  */
 export const useGemmaModel = (config?: GemmaModelConfig) => {
-	// Configuration with defaults
+	// Configuration with defaults - Using a working public model
 	const modelConfig = {
-		modelPath: 'https://huggingface.co/onnx-community/gemma-3n-E2B-it-ONNX/resolve/main/onnx/model.onnx',
-		maxTokens: 150,
+		modelName: 'Xenova/gpt2',
+		maxTokens: 50,
 		temperature: 0.7,
 		topP: 0.9,
 		minConfidence: 0.6,
@@ -71,22 +64,25 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 		...config,
 	};
 
-	// ONNX session and model state
-	const sessionRef = useRef<any>(null);
+	// Pipeline and model state
+	const pipelineRef = useRef<TextGenerationPipeline | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isReady, setIsReady] = useState(false);
+	const [hasError, setHasError] = useState(false);
+	const retryCountRef = useRef(0);
+	const maxRetries = 2;
 
 	// Capabilities
 	const capabilities: GemmaCapabilities = {
 		isAvailable: true,
 		responseTypes: ['combat', 'exploration', 'social', 'skill_check', 'narration'],
 		memoryEnabled: true,
-		estimatedSpeed: isReady ? '1-3 seconds' : 'Model loading...',
+		estimatedSpeed: isReady ? '2-5 seconds' : 'Model loading...',
 		modelLoaded: isReady,
 	};
 
 	/**
-	 * Generate D&D response using ONNX model or fallback
+	 * Generate D&D response using AI model or fallback
 	 */
 	const generateResponse = async (
 		prompt: string,
@@ -95,10 +91,10 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 		const startTime = Date.now();
 
 		try {
-			console.log('🎲 Generating Gemma ONNX response...');
+			console.log('🎲 Generating AI response...');
 
-			if (isReady && sessionRef.current) {
-				// Use ONNX model for inference
+			if (isReady && pipelineRef.current) {
+				// Use AI model for text generation
 				const response = await runInference(prompt, context);
 				return {
 					text: response.text,
@@ -126,7 +122,7 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 				};
 			}
 		} catch (error) {
-			console.error('❌ Gemma ONNX error:', error);
+			console.error('❌ AI generation error:', error);
 
 			// Fallback to simple response
 			const fallbackResponse = await generateFallbackResponse(prompt, context);
@@ -171,63 +167,88 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 	};
 
 	/**
-	 * Initialize the ONNX model
+	 * Initialize the AI pipeline
 	 */
 	const initializeModel = useCallback(async (): Promise<void> => {
-		if (isLoading || isReady) return;
+		if (isLoading || isReady || hasError) return;
 
+		// Check retry limit
+		if (retryCountRef.current >= maxRetries) {
+			console.warn(`⚠️ Max retries (${maxRetries}) reached for AI model. Using fallback mode.`);
+			setHasError(true);
+			return;
+		}
+
+		retryCountRef.current += 1;
 		setIsLoading(true);
-		console.log('🚀 Loading Gemma ONNX model...');
+		console.log(`🚀 Loading AI model... (attempt ${retryCountRef.current}/${maxRetries})`);
 
 		try {
-			// Check if ONNX Runtime is available
-			if (!InferenceSession) {
-				console.warn('⚠️ ONNX Runtime not available, skipping model initialization');
-				setIsReady(false);
-				return;
-			}
-
 			if (modelConfig.progressCallback) {
-				modelConfig.progressCallback({ status: 'downloading', url: modelConfig.modelPath });
+				modelConfig.progressCallback({ status: 'downloading' });
 			}
 
-			// Create ONNX inference session
-			console.log('📦 Creating ONNX inference session...');
-			const session = await InferenceSession.create(modelConfig.modelPath!);
-			sessionRef.current = session;
+			// Create text generation pipeline using transformers.js
+			console.log('📦 Creating text generation pipeline...');
+			console.log('🔗 Model:', modelConfig.modelName);
+			
+			const textPipeline = await pipeline('text-generation', modelConfig.modelName, {
+				progress_callback: (progress: any) => {
+					console.log('📊 Loading progress:', progress);
+					if (modelConfig.progressCallback) {
+						modelConfig.progressCallback({ 
+							status: progress.status || 'progress',
+							url: progress.file 
+						});
+					}
+				},
+				local_files_only: false, // Allow downloading on first use
+			});
+			
+			pipelineRef.current = textPipeline;
 
 			setIsReady(true);
-			console.log('✅ Gemma ONNX model ready!');
-			console.log('📊 Model inputs:', Object.keys(session.inputNames));
-			console.log('📊 Model outputs:', Object.keys(session.outputNames));
+			retryCountRef.current = 0; // Reset retry count on success
+			console.log('✅ AI model ready!');
 
 			if (modelConfig.progressCallback) {
 				modelConfig.progressCallback({ status: 'ready' });
 			}
 		} catch (error) {
-			console.error('❌ Failed to load Gemma ONNX model:', error);
+			console.error(`❌ Failed to load AI model (attempt ${retryCountRef.current}/${maxRetries}):`, error);
+			console.error('Error details:', {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				name: error instanceof Error ? error.name : undefined
+			});
 			setIsReady(false);
+			
+			if (retryCountRef.current >= maxRetries) {
+				console.warn('🔄 Max retries reached. Switching to fallback mode permanently.');
+				setHasError(true);
+			}
+			
 			if (modelConfig.progressCallback) {
 				modelConfig.progressCallback({ status: 'error' });
 			}
 		} finally {
 			setIsLoading(false);
 		}
-	}, [modelConfig, isLoading, isReady]);
+	}, [modelConfig, isLoading, isReady, hasError, maxRetries]);
 
 	// Auto-initialize model on first use
 	useEffect(() => {
-		if (!isReady && !isLoading && modelConfig.useOnDevice) {
+		if (!isReady && !isLoading && !hasError && modelConfig.useOnDevice) {
 			initializeModel();
 		}
-	}, [initializeModel, isReady, isLoading, modelConfig.useOnDevice]);
+	}, [initializeModel, isReady, isLoading, hasError, modelConfig.useOnDevice]);
 
 	/**
-	 * Run inference using the loaded ONNX model
+	 * Run inference using the loaded AI pipeline
 	 */
 	const runInference = async (
 		prompt: string,
-		context?: Record<string, any>,
+		context?: Record<string, any>
 	): Promise<{
 		text: string;
 		confidence: number;
@@ -236,37 +257,36 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 		diceNotation?: string;
 		difficulty?: string;
 	}> => {
-		if (!sessionRef.current) {
-			throw new Error('ONNX session not initialized');
+		if (!pipelineRef.current) {
+			throw new Error('AI pipeline not initialized');
 		}
 
 		try {
-			// Check if Tensor class is available
-			if (!Tensor) {
-				throw new Error('Tensor class not available');
-			}
-
 			// Format D&D prompt
 			const formattedPrompt = formatDnDPrompt(prompt, context);
 			console.log('🎯 Formatted prompt:', formattedPrompt.substring(0, 100) + '...');
 
-			// Tokenize input (simplified - would need proper tokenizer)
-			const tokens = tokenizePrompt(formattedPrompt);
-			console.log('🔤 Token count:', tokens.length);
+			// Generate text using the pipeline
+			console.log('🧠 Running AI inference...');
+			const result = await pipelineRef.current(formattedPrompt, {
+				max_new_tokens: modelConfig.maxTokens,
+				temperature: modelConfig.temperature,
+				top_p: modelConfig.topP,
+				do_sample: true,
+				return_full_text: false,
+			});
 
-			// Create input tensor
-			const inputTensor = new Tensor('int64', BigInt64Array.from(tokens.map(t => BigInt(t))), [1, tokens.length]);
-
-			// Run inference
-			console.log('🧠 Running ONNX inference...');
-			const results = await sessionRef.current.run({ input_ids: inputTensor });
-
-			// Process output
-			const outputTensor = results[sessionRef.current.outputNames[0]];
-			const generatedText = detokenizeOutput(outputTensor);
+			// Extract generated text - handle different response formats
+			let generatedText = '';
+			if (Array.isArray(result)) {
+				generatedText = (result[0] as any)?.generated_text || '';
+			} else {
+				generatedText = (result as any)?.generated_text || '';
+			}
+			console.log('📝 Generated text:', generatedText);
 
 			// Parse D&D-specific elements
-			const parsedResponse = parseDnDResponse(generatedText);
+			const parsedResponse = parseDnDResponse(generatedText || 'The adventure continues...');
 
 			return {
 				text: parsedResponse.text,
@@ -277,7 +297,7 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 				difficulty: parsedResponse.difficulty,
 			};
 		} catch (error) {
-			console.error('❌ ONNX inference error:', error);
+			console.error('❌ AI inference error:', error);
 			throw error;
 		}
 	};
@@ -286,48 +306,18 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 	 * Format prompt for D&D context
 	 */
 	const formatDnDPrompt = (prompt: string, context?: Record<string, any>): string => {
-		let formattedPrompt = 'You are an expert Dungeon Master for a D&D 5e game. ';
+		let formattedPrompt = 'You are a Dungeon Master in a D&D game. ';
 
 		if (context) {
-			if (context.playerName) formattedPrompt += `The player is ${context.playerName}, `;
-			if (context.playerClass) formattedPrompt += `a ${context.playerClass}, `;
-			if (context.scene) formattedPrompt += `currently in ${context.scene}. `;
-			if (context.worldName) formattedPrompt += `This takes place in ${context.worldName}. `;
+			if (context.playerName) formattedPrompt += `Player: ${context.playerName}. `;
+			if (context.playerClass) formattedPrompt += `Class: ${context.playerClass}. `;
+			if (context.scene) formattedPrompt += `Location: ${context.scene}. `;
 		}
 
-		formattedPrompt += 'Respond in character as a Dungeon Master. Keep responses under 150 words. ';
-		formattedPrompt += 'Use dice notation like [ROLL:1d20+3] for skill checks and combat. ';
-		formattedPrompt += `Player action: ${prompt}`;
+		formattedPrompt += 'Respond as DM in 1-2 sentences. ';
+		formattedPrompt += `Action: ${prompt}\nDM: `;
 
 		return formattedPrompt;
-	};
-
-	/**
-	 * Simple tokenization (would need proper Gemma tokenizer)
-	 */
-	const tokenizePrompt = (prompt: string): number[] => {
-		// This is a simplified tokenizer - in production you'd use the actual Gemma tokenizer
-		const words = prompt.toLowerCase().split(/\s+/);
-		const vocab = new Map<string, number>();
-		let tokenId = 1;
-
-		// Create simple word-to-token mapping
-		return words.map(word => {
-			if (!vocab.has(word)) {
-				vocab.set(word, tokenId++);
-			}
-			return vocab.get(word)!;
-		});
-	};
-
-	/**
-	 * Detokenize model output (simplified)
-	 */
-	const detokenizeOutput = (tensor: any): string => {
-		// This is simplified - would need actual Gemma detokenizer
-		// For now, return a placeholder that will trigger fallback
-		console.log('🔄 Detokenizing output tensor:', tensor?.dims || 'unknown');
-		return 'Generated response from ONNX model (detokenization not yet implemented)';
 	};
 
 	/**
@@ -343,12 +333,24 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 		const diceRegex = /\[ROLL:([^\]]+)\]/;
 		const diceMatch = text.match(diceRegex);
 
+		// Clean up the text
+		let cleanText = text.replace(diceRegex, '').trim();
+		
+		// Remove any prompt artifacts
+		cleanText = cleanText.replace(/^DM:\s*/i, '');
+		cleanText = cleanText.replace(/^You:\s*/i, '');
+		
+		// Limit length for mobile display
+		if (cleanText.length > 200) {
+			cleanText = cleanText.substring(0, 197) + '...';
+		}
+
 		return {
-			text: text.replace(diceRegex, '').trim(),
+			text: cleanText,
 			actionType: 'general',
 			requiresDiceRoll: !!diceMatch,
 			diceNotation: diceMatch?.[1],
-			difficulty: 'medium', // Could be parsed from text
+			difficulty: 'medium',
 		};
 	};
 
@@ -356,7 +358,7 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 	 * Check if model is ready for use
 	 */
 	const isModelReady = (): boolean => {
-		return isReady && !!sessionRef.current;
+		return isReady && !!pipelineRef.current;
 	};
 
 	/**
@@ -369,7 +371,7 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 			}
 			return isReady;
 		} catch (error) {
-			console.error('Failed to load Gemma ONNX model:', error);
+			console.error('Failed to load AI model:', error);
 			return false;
 		}
 	};
@@ -380,7 +382,9 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 	const getLoadingStatus = () => ({
 		isLoading,
 		isReady,
-		hasError: !isReady && !isLoading,
+		hasError,
+		retryCount: retryCountRef.current,
+		maxRetries,
 	});
 
 	return {
@@ -394,15 +398,17 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 		modelState: {
 			isLoading,
 			isReady,
-			modelPath: modelConfig.modelPath,
-			sessionReady: !!sessionRef.current,
+			hasError,
+			modelName: modelConfig.modelName,
+			pipelineReady: !!pipelineRef.current,
+			retryCount: retryCountRef.current,
+			maxRetries,
 		},
 	};
 };
 
 /**
- * Fallback response generator for development
- * This will be replaced when the actual Gemma model is deployed
+ * Fallback response generator for when AI is unavailable
  */
 async function generateFallbackResponse(
 	prompt: string,
@@ -504,21 +510,18 @@ export const GemmaModelUtils = {
 };
 
 /**
- * Model deployment configuration for on-device LLM
+ * Model deployment configuration for on-device AI
  */
 export const GEMMA_MODEL_CONFIG = {
-	modelPath: 'https://huggingface.co/onnx-community/gemma-3n-E2B-it-ONNX/resolve/main/onnx/model.onnx',
-	modelName: 'gemma-3n-E2B-it',
+	modelName: 'Xenova/gpt2',
+	displayName: 'GPT-2 Small',
 	// Generation parameters
-	maxTokens: 150,
+	maxTokens: 50,
 	temperature: 0.7,
 	topP: 0.9,
 	minConfidence: 0.6,
-	// Context parameters
-	maxContextLength: 2048,
-	systemPrompt: 'You are an expert Dungeon Master for a D&D 5e game.',
 	// Performance settings
-	estimatedMemoryUsage: '~2GB',
+	estimatedMemoryUsage: '~200MB',
 	supportedDevices: ['cpu'],
 } as const;
 
@@ -530,8 +533,8 @@ export const GemmaPresets = {
 	 * Performance-focused configuration
 	 */
 	performance: {
-		modelPath: GEMMA_MODEL_CONFIG.modelPath,
-		maxTokens: 100,
+		modelName: GEMMA_MODEL_CONFIG.modelName,
+		maxTokens: 30,
 		temperature: 0.6,
 		topP: 0.8,
 		useOnDevice: true,
@@ -541,8 +544,8 @@ export const GemmaPresets = {
 	 * Quality-focused configuration
 	 */
 	quality: {
-		modelPath: GEMMA_MODEL_CONFIG.modelPath,
-		maxTokens: 200,
+		modelName: GEMMA_MODEL_CONFIG.modelName,
+		maxTokens: 80,
 		temperature: 0.8,
 		topP: 0.9,
 		useOnDevice: true,
@@ -552,8 +555,8 @@ export const GemmaPresets = {
 	 * Balanced configuration (recommended)
 	 */
 	balanced: {
-		modelPath: GEMMA_MODEL_CONFIG.modelPath,
-		maxTokens: 150,
+		modelName: GEMMA_MODEL_CONFIG.modelName,
+		maxTokens: 50,
 		temperature: 0.7,
 		topP: 0.9,
 		useOnDevice: true,

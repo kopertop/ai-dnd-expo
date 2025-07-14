@@ -8,8 +8,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
 	Dimensions,
 	Image,
+	Keyboard,
 	KeyboardAvoidingView,
 	Platform,
+	SafeAreaView,
 	ScrollView,
 	StyleSheet,
 	Text,
@@ -85,6 +87,16 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 	const BOTTOM_BAR_HEIGHT = 100; // Adjust if your bottom bar is a different height
 	const TOP_OFFSET = 80; // Matches your 'top: 80' in styles
 	const chatHeight = windowHeight - BOTTOM_BAR_HEIGHT - TOP_OFFSET;
+	const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+	useEffect(() => {
+		const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
+		const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false));
+		return () => {
+			showSub.remove();
+			hideSub.remove();
+		};
+	}, []);
 
 	// Convert DM messages to chat format
 	const chatMessages: ChatMessage[] = dmMessages.map((msg, index) => {
@@ -203,19 +215,17 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 	const suggestions = lastDM ? getSuggestionsFromMessage(lastDM.content) : [];
 
 	return (
-		<View
+		<SafeAreaView
 			style={[
 				styles.container,
 				isMobile
-					? { ...styles.containerMobile, height: chatHeight }
+					? { ...styles.containerMobile, height: keyboardOpen ? undefined : chatHeight }
 					: styles.containerDesktop,
 			]}
 		>
-			<View style={[
+			<KeyboardAvoidingView style={[
 				styles.chatContainer,
-				{
-					height: chatHeight,
-				},
+				keyboardOpen ? { flex: 1 } : { height: chatHeight },
 			]}>
 				{/* Chat Header */}
 				<View style={styles.chatHeader}>
@@ -282,8 +292,8 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 						<Text style={styles.dmTurnText}>Waiting for Dungeon Master...</Text>
 					</View>
 				)}
-			</View>
-		</View>
+			</KeyboardAvoidingView>
+		</SafeAreaView>
 	);
 };
 
