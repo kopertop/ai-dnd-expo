@@ -40,6 +40,11 @@ const IndexScreen: React.FC = () => {
 						<Text style={styles.continueBtnText}>Continue Game</Text>
 					</TouchableOpacity>
 				)}
+
+				{/* Licenses & Credits button */}
+				<TouchableOpacity style={styles.licensesBtn} onPress={() => router.push('/licenses')}>
+					<Text style={styles.licensesBtnText}>Licenses & Credits</Text>
+				</TouchableOpacity>
 			</ThemedView>
 		</>
 	);
@@ -70,5 +75,18 @@ const styles = StyleSheet.create({
 		color: '#3B2F1B',
 		fontWeight: 'bold',
 		fontSize: 18,
+	},
+	licensesBtn: {
+		marginTop: 30,
+		backgroundColor: '#E2D3B3',
+		paddingVertical: 12,
+		paddingHorizontal: 32,
+		borderRadius: 8,
+		alignItems: 'center',
+	},
+	licensesBtnText: {
+		color: '#3B2F1B',
+		fontWeight: 'bold',
+		fontSize: 16,
 	},
 });

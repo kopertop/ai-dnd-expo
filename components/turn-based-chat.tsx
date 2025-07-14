@@ -21,6 +21,7 @@ import {
 
 import { Colors } from '@/constants/colors';
 import { RaceByID } from '@/constants/races';
+import { SKILL_LIST } from '@/constants/skills';
 import { useSimpleCompanions } from '@/hooks/use-simple-companions';
 import { DMMessage } from '@/services/ai/agents/dungeon-master-agent';
 import type { Character } from '@/types/character';
@@ -41,6 +42,31 @@ interface TurnBasedChatProps {
 	activeCharacter: 'dm' | 'player' | string;
 	onTurnChange: (newActiveCharacter: 'dm' | 'player' | string) => void;
 	isLoading?: boolean;
+}
+
+function getSuggestionsFromMessage(message: string) {
+	const suggestions: { label: string; action: string }[] = [];
+	const lower = message.toLowerCase();
+
+	// Roll for initiative
+	if (/roll for initiative|initiative check/.test(lower)) {
+		suggestions.push({ label: 'Roll Initiative', action: '/roll initiative' });
+	}
+
+	// Roll for (skill) or (skill) check using SKILL_LIST
+	for (const skill of SKILL_LIST) {
+		const skillPattern = skill.name.toLowerCase().replace(/ /g, '\\s*'); // allow for optional spaces
+		const rollRegex = new RegExp(`roll for ${skillPattern}`);
+		const checkRegex = new RegExp(`${skillPattern} check`);
+		if (rollRegex.test(lower) || checkRegex.test(lower)) {
+			suggestions.push({
+				label: `Roll ${skill.name}`,
+				action: `/roll ${skill.id}`,
+			});
+		}
+	}
+
+	return suggestions;
 }
 
 export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
@@ -173,6 +199,9 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 		}
 	}, [chatMessages.length]);
 
+	const lastDM = [...chatMessages].reverse().find(m => m.speakerId === 'dm');
+	const suggestions = lastDM ? getSuggestionsFromMessage(lastDM.content) : [];
+
 	return (
 		<View
 			style={[
@@ -205,6 +234,20 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 				>
 					{chatMessages.map(renderMessage)}
 				</ScrollView>
+
+				{suggestions.length > 0 && (
+					<View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 8, justifyContent: 'flex-start' }}>
+						{suggestions.map(s => (
+							<TouchableOpacity
+								key={s.label}
+								style={{ backgroundColor: '#FFD700', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 6 }}
+								onPress={() => onSendMessage(s.action, activeCharacter)}
+							>
+								<Text style={{ color: '#8B2323', fontWeight: 'bold' }}>{s.label}</Text>
+							</TouchableOpacity>
+						))}
+					</View>
+				)}
 
 				{/* Input Area - Only show if it's player's turn */}
 				{(activeCharacter === 'player' || companions.activeCompanions.some(c => c.id === activeCharacter)) && (
@@ -301,7 +344,7 @@ const styles = StyleSheet.create({
 	messageContent: {
 		flexDirection: 'row',
 		alignItems: 'flex-end',
-		maxWidth: '80%',
+		maxWidth: '90%',
 		gap: 8,
 	},
 	playerMessageContent: {

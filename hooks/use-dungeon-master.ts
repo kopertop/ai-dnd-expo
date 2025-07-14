@@ -30,11 +30,16 @@ export const useDungeonMaster = (config: DungeonMasterConfig): UseDungeonMasterR
 	const [error, setError] = useState<string | null>(null);
 	const agentRef = useRef<DungeonMasterAgent | null>(null);
 	
-	// Initialize Gemma model integration
+	// Initialize Gemma ONNX model with balanced configuration
 	const gemmaModel = useGemmaModel({
+		modelPath: 'https://huggingface.co/onnx-community/gemma-3n-E2B-it-ONNX/resolve/main/onnx/model.onnx',
 		maxTokens: 150,
 		temperature: 0.7,
-		enableOfflineMode: true,
+		topP: 0.9,
+		useOnDevice: true,
+		progressCallback: (progress) => {
+			console.log('🔄 Gemma ONNX model loading:', progress);
+		},
 	});
 
 	// Initialize DM voice for TTS
