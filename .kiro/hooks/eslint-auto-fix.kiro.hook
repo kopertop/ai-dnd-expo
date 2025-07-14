@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "ESLint Auto Fix",
+  "description": "Automatically runs ESLint with --fix flag on saved files to fix linting issues and maintain code quality",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.js",
+      "**/*.jsx"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Run `npx eslint <filename> --fix` on the saved file to automatically fix any linting issues and maintain code quality standards."
+  }
+}

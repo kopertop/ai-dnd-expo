@@ -1,4 +1,3 @@
-import { useGemmaModel } from '../models/gemma-integration';
 import { CharacterUpdater } from '../tools/character-updater';
 import { DiceRoller } from '../tools/dice-roller';
 import { RuleEngine } from '../tools/rule-engine';
@@ -60,10 +59,10 @@ export class DungeonMasterAgent {
 		try {
 			// Parse player intent
 			const intent = this.parsePlayerIntent(playerInput);
-			
+
 			// Generate response based on intent
 			const response = await this.generateResponse(intent, playerInput);
-			
+
 			message.content = response.content;
 			message.type = response.type;
 			message.toolCalls = response.toolCalls;
@@ -76,7 +75,7 @@ export class DungeonMasterAgent {
 
 			// Add to message history
 			this.messageHistory.push(message);
-			
+
 			return message;
 		} catch (error) {
 			console.error('Error processing player action:', error);
@@ -95,7 +94,7 @@ export class DungeonMasterAgent {
 		parameters: Record<string, any>;
 	} {
 		const lowercaseInput = input.toLowerCase();
-		
+
 		// Combat actions
 		if (lowercaseInput.includes('attack') || lowercaseInput.includes('hit')) {
 			return {
@@ -104,7 +103,7 @@ export class DungeonMasterAgent {
 				parameters: { weapon: this.extractWeapon(input) },
 			};
 		}
-		
+
 		// Skill checks
 		if (lowercaseInput.includes('check') || lowercaseInput.includes('roll')) {
 			return {
@@ -112,7 +111,7 @@ export class DungeonMasterAgent {
 				parameters: { skill: this.extractSkill(input) },
 			};
 		}
-		
+
 		// Movement
 		if (lowercaseInput.includes('move') || lowercaseInput.includes('go')) {
 			return {
@@ -120,7 +119,7 @@ export class DungeonMasterAgent {
 				parameters: { direction: this.extractDirection(input) },
 			};
 		}
-		
+
 		// Spellcasting
 		if (lowercaseInput.includes('cast') || lowercaseInput.includes('spell')) {
 			return {
@@ -129,7 +128,7 @@ export class DungeonMasterAgent {
 				parameters: { spell: this.extractSpell(input) },
 			};
 		}
-		
+
 		// Default to general action
 		return {
 			action: 'general',
@@ -154,7 +153,7 @@ export class DungeonMasterAgent {
 		case 'attack': {
 			const attackRoll = this.diceRoller.roll('1d20');
 			const damageRoll = this.diceRoller.roll('1d8');
-				
+
 			toolCalls.push({
 				type: 'dice_roll',
 				parameters: { notation: '1d20', purpose: 'attack' },
@@ -252,10 +251,10 @@ export class DungeonMasterAgent {
 				};
 
 				const response = await this.gemmaModel.generateResponse(input, context);
-				
+
 				// Parse and execute any tool commands
 				const { cleanText, tools } = this.gemmaModel.parseToolCommands(response.text);
-				
+
 				// Handle tool commands
 				for (const tool of tools) {
 					if (tool.type === 'roll') {
@@ -263,7 +262,7 @@ export class DungeonMasterAgent {
 						console.log('Tool command found:', tool);
 					}
 				}
-				
+
 				return cleanText || response.text;
 			} catch (error) {
 				console.error('Gemma model error, using fallback:', error);
