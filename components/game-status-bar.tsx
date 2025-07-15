@@ -27,10 +27,7 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 	const companions = useSimpleCompanions();
 
 	return (
-		<View style={[
-			isMobile ? styles.statusBarWrapperMobile : styles.statusBarWrapper,
-			style,
-		]}>
+		<View style={[isMobile ? styles.statusBarWrapperMobile : styles.statusBarWrapper, style]}>
 			{/* Portrait (left, hanging) */}
 			<TouchableOpacity
 				style={[styles.portraitWrapper, isMobile && styles.portraitWrapperMobile]}
@@ -46,36 +43,68 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 			{/* Turn Order Portraits */}
 			<View style={[styles.turnOrderPortraits, isMobile && styles.turnOrderPortraitsMobile]}>
 				{/* DM Portrait */}
-				<TouchableOpacity style={[
-					activeCharacter === 'dm' ? styles.activePortrait : styles.inactivePortrait,
-					isMobile && (activeCharacter === 'dm' ? styles.activePortraitMobile : styles.inactivePortraitMobile),
-				]}>
+				<TouchableOpacity
+					style={[
+						activeCharacter === 'dm' ? styles.activePortrait : styles.inactivePortrait,
+						isMobile &&
+							(activeCharacter === 'dm'
+								? styles.activePortraitMobile
+								: styles.inactivePortraitMobile),
+					]}
+				>
 					<Image
 						source={require('../assets/images/dungeon-master.png')}
 						style={[
-							activeCharacter === 'dm' ? styles.activePortraitImage : styles.inactivePortraitImage,
-							isMobile && (activeCharacter === 'dm' ? styles.activePortraitImageMobile : styles.inactivePortraitImageMobile),
+							activeCharacter === 'dm'
+								? styles.activePortraitImage
+								: styles.inactivePortraitImage,
+							isMobile &&
+								(activeCharacter === 'dm'
+									? styles.activePortraitImageMobile
+									: styles.inactivePortraitImageMobile),
 						]}
 					/>
 					{activeCharacter === 'dm' && (
-						<View style={[styles.activeIndicator, isMobile && styles.activeIndicatorMobile]} />
+						<View
+							style={[
+								styles.activeIndicator,
+								isMobile && styles.activeIndicatorMobile,
+							]}
+						/>
 					)}
 				</TouchableOpacity>
 
 				{/* Sample Party Member Portrait */}
-				<TouchableOpacity style={[
-					activeCharacter === 'sample' ? styles.activePortrait : styles.inactivePortrait,
-					isMobile && (activeCharacter === 'sample' ? styles.activePortraitMobile : styles.inactivePortraitMobile),
-				]}>
+				<TouchableOpacity
+					style={[
+						activeCharacter === 'sample'
+							? styles.activePortrait
+							: styles.inactivePortrait,
+						isMobile &&
+							(activeCharacter === 'sample'
+								? styles.activePortraitMobile
+								: styles.inactivePortraitMobile),
+					]}
+				>
 					<Image
 						source={RaceByID.human.image}
 						style={[
-							activeCharacter === 'sample' ? styles.activePortraitImage : styles.inactivePortraitImage,
-							isMobile && (activeCharacter === 'sample' ? styles.activePortraitImageMobile : styles.inactivePortraitImageMobile),
+							activeCharacter === 'sample'
+								? styles.activePortraitImage
+								: styles.inactivePortraitImage,
+							isMobile &&
+								(activeCharacter === 'sample'
+									? styles.activePortraitImageMobile
+									: styles.inactivePortraitImageMobile),
 						]}
 					/>
 					{activeCharacter === 'sample' && (
-						<View style={[styles.activeIndicator, isMobile && styles.activeIndicatorMobile]} />
+						<View
+							style={[
+								styles.activeIndicator,
+								isMobile && styles.activeIndicatorMobile,
+							]}
+						/>
 					)}
 				</TouchableOpacity>
 
@@ -84,27 +113,52 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 					<TouchableOpacity
 						key={companion.id}
 						style={[
-							activeCharacter === companion.id ? styles.activePortrait : styles.inactivePortrait,
-							isMobile && (activeCharacter === companion.id ? styles.activePortraitMobile : styles.inactivePortraitMobile),
+							activeCharacter === companion.id
+								? styles.activePortrait
+								: styles.inactivePortrait,
+							isMobile &&
+								(activeCharacter === companion.id
+									? styles.activePortraitMobile
+									: styles.inactivePortraitMobile),
 						]}
 					>
 						{companion.image ? (
 							<Image
 								source={{ uri: companion.image }}
 								style={[
-									activeCharacter === companion.id ? styles.activePortraitImage : styles.inactivePortraitImage,
-									isMobile && (activeCharacter === companion.id ? styles.activePortraitImageMobile : styles.inactivePortraitImageMobile),
+									activeCharacter === companion.id
+										? styles.activePortraitImage
+										: styles.inactivePortraitImage,
+									isMobile &&
+										(activeCharacter === companion.id
+											? styles.activePortraitImageMobile
+											: styles.inactivePortraitImageMobile),
 								]}
 							/>
 						) : (
-							<View style={[styles.companionAvatar, isMobile && styles.companionAvatarMobile]}>
-								<Text style={[styles.companionInitial, isMobile && styles.companionInitialMobile]}>
+							<View
+								style={[
+									styles.companionAvatar,
+									isMobile && styles.companionAvatarMobile,
+								]}
+							>
+								<Text
+									style={[
+										styles.companionInitial,
+										isMobile && styles.companionInitialMobile,
+									]}
+								>
 									{companion.name.charAt(0).toUpperCase()}
 								</Text>
 							</View>
 						)}
 						{activeCharacter === companion.id && (
-							<View style={[styles.activeIndicator, isMobile && styles.activeIndicatorMobile]} />
+							<View
+								style={[
+									styles.activeIndicator,
+									isMobile && styles.activeIndicatorMobile,
+								]}
+							/>
 						)}
 					</TouchableOpacity>
 				))}
@@ -120,15 +174,22 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 									<Text>{playerCharacter?.name}</Text>
 								</ThemedText>
 								<ThemedText style={styles.metaTextMobile}>
-									<Text>{playerCharacter?.race} / {playerCharacter?.class}</Text>
+									<Text>
+										{playerCharacter?.race} / {playerCharacter?.class}
+									</Text>
 								</ThemedText>
 							</View>
 							<View style={styles.statsRowMobile}>
 								<ThemedText style={styles.statTextMobile}>
-									<Text>HP: {playerCharacter?.health}/{playerCharacter?.maxHealth}</Text>
+									<Text>
+										HP: {playerCharacter?.health}/{playerCharacter?.maxHealth}
+									</Text>
 								</ThemedText>
 								<ThemedText style={styles.statTextMobile}>
-									<Text>AP: {playerCharacter?.actionPoints}/{playerCharacter?.maxActionPoints}</Text>
+									<Text>
+										AP: {playerCharacter?.actionPoints}/
+										{playerCharacter?.maxActionPoints}
+									</Text>
 								</ThemedText>
 							</View>
 						</View>
@@ -139,13 +200,20 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 								<Text>{playerCharacter?.name}</Text>
 							</ThemedText>
 							<ThemedText style={styles.metaText}>
-								<Text>{playerCharacter?.race} / {playerCharacter?.class}</Text>
+								<Text>
+									{playerCharacter?.race} / {playerCharacter?.class}
+								</Text>
 							</ThemedText>
 							<ThemedText style={styles.statText}>
-								<Text>HP: {playerCharacter?.health} / {playerCharacter?.maxHealth}</Text>
+								<Text>
+									HP: {playerCharacter?.health} / {playerCharacter?.maxHealth}
+								</Text>
 							</ThemedText>
 							<ThemedText style={styles.statText}>
-								<Text>AP: {playerCharacter?.actionPoints} / {playerCharacter?.maxActionPoints}</Text>
+								<Text>
+									AP: {playerCharacter?.actionPoints} /{' '}
+									{playerCharacter?.maxActionPoints}
+								</Text>
 							</ThemedText>
 						</View>
 					)}
@@ -153,10 +221,19 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 			</View>
 			{/* Dice (right, inside the bar, centered) */}
 			<View style={[styles.diceWrapper, isMobile && styles.diceWrapperMobile]}>
-				<View style={[styles.diceIconContainer, isMobile && styles.diceIconContainerMobile]}>
-					<Feather name="hexagon" size={isMobile ? 40 : 52} color="#C9B037" style={styles.diceIcon} />
+				<View
+					style={[styles.diceIconContainer, isMobile && styles.diceIconContainerMobile]}
+				>
+					<Feather
+						name="hexagon"
+						size={isMobile ? 40 : 52}
+						color="#C9B037"
+						style={styles.diceIcon}
+					/>
 					<View style={styles.diceTextContainer}>
-						<Text style={[styles.diceText, isMobile && styles.diceTextMobile]}>{playerCharacter?.level}</Text>
+						<Text style={[styles.diceText, isMobile && styles.diceTextMobile]}>
+							{playerCharacter?.level}
+						</Text>
 					</View>
 				</View>
 			</View>
@@ -207,7 +284,6 @@ const styles = StyleSheet.create({
 		position: 'absolute',
 		zIndex: 11,
 		alignItems: 'center',
-
 	},
 	portrait: {
 		width: 120,

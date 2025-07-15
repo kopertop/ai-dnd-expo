@@ -11,10 +11,10 @@ interface ScreenSize {
 
 /**
  * Hook for responsive screen size detection and breakpoints
- * 
+ *
  * Breakpoints:
  * - Mobile: < 768px width
- * - Tablet: 768px - 1024px width  
+ * - Tablet: 768px - 1024px width
  * - Desktop: > 1024px width
  */
 export const useScreenSize = (): ScreenSize => {

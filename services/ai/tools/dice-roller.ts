@@ -13,14 +13,14 @@ export class DiceRoller {
 	roll(notation: string): DiceRoll {
 		const parsed = this.parseNotation(notation);
 		const rolls: number[] = [];
-		
+
 		for (let i = 0; i < parsed.count; i++) {
 			rolls.push(this.rollSingleDie(parsed.sides));
 		}
-		
+
 		const rollSum = rolls.reduce((sum, roll) => sum + roll, 0);
 		const total = rollSum + parsed.modifier;
-		
+
 		return {
 			notation,
 			rolls,
@@ -36,9 +36,9 @@ export class DiceRoller {
 	rollWithAdvantage(notation: string): DiceRoll {
 		const roll1 = this.roll(notation);
 		const roll2 = this.roll(notation);
-		
+
 		const betterRoll = roll1.total >= roll2.total ? roll1 : roll2;
-		
+
 		return {
 			...betterRoll,
 			breakdown: `Advantage: [${roll1.total}] vs [${roll2.total}] → ${betterRoll.total}`,
@@ -51,9 +51,9 @@ export class DiceRoller {
 	rollWithDisadvantage(notation: string): DiceRoll {
 		const roll1 = this.roll(notation);
 		const roll2 = this.roll(notation);
-		
+
 		const worseRoll = roll1.total <= roll2.total ? roll1 : roll2;
-		
+
 		return {
 			...worseRoll,
 			breakdown: `Disadvantage: [${roll1.total}] vs [${roll2.total}] → ${worseRoll.total}`,
@@ -70,26 +70,26 @@ export class DiceRoller {
 	} {
 		// Remove spaces and convert to lowercase
 		const clean = notation.replace(/\s/g, '').toLowerCase();
-		
+
 		// Match patterns like "3d6+2", "1d20", "2d8-1"
 		const match = clean.match(/^(\d+)?d(\d+)([+-]\d+)?$/);
-		
+
 		if (!match) {
 			throw new Error(`Invalid dice notation: ${notation}`);
 		}
-		
+
 		const count = parseInt(match[1] || '1', 10);
 		const sides = parseInt(match[2], 10);
 		const modifier = match[3] ? parseInt(match[3], 10) : 0;
-		
+
 		if (count < 1 || count > 100) {
 			throw new Error('Dice count must be between 1 and 100');
 		}
-		
+
 		if (sides < 2 || sides > 1000) {
 			throw new Error('Dice sides must be between 2 and 1000');
 		}
-		
+
 		return { count, sides, modifier };
 	}
 
@@ -105,12 +105,12 @@ export class DiceRoller {
 	 */
 	private createBreakdown(rolls: number[], modifier: number, total: number): string {
 		let breakdown = `[${rolls.join(', ')}]`;
-		
+
 		if (modifier !== 0) {
 			const modStr = modifier > 0 ? `+${modifier}` : `${modifier}`;
 			breakdown += ` ${modStr}`;
 		}
-		
+
 		breakdown += ` = ${total}`;
 		return breakdown;
 	}
@@ -154,12 +154,12 @@ export class DiceRoller {
 			this.rollSingleDie(6),
 			this.rollSingleDie(6),
 		];
-		
+
 		// Sort and drop the lowest
 		rolls.sort((a, b) => b - a);
 		const keepRolls = rolls.slice(0, 3);
 		const total = keepRolls.reduce((sum, roll) => sum + roll, 0);
-		
+
 		return {
 			notation: '4d6 drop lowest',
 			rolls: keepRolls,

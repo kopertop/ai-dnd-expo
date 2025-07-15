@@ -158,7 +158,7 @@
     - Implement compliance reporting for privacy regulations
     - _Requirements: 5.1, 5.2, 5.4_
 
-- [ ] 10. Write comprehensive tests for local DM functionality
+- [-] 10. Write comprehensive tests for local DM functionality
   - [ ] 10.1 Create unit tests for core local AI components
     - Write tests for LocalDMProvider initialization and model loading
     - Create tests for ONNXModelManager with mock models

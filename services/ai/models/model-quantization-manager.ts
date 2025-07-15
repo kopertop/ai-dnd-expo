@@ -9,7 +9,12 @@
 
 import { InferenceSession } from 'onnxruntime-react-native';
 
-import { DeviceCapabilities, DeviceCapabilityManager, ModelVariant, QuantizationType } from './device-capability-manager';
+import {
+	DeviceCapabilities,
+	DeviceCapabilityManager,
+	ModelVariant,
+	QuantizationType,
+} from './device-capability-manager';
 import { ONNXModelManager } from './onnx-model-manager';
 
 export interface QuantizationConfig {
@@ -62,9 +67,9 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-	* Initialize quantization manager with available model variants
-	* Requirement 1.4: Support for different quantization levels
-	*/
+	 * Initialize quantization manager with available model variants
+	 * Requirement 1.4: Support for different quantization levels
+	 */
 	async initialize(configs: QuantizationConfig[]): Promise<void> {
 		try {
 			console.log('⚙️ Initializing quantization manager...');
@@ -81,7 +86,6 @@ export class ModelQuantizationManager {
 
 			this.isInitialized = true;
 			console.log(`✅ Quantization manager initialized with ${configs.length} variants`);
-
 		} catch (error) {
 			console.error('❌ Failed to initialize quantization manager:', error);
 			throw new Error(`Quantization manager initialization failed: ${error}`);
@@ -89,10 +93,12 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-	* Load optimal model based on device capabilities
-	* Requirement 3.1: Optimal quantization selection
-	*/
-	async loadOptimalModel(progressCallback?: (progress: ModelLoadingProgress) => void): Promise<InferenceSession> {
+	 * Load optimal model based on device capabilities
+	 * Requirement 3.1: Optimal quantization selection
+	 */
+	async loadOptimalModel(
+		progressCallback?: (progress: ModelLoadingProgress) => void,
+	): Promise<InferenceSession> {
 		if (!this.isInitialized) {
 			throw new Error('Quantization manager not initialized');
 		}
@@ -111,7 +117,8 @@ export class ModelQuantizationManager {
 
 			// Get optimal quantization recommendation
 			const availableVariants = this.getAvailableModelVariants();
-			const recommendation = this.deviceManager.getQuantizationRecommendation(availableVariants);
+			const recommendation =
+				this.deviceManager.getQuantizationRecommendation(availableVariants);
 
 			console.log(`🎯 Recommended quantization: ${recommendation.recommended}`);
 			console.log(`📝 Reasoning: ${recommendation.reasoning}`);
@@ -123,11 +130,12 @@ export class ModelQuantizationManager {
 			// Load the recommended model
 			const config = this.availableConfigs.get(recommendation.recommended);
 			if (!config) {
-				throw new Error(`Configuration not found for quantization: ${recommendation.recommended}`);
+				throw new Error(
+					`Configuration not found for quantization: ${recommendation.recommended}`,
+				);
 			}
 
 			return await this.loadSpecificModel(config, progressCallback);
-
 		} catch (error) {
 			progressCallback?.({
 				stage: 'error',
@@ -141,9 +149,9 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-	* Load specific quantized model
-	* Requirement 1.4: Model variant loading
-	*/
+	 * Load specific quantized model
+	 * Requirement 1.4: Model variant loading
+	 */
 	async loadSpecificModel(
 		config: QuantizationConfig,
 		progressCallback?: (progress: ModelLoadingProgress) => void,
@@ -219,7 +227,6 @@ export class ModelQuantizationManager {
 
 			console.log(`✅ ${config.type} model loaded successfully`);
 			return session;
-
 		} catch (error) {
 			progressCallback?.({
 				stage: 'error',
@@ -233,9 +240,9 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-	* Switch to different quantization level
-	* Requirement 1.4: Dynamic quantization switching
-	*/
+	 * Switch to different quantization level
+	 * Requirement 1.4: Dynamic quantization switching
+	 */
 	async switchQuantization(
 		targetQuantization: QuantizationType,
 		progressCallback?: (progress: ModelLoadingProgress) => void,
@@ -250,14 +257,16 @@ export class ModelQuantizationManager {
 			throw new Error(`Quantization ${targetQuantization} not available`);
 		}
 
-		console.log(`🔄 Switching from ${this.currentConfig?.type || 'none'} to ${targetQuantization}`);
+		console.log(
+			`🔄 Switching from ${this.currentConfig?.type || 'none'} to ${targetQuantization}`,
+		);
 
 		return await this.loadSpecificModel(config, progressCallback);
 	}
 
 	/**
-	* Get available model variants based on device capabilities
-	*/
+	 * Get available model variants based on device capabilities
+	 */
 	getAvailableModelVariants(): ModelVariant[] {
 		const variants: ModelVariant[] = [];
 
@@ -279,22 +288,22 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-	* Get current quantization configuration
-	*/
+	 * Get current quantization configuration
+	 */
 	getCurrentConfig(): QuantizationConfig | null {
 		return this.currentConfig;
 	}
 
 	/**
-	* Get current model session
-	*/
+	 * Get current model session
+	 */
 	getCurrentSession(): InferenceSession | null {
 		return this.currentSession;
 	}
 
 	/**
-	* Record performance metrics for current quantization
-	*/
+	 * Record performance metrics for current quantization
+	 */
 	recordPerformance(metrics: {
 		inferenceTime: number;
 		tokenCount: number;
@@ -316,13 +325,16 @@ export class ModelQuantizationManager {
 		};
 
 		// Update or add performance record
-		const existingIndex = this.performanceHistory.findIndex(p => p.quantization === performance.quantization);
+		const existingIndex = this.performanceHistory.findIndex(
+			p => p.quantization === performance.quantization,
+		);
 		if (existingIndex >= 0) {
 			// Average with existing performance
 			const existing = this.performanceHistory[existingIndex];
 			this.performanceHistory[existingIndex] = {
 				...performance,
-				averageInferenceTime: (existing.averageInferenceTime + performance.averageInferenceTime) / 2,
+				averageInferenceTime:
+					(existing.averageInferenceTime + performance.averageInferenceTime) / 2,
 				tokensPerSecond: (existing.tokensPerSecond + performance.tokensPerSecond) / 2,
 				memoryUsage: (existing.memoryUsage + performance.memoryUsage) / 2,
 			};
@@ -332,15 +344,15 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-	* Get performance history for all quantizations
-	*/
+	 * Get performance history for all quantizations
+	 */
 	getPerformanceHistory(): QuantizationPerformance[] {
 		return [...this.performanceHistory];
 	}
 
 	/**
-	* Get recommended quantization based on current conditions
-	*/
+	 * Get recommended quantization based on current conditions
+	 */
 	getRecommendedQuantization(): QuantizationType | null {
 		const capabilities = this.deviceManager.getCapabilities();
 		if (!capabilities) {
@@ -354,9 +366,12 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-	* Check if model is compatible with device
-	*/
-	private isModelCompatible(config: QuantizationConfig, capabilities: DeviceCapabilities): boolean {
+	 * Check if model is compatible with device
+	 */
+	private isModelCompatible(
+		config: QuantizationConfig,
+		capabilities: DeviceCapabilities,
+	): boolean {
 		return (
 			config.metadata.memoryRequirement <= capabilities.availableMemory &&
 			capabilities.supportedQuantizations.includes(config.type)
@@ -364,8 +379,8 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-	* Estimate battery impact based on performance metrics
-	*/
+	 * Estimate battery impact based on performance metrics
+	 */
 	private estimateBatteryImpact(metrics: {
 		inferenceTime: number;
 		thermalImpact: 'low' | 'medium' | 'high';
@@ -380,8 +395,8 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-	* Clean up all resources
-	*/
+	 * Clean up all resources
+	 */
 	async cleanup(): Promise<void> {
 		try {
 			if (this.currentSession) {
@@ -394,7 +409,6 @@ export class ModelQuantizationManager {
 			this.isInitialized = false;
 
 			console.log('✅ Quantization manager cleaned up');
-
 		} catch (error) {
 			console.error('❌ Quantization manager cleanup failed:', error);
 			throw error;
@@ -402,8 +416,8 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-	* Check if manager is ready
-	*/
+	 * Check if manager is ready
+	 */
 	isReady(): boolean {
 		return this.isInitialized && this.deviceManager.isReady();
 	}
@@ -414,8 +428,8 @@ export class ModelQuantizationManager {
  */
 export const QuantizationUtils = {
 	/**
-	* Create quantization config from model variant
-	*/
+	 * Create quantization config from model variant
+	 */
 	createConfigFromVariant(variant: ModelVariant, basePath: string): QuantizationConfig {
 		return {
 			type: variant.quantization,
@@ -432,9 +446,12 @@ export const QuantizationUtils = {
 	},
 
 	/**
-	* Compare quantization performance
-	*/
-	compareQuantizations(a: QuantizationPerformance, b: QuantizationPerformance): {
+	 * Compare quantization performance
+	 */
+	compareQuantizations(
+		a: QuantizationPerformance,
+		b: QuantizationPerformance,
+	): {
 		faster: QuantizationType;
 		higherQuality: QuantizationType;
 		moreEfficient: QuantizationType;
@@ -449,19 +466,25 @@ export const QuantizationUtils = {
 	},
 
 	/**
-	* Get overall better quantization based on weighted score
-	*/
+	 * Get overall better quantization based on weighted score
+	 */
 	getOverallBetter(a: QuantizationPerformance, b: QuantizationPerformance): QuantizationType {
 		// Weighted scoring: speed (30%), quality (40%), efficiency (30%)
-		const scoreA = (a.tokensPerSecond / 10) * 0.3 + (a.qualityScore / 100) * 0.4 + (1 - a.memoryUsage / 4000) * 0.3;
-		const scoreB = (b.tokensPerSecond / 10) * 0.3 + (b.qualityScore / 100) * 0.4 + (1 - b.memoryUsage / 4000) * 0.3;
+		const scoreA =
+			(a.tokensPerSecond / 10) * 0.3 +
+			(a.qualityScore / 100) * 0.4 +
+			(1 - a.memoryUsage / 4000) * 0.3;
+		const scoreB =
+			(b.tokensPerSecond / 10) * 0.3 +
+			(b.qualityScore / 100) * 0.4 +
+			(1 - b.memoryUsage / 4000) * 0.3;
 
 		return scoreA > scoreB ? a.quantization : b.quantization;
 	},
 
 	/**
-	* Get quantization display name
-	*/
+	 * Get quantization display name
+	 */
 	getDisplayName(quantization: QuantizationType): string {
 		const names = {
 			int4: '4-bit Integer',
@@ -474,8 +497,8 @@ export const QuantizationUtils = {
 	},
 
 	/**
-	* Get quantization description
-	*/
+	 * Get quantization description
+	 */
 	getDescription(quantization: QuantizationType): string {
 		const descriptions = {
 			int4: 'Fastest inference with good quality, lowest memory usage',
@@ -488,8 +511,8 @@ export const QuantizationUtils = {
 	},
 
 	/**
-	* Validate quantization config
-	*/
+	 * Validate quantization config
+	 */
 	validateConfig(config: QuantizationConfig): {
 		valid: boolean;
 		issues: string[];

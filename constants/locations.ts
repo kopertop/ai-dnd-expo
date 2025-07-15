@@ -82,7 +82,7 @@ export const LOCATIONS: LocationOption[] = [
 	{
 		id: 'smithy',
 		name: 'Smithy',
-		description: 'A smith\'s forge, for crafting and invention.',
+		description: "A smith's forge, for crafting and invention.",
 		image: require('../assets/images/locations/smithy.png'),
 	},
 	{

@@ -85,9 +85,9 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-	* Initialize the inference engine
-	* Requirement 2.1: Proper initialization
-	*/
+	 * Initialize the inference engine
+	 * Requirement 2.1: Proper initialization
+	 */
 	async initialize(modelPath: string): Promise<void> {
 		try {
 			console.log('🚀 Initializing Gemma3 inference engine...');
@@ -108,7 +108,6 @@ export class Gemma3InferenceEngine {
 
 			this.isInitialized = true;
 			console.log('✅ Gemma3 inference engine initialized');
-
 		} catch (error) {
 			this.isInitialized = false;
 			console.error('❌ Failed to initialize inference engine:', error);
@@ -117,9 +116,9 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-	* Generate D&D response using Gemma3 model
-	* Requirement 2.1: Generate contextually appropriate responses
-	*/
+	 * Generate D&D response using Gemma3 model
+	 * Requirement 2.1: Generate contextually appropriate responses
+	 */
 	async generateDnDResponse(request: InferenceRequest): Promise<InferenceResponse> {
 		if (!this.isInitialized || !this.session) {
 			throw new Error('Inference engine not initialized');
@@ -132,13 +131,18 @@ export class Gemma3InferenceEngine {
 			console.log('🧠 Generating D&D response...');
 
 			// Tokenize input with D&D context
-			const tokenizationResult = await this.tokenizer.tokenize(request.prompt, request.context);
+			const tokenizationResult = await this.tokenizer.tokenize(
+				request.prompt,
+				request.context,
+			);
 
 			// Run inference with generation
 			const generationResult = await this.generateTokens(tokenizationResult, config);
 
 			// Detokenize output
-			const detokenizationResult = await this.tokenizer.detokenize(generationResult.generatedTokens);
+			const detokenizationResult = await this.tokenizer.detokenize(
+				generationResult.generatedTokens,
+			);
 
 			// Post-process response
 			const processedText = this.postProcessDnDResponse(detokenizationResult.text);
@@ -174,7 +178,6 @@ export class Gemma3InferenceEngine {
 
 			console.log(`✅ D&D response generated in ${processingTime}ms`);
 			return response;
-
 		} catch (error) {
 			const processingTime = Date.now() - startTime;
 			console.error('❌ D&D response generation failed:', error);
@@ -197,9 +200,9 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-	* Generate tokens using the ONNX model with sampling
-	* Requirement 2.2: Proper input/output handling
-	*/
+	 * Generate tokens using the ONNX model with sampling
+	 * Requirement 2.2: Proper input/output handling
+	 */
 	private async generateTokens(
 		tokenizationResult: TokenizationResult,
 		config: InferenceConfig,
@@ -218,7 +221,9 @@ export class Gemma3InferenceEngine {
 		};
 
 		const startTime = Date.now();
-		const stopTokenIds = config.stopTokens.map(token => this.tokenizer.getSpecialTokenId(token)).filter(id => id !== undefined) as number[];
+		const stopTokenIds = config.stopTokens
+			.map(token => this.tokenizer.getSpecialTokenId(token))
+			.filter(id => id !== undefined) as number[];
 
 		try {
 			for (let step = 0; step < config.maxNewTokens; step++) {
@@ -270,7 +275,6 @@ export class Gemma3InferenceEngine {
 
 			state.isComplete = true;
 			return state;
-
 		} catch (error) {
 			console.error('❌ Token generation failed:', error);
 			state.stopReason = 'timeout';
@@ -280,9 +284,13 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-	* Sample next token from model logits using temperature and top-p sampling
-	*/
-	private sampleNextToken(logits: Float32Array, config: InferenceConfig, state: GenerationState): number {
+	 * Sample next token from model logits using temperature and top-p sampling
+	 */
+	private sampleNextToken(
+		logits: Float32Array,
+		config: InferenceConfig,
+		state: GenerationState,
+	): number {
 		try {
 			// Get logits for the last position (next token prediction)
 			const vocabSize = this.tokenizer.getVocabSize();
@@ -290,7 +298,11 @@ export class Gemma3InferenceEngine {
 
 			// Apply repetition penalty
 			if (config.repetitionPenalty !== 1.0) {
-				this.applyRepetitionPenalty(lastTokenLogits, state.inputIds, config.repetitionPenalty);
+				this.applyRepetitionPenalty(
+					lastTokenLogits,
+					state.inputIds,
+					config.repetitionPenalty,
+				);
 			}
 
 			// Apply temperature scaling
@@ -320,7 +332,6 @@ export class Gemma3InferenceEngine {
 				// Greedy sampling (argmax)
 				return this.argmax(probabilities);
 			}
-
 		} catch (error) {
 			console.error('❌ Token sampling failed:', error);
 			// Return a safe fallback token (period)
@@ -329,9 +340,13 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-	* Apply repetition penalty to logits
-	*/
-	private applyRepetitionPenalty(logits: Float32Array, inputIds: number[], penalty: number): void {
+	 * Apply repetition penalty to logits
+	 */
+	private applyRepetitionPenalty(
+		logits: Float32Array,
+		inputIds: number[],
+		penalty: number,
+	): void {
 		const seenTokens = new Set(inputIds);
 
 		for (const tokenId of seenTokens) {
@@ -346,8 +361,8 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-	* Apply softmax to convert logits to probabilities
-	*/
+	 * Apply softmax to convert logits to probabilities
+	 */
 	private softmax(logits: Float32Array): Float32Array {
 		const maxLogit = Math.max(...logits);
 		const expLogits = logits.map(x => Math.exp(x - maxLogit));
@@ -357,8 +372,8 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-	* Apply top-k filtering
-	*/
+	 * Apply top-k filtering
+	 */
 	private applyTopKFiltering(probabilities: Float32Array, topK: number): void {
 		const indexed = Array.from(probabilities).map((prob, index) => ({ prob, index }));
 		indexed.sort((a, b) => b.prob - a.prob);
@@ -378,8 +393,8 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-	* Apply top-p (nucleus) sampling
-	*/
+	 * Apply top-p (nucleus) sampling
+	 */
 	private applyTopPFiltering(probabilities: Float32Array, topP: number): void {
 		const indexed = Array.from(probabilities).map((prob, index) => ({ prob, index }));
 		indexed.sort((a, b) => b.prob - a.prob);
@@ -410,8 +425,8 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-	* Sample from probability distribution
-	*/
+	 * Sample from probability distribution
+	 */
 	private sampleFromDistribution(probabilities: Float32Array): number {
 		const random = Math.random();
 		let cumulativeProb = 0;
@@ -428,8 +443,8 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-	* Get argmax (greedy sampling)
-	*/
+	 * Get argmax (greedy sampling)
+	 */
 	private argmax(probabilities: Float32Array): number {
 		let maxIndex = 0;
 		let maxValue = probabilities[0];
@@ -445,9 +460,9 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-	* Post-process D&D response text
-	* Requirement 2.1: D&D-specific formatting
-	*/
+	 * Post-process D&D response text
+	 * Requirement 2.1: D&D-specific formatting
+	 */
 	private postProcessDnDResponse(text: string): string {
 		// Remove special tokens that shouldn't appear in output
 		let processed = text
@@ -473,8 +488,8 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-	* Extract tool commands from response text
-	*/
+	 * Extract tool commands from response text
+	 */
 	private extractToolCommands(text: string): Array<{ type: string; params: string }> {
 		const commands: Array<{ type: string; params: string }> = [];
 		const regex = /\[(\w+):([^\]]+)\]/g;
@@ -493,15 +508,18 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-	* Remove tool commands from display text
-	*/
+	 * Remove tool commands from display text
+	 */
 	private removeToolCommands(text: string): string {
-		return text.replace(/\[(\w+):([^\]]+)\]/g, '').replace(/\s+/g, ' ').trim();
+		return text
+			.replace(/\[(\w+):([^\]]+)\]/g, '')
+			.replace(/\s+/g, ' ')
+			.trim();
 	}
 
 	/**
-	* Calculate confidence score based on generation quality
-	*/
+	 * Calculate confidence score based on generation quality
+	 */
 	private calculateConfidence(
 		generationState: GenerationState,
 		processingTime: number,
@@ -541,29 +559,29 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-	* Check if inference engine is ready
-	*/
+	 * Check if inference engine is ready
+	 */
 	isReady(): boolean {
 		return this.isInitialized && this.session !== null && this.tokenizer.isReady();
 	}
 
 	/**
-	* Get current configuration
-	*/
+	 * Get current configuration
+	 */
 	getConfig(): InferenceConfig {
 		return { ...this.defaultConfig };
 	}
 
 	/**
-	* Update inference configuration
-	*/
+	 * Update inference configuration
+	 */
 	updateConfig(config: Partial<InferenceConfig>): void {
 		this.defaultConfig = { ...this.defaultConfig, ...config };
 	}
 
 	/**
-	* Clean up resources
-	*/
+	 * Clean up resources
+	 */
 	async cleanup(): Promise<void> {
 		try {
 			if (this.session) {
@@ -573,7 +591,6 @@ export class Gemma3InferenceEngine {
 
 			this.isInitialized = false;
 			console.log('✅ Inference engine cleaned up');
-
 		} catch (error) {
 			console.error('❌ Inference engine cleanup failed:', error);
 			throw error;
@@ -586,8 +603,8 @@ export class Gemma3InferenceEngine {
  */
 export const Gemma3InferenceUtils = {
 	/**
-	* Get recommended inference config for device performance
-	*/
+	 * Get recommended inference config for device performance
+	 */
 	getRecommendedConfig(devicePerformance: 'high' | 'medium' | 'low'): Partial<InferenceConfig> {
 		switch (devicePerformance) {
 		case 'high':
@@ -621,8 +638,8 @@ export const Gemma3InferenceUtils = {
 	},
 
 	/**
-	* Validate inference request
-	*/
+	 * Validate inference request
+	 */
 	validateInferenceRequest(request: InferenceRequest): {
 		valid: boolean;
 		issues: string[];
@@ -641,7 +658,10 @@ export const Gemma3InferenceUtils = {
 			issues.push('maxNewTokens too high (max 500)');
 		}
 
-		if (request.config?.temperature && (request.config.temperature < 0 || request.config.temperature > 2)) {
+		if (
+			request.config?.temperature &&
+			(request.config.temperature < 0 || request.config.temperature > 2)
+		) {
 			issues.push('Temperature must be between 0 and 2');
 		}
 
@@ -656,17 +676,17 @@ export const Gemma3InferenceUtils = {
 	},
 
 	/**
-	* Estimate inference time based on token count and device performance
-	*/
+	 * Estimate inference time based on token count and device performance
+	 */
 	estimateInferenceTime(
 		inputTokens: number,
 		maxNewTokens: number,
 		devicePerformance: 'high' | 'medium' | 'low',
 	): number {
 		const baseTimePerToken = {
-			high: 50,   // 50ms per token
+			high: 50, // 50ms per token
 			medium: 100, // 100ms per token
-			low: 200,   // 200ms per token
+			low: 200, // 200ms per token
 		}[devicePerformance];
 
 		const totalTokens = inputTokens + maxNewTokens;

@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { CLASSES } from '../constants/classes';
-import { CARD_GAP, cardGridStyles, getCardsPerRow, getContainerWidth, SCREEN_WIDTH } from '../styles/card-grid.styles';
+import {
+	CARD_GAP,
+	cardGridStyles,
+	getCardsPerRow,
+	getContainerWidth,
+	SCREEN_WIDTH,
+} from '../styles/card-grid.styles';
 import { newGameStyles } from '../styles/new-game.styles';
 import { ClassOption } from '../types/class-option';
 
@@ -66,20 +72,27 @@ export const ClassChooser: React.FC<ClassChooserProps> = ({ onSelect }) => {
 						multiline
 						numberOfLines={3}
 					/>
-					<TouchableOpacity style={newGameStyles.submitButton} onPress={handleCustomSubmit}>
+					<TouchableOpacity
+						style={newGameStyles.submitButton}
+						onPress={handleCustomSubmit}
+					>
 						<Text style={newGameStyles.submitButtonText}>Create Class</Text>
 					</TouchableOpacity>
 				</View>
 			) : (
 				<View style={styles.cardContainer}>
-					{allClasses.map((classOption) => (
+					{allClasses.map(classOption => (
 						<TouchableOpacity
 							key={classOption.id}
 							style={[styles.card, { width: cardWidth, height: cardHeight }]}
 							onPress={() => handleSelect(classOption)}
 						>
 							<View style={styles.imageWrapper}>
-								<Image source={classOption.image} style={[styles.image, { width: '100%', height: '100%' }]} resizeMode="cover" />
+								<Image
+									source={classOption.image}
+									style={[styles.image, { width: '100%', height: '100%' }]}
+									resizeMode="cover"
+								/>
 								<View style={styles.overlay}>
 									<Text style={styles.cardTitle}>{classOption.name}</Text>
 									<Text style={styles.cardDesc}>{classOption.description}</Text>

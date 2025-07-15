@@ -35,13 +35,13 @@ export const useGameState = () => {
 		try {
 			const raw = await AsyncStorage.getItem(GAME_STATE_KEY);
 			if (!raw) throw new Error('No game state found');
-			
+
 			const rawData = JSON.parse(raw);
-			
+
 			// Validate with schema
 			const parsed = GameStateSchema.parse(rawData);
 			setGameState(parsed);
-			
+
 			// Extract player character
 			const char = parsed.characters.find(c => c.id === parsed.playerCharacterId);
 			if (!char) throw new Error('Player character not found');
@@ -52,7 +52,9 @@ export const useGameState = () => {
 				const missingFields = e.issues.map((issue: any) => issue.path.join('.')).join(', ');
 				console.log('🗑️ Clearing outdated game state due to schema changes...');
 				await AsyncStorage.removeItem(GAME_STATE_KEY);
-				setError(`Game state format is outdated. Missing: ${missingFields}. Please start a new game.`);
+				setError(
+					`Game state format is outdated. Missing: ${missingFields}. Please start a new game.`,
+				);
 			} else {
 				setError(e.message || 'Failed to load game state');
 			}
@@ -65,7 +67,7 @@ export const useGameState = () => {
 		try {
 			await AsyncStorage.setItem(GAME_STATE_KEY, JSON.stringify(newGameState));
 			setGameState(newGameState);
-			
+
 			// Update player character
 			const char = newGameState.characters.find(c => c.id === newGameState.playerCharacterId);
 			setPlayerCharacter(char || null);
@@ -76,19 +78,22 @@ export const useGameState = () => {
 	}, []);
 
 	// Update player character and save to game state
-	const updatePlayerCharacter = useCallback(async (updates: Partial<Character>) => {
-		if (!gameState || !playerCharacter) {
-			throw new Error('No game state or player character loaded');
-		}
-		
-		const updatedCharacter = { ...playerCharacter, ...updates };
-		const updatedCharacters = gameState.characters.map(c => 
-			c.id === playerCharacter.id ? updatedCharacter : c,
-		);
-		const updatedGameState = { ...gameState, characters: updatedCharacters };
-		
-		await save(updatedGameState);
-	}, [gameState, playerCharacter, save]);
+	const updatePlayerCharacter = useCallback(
+		async (updates: Partial<Character>) => {
+			if (!gameState || !playerCharacter) {
+				throw new Error('No game state or player character loaded');
+			}
+
+			const updatedCharacter = { ...playerCharacter, ...updates };
+			const updatedCharacters = gameState.characters.map(c =>
+				c.id === playerCharacter.id ? updatedCharacter : c,
+			);
+			const updatedGameState = { ...gameState, characters: updatedCharacters };
+
+			await save(updatedGameState);
+		},
+		[gameState, playerCharacter, save],
+	);
 
 	// Clear all game data
 	const clear = useCallback(async () => {

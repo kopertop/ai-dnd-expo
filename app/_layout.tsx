@@ -18,7 +18,9 @@ const AudioButton: React.FC = () => {
 	return (
 		<View pointerEvents="box-none" style={styles.soundButtonContainer}>
 			<TouchableOpacity
-				accessibilityLabel={player.playing ? 'Mute background music' : 'Unmute background music'}
+				accessibilityLabel={
+					player.playing ? 'Mute background music' : 'Unmute background music'
+				}
 				onPress={togglePlayPause}
 				style={styles.soundButton}
 			>

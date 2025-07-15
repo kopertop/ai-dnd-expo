@@ -1,6 +1,14 @@
 import { Stack, router } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, PanResponder, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+	Alert,
+	PanResponder,
+	ScrollView,
+	Text,
+	TextInput,
+	TouchableOpacity,
+	View,
+} from 'react-native';
 
 import { AttributePicker } from '../components/attribute-picker';
 import { ClassChooser } from '../components/class-chooser';
@@ -22,9 +30,7 @@ import { WorldOption } from '../types/world-option';
 import { ThemedView } from '@/components/themed-view';
 import { useScreenSize } from '@/hooks/use-screen-size';
 
-
 type WizardStep = 'world' | 'location' | 'race' | 'class' | 'attributes' | 'skills' | 'character';
-
 
 const NewGameScreen: React.FC = () => {
 	const [currentStep, setCurrentStep] = useState<WizardStep>('world');
@@ -48,7 +54,10 @@ const NewGameScreen: React.FC = () => {
 	const panResponder = PanResponder.create({
 		onMoveShouldSetPanResponder: (evt, gestureState) => {
 			// Only respond to horizontal swipes that are significant
-			return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 20;
+			return (
+				Math.abs(gestureState.dx) > Math.abs(gestureState.dy) &&
+				Math.abs(gestureState.dx) > 20
+			);
 		},
 		onPanResponderGrant: () => {
 			// Gesture started
@@ -96,9 +105,14 @@ const NewGameScreen: React.FC = () => {
 		setCurrentStep('character');
 	};
 
-
 	const handleConfirmStart = async () => {
-		if (!pendingCharacter || !selectedWorld || !selectedLocation || !selectedRace || !selectedClass) {
+		if (
+			!pendingCharacter ||
+			!selectedWorld ||
+			!selectedLocation ||
+			!selectedRace ||
+			!selectedClass
+		) {
 			console.error('❌ Missing required data for character creation');
 			return;
 		}
@@ -180,7 +194,15 @@ const NewGameScreen: React.FC = () => {
 
 	// Add this function to handle going back a step
 	const handlePreviousStep = () => {
-		const steps: WizardStep[] = ['world', 'location', 'race', 'class', 'attributes', 'skills', 'character'];
+		const steps: WizardStep[] = [
+			'world',
+			'location',
+			'race',
+			'class',
+			'attributes',
+			'skills',
+			'character',
+		];
 		const currentIndex = steps.indexOf(currentStep);
 		if (currentIndex > 0) {
 			setCurrentStep(steps[currentIndex - 1]);
@@ -197,20 +219,27 @@ const NewGameScreen: React.FC = () => {
 		const currentStepIndex = getStepNumber(currentStep);
 
 		return (
-			<View style={isMobile ? newGameStyles.stepIndicatorMobile : newGameStyles.stepIndicator}>
+			<View
+				style={isMobile ? newGameStyles.stepIndicatorMobile : newGameStyles.stepIndicator}
+			>
 				{steps.map((step, index) => (
 					<React.Fragment key={step}>
 						<View
 							style={[
 								isMobile ? newGameStyles.stepDotMobile : newGameStyles.stepDot,
-								index === currentStepIndex && (isMobile ? newGameStyles.stepDotActiveMobile : newGameStyles.stepDotActive),
+								index === currentStepIndex &&
+									(isMobile
+										? newGameStyles.stepDotActiveMobile
+										: newGameStyles.stepDotActive),
 								index < currentStepIndex && newGameStyles.stepDotCompleted,
 							]}
 						/>
 						{index < steps.length - 1 && (
 							<View
 								style={[
-									isMobile ? newGameStyles.stepLineMobile : newGameStyles.stepLine,
+									isMobile
+										? newGameStyles.stepLineMobile
+										: newGameStyles.stepLine,
 									index < currentStepIndex && newGameStyles.stepLineCompleted,
 								]}
 							/>
@@ -222,29 +251,36 @@ const NewGameScreen: React.FC = () => {
 	};
 
 	const renderStepContent = () => {
-
 		switch (currentStep) {
 		case 'world':
 			return (
-				<View style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}>
+				<View
+					style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}
+				>
 					<WorldChooser onSelect={handleWorldSelect} />
 				</View>
 			);
 		case 'location':
 			return (
-				<View style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}>
+				<View
+					style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}
+				>
 					<LocationChooser onSelect={handleLocationSelect} />
 				</View>
 			);
 		case 'race':
 			return (
-				<View style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}>
+				<View
+					style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}
+				>
 					<RaceChooser onSelect={handleRaceSelect} />
 				</View>
 			);
 		case 'class':
 			return (
-				<View style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}>
+				<View
+					style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}
+				>
 					<ClassChooser onSelect={handleClassSelect} />
 				</View>
 			);
@@ -252,19 +288,30 @@ const NewGameScreen: React.FC = () => {
 			if (!selectedClass) return null;
 			return (
 				<View style={{ flex: 1, position: 'relative' }}>
-					<AttributePicker classOption={selectedClass} onConfirm={handleAttributesConfirm} />
+					<AttributePicker
+						classOption={selectedClass}
+						onConfirm={handleAttributesConfirm}
+					/>
 				</View>
 			);
 		case 'skills':
 			return (
 				<View style={{ flex: 1, position: 'relative' }}>
-					<SkillChooser onSelect={handleSkillsSelect} initialSkills={selectedSkills} maxSkills={4} />
+					<SkillChooser
+						onSelect={handleSkillsSelect}
+						initialSkills={selectedSkills}
+						maxSkills={4}
+					/>
 				</View>
 			);
 		case 'character': {
 			if (!selectedRace || !selectedClass || !selectedAttributes) {
 				return (
-					<View style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}>
+					<View
+						style={
+							isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox
+						}
+					>
 						<Text>Missing race, class, or attributes selection.</Text>
 					</View>
 				);
@@ -277,12 +324,18 @@ const NewGameScreen: React.FC = () => {
 			return (
 				<View style={{ flex: 1, flexDirection: 'column' }}>
 					{/* Header Section */}
-					<View style={{
-						paddingHorizontal: isMobile ? 16 : 24,
-						paddingTop: isMobile ? 16 : 24,
-						paddingBottom: isMobile ? 8 : 12,
-					}}>
-						<Text style={isMobile ? newGameStyles.titleMobile : newGameStyles.title}>Finalize Your Character</Text>
+					<View
+						style={{
+							paddingHorizontal: isMobile ? 16 : 24,
+							paddingTop: isMobile ? 16 : 24,
+							paddingBottom: isMobile ? 8 : 12,
+						}}
+					>
+						<Text
+							style={isMobile ? newGameStyles.titleMobile : newGameStyles.title}
+						>
+								Finalize Your Character
+						</Text>
 					</View>
 
 					{/* Scrollable Content */}
@@ -323,9 +376,16 @@ const NewGameScreen: React.FC = () => {
 										paddingVertical: isMobile ? 14 : 10,
 									},
 								]}
-								onPress={() => handleRandomBackground(selectedRace.name, selectedClass.name)}
+								onPress={() =>
+									handleRandomBackground(
+										selectedRace.name,
+										selectedClass.name,
+									)
+								}
 							>
-								<Text style={newGameStyles.submitButtonText}>Generate Random Background</Text>
+								<Text style={newGameStyles.submitButtonText}>
+										Generate Random Background
+								</Text>
 							</TouchableOpacity>
 							<TextInput
 								style={[
@@ -351,20 +411,26 @@ const NewGameScreen: React.FC = () => {
 						</View>
 					</ScrollView>
 					{/* Fixed Bottom Button */}
-					<View style={{
-						backgroundColor: isMobile ? 'rgba(249, 246, 239, 0.98)' : 'rgba(255,255,255,0.95)',
-						padding: isMobile ? 16 : 12,
-						borderTopWidth: isMobile ? 2 : 1,
-						borderTopColor: isMobile ? '#C9B037' : '#eee',
-						shadowColor: '#000',
-						shadowOffset: { width: 0, height: -2 },
-						shadowOpacity: 0.1,
-						shadowRadius: 4,
-						elevation: 8,
-					}}>
+					<View
+						style={{
+							backgroundColor: isMobile
+								? 'rgba(249, 246, 239, 0.98)'
+								: 'rgba(255,255,255,0.95)',
+							padding: isMobile ? 16 : 12,
+							borderTopWidth: isMobile ? 2 : 1,
+							borderTopColor: isMobile ? '#C9B037' : '#eee',
+							shadowColor: '#000',
+							shadowOffset: { width: 0, height: -2 },
+							shadowOpacity: 0.1,
+							shadowRadius: 4,
+							elevation: 8,
+						}}
+					>
 						<TouchableOpacity
 							style={[
-								characterName.trim() && customStory.trim() ? newGameStyles.submitButton : newGameStyles.submitButtonDisabled,
+								characterName.trim() && customStory.trim()
+									? newGameStyles.submitButton
+									: newGameStyles.submitButtonDisabled,
 								{
 									width: '100%',
 									margin: 0,
@@ -382,9 +448,20 @@ const NewGameScreen: React.FC = () => {
 									skills: selectedSkills.map(s => s.id),
 								};
 
-								if (!selectedWorld || !selectedLocation || !selectedRace || !selectedClass || !selectedAttributes) {
-									console.error('❌ Missing required data for character creation');
-									Alert.alert('Error', 'Missing required character data. Please go back and complete all steps.');
+								if (
+									!selectedWorld ||
+										!selectedLocation ||
+										!selectedRace ||
+										!selectedClass ||
+										!selectedAttributes
+								) {
+									console.error(
+										'❌ Missing required data for character creation',
+									);
+									Alert.alert(
+										'Error',
+										'Missing required character data. Please go back and complete all steps.',
+									);
 									return;
 								}
 
@@ -456,11 +533,21 @@ const NewGameScreen: React.FC = () => {
 									router.replace('/game');
 								} catch (error) {
 									console.error('Failed to save game state:', error);
-									Alert.alert('Error', 'Failed to save game state. Please try again.');
+									Alert.alert(
+										'Error',
+										'Failed to save game state. Please try again.',
+									);
 								}
 							}}
 						>
-							<Text style={[newGameStyles.submitButtonText, isMobile && { fontSize: 18 }]}>Start Game</Text>
+							<Text
+								style={[
+									newGameStyles.submitButtonText,
+									isMobile && { fontSize: 18 },
+								]}
+							>
+									Start Game
+							</Text>
 						</TouchableOpacity>
 					</View>
 				</View>
@@ -472,10 +559,7 @@ const NewGameScreen: React.FC = () => {
 	};
 
 	return (
-		<ThemedView style={[
-			newGameStyles.container,
-			isMobile && newGameStyles.containerMobile,
-		]}>
+		<ThemedView style={[newGameStyles.container, isMobile && newGameStyles.containerMobile]}>
 			<Stack.Screen options={{ headerShown: !isMobile }} />
 			<View {...panResponder.panHandlers} style={{ flex: 1 }}>
 				<ScrollView

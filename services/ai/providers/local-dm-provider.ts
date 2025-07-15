@@ -7,113 +7,112 @@
  * Requirements: 1.1, 4.1
  */
 
-
 // Base interfaces for local AI provider
 export interface AIProvider {
-  initialize(progressCallback?: (progress: InitializationProgress) => void): Promise<boolean>;
-  generateDnDResponse(prompt: string, context: DnDContext, timeout?: number): Promise<AIResponse>;
-  healthCheck(): Promise<boolean>;
-  isReady(): boolean;
-  getStatus(): ProviderStatus;
-  cleanup(): Promise<void>;
+	initialize(progressCallback?: (progress: InitializationProgress) => void): Promise<boolean>;
+	generateDnDResponse(prompt: string, context: DnDContext, timeout?: number): Promise<AIResponse>;
+	healthCheck(): Promise<boolean>;
+	isReady(): boolean;
+	getStatus(): ProviderStatus;
+	cleanup(): Promise<void>;
 }
 
 export interface InitializationProgress {
-  status: 'loading' | 'initializing' | 'ready' | 'error';
-  progress?: number; // 0-100
-  message?: string;
+	status: 'loading' | 'initializing' | 'ready' | 'error';
+	progress?: number; // 0-100
+	message?: string;
 }
 
 export interface DnDContext {
-  playerName: string;
-  playerClass: string;
-  playerRace: string;
-  currentScene: string;
-  gameHistory: string[];
+	playerName: string;
+	playerClass: string;
+	playerRace: string;
+	currentScene: string;
+	gameHistory: string[];
 }
 
 export interface AIResponse {
-  text: string;
-  confidence: number;
-  toolCommands: Array<{ type: string; params: string }>;
-  processingTime: number;
+	text: string;
+	confidence: number;
+	toolCommands: Array<{ type: string; params: string }>;
+	processingTime: number;
 }
 
 export interface ProviderStatus {
-  isLoaded: boolean;
-  isReady: boolean;
-  error: string | null;
-  modelInfo?: {
-    name: string;
-    size: number;
-    quantization: string;
-    memoryUsage: number;
-  };
-  performance?: {
-    averageInferenceTime: number;
-    tokensPerSecond: number;
-    lastInferenceTime: number;
-  };
-  resourceUsage?: {
-    memory: { used: number; available: number; percentage: number };
-    cpu: { usage: number; temperature: number };
-    battery: { level: number; isCharging: boolean };
-    thermal: { state: 'nominal' | 'fair' | 'serious' | 'critical' };
-  };
+	isLoaded: boolean;
+	isReady: boolean;
+	error: string | null;
+	modelInfo?: {
+		name: string;
+		size: number;
+		quantization: string;
+		memoryUsage: number;
+	};
+	performance?: {
+		averageInferenceTime: number;
+		tokensPerSecond: number;
+		lastInferenceTime: number;
+	};
+	resourceUsage?: {
+		memory: { used: number; available: number; percentage: number };
+		cpu: { usage: number; temperature: number };
+		battery: { level: number; isCharging: boolean };
+		thermal: { state: 'nominal' | 'fair' | 'serious' | 'critical' };
+	};
 }
 
 // Local model configuration interfaces
 export interface LocalModelConfig {
-  modelPath: string;
-  contextSize: number;
-  maxTokens: number;
-  temperature: number;
-  enableResourceMonitoring: boolean;
-  powerSavingMode: boolean;
-  quantization?: 'int8' | 'int4' | 'fp16' | 'fp32';
-  numThreads?: number;
-  memoryLimit?: number; // in MB
-  enableGPU?: boolean;
-  cacheSize?: number;
+	modelPath: string;
+	contextSize: number;
+	maxTokens: number;
+	temperature: number;
+	enableResourceMonitoring: boolean;
+	powerSavingMode: boolean;
+	quantization?: 'int8' | 'int4' | 'fp16' | 'fp32';
+	numThreads?: number;
+	memoryLimit?: number; // in MB
+	enableGPU?: boolean;
+	cacheSize?: number;
 }
 
 export interface ModelStatus {
-  isLoaded: boolean;
-  isReady: boolean;
-  loadingProgress: number;
-  error: string | null;
-  modelInfo: {
-    name: string;
-    size: number;
-    quantization: string;
-    memoryUsage: number;
-  };
-  performance: {
-    averageInferenceTime: number;
-    tokensPerSecond: number;
-    lastInferenceTime: number;
-  };
+	isLoaded: boolean;
+	isReady: boolean;
+	loadingProgress: number;
+	error: string | null;
+	modelInfo: {
+		name: string;
+		size: number;
+		quantization: string;
+		memoryUsage: number;
+	};
+	performance: {
+		averageInferenceTime: number;
+		tokensPerSecond: number;
+		lastInferenceTime: number;
+	};
 }
 
 export interface ResourceUsage {
-  memory: {
-    used: number;
-    available: number;
-    percentage: number;
-  };
-  cpu: {
-    usage: number;
-    temperature: number;
-  };
-  battery: {
-    level: number;
-    isCharging: boolean;
-    estimatedTimeRemaining: number;
-  };
-  thermal: {
-    state: 'nominal' | 'fair' | 'serious' | 'critical';
-    temperature: number;
-  };
+	memory: {
+		used: number;
+		available: number;
+		percentage: number;
+	};
+	cpu: {
+		usage: number;
+		temperature: number;
+	};
+	battery: {
+		level: number;
+		isCharging: boolean;
+		estimatedTimeRemaining: number;
+	};
+	thermal: {
+		state: 'nominal' | 'fair' | 'serious' | 'critical';
+		temperature: number;
+	};
 }
 
 /**
@@ -127,11 +126,11 @@ export class LocalDMProvider implements AIProvider {
 	private lastError: string | null = null;
 	private modelStatus: ModelStatus;
 	private performanceMetrics: {
-    totalInferences: number;
-    totalTime: number;
-    averageTime: number;
-    successRate: number;
-  };
+		totalInferences: number;
+		totalTime: number;
+		averageTime: number;
+		successRate: number;
+	};
 
 	// Placeholder for Cactus integration - will be implemented in task 2
 	private cactusLM: any = null;
@@ -164,10 +163,12 @@ export class LocalDMProvider implements AIProvider {
 	}
 
 	/**
-   * Initialize the local DM provider with progress tracking
-   * Requirement 1.1: Initialize local model with progress tracking
-   */
-	async initialize(progressCallback?: (progress: InitializationProgress) => void): Promise<boolean> {
+	 * Initialize the local DM provider with progress tracking
+	 * Requirement 1.1: Initialize local model with progress tracking
+	 */
+	async initialize(
+		progressCallback?: (progress: InitializationProgress) => void,
+	): Promise<boolean> {
 		try {
 			this.lastError = null;
 
@@ -209,9 +210,9 @@ export class LocalDMProvider implements AIProvider {
 
 			// Local DM Provider initialized successfully
 			return true;
-
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : 'Unknown initialization error';
+			const errorMessage =
+				error instanceof Error ? error.message : 'Unknown initialization error';
 			this.lastError = errorMessage;
 			this.modelStatus.error = errorMessage;
 
@@ -227,9 +228,9 @@ export class LocalDMProvider implements AIProvider {
 	}
 
 	/**
-   * Generate D&D response using local model
-   * Requirement 2.1: Generate contextually appropriate responses
-   */
+	 * Generate D&D response using local model
+	 * Requirement 2.1: Generate contextually appropriate responses
+	 */
 	async generateDnDResponse(
 		prompt: string,
 		context: DnDContext,
@@ -268,7 +269,6 @@ export class LocalDMProvider implements AIProvider {
 
 			// Local DM response generated successfully
 			return aiResponse;
-
 		} catch (error) {
 			const processingTime = Date.now() - startTime;
 			this.updatePerformanceMetrics(processingTime, false);
@@ -280,8 +280,8 @@ export class LocalDMProvider implements AIProvider {
 	}
 
 	/**
-   * Check if the local DM provider is healthy and ready
-   */
+	 * Check if the local DM provider is healthy and ready
+	 */
 	async healthCheck(): Promise<boolean> {
 		try {
 			if (!this.isInitialized || !this.isModelReady) {
@@ -291,7 +291,6 @@ export class LocalDMProvider implements AIProvider {
 			// TODO: Implement actual health check in task 2.1
 			// For now, return basic readiness status
 			return this.isModelReady && this.lastError === null;
-
 		} catch (error) {
 			console.error('❌ Local DM health check failed:', error);
 			return false;
@@ -299,15 +298,15 @@ export class LocalDMProvider implements AIProvider {
 	}
 
 	/**
-   * Check if the provider is ready for inference
-   */
+	 * Check if the provider is ready for inference
+	 */
 	isReady(): boolean {
 		return this.isModelReady && this.lastError === null;
 	}
 
 	/**
-   * Get detailed status of the local DM provider
-   */
+	 * Get detailed status of the local DM provider
+	 */
 	getStatus(): ProviderStatus {
 		return {
 			isLoaded: this.modelStatus.isLoaded,
@@ -321,9 +320,9 @@ export class LocalDMProvider implements AIProvider {
 	}
 
 	/**
-   * Enable or disable power saving mode
-   * Requirement 3.2: Battery optimization
-   */
+	 * Enable or disable power saving mode
+	 * Requirement 3.2: Battery optimization
+	 */
 	setPowerSavingMode(enabled: boolean): void {
 		this.config.powerSavingMode = enabled;
 
@@ -336,9 +335,9 @@ export class LocalDMProvider implements AIProvider {
 	}
 
 	/**
-   * Clean up all resources and model data
-   * Requirement 5.4: Complete data removal
-   */
+	 * Clean up all resources and model data
+	 * Requirement 5.4: Complete data removal
+	 */
 	async cleanup(): Promise<void> {
 		try {
 			// TODO: Implement proper cleanup in task 6.3
@@ -354,7 +353,6 @@ export class LocalDMProvider implements AIProvider {
 			this.modelStatus.error = null;
 
 			// Local DM Provider cleaned up successfully
-
 		} catch (error) {
 			console.error('❌ Local DM cleanup failed:', error);
 			throw error;
@@ -364,8 +362,8 @@ export class LocalDMProvider implements AIProvider {
 	// Private helper methods
 
 	/**
-   * Build D&D-specific prompt for local model
-   */
+	 * Build D&D-specific prompt for local model
+	 */
 	private buildDnDPrompt(prompt: string, context: DnDContext): string {
 		const systemPrompt = `You are an experienced Dungeon Master running a D&D 5e campaign.
 Your responses should be:
@@ -390,8 +388,8 @@ DM Response:`;
 	}
 
 	/**
-   * Extract tool commands from model response
-   */
+	 * Extract tool commands from model response
+	 */
 	private extractToolCommands(text: string): Array<{ type: string; params: string }> {
 		const commands: Array<{ type: string; params: string }> = [];
 		const regex = /\[(\w+):([^\]]+)\]/g;
@@ -410,49 +408,52 @@ DM Response:`;
 	}
 
 	/**
-   * Remove tool commands from display text
-   */
+	 * Remove tool commands from display text
+	 */
 	private removeToolCommands(text: string): string {
 		return text.replace(/\[(\w+):([^\]]+)\]/g, '').trim();
 	}
 
 	/**
-   * Extract model name from file path
-   */
+	 * Extract model name from file path
+	 */
 	private extractModelName(modelPath: string): string {
 		const fileName = modelPath.split('/').pop() || 'unknown';
 		return fileName.replace(/\.(gguf|onnx)$/, '');
 	}
 
 	/**
-   * Update performance metrics
-   */
+	 * Update performance metrics
+	 */
 	private updatePerformanceMetrics(processingTime: number, success: boolean): void {
 		this.performanceMetrics.totalInferences++;
 
 		if (success) {
 			this.performanceMetrics.totalTime += processingTime;
 			this.performanceMetrics.averageTime =
-        this.performanceMetrics.totalTime / this.performanceMetrics.totalInferences;
+				this.performanceMetrics.totalTime / this.performanceMetrics.totalInferences;
 
 			// Estimate tokens per second (placeholder calculation)
 			const estimatedTokens = 50; // Average response length
 			this.modelStatus.performance.tokensPerSecond =
-        (estimatedTokens / processingTime) * 1000;
+				(estimatedTokens / processingTime) * 1000;
 		}
 
 		this.performanceMetrics.successRate =
-      (this.performanceMetrics.totalInferences -
-       (this.performanceMetrics.totalInferences - this.performanceMetrics.totalTime / this.performanceMetrics.averageTime || 0)) /
-      this.performanceMetrics.totalInferences;
+			(this.performanceMetrics.totalInferences -
+				(this.performanceMetrics.totalInferences -
+					this.performanceMetrics.totalTime / this.performanceMetrics.averageTime || 0)) /
+			this.performanceMetrics.totalInferences;
 
 		this.modelStatus.performance.averageInferenceTime = this.performanceMetrics.averageTime;
 	}
 
 	/**
-   * Simulate model loading for development (will be replaced in task 2.1)
-   */
-	private async simulateModelLoading(progressCallback?: (progress: InitializationProgress) => void): Promise<void> {
+	 * Simulate model loading for development (will be replaced in task 2.1)
+	 */
+	private async simulateModelLoading(
+		progressCallback?: (progress: InitializationProgress) => void,
+	): Promise<void> {
 		const steps = [
 			{ progress: 20, message: 'Validating model file...' },
 			{ progress: 40, message: 'Loading model weights...' },
@@ -472,8 +473,8 @@ DM Response:`;
 	}
 
 	/**
-   * Simulate model inference for development (will be replaced in task 2.2)
-   */
+	 * Simulate model inference for development (will be replaced in task 2.2)
+	 */
 	private async simulateInference(prompt: string, timeout: number): Promise<string> {
 		// Simulate processing time
 		await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 500));
@@ -513,8 +514,8 @@ export const DefaultLocalDMConfig: LocalModelConfig = {
  */
 export const LocalDMModelConfigs = {
 	/**
-   * High performance configuration for powerful devices (iPhone 15 Pro+, iPad Pro)
-   */
+	 * High performance configuration for powerful devices (iPhone 15 Pro+, iPad Pro)
+	 */
 	PERFORMANCE: {
 		...DefaultLocalDMConfig,
 		modelPath: '/Documents/AIModels/gemma-3-9b-int4/model.gguf',
@@ -529,8 +530,8 @@ export const LocalDMModelConfigs = {
 	},
 
 	/**
-   * Balanced configuration for mid-range devices (iPhone 13+, iPad Air)
-   */
+	 * Balanced configuration for mid-range devices (iPhone 13+, iPad Air)
+	 */
 	BALANCED: {
 		...DefaultLocalDMConfig,
 		modelPath: '/Documents/AIModels/gemma-3-2b-int8/model.gguf',
@@ -545,8 +546,8 @@ export const LocalDMModelConfigs = {
 	},
 
 	/**
-   * Power saving configuration for battery optimization
-   */
+	 * Power saving configuration for battery optimization
+	 */
 	POWER_SAVING: {
 		...DefaultLocalDMConfig,
 		modelPath: '/Documents/AIModels/gemma-3-2b-int8/model.gguf',
@@ -562,8 +563,8 @@ export const LocalDMModelConfigs = {
 	},
 
 	/**
-   * Minimal configuration for older devices
-   */
+	 * Minimal configuration for older devices
+	 */
 	MINIMAL: {
 		...DefaultLocalDMConfig,
 		modelPath: '/Documents/AIModels/gemma-3-2b-int8/model.gguf',

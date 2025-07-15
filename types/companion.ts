@@ -20,15 +20,15 @@ export interface Companion extends Character {
 	// Companion-specific properties
 	type: 'companion';
 	companionType: 'hired' | 'quest' | 'story' | 'summoned';
-	
+
 	// Party management
 	isActive: boolean;
 	loyalty: number; // 0-100
-	
+
 	// AI behavior
 	behavior: CompanionBehavior;
 	voice: CompanionVoice;
-	
+
 	// Recruitment info
 	recruiter?: string; // Who recruited this companion
 	recruitedAt: number; // Timestamp

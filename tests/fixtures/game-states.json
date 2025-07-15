@@ -1,0 +1,82 @@
+{
+	"newGameState": {
+		"sessionId": "test-session-new",
+		"characters": [],
+		"playerCharacterId": "",
+		"gameWorld": "forgotten-realms",
+		"startingArea": "the-prancing-pony",
+		"currentLocation": "The Prancing Pony Tavern",
+		"gameHistory": []
+	},
+	"activeGameState": {
+		"sessionId": "test-session-active",
+		"characters": [
+			{
+				"id": "test-character-1",
+				"name": "Thorin Ironforge",
+				"race": "dwarf",
+				"class": "fighter",
+				"level": 3
+			}
+		],
+		"playerCharacterId": "test-character-1",
+		"gameWorld": "forgotten-realms",
+		"startingArea": "the-prancing-pony",
+		"currentLocation": "The Whispering Woods",
+		"gameHistory": [
+			{
+				"id": "history-1",
+				"timestamp": "2024-01-01T12:00:00Z",
+				"type": "dm-message",
+				"content": "You enter the tavern and see a hooded figure in the corner.",
+				"speaker": "Dungeon Master"
+			},
+			{
+				"id": "history-2",
+				"timestamp": "2024-01-01T12:01:00Z",
+				"type": "player-action",
+				"content": "I approach the hooded figure cautiously.",
+				"speaker": "Thorin Ironforge"
+			}
+		]
+	},
+	"combatGameState": {
+		"sessionId": "test-session-combat",
+		"characters": [
+			{
+				"id": "test-character-1",
+				"name": "Thorin Ironforge",
+				"race": "dwarf",
+				"class": "fighter",
+				"level": 3,
+				"hitPoints": 20,
+				"maxHitPoints": 28
+			}
+		],
+		"playerCharacterId": "test-character-1",
+		"gameWorld": "forgotten-realms",
+		"startingArea": "goblin-cave",
+		"currentLocation": "Goblin Cave Entrance",
+		"inCombat": true,
+		"combatants": [
+			{
+				"id": "goblin-1",
+				"name": "Goblin Warrior",
+				"type": "enemy",
+				"hitPoints": 7,
+				"maxHitPoints": 7,
+				"armorClass": 15,
+				"initiative": 12
+			}
+		],
+		"gameHistory": [
+			{
+				"id": "combat-1",
+				"timestamp": "2024-01-01T12:05:00Z",
+				"type": "combat-start",
+				"content": "A goblin jumps out from behind a rock! Roll for initiative!",
+				"speaker": "Dungeon Master"
+			}
+		]
+	}
+}

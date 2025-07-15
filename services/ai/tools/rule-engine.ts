@@ -26,7 +26,7 @@ export class RuleEngine {
 	 */
 	async lookupRule(query: string): Promise<RuleLookupResult> {
 		const normalizedQuery = query.toLowerCase().trim();
-		
+
 		// Direct match
 		const directMatch = this.findDirectMatch(normalizedQuery);
 		if (directMatch) {
@@ -35,7 +35,7 @@ export class RuleEngine {
 
 		// Fuzzy search
 		const suggestions = this.findSuggestions(normalizedQuery);
-		
+
 		return {
 			suggestions: suggestions.slice(0, 3), // Top 3 suggestions
 			found: suggestions.length > 0,
@@ -78,17 +78,17 @@ export class RuleEngine {
 
 		for (const rule of this.rules.values()) {
 			let score = 0;
-			
+
 			// Name matching
 			if (rule.name.toLowerCase().includes(query)) {
 				score += 10;
 			}
-			
+
 			// Description matching
 			if (rule.description.toLowerCase().includes(query)) {
 				score += 5;
 			}
-			
+
 			// Mechanics matching
 			if (rule.mechanics.toLowerCase().includes(query)) {
 				score += 3;
@@ -97,7 +97,8 @@ export class RuleEngine {
 			// Keyword matching
 			const keywords = query.split(' ');
 			for (const keyword of keywords) {
-				if (keyword.length > 2) { // Skip short words
+				if (keyword.length > 2) {
+					// Skip short words
 					if (rule.name.toLowerCase().includes(keyword)) score += 2;
 					if (rule.description.toLowerCase().includes(keyword)) score += 1;
 				}
@@ -108,9 +109,7 @@ export class RuleEngine {
 			}
 		}
 
-		return suggestions
-			.sort((a, b) => b.score - a.score)
-			.map(s => s.rule);
+		return suggestions.sort((a, b) => b.score - a.score).map(s => s.rule);
 	}
 
 	/**
@@ -123,7 +122,8 @@ export class RuleEngine {
 				id: 'attack-roll',
 				name: 'Attack Roll',
 				category: 'combat',
-				description: 'To make an attack roll, roll a d20 and add the appropriate ability modifier.',
+				description:
+					'To make an attack roll, roll a d20 and add the appropriate ability modifier.',
 				mechanics: '1d20 + ability modifier + proficiency bonus (if proficient)',
 				examples: ['Longsword attack: 1d20 + STR modifier + proficiency bonus'],
 				relatedRules: ['advantage-disadvantage', 'critical-hit'],
@@ -132,16 +132,21 @@ export class RuleEngine {
 				id: 'advantage-disadvantage',
 				name: 'Advantage and Disadvantage',
 				category: 'combat',
-				description: 'Roll twice and take the higher (advantage) or lower (disadvantage) result.',
+				description:
+					'Roll twice and take the higher (advantage) or lower (disadvantage) result.',
 				mechanics: 'Roll 2d20, take the better/worse result',
-				examples: ['Attacking while hidden grants advantage', 'Attacking while blinded gives disadvantage'],
+				examples: [
+					'Attacking while hidden grants advantage',
+					'Attacking while blinded gives disadvantage',
+				],
 			},
 			{
 				id: 'critical-hit',
 				name: 'Critical Hit',
 				category: 'combat',
 				description: 'When you roll a 20 on an attack roll, you score a critical hit.',
-				mechanics: 'Roll damage dice twice and add them together, then add ability modifier',
+				mechanics:
+					'Roll damage dice twice and add them together, then add ability modifier',
 				examples: ['Critical longsword: 2d8 + STR modifier'],
 			},
 			{
@@ -150,41 +155,51 @@ export class RuleEngine {
 				category: 'combat',
 				description: 'You can grapple a creature to restrain its movement.',
 				mechanics: 'Athletics check vs. Athletics or Acrobatics check',
-				examples: ['Grapple attempt: STR (Athletics) vs target\'s STR (Athletics) or DEX (Acrobatics)'],
+				examples: [
+					"Grapple attempt: STR (Athletics) vs target's STR (Athletics) or DEX (Acrobatics)",
+				],
 			},
-			
+
 			// Skill Rules
 			{
 				id: 'skill-check',
 				name: 'Ability Check',
 				category: 'skills',
-				description: 'Roll a d20 and add the relevant ability modifier and proficiency bonus if applicable.',
+				description:
+					'Roll a d20 and add the relevant ability modifier and proficiency bonus if applicable.',
 				mechanics: '1d20 + ability modifier + proficiency bonus (if proficient)',
-				examples: ['Perception check: 1d20 + WIS modifier + proficiency (if proficient in Perception)'],
+				examples: [
+					'Perception check: 1d20 + WIS modifier + proficiency (if proficient in Perception)',
+				],
 			},
 			{
 				id: 'difficulty-class',
 				name: 'Difficulty Class (DC)',
 				category: 'skills',
 				description: 'The target number you need to meet or exceed on an ability check.',
-				mechanics: 'Very Easy: 5, Easy: 10, Medium: 15, Hard: 20, Very Hard: 25, Nearly Impossible: 30',
+				mechanics:
+					'Very Easy: 5, Easy: 10, Medium: 15, Hard: 20, Very Hard: 25, Nearly Impossible: 30',
 			},
-			
+
 			// Spellcasting Rules
 			{
 				id: 'spell-attack',
 				name: 'Spell Attack',
 				category: 'spellcasting',
-				description: 'Some spells require you to make an attack roll to determine if they hit.',
+				description:
+					'Some spells require you to make an attack roll to determine if they hit.',
 				mechanics: '1d20 + spellcasting ability modifier + proficiency bonus',
-				examples: ['Fire Bolt attack: 1d20 + INT modifier + proficiency bonus (for Wizard)'],
+				examples: [
+					'Fire Bolt attack: 1d20 + INT modifier + proficiency bonus (for Wizard)',
+				],
 			},
 			{
 				id: 'spell-save',
 				name: 'Saving Throw',
 				category: 'spellcasting',
 				description: 'The target rolls a d20 and adds the appropriate ability modifier.',
-				mechanics: '1d20 + ability modifier. DC = 8 + spellcasting modifier + proficiency bonus',
+				mechanics:
+					'1d20 + ability modifier. DC = 8 + spellcasting modifier + proficiency bonus',
 				examples: ['Fireball Dex save: 1d20 + DEX modifier vs. spell save DC'],
 			},
 			{
@@ -192,10 +207,11 @@ export class RuleEngine {
 				name: 'Concentration',
 				category: 'spellcasting',
 				description: 'Some spells require concentration to maintain their effects.',
-				mechanics: 'Constitution save when taking damage: DC = 10 or half damage dealt, whichever is higher',
+				mechanics:
+					'Constitution save when taking damage: DC = 10 or half damage dealt, whichever is higher',
 				examples: ['Taking 14 damage while concentrating: DC 10 CON save (not DC 7)'],
 			},
-			
+
 			// Exploration Rules
 			{
 				id: 'movement',
@@ -203,7 +219,10 @@ export class RuleEngine {
 				category: 'exploration',
 				description: 'Characters can move up to their speed each turn.',
 				mechanics: 'Base speed varies by race. Difficult terrain costs extra movement.',
-				examples: ['Human base speed: 30 feet', 'Difficult terrain: 2 feet of movement per 1 foot traveled'],
+				examples: [
+					'Human base speed: 30 feet',
+					'Difficult terrain: 2 feet of movement per 1 foot traveled',
+				],
 			},
 			{
 				id: 'stealth',
@@ -211,7 +230,9 @@ export class RuleEngine {
 				category: 'exploration',
 				description: 'You can hide if you are not clearly observed.',
 				mechanics: 'Dexterity (Stealth) check vs. passive Perception of observers',
-				examples: ['Hide behind cover: DEX (Stealth) vs. passive Perception 10 + WIS modifier'],
+				examples: [
+					'Hide behind cover: DEX (Stealth) vs. passive Perception 10 + WIS modifier',
+				],
 			},
 		];
 
@@ -238,11 +259,7 @@ export class RuleEngine {
 	/**
 	 * Search rules by multiple criteria
 	 */
-	searchRules(criteria: {
-		query?: string;
-		category?: Rule['category'];
-		limit?: number;
-	}): Rule[] {
+	searchRules(criteria: { query?: string; category?: Rule['category']; limit?: number }): Rule[] {
 		let results = Array.from(this.rules.values());
 
 		// Filter by category
@@ -268,10 +285,10 @@ export class RuleEngine {
 	 * Get random rule (for DM inspiration)
 	 */
 	getRandomRule(category?: Rule['category']): Rule {
-		const rules = category 
+		const rules = category
 			? this.getRulesByCategory(category)
 			: Array.from(this.rules.values());
-		
+
 		const randomIndex = Math.floor(Math.random() * rules.length);
 		return rules[randomIndex];
 	}

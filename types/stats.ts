@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const STAT_KEYS = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'] as const;
-export type StatKey = typeof STAT_KEYS[number];
+export type StatKey = (typeof STAT_KEYS)[number];
 export type StatBlock = Record<StatKey, number>;
 
 export const StatKeySchema = z.enum(['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']);
@@ -17,9 +17,25 @@ export const PartialStatBlockSchema = StatBlockSchema.partial();
 export type PartialStatBlock = Partial<StatBlock>;
 
 export const GEAR_SLOTS = [
-	'helmet', 'chest', 'arms', 'legs', 'boots', 'mainHand', 'offHand', 'accessory', 'none',
+	'helmet',
+	'chest',
+	'arms',
+	'legs',
+	'boots',
+	'mainHand',
+	'offHand',
+	'accessory',
+	'none',
 ] as const;
-export type GearSlot = typeof GEAR_SLOTS[number];
+export type GearSlot = (typeof GEAR_SLOTS)[number];
 export const GearSlotSchema = z.enum([
-	'helmet', 'chest', 'arms', 'legs', 'boots', 'mainHand', 'offHand', 'accessory', 'none',
+	'helmet',
+	'chest',
+	'arms',
+	'legs',
+	'boots',
+	'mainHand',
+	'offHand',
+	'accessory',
+	'none',
 ]);

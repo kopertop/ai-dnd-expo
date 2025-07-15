@@ -141,10 +141,12 @@ DM Response:`;
 	 */
 	private extractToolCommands(text: string): Array<{ type: string; params: string }> {
 		const { ToolCommandParser } = require('../tools/tool-command-parser');
-		return ToolCommandParser.extractToolCommands(text).map((cmd: { type: string; params: string }) => ({
-			type: cmd.type,
-			params: cmd.params,
-		}));
+		return ToolCommandParser.extractToolCommands(text).map(
+			(cmd: { type: string; params: string }) => ({
+				type: cmd.type,
+				params: cmd.params,
+			}),
+		);
 	}
 
 	/**

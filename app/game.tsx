@@ -15,7 +15,6 @@ import { useDungeonMaster } from '@/hooks/use-dungeon-master';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { GameWorldState, Position } from '@/types/world-map';
 
-
 const GameScreen: React.FC = () => {
 	const [showSheet, setShowSheet] = useState(false);
 	const [worldState, setWorldState] = useState<GameWorldState | null>(null);
@@ -26,7 +25,9 @@ const GameScreen: React.FC = () => {
 	const [saveError, setSaveError] = useState<string | null>(null);
 
 	// Initialize Dungeon Master agent
-	const playerCharacter = gameState ? gameState.characters.find(c => c.id === gameState.playerCharacterId) : null;
+	const playerCharacter = gameState
+		? gameState.characters.find(c => c.id === gameState.playerCharacterId)
+		: null;
 	const dmAgent = useDungeonMaster({
 		worldState,
 		playerCharacter: playerCharacter || null,
@@ -35,20 +36,23 @@ const GameScreen: React.FC = () => {
 
 	// Debounced save to prevent excessive saves on frequent player moves
 	const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const debouncedSave = useCallback(async (gameStateToSave: typeof gameState) => {
-		if (saveTimeoutRef.current) {
-			clearTimeout(saveTimeoutRef.current);
-		}
-		saveTimeoutRef.current = setTimeout(async () => {
-			if (gameStateToSave) {
-				try {
-					await save(gameStateToSave);
-				} catch (error) {
-					setSaveError('Failed to save game state');
-				}
+	const debouncedSave = useCallback(
+		async (gameStateToSave: typeof gameState) => {
+			if (saveTimeoutRef.current) {
+				clearTimeout(saveTimeoutRef.current);
 			}
-		}, 500); // Debounce for 500ms
-	}, [save]);
+			saveTimeoutRef.current = setTimeout(async () => {
+				if (gameStateToSave) {
+					try {
+						await save(gameStateToSave);
+					} catch (error) {
+						setSaveError('Failed to save game state');
+					}
+				}
+			}, 500); // Debounce for 500ms
+		},
+		[save],
+	);
 
 	// Cleanup timeout on unmount to prevent memory leaks
 	useEffect(() => {
@@ -75,25 +79,34 @@ const GameScreen: React.FC = () => {
 				setWorldState(gameState.worldState);
 			} else {
 				console.warn('🌍 Generating new world');
-				const newWorldState = generateWorldForGameState(gameState.gameWorld, gameState.startingArea);
+				const newWorldState = generateWorldForGameState(
+					gameState.gameWorld,
+					gameState.startingArea,
+				);
 				setWorldState(newWorldState);
 				// Save the generated world back to game state
 				const updatedGameState = {
 					...gameState,
 					worldState: newWorldState,
 				};
-				save(updatedGameState)
-					.catch((err) => {
-						setSaveError('Failed to save world state. Changes may not persist.');
-						console.error(err);
-					});
+				save(updatedGameState).catch(err => {
+					setSaveError('Failed to save world state. Changes may not persist.');
+					console.error(err);
+				});
 			}
 		}
 	}, [gameState, worldState, save]);
 
 	// Generate initial DM greeting when game loads
 	useEffect(() => {
-		if (gameState && playerCharacter && dmAgent.agent && !hasInitialized && dmAgent.messages.length === 1 && !dmAgent.isLoading) {
+		if (
+			gameState &&
+			playerCharacter &&
+			dmAgent.agent &&
+			!hasInitialized &&
+			dmAgent.messages.length === 1 &&
+			!dmAgent.isLoading
+		) {
 			console.log('🎭 Generating custom DM greeting...');
 			setHasInitialized(true);
 
@@ -108,13 +121,25 @@ const GameScreen: React.FC = () => {
 				let greeting = '';
 
 				if (locationLower.includes('tavern') || locationLower.includes('inn')) {
-					if (playerClass.toLowerCase().includes('wizard') || playerClass.toLowerCase().includes('mage')) {
+					if (
+						playerClass.toLowerCase().includes('wizard') ||
+						playerClass.toLowerCase().includes('mage')
+					) {
 						greeting = `You push open the heavy wooden door and step into ${location}. The warm glow of candlelight dances across your weathered spellbook as you lower your hood, revealing your ${race.toLowerCase()} features. Your keen eyes scan the dimly lit common room, noting potential allies nursing their ales and shadowy figures who might pose a threat. The scent of roasted meat and old ale fills your nostrils as you consider your next move, ${name}.`;
-					} else if (playerClass.toLowerCase().includes('rogue') || playerClass.toLowerCase().includes('thief')) {
+					} else if (
+						playerClass.toLowerCase().includes('rogue') ||
+						playerClass.toLowerCase().includes('thief')
+					) {
 						greeting = `You slip quietly through the entrance of ${location}, your ${race.toLowerCase()} heritage allowing you to move with practiced stealth. The tavern's dim lighting suits you perfectly as you assess the room - noting exit routes, potential marks, and anyone who might recognize you. Your hand instinctively checks your coin purse as you blend into the shadows near the bar, ${name}.`;
-					} else if (playerClass.toLowerCase().includes('fighter') || playerClass.toLowerCase().includes('warrior')) {
+					} else if (
+						playerClass.toLowerCase().includes('fighter') ||
+						playerClass.toLowerCase().includes('warrior')
+					) {
 						greeting = `You stride confidently into ${location}, your armor catching the firelight from the hearth. Fellow patrons glance up at your ${race.toLowerCase()} frame, some with respect, others with wariness. You approach the bar with the bearing of someone accustomed to both battle and negotiation, ready for whatever this establishment might offer, ${name}.`;
-					} else if (playerClass.toLowerCase().includes('cleric') || playerClass.toLowerCase().includes('paladin')) {
+					} else if (
+						playerClass.toLowerCase().includes('cleric') ||
+						playerClass.toLowerCase().includes('paladin')
+					) {
 						greeting = `You enter ${location} with quiet dignity, your holy symbol visible beneath your traveling cloak. The ${race.toLowerCase()} features of your face show both compassion and determination as you observe the tavern's patrons - some clearly in need of guidance, others perhaps requiring a more... direct approach to righteousness. You offer a silent prayer as you consider how best to serve your divine purpose here, ${name}.`;
 					} else {
 						greeting = `You enter ${location}, your ${race.toLowerCase()} heritage evident as you take in your surroundings. As a ${playerClass.toLowerCase()}, you feel both at home and alert in this establishment. The flickering candlelight reveals faces both friendly and suspicious as you decide how to proceed, ${name}.`;
@@ -138,7 +163,14 @@ const GameScreen: React.FC = () => {
 			console.log('✅ Custom greeting replaced, switching to player turn');
 			setActiveCharacter('player'); // Switch to player's turn after DM greeting
 		}
-	}, [gameState, playerCharacter, dmAgent.agent, dmAgent.messages.length, hasInitialized, dmAgent.isLoading]);
+	}, [
+		gameState,
+		playerCharacter,
+		dmAgent.agent,
+		dmAgent.messages.length,
+		hasInitialized,
+		dmAgent.isLoading,
+	]);
 
 	const handlePlayerMove = async (newPosition: Position) => {
 		if (!worldState) return;
@@ -233,9 +265,7 @@ const GameScreen: React.FC = () => {
 					<Text>Please start a new game from the main menu.</Text>
 				</ThemedText>
 				{saveError && (
-					<ThemedText style={{ marginTop: 12, color: 'red' }}>
-						{saveError}
-					</ThemedText>
+					<ThemedText style={{ marginTop: 12, color: 'red' }}>{saveError}</ThemedText>
 				)}
 			</ThemedView>
 		);
@@ -250,12 +280,12 @@ const GameScreen: React.FC = () => {
 					<Text>Generating world map...</Text>
 				</ThemedText>
 				<ThemedText style={{ marginTop: 8 }}>
-					<Text>If this takes too long, try restarting the app or starting a new game.</Text>
+					<Text>
+						If this takes too long, try restarting the app or starting a new game.
+					</Text>
 				</ThemedText>
 				{saveError && (
-					<ThemedText style={{ marginTop: 12, color: 'red' }}>
-						{saveError}
-					</ThemedText>
+					<ThemedText style={{ marginTop: 12, color: 'red' }}>{saveError}</ThemedText>
 				)}
 			</ThemedView>
 		);
@@ -283,10 +313,7 @@ const GameScreen: React.FC = () => {
 			</View>
 
 			{/* Character sheet modal */}
-			<CharacterSheetModal
-				visible={showSheet}
-				onClose={() => setShowSheet(false)}
-			/>
+			<CharacterSheetModal visible={showSheet} onClose={() => setShowSheet(false)} />
 
 			{/* Turn-Based Chat */}
 			<TurnBasedChat
@@ -308,17 +335,36 @@ const GameScreen: React.FC = () => {
 			/>
 			*/}
 
-
 			{/* Save error feedback */}
 			{saveError && (
-				<ThemedText style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', color: 'red', zIndex: 999 }}>
+				<ThemedText
+					style={{
+						position: 'absolute',
+						bottom: 24,
+						left: 0,
+						right: 0,
+						textAlign: 'center',
+						color: 'red',
+						zIndex: 999,
+					}}
+				>
 					{saveError}
 				</ThemedText>
 			)}
 
 			{/* DM error feedback */}
 			{dmAgent.error && (
-				<ThemedText style={{ position: 'absolute', bottom: 48, left: 0, right: 0, textAlign: 'center', color: 'orange', zIndex: 999 }}>
+				<ThemedText
+					style={{
+						position: 'absolute',
+						bottom: 48,
+						left: 0,
+						right: 0,
+						textAlign: 'center',
+						color: 'orange',
+						zIndex: 999,
+					}}
+				>
 					<Text>DM: {dmAgent.error}</Text>
 				</ThemedText>
 			)}

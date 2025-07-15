@@ -36,13 +36,19 @@ const IndexScreen: React.FC = () => {
 					</ThemedText>
 				</Link>
 				{!loading && hasSavedGame && (
-					<TouchableOpacity style={styles.continueBtn} onPress={() => router.push({ pathname: '/game' as any })}>
+					<TouchableOpacity
+						style={styles.continueBtn}
+						onPress={() => router.push({ pathname: '/game' as any })}
+					>
 						<Text style={styles.continueBtnText}>Continue Game</Text>
 					</TouchableOpacity>
 				)}
 
 				{/* Licenses & Credits button */}
-				<TouchableOpacity style={styles.licensesBtn} onPress={() => router.push('/licenses')}>
+				<TouchableOpacity
+					style={styles.licensesBtn}
+					onPress={() => router.push('/licenses')}
+				>
 					<Text style={styles.licensesBtnText}>Licenses & Credits</Text>
 				</TouchableOpacity>
 			</ThemedView>

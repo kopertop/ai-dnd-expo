@@ -1,7 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 
 import { useDMVoice } from '@/hooks/use-text-to-speech';
-import { DungeonMasterAgent, DMMessage, DMContext } from '@/services/ai/agents/dungeon-master-agent';
+import {
+	DungeonMasterAgent,
+	DMMessage,
+	DMContext,
+} from '@/services/ai/agents/dungeon-master-agent';
 import { useGemmaModel } from '@/services/ai/models/gemma-integration';
 import { Character } from '@/types/character';
 import { GameWorldState } from '@/types/world-map';
@@ -29,7 +33,7 @@ export const useDungeonMaster = (config: DungeonMasterConfig): UseDungeonMasterR
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const agentRef = useRef<DungeonMasterAgent | null>(null);
-	
+
 	// Initialize AI model with transformers.js
 	const gemmaModel = useGemmaModel({
 		modelName: 'Xenova/gpt2',
@@ -37,7 +41,7 @@ export const useDungeonMaster = (config: DungeonMasterConfig): UseDungeonMasterR
 		temperature: 0.7,
 		topP: 0.9,
 		useOnDevice: true,
-		progressCallback: (progress) => {
+		progressCallback: progress => {
 			console.log('🔄 AI model loading:', progress);
 		},
 	});
@@ -49,7 +53,7 @@ export const useDungeonMaster = (config: DungeonMasterConfig): UseDungeonMasterR
 	useEffect(() => {
 		if (config.worldState && config.playerCharacter) {
 			console.log('🎲 Initializing DM agent for:', config.playerCharacter.name);
-			
+
 			const context: DMContext = {
 				worldState: config.worldState,
 				playerCharacter: config.playerCharacter,
@@ -59,7 +63,7 @@ export const useDungeonMaster = (config: DungeonMasterConfig): UseDungeonMasterR
 			};
 
 			agentRef.current = new DungeonMasterAgent(context, gemmaModel);
-			
+
 			// Add simple welcome message (will be customized by game.tsx)
 			const welcomeMessage: DMMessage = {
 				id: 'welcome',
@@ -68,7 +72,7 @@ export const useDungeonMaster = (config: DungeonMasterConfig): UseDungeonMasterR
 				type: 'narration',
 				speaker: 'Dungeon Master',
 			};
-			
+
 			console.log('💬 Adding initial welcome message');
 			setMessages([welcomeMessage]);
 		}
@@ -100,97 +104,109 @@ export const useDungeonMaster = (config: DungeonMasterConfig): UseDungeonMasterR
 		}
 	}, [config.worldState, config.playerCharacter]);
 
-	const sendMessage = useCallback(async (playerInput: string) => {
-		if (!agentRef.current) {
-			setError('Dungeon Master is not initialized');
-			return;
-		}
-
-		setIsLoading(true);
-		setError(null);
-
-		try {
-			// Add player message to chat
-			const playerMessage: DMMessage = {
-				id: `player_${Date.now()}`,
-				content: playerInput,
-				timestamp: Date.now(),
-				type: 'system',
-				speaker: 'Player',
-			};
-
-			setMessages(prev => [...prev, playerMessage]);
-
-			// Get DM response
-			const dmResponse = await agentRef.current.processPlayerAction(playerInput);
-			
-			setMessages(prev => [...prev, dmResponse]);
-
-			// Automatically speak DM responses
-			if (dmResponse.content && dmResponse.content.trim()) {
-				await speakDMResponse(dmResponse);
+	const sendMessage = useCallback(
+		async (playerInput: string) => {
+			if (!agentRef.current) {
+				setError('Dungeon Master is not initialized');
+				return;
 			}
 
-			// Auto-save if enabled
-			if (config.autoSave) {
-				// This would integrate with the game state saving system
-				console.log('Auto-saving game state...');
-			}
+			setIsLoading(true);
+			setError(null);
 
-		} catch (err) {
-			const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-			setError(errorMessage);
-			
-			// Add error message to chat
-			const errorDMMessage: DMMessage = {
-				id: `error_${Date.now()}`,
-				content: '*The DM seems confused...* I\'m having trouble processing that. Could you try rephrasing your action?',
-				timestamp: Date.now(),
-				type: 'system',
-				speaker: 'Dungeon Master',
-			};
-			
-			setMessages(prev => [...prev, errorDMMessage]);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [config.autoSave]);
+			try {
+				// Add player message to chat
+				const playerMessage: DMMessage = {
+					id: `player_${Date.now()}`,
+					content: playerInput,
+					timestamp: Date.now(),
+					type: 'system',
+					speaker: 'Player',
+				};
+
+				setMessages(prev => [...prev, playerMessage]);
+
+				// Get DM response
+				const dmResponse = await agentRef.current.processPlayerAction(playerInput);
+
+				setMessages(prev => [...prev, dmResponse]);
+
+				// Automatically speak DM responses
+				if (dmResponse.content && dmResponse.content.trim()) {
+					await speakDMResponse(dmResponse);
+				}
+
+				// Auto-save if enabled
+				if (config.autoSave) {
+					// This would integrate with the game state saving system
+					console.log('Auto-saving game state...');
+				}
+			} catch (err) {
+				const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+				setError(errorMessage);
+
+				// Add error message to chat
+				const errorDMMessage: DMMessage = {
+					id: `error_${Date.now()}`,
+					content:
+						"*The DM seems confused...* I'm having trouble processing that. Could you try rephrasing your action?",
+					timestamp: Date.now(),
+					type: 'system',
+					speaker: 'Dungeon Master',
+				};
+
+				setMessages(prev => [...prev, errorDMMessage]);
+			} finally {
+				setIsLoading(false);
+			}
+		},
+		[config.autoSave],
+	);
 
 	/**
 	 * Send voice message with immediate text display
 	 */
-	const sendVoiceMessage = useCallback(async (playerInput: string) => {
-		// Voice messages work the same as text messages, but indicate voice origin
-		await sendMessage(playerInput);
-	}, [sendMessage]);
+	const sendVoiceMessage = useCallback(
+		async (playerInput: string) => {
+			// Voice messages work the same as text messages, but indicate voice origin
+			await sendMessage(playerInput);
+		},
+		[sendMessage],
+	);
 
 	/**
 	 * Speak DM response using appropriate voice preset
 	 */
-	const speakDMResponse = useCallback(async (dmMessage: DMMessage) => {
-		try {
-			switch (dmMessage.type) {
-			case 'narration':
-				await dmVoice.speakAsNarrator(dmMessage.content);
-				break;
-			case 'dialogue':
-				await dmVoice.speakAsCharacter(dmMessage.content, dmMessage.speaker);
-				break;
-			case 'action_result':
-				if (dmMessage.content.includes('attack') || dmMessage.content.includes('damage')) {
-					await dmVoice.speakCombatAction(dmMessage.content);
-				} else {
+	const speakDMResponse = useCallback(
+		async (dmMessage: DMMessage) => {
+			try {
+				switch (dmMessage.type) {
+				case 'narration':
 					await dmVoice.speakAsNarrator(dmMessage.content);
+					break;
+				case 'dialogue':
+					await dmVoice.speakAsCharacter(dmMessage.content, dmMessage.speaker);
+					break;
+				case 'action_result':
+					if (
+						dmMessage.content.includes('attack') ||
+							dmMessage.content.includes('damage')
+					) {
+						await dmVoice.speakCombatAction(dmMessage.content);
+					} else {
+						await dmVoice.speakAsNarrator(dmMessage.content);
+					}
+					break;
+				default:
+					await dmVoice.speakAsNarrator(dmMessage.content);
+					break;
 				}
-				break;
-			default:
-				await dmVoice.speakAsNarrator(dmMessage.content);
-				break;
+			} catch (error) {
+				console.error('Error speaking DM response:', error);
 			}
-		} catch (error) {
-			console.error('Error speaking DM response:', error);
-		}
-	}, [dmVoice]);
+		},
+		[dmVoice],
+	);
 
 	const clearHistory = useCallback(() => {
 		setMessages([]);
@@ -239,7 +255,7 @@ export const useDungeonMasterAgent = (
 
 	const processAction = useCallback(async (action: string): Promise<DMMessage | null> => {
 		if (!agentRef.current) return null;
-		
+
 		try {
 			return await agentRef.current.processPlayerAction(action);
 		} catch (error) {

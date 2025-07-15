@@ -140,7 +140,7 @@ export class AIServiceManager {
 			});
 
 			// Initialize with progress callback
-			this.isLocalReady = await this.localDMProvider.initialize((progress) => {
+			this.isLocalReady = await this.localDMProvider.initialize(progress => {
 				if (progress.status === 'error') {
 					console.error(`🤖 Local DM: ${progress.message || 'Unknown error'}`);
 				}
@@ -428,7 +428,10 @@ export class AIServiceManager {
 	/**
 	 * Utility methods
 	 */
-	private generateCacheKey(prompt: string, context: { currentScene: string; playerClass: string }): string {
+	private generateCacheKey(
+		prompt: string,
+		context: { currentScene: string; playerClass: string },
+	): string {
 		return `${prompt.substring(0, 50)}_${context.currentScene}_${context.playerClass}`;
 	}
 
@@ -491,9 +494,13 @@ export class AIServiceManager {
 			}
 		}
 
-		const overall = cactusAvailable ? 'healthy' :
-			localAvailable ? 'degraded' :
-				this.config.fallback.enabled ? 'degraded' : 'offline';
+		const overall = cactusAvailable
+			? 'healthy'
+			: localAvailable
+				? 'degraded'
+				: this.config.fallback.enabled
+					? 'degraded'
+					: 'offline';
 
 		return {
 			cactus: { available: cactusAvailable, latency: cactusLatency },
@@ -530,7 +537,11 @@ export class AIServiceManager {
 	 */
 	getDetailedStatus(): {
 		cactus: { initialized: boolean; healthy: boolean };
-		local: { initialized: boolean; ready: boolean; status?: import('./providers/local-dm-provider').ProviderStatus };
+		local: {
+			initialized: boolean;
+			ready: boolean;
+			status?: import('./providers/local-dm-provider').ProviderStatus;
+		};
 		fallback: { enabled: boolean };
 		} {
 		return {
@@ -625,7 +636,11 @@ export class AIServiceManager {
 	 */
 	getOptimalProvider(): 'local' | 'cactus' | 'fallback' {
 		// If preferLocal is set and local is healthy, use local
-		if (this.config.providerSelection.preferLocal && this.isLocalReady && this.config.local.enabled) {
+		if (
+			this.config.providerSelection.preferLocal &&
+			this.isLocalReady &&
+			this.config.local.enabled
+		) {
 			return 'local';
 		}
 
@@ -740,10 +755,7 @@ export class AIServiceManager {
 	/**
 	 * Update existing game context state
 	 */
-	updateGameContext(
-		contextId: string,
-		updates: Partial<GameContextState>,
-	): boolean {
+	updateGameContext(contextId: string, updates: Partial<GameContextState>): boolean {
 		const existingContext = this.gameContextStates.get(contextId);
 		if (!existingContext) {
 			return false;
@@ -795,9 +807,10 @@ export class AIServiceManager {
 				providerSelection: {
 					...this.config.providerSelection,
 					preferLocal: newProviderType === 'local',
-					fallbackChain: newProviderType === 'local'
-						? ['local', 'cactus', 'rule-based']
-						: ['cactus', 'local', 'rule-based'],
+					fallbackChain:
+						newProviderType === 'local'
+							? ['local', 'cactus', 'rule-based']
+							: ['cactus', 'local', 'rule-based'],
 				},
 			};
 
@@ -835,9 +848,7 @@ export class AIServiceManager {
 	): Promise<AIResponse> {
 		// Update or create game context
 		this.createGameContext(contextId, context, {
-			conversationHistory: [
-				{ role: 'user', content: prompt },
-			],
+			conversationHistory: [{ role: 'user', content: prompt }],
 		});
 
 		// Generate response using the standard method
@@ -863,7 +874,9 @@ export class AIServiceManager {
 	/**
 	 * Get conversation history for a context
 	 */
-	getConversationHistory(contextId: string): Array<{ role: 'user' | 'assistant'; content: string }> {
+	getConversationHistory(
+		contextId: string,
+	): Array<{ role: 'user' | 'assistant'; content: string }> {
 		const context = this.gameContextStates.get(contextId);
 		return context?.sessionData?.conversationHistory || [];
 	}

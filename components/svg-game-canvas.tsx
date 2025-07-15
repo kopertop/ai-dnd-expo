@@ -22,10 +22,7 @@ interface TileData {
 	color: string;
 }
 
-export const SvgGameCanvas: React.FC<SvgGameCanvasProps> = ({
-	worldState,
-	onPlayerMove,
-}) => {
+export const SvgGameCanvas: React.FC<SvgGameCanvasProps> = ({ worldState, onPlayerMove }) => {
 	const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
 	// State for tiles and player
@@ -41,9 +38,8 @@ export const SvgGameCanvas: React.FC<SvgGameCanvasProps> = ({
 		const minY = Math.floor(-cameraPosition.y / TILE_SIZE) - buffer;
 		const maxY = Math.ceil((screenHeight - cameraPosition.y) / TILE_SIZE) + buffer;
 
-		return tiles.filter(tile => 
-			tile.x >= minX && tile.x <= maxX && 
-			tile.y >= minY && tile.y <= maxY,
+		return tiles.filter(
+			tile => tile.x >= minX && tile.x <= maxX && tile.y >= minY && tile.y <= maxY,
 		);
 	}, [tiles, cameraPosition.x, cameraPosition.y, screenWidth, screenHeight]);
 
@@ -120,35 +116,40 @@ export const SvgGameCanvas: React.FC<SvgGameCanvasProps> = ({
 	}, [playerPosition, screenWidth, screenHeight]);
 
 	// Handle player movement
-	const movePlayer = useCallback((newPos: Position) => {
-		if (!onPlayerMove) return;
+	const movePlayer = useCallback(
+		(newPos: Position) => {
+			if (!onPlayerMove) return;
 
-		// Find the tile at the new position
-		const targetTile = tiles.find(tile => tile.x === newPos.x && tile.y === newPos.y);
+			// Find the tile at the new position
+			const targetTile = tiles.find(tile => tile.x === newPos.x && tile.y === newPos.y);
 
-		if (targetTile && targetTile.walkable) {
-			setPlayerPosition(newPos);
-			onPlayerMove(newPos);
-		}
-	}, [tiles, onPlayerMove]);
+			if (targetTile && targetTile.walkable) {
+				setPlayerPosition(newPos);
+				onPlayerMove(newPos);
+			}
+		},
+		[tiles, onPlayerMove],
+	);
 
 	// Handle tap gestures for movement
-	const handleTap = useCallback((x: number, y: number) => {
-		// Convert screen coordinates to world coordinates
-		const worldX = Math.floor((x - cameraPosition.x) / TILE_SIZE);
-		const worldY = Math.floor((y - cameraPosition.y) / TILE_SIZE);
+	const handleTap = useCallback(
+		(x: number, y: number) => {
+			// Convert screen coordinates to world coordinates
+			const worldX = Math.floor((x - cameraPosition.x) / TILE_SIZE);
+			const worldY = Math.floor((y - cameraPosition.y) / TILE_SIZE);
 
-		movePlayer({ x: worldX, y: worldY });
-	}, [movePlayer, cameraPosition]);
+			movePlayer({ x: worldX, y: worldY });
+		},
+		[movePlayer, cameraPosition],
+	);
 
 	// Gesture handler for tap-to-move
-	const tapGesture = Gesture.Tap()
-		.onEnd((event) => {
-			'worklet';
-			// Use runOnJS to call our handler from the UI thread
-			const runOnJS = require('react-native-reanimated').runOnJS;
-			runOnJS(handleTap)(event.x, event.y);
-		});
+	const tapGesture = Gesture.Tap().onEnd(event => {
+		'worklet';
+		// Use runOnJS to call our handler from the UI thread
+		const runOnJS = require('react-native-reanimated').runOnJS;
+		runOnJS(handleTap)(event.x, event.y);
+	});
 
 	// Calculate player screen position
 	const playerScreenX = playerPosition.x * TILE_SIZE + TILE_SIZE / 2;
@@ -186,12 +187,7 @@ export const SvgGameCanvas: React.FC<SvgGameCanvasProps> = ({
 						))}
 
 						{/* Render player */}
-						<Circle
-							cx={playerScreenX}
-							cy={playerScreenY}
-							r={12}
-							fill="#4169E1"
-						/>
+						<Circle cx={playerScreenX} cy={playerScreenY} r={12} fill="#4169E1" />
 
 						{/* Player border */}
 						<Circle

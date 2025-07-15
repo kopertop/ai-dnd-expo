@@ -18,7 +18,8 @@ The LLM model loads automatically when the app starts:
 ```typescript
 // Model configuration in use-dungeon-master.ts
 const gemmaModel = useGemmaModel({
-  modelPath: 'https://huggingface.co/onnx-community/gemma-3n-E2B-it-ONNX/resolve/main/onnx/model.onnx',
+  modelPath:
+    'https://huggingface.co/onnx-community/gemma-3n-E2B-it-ONNX/resolve/main/onnx/model.onnx',
   maxTokens: 150,
   temperature: 0.7,
   useOnDevice: true,
@@ -28,6 +29,7 @@ const gemmaModel = useGemmaModel({
 ### 2. Model Download
 
 The first time you run the app:
+
 - Model downloads automatically from HuggingFace
 - ~2GB download (Gemma 3n-E2B model in ONNX format)
 - Cached locally for future use
@@ -41,7 +43,7 @@ Choose based on your device capabilities:
 // Performance (faster, shorter responses)
 const gemmaModel = useGemmaModel(GemmaPresets.performance);
 
-// Quality (slower, longer responses) 
+// Quality (slower, longer responses)
 const gemmaModel = useGemmaModel(GemmaPresets.quality);
 
 // Balanced (recommended)
@@ -51,12 +53,14 @@ const gemmaModel = useGemmaModel(GemmaPresets.balanced);
 ## Model Capabilities
 
 **Gemma 3n-E2B ONNX Features:**
+
 - 3 billion parameters (compressed and quantized)
 - 2K token context window
 - ONNX optimized for mobile inference
 - Instruction-tuned for conversational tasks
 
 **D&D Integration:**
+
 - Contextual responses based on character and scene
 - Dice notation parsing: `[ROLL:1d20+3]`
 - Character updates: `[UPDATE:HP-5]`
@@ -72,12 +76,14 @@ const gemmaModel = useGemmaModel(GemmaPresets.balanced);
 ## Performance Considerations
 
 **On-Device ONNX:**
+
 - Latency: ~2-8 seconds per request
 - Quality: High-quality conversational responses
 - Memory: ~2GB model + runtime
 - Privacy: All processing on-device
 
 **Fallback Mode:**
+
 - Latency: <100ms
 - Quality: Rule-based, predictable
 - Memory: Minimal
@@ -86,11 +92,13 @@ const gemmaModel = useGemmaModel(GemmaPresets.balanced);
 ## Requirements
 
 **Development:**
+
 - Use a development client (not Expo Go)
 - React Native 0.64.3+
 - iOS 12+ / Android API 21+
 
 **Runtime:**
+
 - ~2.5GB free storage for model
 - ~1GB RAM for inference
 - CPU-based inference (no GPU required)
@@ -105,16 +113,19 @@ const gemmaModel = useGemmaModel(GemmaPresets.balanced);
 ## Troubleshooting
 
 **"Model download failed":**
+
 - Check internet connection
 - Ensure sufficient storage space
 - Try restarting the app
 
 **"Model not ready":**
+
 - Wait for initial download to complete
 - Check console logs for errors
 - Verify fallback mode works first
 
 **Slow responses:**
+
 - Reduce max_tokens in configuration
 - Use performance preset for faster responses
 - Consider device capabilities

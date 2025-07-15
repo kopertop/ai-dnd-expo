@@ -13,13 +13,17 @@ const InputModeContext = createContext<InputModeContextValue | undefined>(undefi
 
 const STORAGE_KEY = '@ai-dnd/inputMode';
 
-export const InputModeProvider = ({ children }: { children: ReactNode }): React.ReactElement | null => {
+export const InputModeProvider = ({
+	children,
+}: {
+	children: ReactNode;
+}): React.ReactElement | null => {
 	const [inputMode, setInputModeState] = useState<InputMode>('text');
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
 		AsyncStorage.getItem(STORAGE_KEY)
-			.then((value) => {
+			.then(value => {
 				if (value === 'text' || value === 'voice') {
 					setInputModeState(value);
 				}

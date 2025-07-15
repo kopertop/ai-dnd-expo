@@ -5,11 +5,11 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
-
 const licenses = [
 	{
 		name: 'Gemma',
-		description: 'Gemma is provided under and subject to the Gemma Terms of Use found at ai.google.dev/gemma/terms',
+		description:
+			'Gemma is provided under and subject to the Gemma Terms of Use found at ai.google.dev/gemma/terms',
 		url: 'https://ai.google.dev/gemma/terms',
 	},
 	{
@@ -19,7 +19,8 @@ const licenses = [
 	},
 	{
 		name: 'React Native',
-		description: 'React Native is an open-source framework for building native apps using React.',
+		description:
+			'React Native is an open-source framework for building native apps using React.',
 		url: 'https://reactnative.dev',
 	},
 	// Add more libraries/credits as needed
@@ -37,13 +38,12 @@ const LicensesScreen: React.FC = () => (
 					<ThemedView key={item.name} style={styles.licenseBox}>
 						<Text style={styles.licenseName}>{item.name}</Text>
 						<Text style={styles.licenseDesc}>{item.description}</Text>
-						{item.url && (
-							<Text style={styles.licenseUrl}>{item.url}</Text>
-						)}
+						{item.url && <Text style={styles.licenseUrl}>{item.url}</Text>}
 					</ThemedView>
 				))}
 				<Text style={styles.footer}>
-          This app uses open-source software and assets. Icons and images may be from open or licensed sources. See the LICENSE file for details.
+					This app uses open-source software and assets. Icons and images may be from open
+					or licensed sources. See the LICENSE file for details.
 				</Text>
 				<TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
 					<Text style={styles.backBtnText}>Back</Text>

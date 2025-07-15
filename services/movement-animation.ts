@@ -49,12 +49,12 @@ const DEFAULT_OPTIONS: MovementAnimationOptions = {
 function calculateFacing(from: Position, to: Position): number {
 	const dx = to.x - from.x;
 	const dy = to.y - from.y;
-	
+
 	if (dx === 0 && dy === 0) return 0; // No movement
-	
+
 	// Calculate angle in degrees
 	const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-	
+
 	// Convert to 8-direction facing (0-7)
 	// 0=North, 1=Northeast, 2=East, 3=Southeast, 4=South, 5=Southwest, 6=West, 7=Northwest
 	const normalized = ((angle + 90 + 360) % 360) / 45;
@@ -69,8 +69,8 @@ function applyEasing(progress: number, easing: MovementAnimationOptions['easing'
 	case 'ease-out':
 		return 1 - Math.pow(1 - progress, 3);
 	case 'ease-in-out':
-		return progress < 0.5 
-			? 2 * progress * progress 
+		return progress < 0.5
+			? 2 * progress * progress
 			: 1 - Math.pow(-2 * progress + 2, 3) / 2;
 	case 'linear':
 	default:
@@ -93,14 +93,14 @@ function interpolatePosition(from: Position, to: Position, progress: number): Po
  */
 function calculatePathDistance(path: Position[]): number {
 	if (path.length <= 1) return 0;
-	
+
 	let distance = 0;
 	for (let i = 1; i < path.length; i++) {
 		const dx = path[i].x - path[i - 1].x;
 		const dy = path[i].y - path[i - 1].y;
 		distance += Math.sqrt(dx * dx + dy * dy);
 	}
-	
+
 	return distance;
 }
 
@@ -121,17 +121,17 @@ export class MovementAnimationManager {
 		options: Partial<MovementAnimationOptions> = {},
 	): string {
 		const opts = { ...DEFAULT_OPTIONS, ...options };
-		
+
 		// Generate unique animation ID
 		const id = `anim_${characterId}_${Date.now()}`;
-		
+
 		// Stop any existing animation for this character
 		this.stopAnimation(characterId);
-		
+
 		// Calculate animation duration
 		const distance = calculatePathDistance(path);
 		const duration = (distance / opts.speed) * 1000; // Convert to milliseconds
-		
+
 		// Create animation
 		const animation: MovementAnimation = {
 			id,
@@ -146,14 +146,14 @@ export class MovementAnimationManager {
 			onComplete: opts.onComplete,
 			onSegmentComplete: opts.onSegmentComplete,
 		};
-		
+
 		this.animations.set(characterId, animation);
-		
+
 		// Start animation loop if not already running
 		if (!this.isRunning) {
 			this.startAnimationLoop();
 		}
-		
+
 		return id;
 	}
 
@@ -164,7 +164,7 @@ export class MovementAnimationManager {
 		const animation = this.animations.get(characterId);
 		if (animation) {
 			this.animations.delete(characterId);
-			
+
 			// Stop animation loop if no more animations
 			if (this.animations.size === 0) {
 				this.stopAnimationLoop();
@@ -180,9 +180,9 @@ export class MovementAnimationManager {
 		if (!animation || animation.isComplete) {
 			return null;
 		}
-		
+
 		const { path, currentSegment, progress } = animation;
-		
+
 		if (currentSegment >= path.length - 1) {
 			// Animation complete
 			return {
@@ -191,17 +191,17 @@ export class MovementAnimationManager {
 				isMoving: false,
 			};
 		}
-		
+
 		const from = path[currentSegment];
 		const to = path[currentSegment + 1];
-		
+
 		// Calculate current position
 		const easedProgress = applyEasing(progress, 'ease-out');
 		const position = interpolatePosition(from, to, easedProgress);
-		
+
 		// Calculate facing direction
 		const facing = calculateFacing(from, to);
-		
+
 		return {
 			position,
 			facing,
@@ -229,7 +229,7 @@ export class MovementAnimationManager {
 	 */
 	private startAnimationLoop(): void {
 		if (this.isRunning) return;
-		
+
 		this.isRunning = true;
 		this.animationFrame = requestAnimationFrame(this.updateAnimations.bind(this));
 	}
@@ -239,7 +239,7 @@ export class MovementAnimationManager {
 	 */
 	private stopAnimationLoop(): void {
 		this.isRunning = false;
-		
+
 		if (this.animationFrame !== null) {
 			cancelAnimationFrame(this.animationFrame);
 			this.animationFrame = null;
@@ -251,29 +251,29 @@ export class MovementAnimationManager {
 	 */
 	private updateAnimations(): void {
 		if (!this.isRunning) return;
-		
+
 		const currentTime = Date.now();
 		const completedAnimations: string[] = [];
-		
+
 		for (const [characterId, animation] of this.animations) {
 			if (animation.isComplete) {
 				completedAnimations.push(characterId);
 				continue;
 			}
-			
+
 			this.updateAnimation(animation, currentTime);
-			
+
 			if (animation.isComplete) {
 				completedAnimations.push(characterId);
 				animation.onComplete?.();
 			}
 		}
-		
+
 		// Clean up completed animations
 		for (const characterId of completedAnimations) {
 			this.animations.delete(characterId);
 		}
-		
+
 		// Continue animation loop if there are active animations
 		if (this.animations.size > 0) {
 			this.animationFrame = requestAnimationFrame(this.updateAnimations.bind(this));
@@ -287,47 +287,49 @@ export class MovementAnimationManager {
 	 */
 	private updateAnimation(animation: MovementAnimation, currentTime: number): void {
 		const { path, startTime, speed } = animation;
-		
+
 		if (path.length <= 1) {
 			animation.isComplete = true;
 			return;
 		}
-		
+
 		const elapsed = currentTime - startTime;
 		const totalDistance = calculatePathDistance(path);
-		const targetProgress = (elapsed / 1000) * speed / totalDistance;
-		
+		const targetProgress = ((elapsed / 1000) * speed) / totalDistance;
+
 		// Find which segment we're on
 		let accumulatedDistance = 0;
 		let currentSegment = 0;
-		
+
 		for (let i = 1; i < path.length; i++) {
 			const segmentStart = path[i - 1];
 			const segmentEnd = path[i];
 			const dx = segmentEnd.x - segmentStart.x;
 			const dy = segmentEnd.y - segmentStart.y;
 			const segmentDistance = Math.sqrt(dx * dx + dy * dy);
-			
+
 			const segmentStartProgress = accumulatedDistance / totalDistance;
 			const segmentEndProgress = (accumulatedDistance + segmentDistance) / totalDistance;
-			
+
 			if (targetProgress >= segmentStartProgress && targetProgress <= segmentEndProgress) {
 				// We're in this segment
 				currentSegment = i - 1;
-				const segmentProgress = (targetProgress - segmentStartProgress) / (segmentEndProgress - segmentStartProgress);
+				const segmentProgress =
+					(targetProgress - segmentStartProgress) /
+					(segmentEndProgress - segmentStartProgress);
 				animation.progress = Math.max(0, Math.min(1, segmentProgress));
 				break;
 			}
-			
+
 			accumulatedDistance += segmentDistance;
 		}
-		
+
 		// Check if we moved to a new segment
 		if (currentSegment !== animation.currentSegment) {
 			animation.onSegmentComplete?.(animation.currentSegment);
 			animation.currentSegment = currentSegment;
 		}
-		
+
 		// Check if animation is complete
 		if (targetProgress >= 1) {
 			animation.currentSegment = path.length - 1;

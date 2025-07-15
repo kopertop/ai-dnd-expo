@@ -139,7 +139,10 @@ export class DungeonMasterAgent {
 	/**
 	 * Generate DM response based on player intent
 	 */
-	private async generateResponse(intent: any, originalInput: string): Promise<{
+	private async generateResponse(
+		intent: any,
+		originalInput: string,
+	): Promise<{
 		content: string;
 		type: DMMessage['type'];
 		speaker?: string;
@@ -160,7 +163,8 @@ export class DungeonMasterAgent {
 				result: attackRoll,
 			});
 
-			if (attackRoll.total >= 15) { // Hit
+			if (attackRoll.total >= 15) {
+				// Hit
 				toolCalls.push({
 					type: 'dice_roll',
 					parameters: { notation: '1d8', purpose: 'damage' },
@@ -218,7 +222,12 @@ export class DungeonMasterAgent {
 			switch (toolCall.type) {
 			case 'character_update': {
 				const updateParams: any = toolCall.parameters;
-				if (updateParams.type && updateParams.operation && updateParams.target && updateParams.value !== undefined) {
+				if (
+					updateParams.type &&
+						updateParams.operation &&
+						updateParams.target &&
+						updateParams.value !== undefined
+				) {
 					await this.characterUpdater.updateCharacter(
 						this.context.playerCharacter,
 						updateParams,

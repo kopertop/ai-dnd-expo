@@ -6,7 +6,7 @@ import { DnDTheme } from './dnd-theme';
 export const getChooserCardConstants = () => {
 	const SCREEN_WIDTH = Dimensions.get('window').width;
 	const MAX_CONTAINER_WIDTH = 1024;
-	const IS_MOBILE = SCREEN_WIDTH < 768; // Bootstrap md breakpoint  
+	const IS_MOBILE = SCREEN_WIDTH < 768; // Bootstrap md breakpoint
 	const IS_SMALL_SCREEN = SCREEN_WIDTH < 600;
 	const MIN_CARD_WIDTH = IS_MOBILE ? 280 : 256;
 	const CARDS_PER_ROW = IS_MOBILE ? 1 : 5;
@@ -17,7 +17,7 @@ export const getChooserCardConstants = () => {
 		: Math.floor((CARD_CONTAINER_WIDTH - CARD_MARGIN * (CARDS_PER_ROW + 1)) / CARDS_PER_ROW);
 	const CARD_WIDTH = Math.max(MIN_CARD_WIDTH, IDEAL_CARD_WIDTH);
 	const IMAGE_HEIGHT = IS_MOBILE ? Math.min(CARD_WIDTH * 0.8, 300) : CARD_WIDTH; // Shorter on mobile
-	
+
 	return {
 		SCREEN_WIDTH,
 		MAX_CONTAINER_WIDTH,
@@ -38,7 +38,9 @@ export const chooserCardConstants = getChooserCardConstants();
 
 export const chooserCardStyles = StyleSheet.create({
 	cardContainer: {
-		width: chooserCardConstants.IS_SMALL_SCREEN ? '100%' : chooserCardConstants.MAX_CONTAINER_WIDTH,
+		width: chooserCardConstants.IS_SMALL_SCREEN
+			? '100%'
+			: chooserCardConstants.MAX_CONTAINER_WIDTH,
 		maxWidth: chooserCardConstants.MAX_CONTAINER_WIDTH,
 		alignSelf: 'center',
 	},

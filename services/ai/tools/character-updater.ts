@@ -19,10 +19,7 @@ export class CharacterUpdater {
 	/**
 	 * Update character data based on game events
 	 */
-	async updateCharacter(
-		character: Character, 
-		update: CharacterUpdate,
-	): Promise<UpdateResult> {
+	async updateCharacter(character: Character, update: CharacterUpdate): Promise<UpdateResult> {
 		try {
 			switch (update.type) {
 			case 'hp':
@@ -97,7 +94,7 @@ export class CharacterUpdater {
 	private updateStat(character: Character, update: CharacterUpdate): UpdateResult {
 		const stats = character.stats;
 		const statName = update.target.toLowerCase();
-		
+
 		if (!(statName in stats)) {
 			throw new Error(`Invalid stat: ${statName}`);
 		}
@@ -133,9 +130,9 @@ export class CharacterUpdater {
 	private updateSkill(character: Character, update: CharacterUpdate): UpdateResult {
 		const skillName = update.target;
 		const skills = character.skills;
-		
-		const skillIndex = skills.findIndex((skill: string) => 
-			skill.toLowerCase() === skillName.toLowerCase(),
+
+		const skillIndex = skills.findIndex(
+			(skill: string) => skill.toLowerCase() === skillName.toLowerCase(),
 		);
 
 		if (skillIndex === -1) {
@@ -233,14 +230,16 @@ export class CharacterUpdater {
 	private updateCondition(character: Character, update: CharacterUpdate): UpdateResult {
 		// Character type doesn't have conditions field, so we'll store it in a custom property
 		const conditions = (character as any).conditions || [];
-		
+
 		const conditionName = update.target;
 		const hasCondition = conditions.includes(conditionName);
 
 		switch (update.operation) {
 		case 'toggle':
 			if (hasCondition) {
-				(character as any).conditions = conditions.filter((c: string) => c !== conditionName);
+				(character as any).conditions = conditions.filter(
+					(c: string) => c !== conditionName,
+				);
 			} else {
 				(character as any).conditions = [...conditions, conditionName];
 			}
@@ -249,14 +248,16 @@ export class CharacterUpdater {
 			if (update.value && !hasCondition) {
 				(character as any).conditions = [...conditions, conditionName];
 			} else if (!update.value && hasCondition) {
-				(character as any).conditions = conditions.filter((c: string) => c !== conditionName);
+				(character as any).conditions = conditions.filter(
+					(c: string) => c !== conditionName,
+				);
 			}
 			break;
 		}
 
 		const newConditions = (character as any).conditions || [];
 		const newHasCondition = newConditions.includes(conditionName);
-		
+
 		return {
 			success: true,
 			oldValue: hasCondition,
@@ -271,8 +272,8 @@ export class CharacterUpdater {
 	private calculateLevel(xp: number): number {
 		// D&D 5e experience table
 		const xpTable = [
-			0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000,
-			85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000,
+			0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000,
+			140000, 165000, 195000, 225000, 265000, 305000, 355000,
 		];
 
 		for (let level = xpTable.length - 1; level >= 0; level--) {

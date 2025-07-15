@@ -79,9 +79,9 @@ export class ResponseQualityFilter {
 	}
 
 	/**
-	* Validate and filter response quality
-	* Requirement 6.3: Content filtering and validation
-	*/
+	 * Validate and filter response quality
+	 * Requirement 6.3: Content filtering and validation
+	 */
 	async validateResponse(
 		responseText: string,
 		context: GameContext,
@@ -127,25 +127,27 @@ export class ResponseQualityFilter {
 			const suggestions = this.generateSuggestions(issues, context);
 
 			return {
-				isValid: !shouldRegenerate && issues.filter(i => i.severity === 'critical').length === 0,
+				isValid:
+					!shouldRegenerate && issues.filter(i => i.severity === 'critical').length === 0,
 				confidence,
 				issues,
 				suggestions,
 				shouldRegenerate: shouldRegenerate && this.config.enableRegeneration,
 				filteredText,
 			};
-
 		} catch (error) {
 			console.error('❌ Response quality validation failed:', error);
 
 			return {
 				isValid: false,
 				confidence: 0,
-				issues: [{
-					type: 'quality',
-					severity: 'critical',
-					description: 'Quality validation system error',
-				}],
+				issues: [
+					{
+						type: 'quality',
+						severity: 'critical',
+						description: 'Quality validation system error',
+					},
+				],
 				suggestions: ['Try regenerating the response'],
 				shouldRegenerate: true,
 				filteredText: responseText,
@@ -154,9 +156,12 @@ export class ResponseQualityFilter {
 	}
 
 	/**
-	* Filter inappropriate content
-	*/
-	private async filterContent(text: string, context: GameContext): Promise<{
+	 * Filter inappropriate content
+	 */
+	private async filterContent(
+		text: string,
+		context: GameContext,
+	): Promise<{
 		filteredText: string;
 		issues: QualityIssue[];
 	}> {
@@ -173,9 +178,12 @@ export class ResponseQualityFilter {
 	}
 
 	/**
-	* Validate response format
-	*/
-	private async validateFormat(text: string, context: GameContext): Promise<{
+	 * Validate response format
+	 */
+	private async validateFormat(
+		text: string,
+		context: GameContext,
+	): Promise<{
 		issues: QualityIssue[];
 	}> {
 		const issues: QualityIssue[] = [];
@@ -189,9 +197,13 @@ export class ResponseQualityFilter {
 	}
 
 	/**
-	* Validate response quality
-	*/
-	private async validateQuality(text: string, context: GameContext, confidence: number): Promise<{
+	 * Validate response quality
+	 */
+	private async validateQuality(
+		text: string,
+		context: GameContext,
+		confidence: number,
+	): Promise<{
 		issues: QualityIssue[];
 	}> {
 		const issues: QualityIssue[] = [];
@@ -205,8 +217,8 @@ export class ResponseQualityFilter {
 	}
 
 	/**
-	* Generate improvement suggestions
-	*/
+	 * Generate improvement suggestions
+	 */
 	private generateSuggestions(issues: QualityIssue[], context: GameContext): string[] {
 		const suggestions: string[] = [];
 
@@ -229,15 +241,17 @@ export class ResponseQualityFilter {
 		}
 
 		if (contextIssues.length > 0) {
-			suggestions.push(`Make response more relevant to ${context.currentScene} in ${context.gameWorld}`);
+			suggestions.push(
+				`Make response more relevant to ${context.currentScene} in ${context.gameWorld}`,
+			);
 		}
 
 		return suggestions;
 	}
 
 	/**
-	* Initialize content filters
-	*/
+	 * Initialize content filters
+	 */
 	private initializeContentFilters(): ContentFilter[] {
 		const filters: ContentFilter[] = [];
 
@@ -257,8 +271,8 @@ export class ResponseQualityFilter {
 	}
 
 	/**
-	* Initialize format validators
-	*/
+	 * Initialize format validators
+	 */
 	private initializeFormatValidators(): FormatValidator[] {
 		return [
 			new LengthValidator(this.config.minResponseLength, this.config.maxResponseLength),
@@ -268,13 +282,10 @@ export class ResponseQualityFilter {
 	}
 
 	/**
-	* Initialize quality validators
-	*/
+	 * Initialize quality validators
+	 */
 	private initializeQualityValidators(): QualityValidator[] {
-		const validators: QualityValidator[] = [
-			new CoherenceValidator(),
-			new RelevanceValidator(),
-		];
+		const validators: QualityValidator[] = [new CoherenceValidator(), new RelevanceValidator()];
 
 		if (this.config.enableGrammarCheck) {
 			validators.push(new GrammarValidator());
@@ -292,7 +303,10 @@ export class ResponseQualityFilter {
  * Base content filter interface
  */
 abstract class ContentFilter {
-	abstract filter(text: string, context: GameContext): Promise<{
+	abstract filter(
+		text: string,
+		context: GameContext
+	): Promise<{
 		filteredText: string;
 		issues: QualityIssue[];
 	}>;
@@ -309,7 +323,10 @@ class ProfanityFilter extends ContentFilter {
 		/\b[a-z]*fuck[a-z]*\b/gi,
 	];
 
-	async filter(text: string, context: GameContext): Promise<{
+	async filter(
+		text: string,
+		context: GameContext,
+	): Promise<{
 		filteredText: string;
 		issues: QualityIssue[];
 	}> {
@@ -320,7 +337,7 @@ class ProfanityFilter extends ContentFilter {
 			const matches = text.match(pattern);
 			if (matches) {
 				// Replace with D&D appropriate alternatives
-				filteredText = filteredText.replace(pattern, (match) => {
+				filteredText = filteredText.replace(pattern, match => {
 					return '*'.repeat(match.length);
 				});
 
@@ -346,7 +363,10 @@ class ViolenceFilter extends ContentFilter {
 		/\b(brutal[ly]* kill|savage[ly]* murder)\b/gi,
 	];
 
-	async filter(text: string, context: GameContext): Promise<{
+	async filter(
+		text: string,
+		context: GameContext,
+	): Promise<{
 		filteredText: string;
 		issues: QualityIssue[];
 	}> {
@@ -380,7 +400,10 @@ class AdultContentFilter extends ContentFilter {
 		/\b(seductive|alluring|provocative)\b/gi,
 	];
 
-	async filter(text: string, context: GameContext): Promise<{
+	async filter(
+		text: string,
+		context: GameContext,
+	): Promise<{
 		filteredText: string;
 		issues: QualityIssue[];
 	}> {
@@ -409,7 +432,10 @@ class AdultContentFilter extends ContentFilter {
  * Base format validator interface
  */
 abstract class FormatValidator {
-	abstract validate(text: string, context: GameContext): Promise<{
+	abstract validate(
+		text: string,
+		context: GameContext
+	): Promise<{
 		issues: QualityIssue[];
 	}>;
 }
@@ -418,11 +444,17 @@ abstract class FormatValidator {
  * Response length validator
  */
 class LengthValidator extends FormatValidator {
-	constructor(private minLength: number, private maxLength: number) {
+	constructor(
+		private minLength: number,
+		private maxLength: number,
+	) {
 		super();
 	}
 
-	async validate(text: string, context: GameContext): Promise<{
+	async validate(
+		text: string,
+		context: GameContext,
+	): Promise<{
 		issues: QualityIssue[];
 	}> {
 		const issues: QualityIssue[] = [];
@@ -453,7 +485,10 @@ class LengthValidator extends FormatValidator {
  * Response structure validator
  */
 class StructureValidator extends FormatValidator {
-	async validate(text: string, context: GameContext): Promise<{
+	async validate(
+		text: string,
+		context: GameContext,
+	): Promise<{
 		issues: QualityIssue[];
 	}> {
 		const issues: QualityIssue[] = [];
@@ -490,7 +525,10 @@ class ToolCommandValidator extends FormatValidator {
 		super();
 	}
 
-	async validate(text: string, context: GameContext): Promise<{
+	async validate(
+		text: string,
+		context: GameContext,
+	): Promise<{
 		issues: QualityIssue[];
 	}> {
 		const issues: QualityIssue[] = [];
@@ -514,7 +552,11 @@ class ToolCommandValidator extends FormatValidator {
 			for (const match of toolCommandMatches) {
 				const [, type, params] = match.match(/\[(\w+):([^\]]+)\]/) || [];
 
-				if (!['roll', 'update', 'damage', 'heal', 'status', 'inventory'].includes(type?.toLowerCase())) {
+				if (
+					!['roll', 'update', 'damage', 'heal', 'status', 'inventory'].includes(
+						type?.toLowerCase(),
+					)
+				) {
 					issues.push({
 						type: 'format',
 						severity: 'medium',
@@ -533,7 +575,11 @@ class ToolCommandValidator extends FormatValidator {
  * Base quality validator interface
  */
 abstract class QualityValidator {
-	abstract validate(text: string, context: GameContext, confidence: number): Promise<{
+	abstract validate(
+		text: string,
+		context: GameContext,
+		confidence: number
+	): Promise<{
 		issues: QualityIssue[];
 	}>;
 }
@@ -542,7 +588,11 @@ abstract class QualityValidator {
  * Response coherence validator
  */
 class CoherenceValidator extends QualityValidator {
-	async validate(text: string, context: GameContext, confidence: number): Promise<{
+	async validate(
+		text: string,
+		context: GameContext,
+		confidence: number,
+	): Promise<{
 		issues: QualityIssue[];
 	}> {
 		const issues: QualityIssue[] = [];
@@ -604,18 +654,24 @@ class CoherenceValidator extends QualityValidator {
  * Response relevance validator
  */
 class RelevanceValidator extends QualityValidator {
-	async validate(text: string, context: GameContext, confidence: number): Promise<{
+	async validate(
+		text: string,
+		context: GameContext,
+		confidence: number,
+	): Promise<{
 		issues: QualityIssue[];
 	}> {
 		const issues: QualityIssue[] = [];
 
 		// Check if response mentions character or context
 		const lowerText = text.toLowerCase();
-		const hasCharacterReference = lowerText.includes(context.playerCharacter.name.toLowerCase()) ||
+		const hasCharacterReference =
+			lowerText.includes(context.playerCharacter.name.toLowerCase()) ||
 			lowerText.includes(context.playerCharacter.class.toLowerCase()) ||
 			lowerText.includes(context.playerCharacter.race.toLowerCase());
 
-		const hasSceneReference = lowerText.includes(context.currentScene.toLowerCase()) ||
+		const hasSceneReference =
+			lowerText.includes(context.currentScene.toLowerCase()) ||
 			lowerText.includes(context.gameWorld.toLowerCase());
 
 		if (!hasCharacterReference && !hasSceneReference) {
@@ -635,7 +691,11 @@ class RelevanceValidator extends QualityValidator {
  * Grammar validator (basic implementation)
  */
 class GrammarValidator extends QualityValidator {
-	async validate(text: string, context: GameContext, confidence: number): Promise<{
+	async validate(
+		text: string,
+		context: GameContext,
+		confidence: number,
+	): Promise<{
 		issues: QualityIssue[];
 	}> {
 		const issues: QualityIssue[] = [];
@@ -669,7 +729,11 @@ class GrammarValidator extends QualityValidator {
  * Context relevance validator
  */
 class ContextRelevanceValidator extends QualityValidator {
-	async validate(text: string, context: GameContext, confidence: number): Promise<{
+	async validate(
+		text: string,
+		context: GameContext,
+		confidence: number,
+	): Promise<{
 		issues: QualityIssue[];
 	}> {
 		const issues: QualityIssue[] = [];
@@ -680,16 +744,19 @@ class ContextRelevanceValidator extends QualityValidator {
 			const actionKeywords = recentAction.toLowerCase().split(' ');
 			const responseWords = text.toLowerCase().split(' ');
 
-			const relevanceScore = actionKeywords.filter(word =>
-				responseWords.some(respWord => respWord.includes(word) || word.includes(respWord)),
-			).length / actionKeywords.length;
+			const relevanceScore =
+				actionKeywords.filter(word =>
+					responseWords.some(
+						respWord => respWord.includes(word) || word.includes(respWord),
+					),
+				).length / actionKeywords.length;
 
 			if (relevanceScore < 0.2) {
 				issues.push({
 					type: 'context',
 					severity: 'medium',
 					description: 'Response not relevant to recent player action',
-					suggestion: 'Address the player\'s most recent action',
+					suggestion: "Address the player's most recent action",
 				});
 			}
 		}

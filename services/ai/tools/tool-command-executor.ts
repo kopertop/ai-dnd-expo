@@ -13,33 +13,33 @@ import { Character } from '@/types/character';
 import { GameState } from '@/types/game';
 
 export interface ExecutionContext {
-  character: Character;
-  gameState: GameState;
-  updateCharacter: (updates: Partial<Character>) => Promise<void>;
-  updateGameState?: (updates: Partial<GameState>) => Promise<void>;
+	character: Character;
+	gameState: GameState;
+	updateCharacter: (updates: Partial<Character>) => Promise<void>;
+	updateGameState?: (updates: Partial<GameState>) => Promise<void>;
 }
 
 export interface ExecutionResult {
-  success: boolean;
-  commands: ToolCommand[];
-  results: ToolCommandResult[];
-  messages: string[];
-  characterUpdated: boolean;
-  gameStateUpdated: boolean;
-  error?: string;
+	success: boolean;
+	commands: ToolCommand[];
+	results: ToolCommandResult[];
+	messages: string[];
+	characterUpdated: boolean;
+	gameStateUpdated: boolean;
+	error?: string;
 }
 
 export class ToolCommandExecutor {
 	/**
-   * Process AI response text and execute any tool commands found
-   */
+	 * Process AI response text and execute any tool commands found
+	 */
 	static async processAIResponse(
 		responseText: string,
 		context: ExecutionContext,
 	): Promise<{
-    cleanText: string;
-    executionResult: ExecutionResult;
-  }> {
+		cleanText: string;
+		executionResult: ExecutionResult;
+	}> {
 		try {
 			// Extract tool commands from response
 			const commands = ToolCommandParser.extractToolCommands(responseText);
@@ -82,8 +82,8 @@ export class ToolCommandExecutor {
 	}
 
 	/**
-   * Execute a list of tool commands
-   */
+	 * Execute a list of tool commands
+	 */
 	static async executeCommands(
 		commands: ToolCommand[],
 		context: ExecutionContext,
@@ -96,8 +96,15 @@ export class ToolCommandExecutor {
 
 		try {
 			// Execute all commands and collect results
-			const { results: commandResults, characterUpdates, gameStateUpdates } =
-        await ToolCommandParser.executeToolCommands(commands, context.character, context.gameState);
+			const {
+				results: commandResults,
+				characterUpdates,
+				gameStateUpdates,
+			} = await ToolCommandParser.executeToolCommands(
+				commands,
+				context.character,
+				context.gameState,
+			);
 
 			results.push(...commandResults);
 
@@ -133,7 +140,6 @@ export class ToolCommandExecutor {
 				characterUpdated,
 				gameStateUpdated,
 			};
-
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 			console.error('❌ Tool command execution failed:', error);
@@ -151,8 +157,8 @@ export class ToolCommandExecutor {
 	}
 
 	/**
-   * Execute a single tool command (utility method)
-   */
+	 * Execute a single tool command (utility method)
+	 */
 	static async executeSingleCommand(
 		commandText: string,
 		context: ExecutionContext,
@@ -175,13 +181,13 @@ export class ToolCommandExecutor {
 	}
 
 	/**
-   * Validate tool commands without executing them
-   */
+	 * Validate tool commands without executing them
+	 */
 	static validateCommands(responseText: string): {
-    valid: boolean;
-    commands: ToolCommand[];
-    errors: string[];
-  } {
+		valid: boolean;
+		commands: ToolCommand[];
+		errors: string[];
+	} {
 		const commands = ToolCommandParser.extractToolCommands(responseText);
 		const errors: string[] = [];
 
@@ -222,8 +228,8 @@ export class ToolCommandExecutor {
 	}
 
 	/**
-   * Get formatted execution summary for display
-   */
+	 * Get formatted execution summary for display
+	 */
 	static formatExecutionSummary(executionResult: ExecutionResult): string {
 		if (!executionResult.success && executionResult.error) {
 			return `⚠️ Command execution failed: ${executionResult.error}`;
@@ -253,20 +259,20 @@ export class ToolCommandExecutor {
 	}
 
 	/**
-   * Extract dice roll results for display
-   */
+	 * Extract dice roll results for display
+	 */
 	static extractRollResults(executionResult: ExecutionResult): Array<{
-    notation: string;
-    result: number;
-    rolls: number[];
-    purpose?: string;
-  }> {
+		notation: string;
+		result: number;
+		rolls: number[];
+		purpose?: string;
+	}> {
 		const rollResults: Array<{
-      notation: string;
-      result: number;
-      rolls: number[];
-      purpose?: string;
-    }> = [];
+			notation: string;
+			result: number;
+			rolls: number[];
+			purpose?: string;
+		}> = [];
 
 		for (const command of executionResult.commands) {
 			if (command.type === 'roll' && command.result) {

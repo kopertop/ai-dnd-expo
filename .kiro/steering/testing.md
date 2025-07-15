@@ -5,6 +5,8 @@ fileMatchPattern: ['**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/*.spec.t
 
 # Testing Guidelines
 
+**IMPORTANT** To run the tests, use `npm run test`. To run an *individual test suite* use `npm run test <filename>`
+
 ## Testing Philosophy
 - Use Playwright for comprehensive end-to-end testing of user journeys and cross-platform compatibility
 - Use Vitest for fast unit tests with mocking capabilities for isolated component and service testing

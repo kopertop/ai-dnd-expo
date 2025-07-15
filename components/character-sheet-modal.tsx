@@ -1,7 +1,18 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Image, ImageSourcePropType, Modal, Platform, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+	Alert,
+	Image,
+	ImageSourcePropType,
+	Modal,
+	Platform,
+	Pressable,
+	ScrollView,
+	Text,
+	TouchableOpacity,
+	View,
+} from 'react-native';
 
 import { useGameState } from '../hooks/use-game-state';
 import { GearSlot } from '../types/stats';
@@ -18,10 +29,7 @@ interface CharacterSheetModalProps {
 	onClose: () => void;
 }
 
-export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
-	visible,
-	onClose,
-}) => {
+export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visible, onClose }) => {
 	const [tooltipSkill, setTooltipSkill] = useState<string | null>(null);
 	const [activeSlot, setActiveSlot] = useState<GearSlot | null>(null);
 	const { isMobile } = useScreenSize();
@@ -37,7 +45,19 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 
 	if (!playerCharacter) return null;
 
-	const { name, description, stats, skills = [], race, class: characterClass, level, health, maxHealth, actionPoints, maxActionPoints } = playerCharacter;
+	const {
+		name,
+		description,
+		stats,
+		skills = [],
+		race,
+		class: characterClass,
+		level,
+		health,
+		maxHealth,
+		actionPoints,
+		maxActionPoints,
+	} = playerCharacter;
 	const portraitSource = playerPortrait;
 
 	const handleSlotPress = (slot: GearSlot) => {
@@ -86,21 +106,37 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 		<Modal visible={visible} animationType="slide" transparent>
 			<View style={styles.overlay}>
 				<ThemedView style={[styles.modalBox, isMobile && styles.modalBoxMobile]}>
-					<ScrollView contentContainerStyle={isMobile ? styles.contentMobile : styles.contentWithPortrait}>
+					<ScrollView
+						contentContainerStyle={
+							isMobile ? styles.contentMobile : styles.contentWithPortrait
+						}
+					>
 						<View style={isMobile ? styles.sheetColumn : styles.sheetRow}>
 							{/* Portrait & Stats */}
 							<View style={isMobile ? styles.mobileSection : styles.leftCol}>
 								<View style={styles.portraitBox}>
-									<Image source={portraitSource as ImageSourcePropType} style={isMobile ? styles.portraitMobile : styles.portraitLarge} />
+									<Image
+										source={portraitSource as ImageSourcePropType}
+										style={
+											isMobile ? styles.portraitMobile : styles.portraitLarge
+										}
+									/>
 								</View>
 								<Text style={styles.label}>Stats</Text>
-								<View style={isMobile ? styles.statGridMobile : styles.statGridBelowPortrait}>
-									{STAT_KEYS.map((key) => (
-										<View key={key} style={isMobile ? styles.statBoxMobile : styles.statBox}>
+								<View
+									style={
+										isMobile
+											? styles.statGridMobile
+											: styles.statGridBelowPortrait
+									}
+								>
+									{STAT_KEYS.map(key => (
+										<View
+											key={key}
+											style={isMobile ? styles.statBoxMobile : styles.statBox}
+										>
 											<Text style={styles.statLabel}>{key}</Text>
-											<Text style={styles.statValue}>
-												{stats[key]}
-											</Text>
+											<Text style={styles.statValue}>{stats[key]}</Text>
 										</View>
 									))}
 								</View>
@@ -118,60 +154,118 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 									<Text style={styles.label}>Background</Text>
 									<Text style={styles.value}>{description}</Text>
 									<View style={styles.hpApRow}>
-										<Text style={styles.statText}>HP: {health} / {maxHealth}</Text>
-										<Text style={styles.statText}>AP: {actionPoints} / {maxActionPoints}</Text>
+										<Text style={styles.statText}>
+											HP: {health} / {maxHealth}
+										</Text>
+										<Text style={styles.statText}>
+											AP: {actionPoints} / {maxActionPoints}
+										</Text>
 									</View>
 								</View>
 								<Text style={styles.label}>Inventory</Text>
-								<View style={isMobile ? styles.inventoryGridMobile : styles.inventoryGridCenter}>
+								<View
+									style={
+										isMobile
+											? styles.inventoryGridMobile
+											: styles.inventoryGridCenter
+									}
+								>
 									{loading ? (
-										<Text style={styles.emptyInventory}>Loading inventory...</Text>
+										<Text style={styles.emptyInventory}>
+											Loading inventory...
+										</Text>
 									) : error ? (
-										<Text style={styles.emptyInventory}>Error loading inventory: {error}</Text>
+										<Text style={styles.emptyInventory}>
+											Error loading inventory: {error}
+										</Text>
 									) : filteredInventory.length === 0 ? (
 										<Text style={styles.emptyInventory}>No items</Text>
 									) : (
 										filteredInventory.map(entry => {
 											const { item, isEquipped } = entry;
-											const isCompatible = !activeSlot || item.slot === activeSlot || item.slot === 'none';
+											const isCompatible =
+												!activeSlot ||
+												item.slot === activeSlot ||
+												item.slot === 'none';
 											const canEquip = item.slot !== 'none' && isCompatible;
 
 											return (
 												<Pressable
 													key={String(item.id)}
-													android_ripple={isMobile ? { color: '#C9B037', borderless: false } : undefined}
+													android_ripple={
+														isMobile
+															? {
+																color: '#C9B037',
+																borderless: false,
+															}
+															: undefined
+													}
 													onPress={() => {
 														if (activeSlot && canEquip) {
 															// If this item is already equipped in the active slot, unequip it
-															if (isEquipped && entry.equippedSlot === activeSlot) {
+															if (
+																isEquipped &&
+																entry.equippedSlot === activeSlot
+															) {
 																handleUnequipSlot(activeSlot);
 															} else {
 																// Otherwise equip it
 																handleAssignItem(item);
 															}
-														} else if (!activeSlot && item.slot !== 'none') {
+														} else if (
+															!activeSlot &&
+															item.slot !== 'none'
+														) {
 															setActiveSlot(item.slot as GearSlot);
 														}
 													}}
-													onHoverIn={() => Platform.OS === 'web' && !isMobile && setTooltipSkill(item.id as string)}
-													onHoverOut={() => Platform.OS === 'web' && !isMobile && setTooltipSkill(null)}
+													onHoverIn={() =>
+														Platform.OS === 'web' &&
+														!isMobile &&
+														setTooltipSkill(item.id as string)
+													}
+													onHoverOut={() =>
+														Platform.OS === 'web' &&
+														!isMobile &&
+														setTooltipSkill(null)
+													}
 													style={[
-														isMobile ? styles.inventoryItemBoxMobile : styles.inventoryItemBox,
+														isMobile
+															? styles.inventoryItemBoxMobile
+															: styles.inventoryItemBox,
 														isEquipped && styles.inventoryItemEquipped,
-														!isCompatible && styles.inventoryItemIncompatible,
+														!isCompatible &&
+															styles.inventoryItemIncompatible,
 													]}
 												>
-													<Image source={item.icon as ImageSourcePropType} style={styles.inventoryIconLarge} />
+													<Image
+														source={item.icon as ImageSourcePropType}
+														style={styles.inventoryIconLarge}
+													/>
 													{isEquipped && (
 														<View style={styles.equippedIndicator}>
-															<Text style={styles.equippedText}>*</Text>
+															<Text style={styles.equippedText}>
+																*
+															</Text>
 														</View>
 													)}
 													{tooltipSkill === item.id && (
-														<View style={styles.tooltipOverlay} pointerEvents="none">
-															<View style={styles.tooltipOverIconBg} />
-															<View style={styles.tooltipOverIconLabel}>
-																<Text style={styles.tooltipText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>
+														<View
+															style={styles.tooltipOverlay}
+															pointerEvents="none"
+														>
+															<View
+																style={styles.tooltipOverIconBg}
+															/>
+															<View
+																style={styles.tooltipOverIconLabel}
+															>
+																<Text
+																	style={styles.tooltipText}
+																	numberOfLines={2}
+																	adjustsFontSizeToFit
+																	minimumFontScale={0.7}
+																>
 																	{item.name}
 																</Text>
 															</View>
@@ -192,13 +286,28 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 										{/* Helmet */}
 										<View style={styles.gearRowCenter}>
 											<TouchableOpacity
-												style={[styles.gearSlot, activeSlot === 'helmet' && styles.gearSlotActive]}
+												style={[
+													styles.gearSlot,
+													activeSlot === 'helmet' &&
+														styles.gearSlotActive,
+												]}
 												onPress={() => handleSlotPress('helmet')}
 											>
 												{equipped['helmet'] ? (
-													<Image source={equipped['helmet']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+													<Image
+														source={
+															equipped['helmet']!
+																.icon as ImageSourcePropType
+														}
+														style={styles.gearIcon}
+													/>
 												) : (
-													<Image source={require('../assets/images/gear-slot/helmet.png') as ImageSourcePropType} style={styles.gearIcon} />
+													<Image
+														source={
+															require('../assets/images/gear-slot/helmet.png') as ImageSourcePropType
+														}
+														style={styles.gearIcon}
+													/>
 												)}
 												<Text style={styles.gearLabel}>Helmet</Text>
 											</TouchableOpacity>
@@ -207,37 +316,84 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 										<View style={styles.gearRowArmsChest}>
 											<View style={styles.gearColArmHand}>
 												<TouchableOpacity
-													style={[styles.gearSlot, styles.gearSlotArm, activeSlot === 'arms' && styles.gearSlotActive]}
+													style={[
+														styles.gearSlot,
+														styles.gearSlotArm,
+														activeSlot === 'arms' &&
+															styles.gearSlotActive,
+													]}
 													onPress={() => handleSlotPress('arms')}
 												>
 													{equipped['arms'] ? (
-														<Image source={equipped['arms']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+														<Image
+															source={
+																equipped['arms']!
+																	.icon as ImageSourcePropType
+															}
+															style={styles.gearIcon}
+														/>
 													) : (
-														<Image source={require('../assets/images/gear-slot/left-arm.png') as ImageSourcePropType} style={styles.gearIcon} />
+														<Image
+															source={
+																require('../assets/images/gear-slot/left-arm.png') as ImageSourcePropType
+															}
+															style={styles.gearIcon}
+														/>
 													)}
 													<Text style={styles.gearLabel}>Arms</Text>
 												</TouchableOpacity>
 											</View>
 											<TouchableOpacity
-												style={[styles.gearSlot, styles.gearSlotChest, activeSlot === 'chest' && styles.gearSlotActive]}
+												style={[
+													styles.gearSlot,
+													styles.gearSlotChest,
+													activeSlot === 'chest' && styles.gearSlotActive,
+												]}
 												onPress={() => handleSlotPress('chest')}
 											>
 												{equipped['chest'] ? (
-													<Image source={equipped['chest']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+													<Image
+														source={
+															equipped['chest']!
+																.icon as ImageSourcePropType
+														}
+														style={styles.gearIcon}
+													/>
 												) : (
-													<Image source={require('../assets/images/gear-slot/chest.png') as ImageSourcePropType} style={styles.gearIcon} />
+													<Image
+														source={
+															require('../assets/images/gear-slot/chest.png') as ImageSourcePropType
+														}
+														style={styles.gearIcon}
+													/>
 												)}
 												<Text style={styles.gearLabel}>Chest</Text>
 											</TouchableOpacity>
 											<View style={styles.gearColArmHand}>
 												<TouchableOpacity
-													style={[styles.gearSlot, styles.gearSlotArm, activeSlot === 'arms' && styles.gearSlotActive]}
+													style={[
+														styles.gearSlot,
+														styles.gearSlotArm,
+														activeSlot === 'arms' &&
+															styles.gearSlotActive,
+													]}
 													onPress={() => handleSlotPress('arms')}
 												>
 													{equipped['arms'] ? (
-														<Image source={equipped['arms']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+														<Image
+															source={
+																equipped['arms']!
+																	.icon as ImageSourcePropType
+															}
+															style={styles.gearIcon}
+														/>
 													) : (
-														<Image source={require('../assets/images/gear-slot/right-arm.png') as ImageSourcePropType} style={styles.gearIcon} />
+														<Image
+															source={
+																require('../assets/images/gear-slot/right-arm.png') as ImageSourcePropType
+															}
+															style={styles.gearIcon}
+														/>
 													)}
 													<Text style={styles.gearLabel}>Arms</Text>
 												</TouchableOpacity>
@@ -247,51 +403,110 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 										<View style={styles.gearRowCenter}>
 											{/* Main Hand below L-Arm */}
 											<TouchableOpacity
-												style={[styles.gearSlot, styles.gearSlotHand, activeSlot === 'mainHand' && styles.gearSlotActive]}
+												style={[
+													styles.gearSlot,
+													styles.gearSlotHand,
+													activeSlot === 'mainHand' &&
+														styles.gearSlotActive,
+												]}
 												onPress={() => handleSlotPress('mainHand')}
 											>
 												{equipped['mainHand'] ? (
-													<Image source={equipped['mainHand']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+													<Image
+														source={
+															equipped['mainHand']!
+																.icon as ImageSourcePropType
+														}
+														style={styles.gearIcon}
+													/>
 												) : (
-													<Image source={require('../assets/images/gear-slot/main-hand.png') as ImageSourcePropType} style={styles.gearIcon} />
+													<Image
+														source={
+															require('../assets/images/gear-slot/main-hand.png') as ImageSourcePropType
+														}
+														style={styles.gearIcon}
+													/>
 												)}
 												<Text style={styles.gearLabel}>Main Hand</Text>
 											</TouchableOpacity>
 											<TouchableOpacity
-												style={[styles.gearSlot, activeSlot === 'legs' && styles.gearSlotActive]}
+												style={[
+													styles.gearSlot,
+													activeSlot === 'legs' && styles.gearSlotActive,
+												]}
 												onPress={() => handleSlotPress('legs')}
 											>
 												{equipped['legs'] ? (
-													<Image source={equipped['legs']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+													<Image
+														source={
+															equipped['legs']!
+																.icon as ImageSourcePropType
+														}
+														style={styles.gearIcon}
+													/>
 												) : (
-													<Image source={require('../assets/images/gear-slot/legs.png') as ImageSourcePropType} style={styles.gearIcon} />
+													<Image
+														source={
+															require('../assets/images/gear-slot/legs.png') as ImageSourcePropType
+														}
+														style={styles.gearIcon}
+													/>
 												)}
 												<Text style={styles.gearLabel}>Legs</Text>
 											</TouchableOpacity>
 											{/* Off Hand below R-Arm */}
 											<TouchableOpacity
-												style={[styles.gearSlot, styles.gearSlotHand, activeSlot === 'offHand' && styles.gearSlotActive]}
+												style={[
+													styles.gearSlot,
+													styles.gearSlotHand,
+													activeSlot === 'offHand' &&
+														styles.gearSlotActive,
+												]}
 												onPress={() => handleSlotPress('offHand')}
 											>
 												{equipped['offHand'] ? (
-													<Image source={equipped['offHand']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+													<Image
+														source={
+															equipped['offHand']!
+																.icon as ImageSourcePropType
+														}
+														style={styles.gearIcon}
+													/>
 												) : (
-													<Image source={require('../assets/images/gear-slot/off-hand.png') as ImageSourcePropType} style={styles.gearIcon} />
+													<Image
+														source={
+															require('../assets/images/gear-slot/off-hand.png') as ImageSourcePropType
+														}
+														style={styles.gearIcon}
+													/>
 												)}
 												<Text style={styles.gearLabel}>Off Hand</Text>
 											</TouchableOpacity>
-
 										</View>
 										{/* Boots */}
 										<View style={styles.gearRowCenter}>
 											<TouchableOpacity
-												style={[styles.gearSlot, activeSlot === 'boots' && styles.gearSlotActive]}
+												style={[
+													styles.gearSlot,
+													activeSlot === 'boots' && styles.gearSlotActive,
+												]}
 												onPress={() => handleSlotPress('boots')}
 											>
 												{equipped['boots'] ? (
-													<Image source={equipped['boots']!.icon as ImageSourcePropType} style={styles.gearIcon} />
+													<Image
+														source={
+															equipped['boots']!
+																.icon as ImageSourcePropType
+														}
+														style={styles.gearIcon}
+													/>
 												) : (
-													<Image source={require('../assets/images/gear-slot/boots.png') as ImageSourcePropType} style={styles.gearIcon} />
+													<Image
+														source={
+															require('../assets/images/gear-slot/boots.png') as ImageSourcePropType
+														}
+														style={styles.gearIcon}
+													/>
 												)}
 												<Text style={styles.gearLabel}>Boots</Text>
 											</TouchableOpacity>
@@ -301,27 +516,49 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 								{/* Skills grid below gear */}
 								<Text style={styles.label}>Skills</Text>
 								<View style={styles.skillsGrid}>
-									{SKILL_LIST.filter(skill => skills.includes(skill.id)).map(skill => (
-										<Pressable
-											key={String(skill.id)}
-											onPress={() => setTooltipSkill(tooltipSkill === skill.id ? null : skill.id)}
-											onHoverIn={() => Platform.OS === 'web' && setTooltipSkill(skill.id as string)}
-											onHoverOut={() => Platform.OS === 'web' && setTooltipSkill(null)}
-											style={styles.skillIconCard}
-										>
-											<Image source={skill.image as ImageSourcePropType} style={styles.skillIconFlat} />
-											{tooltipSkill === skill.id && (
-												<View style={styles.tooltipOverlay} pointerEvents="none">
-													<View style={styles.tooltipOverIconBg} />
-													<View style={styles.tooltipOverIconLabel}>
-														<Text style={styles.tooltipText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>
-															{skill.name}
-														</Text>
+									{SKILL_LIST.filter(skill => skills.includes(skill.id)).map(
+										skill => (
+											<Pressable
+												key={String(skill.id)}
+												onPress={() =>
+													setTooltipSkill(
+														tooltipSkill === skill.id ? null : skill.id,
+													)
+												}
+												onHoverIn={() =>
+													Platform.OS === 'web' &&
+													setTooltipSkill(skill.id as string)
+												}
+												onHoverOut={() =>
+													Platform.OS === 'web' && setTooltipSkill(null)
+												}
+												style={styles.skillIconCard}
+											>
+												<Image
+													source={skill.image as ImageSourcePropType}
+													style={styles.skillIconFlat}
+												/>
+												{tooltipSkill === skill.id && (
+													<View
+														style={styles.tooltipOverlay}
+														pointerEvents="none"
+													>
+														<View style={styles.tooltipOverIconBg} />
+														<View style={styles.tooltipOverIconLabel}>
+															<Text
+																style={styles.tooltipText}
+																numberOfLines={2}
+																adjustsFontSizeToFit
+																minimumFontScale={0.7}
+															>
+																{skill.name}
+															</Text>
+														</View>
 													</View>
-												</View>
-											)}
-										</Pressable>
-									))}
+												)}
+											</Pressable>
+										),
+									)}
 								</View>
 							</View>
 						</View>
@@ -332,7 +569,9 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 						<TouchableOpacity
 							style={isMobile ? styles.actionButtonMobile : styles.actionButton}
 							onPress={togglePlayPause}
-							accessibilityLabel={isPlaying ? 'Mute background music' : 'Unmute background music'}
+							accessibilityLabel={
+								isPlaying ? 'Mute background music' : 'Unmute background music'
+							}
 						>
 							<Feather
 								name={isPlaying ? 'volume-2' : 'volume-x'}
@@ -340,7 +579,12 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({
 								color={isPlaying ? '#4caf50' : '#f44336'}
 								style={{ marginRight: 6 }}
 							/>
-							<Text style={[styles.actionButtonText, { color: isPlaying ? '#4caf50' : '#f44336' }]}>
+							<Text
+								style={[
+									styles.actionButtonText,
+									{ color: isPlaying ? '#4caf50' : '#f44336' },
+								]}
+							>
 								{isPlaying ? 'Mute' : 'Unmute'}
 							</Text>
 						</TouchableOpacity>

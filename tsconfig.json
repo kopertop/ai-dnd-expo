@@ -1,24 +1,19 @@
 {
-  "extends": "expo/tsconfig.base",
-  "compilerOptions": {
-    "strict": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./*"],
-      "@/assets/*": ["./assets/*"],
-      "@/components/*": ["./components/*"],
-      "@/constants/*": ["./constants/*"],
-      "@/contexts/*": ["./contexts/*"],
-      "@/hooks/*": ["./hooks/*"],
-      "@/styles/*": ["./styles/*"],
-      "@/types/*": ["./types/*"],
-      "@/utils/*": ["./utils/*"]
-    }
-  },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ]
+	"extends": "expo/tsconfig.base",
+	"compilerOptions": {
+		"strict": true,
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["./*"],
+			"@/assets/*": ["./assets/*"],
+			"@/components/*": ["./components/*"],
+			"@/constants/*": ["./constants/*"],
+			"@/contexts/*": ["./contexts/*"],
+			"@/hooks/*": ["./hooks/*"],
+			"@/styles/*": ["./styles/*"],
+			"@/types/*": ["./types/*"],
+			"@/utils/*": ["./utils/*"]
+		}
+	},
+	"include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
 }

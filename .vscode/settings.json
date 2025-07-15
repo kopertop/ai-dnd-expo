@@ -4,9 +4,43 @@
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
   },
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.insertSpaces": false,
+  "editor.tabSize": 4,
+  "editor.detectIndentation": false,
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "prettier.useTabs": true,
+  "prettier.tabWidth": 4,
+  "prettier.semi": true,
+  "prettier.singleQuote": true,
+  "prettier.trailingComma": "es5",
+  "prettier.bracketSpacing": true,
+  "prettier.arrowParens": "avoid",
+  "prettier.endOfLine": "lf",
+  "prettier.printWidth": 100,
   "kiroAgent.trustedCommands": [
     "npm run typecheck",
     "npm run lint *",
-    "npx tsc --noEmit *"
+    "npx tsc --noEmit *",
+    "npm run test",
+    "npm run test:*",
+    "npm run test *",
+    "npm run format",
+    "npm run format:check"
   ]
 }

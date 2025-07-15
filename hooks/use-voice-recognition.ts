@@ -33,7 +33,7 @@ export const useVoiceRecognition = (
 	const [error, setError] = useState<string | null>(null);
 	const [hasPermission, setHasPermission] = useState(false);
 	const [isSupported, setIsSupported] = useState(false);
-	
+
 	const recordingRef = useRef<any>(null);
 	const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -52,7 +52,7 @@ export const useVoiceRecognition = (
 			const { granted } = await Audio.requestRecordingPermissionsAsync();
 			setHasPermission(granted);
 			console.log('🔐 Audio permission:', granted);
-			
+
 			if (!granted) {
 				Alert.alert(
 					'Microphone Permission Required',
@@ -60,7 +60,7 @@ export const useVoiceRecognition = (
 					[{ text: 'OK' }],
 				);
 			}
-			
+
 			return granted;
 		} catch (err) {
 			console.error('❌ Permission request failed:', err);
@@ -91,7 +91,7 @@ export const useVoiceRecognition = (
 	 */
 	const startListening = useCallback(async () => {
 		if (isListening) return;
-		
+
 		console.log('🎤 startListening called');
 		setError(null);
 		setTranscript('');
@@ -121,7 +121,6 @@ export const useVoiceRecognition = (
 			timeoutRef.current = setTimeout(() => {
 				stopListening();
 			}, maxDuration);
-
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
 			setError(errorMessage);
@@ -159,14 +158,14 @@ export const useVoiceRecognition = (
 	 */
 	const startIOSSpeechRecognition = useCallback(async () => {
 		console.log('🎯 Starting iOS speech recognition...');
-		
+
 		try {
 			// Request speech recognition permissions
 			const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
 			if (!granted) {
 				throw new Error('Speech recognition permission not granted');
 			}
-			
+
 			// Start speech recognition with iOS optimized settings
 			ExpoSpeechRecognitionModule.start({
 				lang: options.language || 'en-US',
@@ -176,9 +175,8 @@ export const useVoiceRecognition = (
 				requiresOnDeviceRecognition: true, // Use on-device recognition for iOS
 				addsPunctuation: false, // Don't add punctuation to avoid delays
 			});
-			
+
 			console.log('🎤 Speech recognition start() called');
-			
 		} catch (err) {
 			console.error('❌ Failed to start speech recognition:', err);
 			setError('Failed to start speech recognition');
@@ -186,20 +184,20 @@ export const useVoiceRecognition = (
 	}, [options]);
 
 	// Set up speech recognition event listeners with comprehensive logging
-	useSpeechRecognitionEvent('start', (event) => {
+	useSpeechRecognitionEvent('start', event => {
 		console.log('🎤 SPEECH RECOGNITION STARTED EVENT:', event);
 		setIsListening(true);
 	});
 
-	useSpeechRecognitionEvent('audiostart', (event) => {
+	useSpeechRecognitionEvent('audiostart', event => {
 		console.log('🔊 AUDIO CAPTURE STARTED:', event);
 	});
 
-	useSpeechRecognitionEvent('speechstart', (event) => {
+	useSpeechRecognitionEvent('speechstart', event => {
 		console.log('🗣️ SPEECH INPUT DETECTED:', event);
 	});
 
-	useSpeechRecognitionEvent('result', (event) => {
+	useSpeechRecognitionEvent('result', event => {
 		console.log('🎤 SPEECH RECOGNITION RESULT:', JSON.stringify(event, null, 2));
 		if (event.results && event.results.length > 0) {
 			const transcript = event.results[0].transcript;
@@ -210,22 +208,22 @@ export const useVoiceRecognition = (
 		}
 	});
 
-	useSpeechRecognitionEvent('speechend', (event) => {
+	useSpeechRecognitionEvent('speechend', event => {
 		console.log('🤐 SPEECH INPUT ENDED:', event);
 	});
 
-	useSpeechRecognitionEvent('audioend', (event) => {
+	useSpeechRecognitionEvent('audioend', event => {
 		console.log('🔇 AUDIO CAPTURE ENDED:', event);
 	});
 
-	useSpeechRecognitionEvent('end', (event) => {
+	useSpeechRecognitionEvent('end', event => {
 		console.log('🛑 SPEECH RECOGNITION ENDED:', event);
 		setIsListening(false);
 	});
 
-	useSpeechRecognitionEvent('error', (event) => {
+	useSpeechRecognitionEvent('error', event => {
 		console.error('❌ SPEECH RECOGNITION ERROR:', JSON.stringify(event, null, 2));
-		
+
 		// Handle "no-speech" error more gracefully - it's often not a real error
 		if (event.error === 'no-speech') {
 			console.log('🔇 No speech detected - this is normal, continuing...');
@@ -233,7 +231,7 @@ export const useVoiceRecognition = (
 			// Don't stop listening, let it continue
 			return;
 		}
-		
+
 		setError(event.message);
 		setIsListening(false);
 		options.onError?.(event.message);
@@ -259,9 +257,9 @@ export const useVoiceRecognition = (
 			// For now, simulate recording with a timer
 			// In a real implementation, you'd use expo-audio recording
 			console.log('Starting audio recording simulation...');
-			
+
 			recordingRef.current = { isRecording: true };
-			
+
 			// For demo purposes, simulate a realistic D&D action
 			console.log('⏰ Setting 2-second timeout for fallback transcription');
 			setTimeout(() => {
@@ -275,9 +273,10 @@ export const useVoiceRecognition = (
 					console.log('❌ Fallback transcription skipped - not listening');
 				}
 			}, 2000);
-
 		} catch (err) {
-			throw new Error(`Failed to start recording: ${err instanceof Error ? err.message : 'Unknown error'}`);
+			throw new Error(
+				`Failed to start recording: ${err instanceof Error ? err.message : 'Unknown error'}`,
+			);
 		}
 	}, [isListening, options]);
 
@@ -333,12 +332,12 @@ export const convertSpeechToText = async (
 	// Placeholder implementation
 	// In a real app, this would use iOS Speech Recognition APIs
 	// or a cloud service like Google Speech-to-Text
-	
+
 	console.log(`Converting speech to text: ${audioUri}, language: ${language}`);
-	
+
 	// Simulate processing delay
 	await new Promise(resolve => setTimeout(resolve, 1000));
-	
+
 	// Return placeholder text
 	return 'I want to attack the goblin with my sword';
 };

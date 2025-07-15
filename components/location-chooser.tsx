@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { LOCATIONS } from '../constants/locations';
-import { CARD_GAP, cardGridStyles, getCardsPerRow, getContainerWidth, SCREEN_WIDTH } from '../styles/card-grid.styles';
+import {
+	CARD_GAP,
+	cardGridStyles,
+	getCardsPerRow,
+	getContainerWidth,
+	SCREEN_WIDTH,
+} from '../styles/card-grid.styles';
 import { newGameStyles } from '../styles/new-game.styles';
 import { LocationOption } from '../types/location-option';
 
@@ -43,7 +49,10 @@ export const LocationChooser: React.FC<LocationChooserProps> = ({ onSelect }) =>
 		}
 	};
 
-	const allLocations = [...LOCATIONS.filter(l => !l.isCustom), ...LOCATIONS.filter(l => l.isCustom)];
+	const allLocations = [
+		...LOCATIONS.filter(l => !l.isCustom),
+		...LOCATIONS.filter(l => l.isCustom),
+	];
 
 	return (
 		<ScrollView contentContainerStyle={newGameStyles.scrollViewContent}>
@@ -66,20 +75,27 @@ export const LocationChooser: React.FC<LocationChooserProps> = ({ onSelect }) =>
 						multiline
 						numberOfLines={3}
 					/>
-					<TouchableOpacity style={newGameStyles.submitButton} onPress={handleCustomSubmit}>
+					<TouchableOpacity
+						style={newGameStyles.submitButton}
+						onPress={handleCustomSubmit}
+					>
 						<Text style={newGameStyles.submitButtonText}>Create Location</Text>
 					</TouchableOpacity>
 				</View>
 			) : (
 				<View style={styles.cardContainer}>
-					{allLocations.map((location) => (
+					{allLocations.map(location => (
 						<TouchableOpacity
 							key={location.id}
 							style={[styles.card, { width: cardWidth, height: cardHeight }]}
 							onPress={() => handleSelect(location)}
 						>
 							<View style={styles.imageWrapper}>
-								<Image source={location.image} style={[styles.image, { width: '100%', height: '100%' }]} resizeMode="cover" />
+								<Image
+									source={location.image}
+									style={[styles.image, { width: '100%', height: '100%' }]}
+									resizeMode="cover"
+								/>
 								<View style={styles.overlay}>
 									<Text style={styles.cardTitle}>{location.name}</Text>
 									<Text style={styles.cardDesc}>{location.description}</Text>

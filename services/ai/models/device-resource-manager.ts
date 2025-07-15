@@ -153,9 +153,9 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Initialize resource monitoring
-	* Requirement 3.1: System resource monitoring
-	*/
+	 * Initialize resource monitoring
+	 * Requirement 3.1: System resource monitoring
+	 */
 	async initialize(): Promise<void> {
 		try {
 			console.log('🔋 Initializing Device Resource Manager...');
@@ -165,7 +165,6 @@ export class DeviceResourceManager {
 
 			console.log('✅ Device Resource Manager initialized');
 			console.log('📊 Initial resource usage:', this.currentUsage);
-
 		} catch (error) {
 			console.error('❌ Failed to initialize Device Resource Manager:', error);
 			throw error;
@@ -173,9 +172,9 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Start continuous resource monitoring
-	* Requirement 3.1: Continuous resource monitoring
-	*/
+	 * Start continuous resource monitoring
+	 * Requirement 3.1: Continuous resource monitoring
+	 */
 	startMonitoring(): void {
 		if (this.isMonitoring) {
 			console.log('⚠️ Resource monitoring already active');
@@ -198,8 +197,8 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Stop resource monitoring
-	*/
+	 * Stop resource monitoring
+	 */
 	stopMonitoring(): void {
 		if (!this.isMonitoring) {
 			return;
@@ -217,9 +216,9 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Get current resource usage
-	* Requirement 3.1: Real-time resource monitoring
-	*/
+	 * Get current resource usage
+	 * Requirement 3.1: Real-time resource monitoring
+	 */
 	async getCurrentResourceUsage(): Promise<ResourceUsage> {
 		const [memory, cpu, thermal, battery] = await Promise.all([
 			this.getMemoryStatus(),
@@ -238,16 +237,16 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Get cached resource usage (last reading)
-	*/
+	 * Get cached resource usage (last reading)
+	 */
 	getCachedResourceUsage(): ResourceUsage | null {
 		return this.currentUsage;
 	}
 
 	/**
-	* Check if device resources are healthy for AI inference
-	* Requirement 3.1: Resource health assessment
-	*/
+	 * Check if device resources are healthy for AI inference
+	 * Requirement 3.1: Resource health assessment
+	 */
 	isResourcesHealthy(): boolean {
 		if (!this.currentUsage) {
 			return false;
@@ -256,7 +255,10 @@ export class DeviceResourceManager {
 		const { memory, cpu, thermal, battery } = this.currentUsage;
 
 		// Check memory pressure
-		if (memory.pressure === 'critical' || memory.percentage > this.config.thresholds.memory.critical) {
+		if (
+			memory.pressure === 'critical' ||
+			memory.percentage > this.config.thresholds.memory.critical
+		) {
 			return false;
 		}
 
@@ -279,8 +281,8 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Get resource health score (0-100)
-	*/
+	 * Get resource health score (0-100)
+	 */
 	getResourceHealthScore(): number {
 		if (!this.currentUsage) {
 			return 0;
@@ -298,9 +300,14 @@ export class DeviceResourceManager {
 		score -= (100 - cpuScore) * 0.25;
 
 		// Thermal score (25% weight)
-		const thermalScore = thermal.state === 'nominal' ? 100 :
-			thermal.state === 'fair' ? 75 :
-				thermal.state === 'serious' ? 50 : 25;
+		const thermalScore =
+			thermal.state === 'nominal'
+				? 100
+				: thermal.state === 'fair'
+					? 75
+					: thermal.state === 'serious'
+						? 50
+						: 25;
 		score -= (100 - thermalScore) * 0.25;
 
 		// Battery score (20% weight)
@@ -311,15 +318,15 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Add event callback for resource events
-	*/
+	 * Add event callback for resource events
+	 */
 	addEventListener(callback: ResourceEventCallback): void {
 		this.eventCallbacks.push(callback);
 	}
 
 	/**
-	* Remove event callback
-	*/
+	 * Remove event callback
+	 */
 	removeEventListener(callback: ResourceEventCallback): void {
 		const index = this.eventCallbacks.indexOf(callback);
 		if (index > -1) {
@@ -328,8 +335,8 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Update monitoring configuration
-	*/
+	 * Update monitoring configuration
+	 */
 	updateConfig(newConfig: Partial<ResourceMonitoringConfig>): void {
 		this.config = {
 			...this.config,
@@ -344,16 +351,16 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Get monitoring configuration
-	*/
+	 * Get monitoring configuration
+	 */
 	getConfig(): ResourceMonitoringConfig {
 		return { ...this.config };
 	}
 
 	/**
-	* Force resource cleanup and optimization
-	* Requirement 3.1: Resource optimization
-	*/
+	 * Force resource cleanup and optimization
+	 * Requirement 3.1: Resource optimization
+	 */
 	async optimizeResources(): Promise<void> {
 		console.log('🧹 Optimizing device resources...');
 
@@ -370,7 +377,6 @@ export class DeviceResourceManager {
 			await this.updateResourceUsage();
 
 			console.log('✅ Resource optimization completed');
-
 		} catch (error) {
 			console.error('❌ Failed to optimize resources:', error);
 		}
@@ -379,8 +385,8 @@ export class DeviceResourceManager {
 	// Private methods
 
 	/**
-	* Update current resource usage and check thresholds
-	*/
+	 * Update current resource usage and check thresholds
+	 */
 	private async updateResourceUsage(): Promise<void> {
 		// Skip monitoring in background if disabled
 		if (this.isInBackground && !this.config.enableBackgroundMonitoring) {
@@ -402,9 +408,9 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Get memory status using iOS-specific APIs
-	* Requirement 3.1: Memory usage monitoring with iOS-specific APIs
-	*/
+	 * Get memory status using iOS-specific APIs
+	 * Requirement 3.1: Memory usage monitoring with iOS-specific APIs
+	 */
 	private async getMemoryStatus(): Promise<MemoryStatus> {
 		try {
 			// In a real implementation, this would use native modules
@@ -433,7 +439,6 @@ export class DeviceResourceManager {
 				percentage,
 				pressure,
 			};
-
 		} catch (error) {
 			console.error('❌ Failed to get memory status:', error);
 
@@ -449,9 +454,9 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Get CPU status with usage tracking and thermal monitoring
-	* Requirement 3.1: CPU usage tracking and thermal state monitoring
-	*/
+	 * Get CPU status with usage tracking and thermal monitoring
+	 * Requirement 3.1: CPU usage tracking and thermal state monitoring
+	 */
 	private async getCPUStatus(): Promise<CPUStatus> {
 		try {
 			// In a real implementation, this would use native CPU monitoring APIs
@@ -470,7 +475,6 @@ export class DeviceResourceManager {
 				frequency,
 				throttled,
 			};
-
 		} catch (error) {
 			console.error('❌ Failed to get CPU status:', error);
 
@@ -486,9 +490,9 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Get thermal status
-	* Requirement 3.1: Thermal state monitoring
-	*/
+	 * Get thermal status
+	 * Requirement 3.1: Thermal state monitoring
+	 */
 	private async getThermalStatus(): Promise<ThermalStatus> {
 		try {
 			// In a real implementation, this would use iOS ProcessInfo.thermalState
@@ -497,7 +501,11 @@ export class DeviceResourceManager {
 			const temperature = 35 + Math.random() * 20; // 35-55°C
 
 			let state: 'nominal' | 'fair' | 'serious' | 'critical';
-			let recommendedAction: 'none' | 'reduce_performance' | 'pause_inference' | 'emergency_stop';
+			let recommendedAction:
+				| 'none'
+				| 'reduce_performance'
+				| 'pause_inference'
+				| 'emergency_stop';
 
 			if (temperature < this.config.thresholds.thermal.warningTemp) {
 				state = 'nominal';
@@ -521,7 +529,6 @@ export class DeviceResourceManager {
 				throttlingActive,
 				recommendedAction,
 			};
-
 		} catch (error) {
 			console.error('❌ Failed to get thermal status:', error);
 
@@ -536,9 +543,9 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Get battery status with power state detection
-	* Requirement 3.1: Battery level monitoring and power state detection
-	*/
+	 * Get battery status with power state detection
+	 * Requirement 3.1: Battery level monitoring and power state detection
+	 */
 	private async getBatteryStatus(): Promise<BatteryStatus> {
 		try {
 			// In a real implementation, this would use react-native-battery
@@ -559,7 +566,6 @@ export class DeviceResourceManager {
 				powerSavingMode,
 				lowPowerModeActive,
 			};
-
 		} catch (error) {
 			console.error('❌ Failed to get battery status:', error);
 
@@ -576,8 +582,8 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Check resource thresholds and emit events
-	*/
+	 * Check resource thresholds and emit events
+	 */
 	private checkThresholds(previous: ResourceUsage | null, current: ResourceUsage): void {
 		// Memory threshold checks
 		if (current.memory.percentage > this.config.thresholds.memory.critical) {
@@ -643,7 +649,10 @@ export class DeviceResourceManager {
 		}
 
 		// Battery threshold checks
-		if (current.battery.level < this.config.thresholds.battery.criticalLevel && !current.battery.isCharging) {
+		if (
+			current.battery.level < this.config.thresholds.battery.criticalLevel &&
+			!current.battery.isCharging
+		) {
 			this.emitEvent({
 				type: 'battery_critical',
 				severity: 'critical',
@@ -652,7 +661,10 @@ export class DeviceResourceManager {
 				timestamp: Date.now(),
 				actionRequired: true,
 			});
-		} else if (current.battery.level < this.config.thresholds.battery.lowLevel && !current.battery.isCharging) {
+		} else if (
+			current.battery.level < this.config.thresholds.battery.lowLevel &&
+			!current.battery.isCharging
+		) {
 			this.emitEvent({
 				type: 'battery_low',
 				severity: 'warning',
@@ -677,8 +689,8 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Emit resource event to all listeners
-	*/
+	 * Emit resource event to all listeners
+	 */
 	private emitEvent(event: ResourceEvent): void {
 		console.log(`📊 Resource Event [${event.severity.toUpperCase()}]: ${event.message}`);
 
@@ -692,8 +704,8 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Auto-optimization based on current resource state
-	*/
+	 * Auto-optimization based on current resource state
+	 */
 	private async autoOptimize(): Promise<void> {
 		if (!this.currentUsage) {
 			return;
@@ -702,18 +714,21 @@ export class DeviceResourceManager {
 		const { memory, cpu, thermal, battery } = this.currentUsage;
 
 		// Auto-optimize if resources are under pressure
-		if (memory.pressure === 'high' || memory.pressure === 'critical' ||
+		if (
+			memory.pressure === 'high' ||
+			memory.pressure === 'critical' ||
 			cpu.usage > this.config.thresholds.cpu.warning ||
-			thermal.state === 'serious' || thermal.state === 'critical' ||
-			(battery.level < this.config.thresholds.battery.lowLevel && !battery.isCharging)) {
-
+			thermal.state === 'serious' ||
+			thermal.state === 'critical' ||
+			(battery.level < this.config.thresholds.battery.lowLevel && !battery.isCharging)
+		) {
 			await this.optimizeResources();
 		}
 	}
 
 	/**
-	* Clear non-essential caches to free memory
-	*/
+	 * Clear non-essential caches to free memory
+	 */
 	private async clearNonEssentialCaches(): Promise<void> {
 		// This would clear various caches in a real implementation
 		// For now, we'll just log the action
@@ -721,29 +736,32 @@ export class DeviceResourceManager {
 	}
 
 	/**
-	* Setup app state listener for background/foreground detection
-	*/
+	 * Setup app state listener for background/foreground detection
+	 */
 	private setupAppStateListener(): void {
-		this.appStateSubscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-			const wasInBackground = this.isInBackground;
-			this.isInBackground = nextAppState === 'background' || nextAppState === 'inactive';
+		this.appStateSubscription = AppState.addEventListener(
+			'change',
+			(nextAppState: AppStateStatus) => {
+				const wasInBackground = this.isInBackground;
+				this.isInBackground = nextAppState === 'background' || nextAppState === 'inactive';
 
-			if (wasInBackground !== this.isInBackground) {
-				this.emitEvent({
-					type: this.isInBackground ? 'background_mode' : 'foreground_mode',
-					severity: 'info',
-					message: `App entered ${this.isInBackground ? 'background' : 'foreground'} mode`,
-					data: { appState: nextAppState },
-					timestamp: Date.now(),
-					actionRequired: false,
-				});
-			}
-		});
+				if (wasInBackground !== this.isInBackground) {
+					this.emitEvent({
+						type: this.isInBackground ? 'background_mode' : 'foreground_mode',
+						severity: 'info',
+						message: `App entered ${this.isInBackground ? 'background' : 'foreground'} mode`,
+						data: { appState: nextAppState },
+						timestamp: Date.now(),
+						actionRequired: false,
+					});
+				}
+			},
+		);
 	}
 
 	/**
-	* Cleanup resources and stop monitoring
-	*/
+	 * Cleanup resources and stop monitoring
+	 */
 	dispose(): void {
 		this.stopMonitoring();
 
@@ -762,8 +780,8 @@ export class DeviceResourceManager {
  */
 export const ResourceUtils = {
 	/**
-	* Format memory size in human-readable format
-	*/
+	 * Format memory size in human-readable format
+	 */
 	formatMemorySize(sizeInMB: number): string {
 		if (sizeInMB < 1024) {
 			return `${sizeInMB.toFixed(0)} MB`;
@@ -773,15 +791,15 @@ export const ResourceUtils = {
 	},
 
 	/**
-	* Format temperature in human-readable format
-	*/
+	 * Format temperature in human-readable format
+	 */
 	formatTemperature(celsius: number): string {
 		return `${celsius.toFixed(1)}°C`;
 	},
 
 	/**
-	* Format battery time remaining
-	*/
+	 * Format battery time remaining
+	 */
 	formatTimeRemaining(minutes: number): string {
 		if (minutes < 0) {
 			return 'Unknown';
@@ -795,9 +813,12 @@ export const ResourceUtils = {
 	},
 
 	/**
-	* Get resource status color for UI
-	*/
-	getResourceStatusColor(percentage: number, thresholds: { warning: number; critical: number }): string {
+	 * Get resource status color for UI
+	 */
+	getResourceStatusColor(
+		percentage: number,
+		thresholds: { warning: number; critical: number },
+	): string {
 		if (percentage >= thresholds.critical) {
 			return '#FF4444'; // Red
 		} else if (percentage >= thresholds.warning) {
@@ -808,20 +829,24 @@ export const ResourceUtils = {
 	},
 
 	/**
-	* Get thermal state color for UI
-	*/
+	 * Get thermal state color for UI
+	 */
 	getThermalStateColor(state: 'nominal' | 'fair' | 'serious' | 'critical'): string {
 		switch (state) {
-		case 'nominal': return '#44AA44'; // Green
-		case 'fair': return '#AAAA44'; // Yellow
-		case 'serious': return '#FF8800'; // Orange
-		case 'critical': return '#FF4444'; // Red
+		case 'nominal':
+			return '#44AA44'; // Green
+		case 'fair':
+			return '#AAAA44'; // Yellow
+		case 'serious':
+			return '#FF8800'; // Orange
+		case 'critical':
+			return '#FF4444'; // Red
 		}
 	},
 
 	/**
-	* Calculate estimated inference time based on resource state
-	*/
+	 * Calculate estimated inference time based on resource state
+	 */
 	estimateInferenceTime(baseTimeMs: number, resourceUsage: ResourceUsage): number {
 		let multiplier = 1.0;
 

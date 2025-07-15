@@ -5,7 +5,6 @@ import { StyleSheet, Text } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
-
 const NotFoundScreen: React.FC = () => {
 	return (
 		<>

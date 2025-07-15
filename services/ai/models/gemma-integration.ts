@@ -144,7 +144,9 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 	 * Parse and execute tool commands from model output
 	 * Handles [ROLL:1d20], [UPDATE:HP-5], etc.
 	 */
-	const parseToolCommands = (text: string): {
+	const parseToolCommands = (
+		text: string,
+	): {
 		cleanText: string;
 		tools: Array<{ type: string; params: string }>;
 	} => {
@@ -176,7 +178,9 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 
 		// Check retry limit
 		if (retryCountRef.current >= maxRetries) {
-			console.warn(`⚠️ Max retries (${maxRetries}) reached for AI model. Using fallback mode.`);
+			console.warn(
+				`⚠️ Max retries (${maxRetries}) reached for AI model. Using fallback mode.`,
+			);
 			setHasError(true);
 			return;
 		}
@@ -217,7 +221,10 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 				modelConfig.progressCallback({ status: 'ready' });
 			}
 		} catch (error) {
-			console.error(`❌ Failed to load AI model (attempt ${retryCountRef.current}/${maxRetries}):`, error);
+			console.error(
+				`❌ Failed to load AI model (attempt ${retryCountRef.current}/${maxRetries}):`,
+				error,
+			);
 			console.error('Error details:', {
 				message: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
@@ -325,7 +332,9 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 	/**
 	 * Parse D&D-specific elements from response
 	 */
-	const parseDnDResponse = (text: string): {
+	const parseDnDResponse = (
+		text: string,
+	): {
 		text: string;
 		actionType?: string;
 		requiresDiceRoll?: boolean;
@@ -494,7 +503,9 @@ export const GemmaModelUtils = {
 	/**
 	 * Extract character updates from model output
 	 */
-	parseCharacterUpdates: (text: string): Array<{ stat: string; operation: string; value: number }> => {
+	parseCharacterUpdates: (
+		text: string,
+	): Array<{ stat: string; operation: string; value: number }> => {
 		const updateRegex = /\[UPDATE:(\w+)([+-=])(\d+)\]/g;
 		const updates = [];
 		let match;

@@ -146,10 +146,10 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Process player action with context awareness and tool command execution
-	* Requirement 2.1: Generate contextually appropriate responses
-	* Requirement 4.2: Tool command parsing and execution
-	*/
+	 * Process player action with context awareness and tool command execution
+	 * Requirement 2.1: Generate contextually appropriate responses
+	 * Requirement 4.2: Tool command parsing and execution
+	 */
 	async processPlayerAction(action: string, context: GameContext): Promise<DMResponse> {
 		const startTime = Date.now();
 
@@ -198,10 +198,15 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 			let finalText = cleanText;
 			let finalConfidence = narrativeResponse.confidence;
 
-			if (qualityResult.shouldRegenerate && this.regenerationAttempts < this.qualityConfig.maxRegenerationAttempts) {
+			if (
+				qualityResult.shouldRegenerate &&
+				this.regenerationAttempts < this.qualityConfig.maxRegenerationAttempts
+			) {
 				// Attempt to regenerate response if quality is insufficient
 				this.regenerationAttempts++;
-				console.warn(`🔄 LocalDMAgent: Regenerating response (attempt ${this.regenerationAttempts})`);
+				console.warn(
+					`🔄 LocalDMAgent: Regenerating response (attempt ${this.regenerationAttempts})`,
+				);
 
 				// Recursive call with regeneration
 				return await this.processPlayerAction(action, context);
@@ -232,7 +237,6 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 			this.cacheResponse(action, context, dmResponse);
 
 			return dmResponse;
-
 		} catch (error) {
 			const processingTime = Date.now() - startTime;
 			this.updatePerformanceMetrics(processingTime, false);
@@ -245,9 +249,9 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Generate narrative content for scenes
-	* Requirement 2.2: Maintain story consistency
-	*/
+	 * Generate narrative content for scenes
+	 * Requirement 2.2: Maintain story consistency
+	 */
 	async generateNarration(scene: string, context: GameContext): Promise<string> {
 		try {
 			const narrativeContext = {
@@ -261,7 +265,6 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 			};
 
 			return await this.narrativeGenerator.generateSceneNarration(narrativeContext);
-
 		} catch (error) {
 			console.error('❌ LocalDMAgent: Failed to generate narration:', error);
 
@@ -271,9 +274,9 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Load and initialize local model
-	* Requirement 1.1: Model initialization
-	*/
+	 * Load and initialize local model
+	 * Requirement 1.1: Model initialization
+	 */
 	async loadModel(config: LocalModelConfig): Promise<boolean> {
 		try {
 			this.modelConfig = config;
@@ -291,7 +294,6 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 			console.log('✅ LocalDMAgent: Model loaded successfully');
 
 			return true;
-
 		} catch (error) {
 			console.error('❌ LocalDMAgent: Failed to load model:', error);
 			this.isModelLoaded = false;
@@ -300,8 +302,8 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Unload model and free resources
-	*/
+	 * Unload model and free resources
+	 */
 	async unloadModel(): Promise<void> {
 		try {
 			await this.narrativeGenerator.cleanup();
@@ -313,7 +315,6 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 			this.responseCache.clear();
 
 			console.log('✅ LocalDMAgent: Model unloaded successfully');
-
 		} catch (error) {
 			console.error('❌ LocalDMAgent: Failed to unload model:', error);
 			throw error;
@@ -321,9 +322,9 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Set performance mode for optimization
-	* Requirement 3.1: Performance optimization
-	*/
+	 * Set performance mode for optimization
+	 * Requirement 3.1: Performance optimization
+	 */
 	setPerformanceMode(mode: 'performance' | 'balanced' | 'quality'): void {
 		this.performanceMode = mode;
 
@@ -335,9 +336,9 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Enable or disable battery optimization
-	* Requirement 3.2: Battery optimization
-	*/
+	 * Enable or disable battery optimization
+	 * Requirement 3.2: Battery optimization
+	 */
 	enableBatteryOptimization(enabled: boolean): void {
 		this.batteryOptimizationEnabled = enabled;
 
@@ -355,9 +356,9 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Clear model cache for privacy
-	* Requirement 5.4: Privacy and data management
-	*/
+	 * Clear model cache for privacy
+	 * Requirement 5.4: Privacy and data management
+	 */
 	async clearModelCache(): Promise<void> {
 		try {
 			this.responseCache.clear();
@@ -365,7 +366,6 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 			await this.contextAnalyzer.clearCache();
 
 			console.log('🗑️ LocalDMAgent: Model cache cleared');
-
 		} catch (error) {
 			console.error('❌ LocalDMAgent: Failed to clear cache:', error);
 			throw error;
@@ -373,8 +373,8 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Export model data for backup or analysis
-	*/
+	 * Export model data for backup or analysis
+	 */
 	async exportModelData(): Promise<ModelData> {
 		if (!this.modelConfig) {
 			throw new Error('No model loaded');
@@ -389,8 +389,12 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 			cacheData: Array.from(this.responseCache.values()),
 			performanceMetrics: {
 				totalInferences: this.performanceMetrics.totalInferences,
-				averageTime: this.performanceMetrics.totalTime / Math.max(this.performanceMetrics.totalInferences, 1),
-				successRate: this.performanceMetrics.successfulInferences / Math.max(this.performanceMetrics.totalInferences, 1),
+				averageTime:
+					this.performanceMetrics.totalTime /
+					Math.max(this.performanceMetrics.totalInferences, 1),
+				successRate:
+					this.performanceMetrics.successfulInferences /
+					Math.max(this.performanceMetrics.totalInferences, 1),
 			},
 		};
 	}
@@ -398,9 +402,9 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	// Private helper methods
 
 	/**
-	* Validate and process tool commands before execution
-	* Requirement 4.2: Tool command parsing and validation
-	*/
+	 * Validate and process tool commands before execution
+	 * Requirement 4.2: Tool command parsing and validation
+	 */
 	private async validateAndProcessToolCommands(
 		responseText: string,
 		context: GameContext,
@@ -437,9 +441,9 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Generate context-aware tool commands based on action analysis
-	* Requirement 4.2: Intelligent tool command generation
-	*/
+	 * Generate context-aware tool commands based on action analysis
+	 * Requirement 4.2: Intelligent tool command generation
+	 */
 	private generateContextualToolCommands(
 		actionAnalysis: any,
 		context: GameContext,
@@ -457,7 +461,10 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 
 				// Add damage roll if weapon is specified
 				if (actionAnalysis.weaponType) {
-					const damageRoll = this.getWeaponDamageRoll(actionAnalysis.weaponType, context.playerCharacter);
+					const damageRoll = this.getWeaponDamageRoll(
+						actionAnalysis.weaponType,
+						context.playerCharacter,
+					);
 					commands.push({ type: 'damage', params: damageRoll });
 				}
 			}
@@ -465,7 +472,10 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 
 		case 'skill_check':
 			if (actionAnalysis.skill) {
-				const skillModifier = this.calculateSkillModifier(actionAnalysis.skill, context.playerCharacter);
+				const skillModifier = this.calculateSkillModifier(
+					actionAnalysis.skill,
+					context.playerCharacter,
+				);
 				commands.push({
 					type: 'roll',
 					params: `1d20+${skillModifier} ${actionAnalysis.skill}`,
@@ -475,7 +485,10 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 
 		case 'exploration': {
 			// Add perception check for exploration
-			const perceptionModifier = this.calculateSkillModifier('perception', context.playerCharacter);
+			const perceptionModifier = this.calculateSkillModifier(
+				'perception',
+				context.playerCharacter,
+			);
 			commands.push({
 				type: 'roll',
 				params: `1d20+${perceptionModifier} perception`,
@@ -495,8 +508,8 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Calculate attack bonus for character
-	*/
+	 * Calculate attack bonus for character
+	 */
 	private calculateAttackBonus(character: Character): number {
 		// Simple calculation - would be more complex in full implementation
 		const strModifier = Math.floor((character.stats.STR - 10) / 2);
@@ -505,39 +518,39 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Get weapon damage roll for character
-	*/
+	 * Get weapon damage roll for character
+	 */
 	private getWeaponDamageRoll(weaponType: string, character: Character): string {
 		const strModifier = Math.floor((character.stats.STR - 10) / 2);
 		const weaponDamage: Record<string, string> = {
-			'sword': `1d8+${strModifier}`,
-			'dagger': `1d4+${strModifier}`,
-			'bow': `1d6+${Math.floor((character.stats.DEX - 10) / 2)}`,
-			'staff': `1d6+${strModifier}`,
-			'mace': `1d6+${strModifier}`,
+			sword: `1d8+${strModifier}`,
+			dagger: `1d4+${strModifier}`,
+			bow: `1d6+${Math.floor((character.stats.DEX - 10) / 2)}`,
+			staff: `1d6+${strModifier}`,
+			mace: `1d6+${strModifier}`,
 		};
 
 		return weaponDamage[weaponType.toLowerCase()] || `1d6+${strModifier}`;
 	}
 
 	/**
-	* Calculate skill modifier for character
-	*/
+	 * Calculate skill modifier for character
+	 */
 	private calculateSkillModifier(skill: string, character: Character): number {
 		// Map skills to ability scores
 		const skillAbilityMap: Record<string, keyof typeof character.stats> = {
-			'athletics': 'STR',
-			'acrobatics': 'DEX',
-			'stealth': 'DEX',
-			'investigation': 'INT',
-			'arcana': 'INT',
-			'history': 'INT',
-			'perception': 'WIS',
-			'insight': 'WIS',
-			'survival': 'WIS',
-			'persuasion': 'CHA',
-			'deception': 'CHA',
-			'intimidation': 'CHA',
+			athletics: 'STR',
+			acrobatics: 'DEX',
+			stealth: 'DEX',
+			investigation: 'INT',
+			arcana: 'INT',
+			history: 'INT',
+			perception: 'WIS',
+			insight: 'WIS',
+			survival: 'WIS',
+			persuasion: 'CHA',
+			deception: 'CHA',
+			intimidation: 'CHA',
 		};
 
 		const ability = skillAbilityMap[skill.toLowerCase()] || 'WIS';
@@ -549,8 +562,8 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Extract tool commands from response text (legacy method for compatibility)
-	*/
+	 * Extract tool commands from response text (legacy method for compatibility)
+	 */
 	private extractToolCommands(text: string): Array<{ type: string; params: string }> {
 		const commands: Array<{ type: string; params: string }> = [];
 		const regex = /\[(\w+):([^\]]+)\]/g;
@@ -561,7 +574,11 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 			const params = match[2].trim();
 
 			// Validate command types
-			if (['roll', 'update', 'damage', 'heal', 'status', 'inventory', 'skill_check'].includes(type)) {
+			if (
+				['roll', 'update', 'damage', 'heal', 'status', 'inventory', 'skill_check'].includes(
+					type,
+				)
+			) {
 				commands.push({ type, params });
 			}
 		}
@@ -570,16 +587,20 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Remove tool commands from display text (legacy method for compatibility)
-	*/
+	 * Remove tool commands from display text (legacy method for compatibility)
+	 */
 	private removeToolCommands(text: string): string {
 		return text.replace(/\[(\w+):([^\]]+)\]/g, '').trim();
 	}
 
 	/**
-	* Generate fallback response when main processing fails
-	*/
-	private generateFallbackResponse(action: string, context: GameContext, processingTime: number): DMResponse {
+	 * Generate fallback response when main processing fails
+	 */
+	private generateFallbackResponse(
+		action: string,
+		context: GameContext,
+		processingTime: number,
+	): DMResponse {
 		const lowercaseAction = action.toLowerCase();
 		let responseText = '';
 		const toolCommands: Array<{ type: string; params: string }> = [];
@@ -623,8 +644,8 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Generate fallback narration when main generation fails
-	*/
+	 * Generate fallback narration when main generation fails
+	 */
 	private generateFallbackNarration(scene: string, context: GameContext): string {
 		const fallbackNarrations = [
 			`The ${scene} stretches before you, filled with mystery and adventure.`,
@@ -637,8 +658,8 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Cache response for potential reuse
-	*/
+	 * Cache response for potential reuse
+	 */
 	private cacheResponse(action: string, context: GameContext, response: DMResponse): void {
 		if (this.batteryOptimizationEnabled) {
 			return; // Skip caching in battery optimization mode
@@ -657,15 +678,15 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Generate cache key for response caching
-	*/
+	 * Generate cache key for response caching
+	 */
 	private generateCacheKey(action: string, context: GameContext): string {
 		return `${action.substring(0, 30)}_${context.currentScene}_${context.playerCharacter.class}`;
 	}
 
 	/**
-	* Update performance metrics
-	*/
+	 * Update performance metrics
+	 */
 	private updatePerformanceMetrics(processingTime: number, success: boolean): void {
 		this.performanceMetrics.totalInferences++;
 		this.performanceMetrics.totalTime += processingTime;
@@ -676,9 +697,9 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Validate response quality and filter content
-	* Requirement 6.3: Content filtering and validation
-	*/
+	 * Validate response quality and filter content
+	 * Requirement 6.3: Content filtering and validation
+	 */
 	private async validateResponseQuality(
 		responseText: string,
 		context: GameContext,
@@ -699,8 +720,11 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 				activeQuests: context.activeQuests,
 			};
 
-			return await this.qualityFilter.validateResponse(responseText, filterContext, confidence);
-
+			return await this.qualityFilter.validateResponse(
+				responseText,
+				filterContext,
+				confidence,
+			);
 		} catch (error) {
 			console.error('❌ LocalDMAgent: Response quality validation failed:', error);
 
@@ -708,11 +732,13 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 			return {
 				isValid: true, // Allow response to proceed
 				confidence: Math.max(confidence * 0.8, 0.5), // Reduce confidence
-				issues: [{
-					type: 'quality',
-					severity: 'low',
-					description: 'Quality validation system unavailable',
-				}],
+				issues: [
+					{
+						type: 'quality',
+						severity: 'low',
+						description: 'Quality validation system unavailable',
+					},
+				],
 				suggestions: ['Quality validation temporarily unavailable'],
 				shouldRegenerate: false,
 				filteredText: responseText,
@@ -721,8 +747,8 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 	}
 
 	/**
-	* Extract model name from file path
-	*/
+	 * Extract model name from file path
+	 */
 	private extractModelName(modelPath: string): string {
 		const fileName = modelPath.split('/').pop() || 'unknown';
 		return fileName.replace(/\.(gguf|onnx)$/, '');
@@ -829,13 +855,15 @@ class DnDRuleEngine {
 		const skill = actionAnalysis.skill || 'perception';
 		const modifier = this.getSkillModifier(skill, context.playerCharacter);
 
-		return [{
-			rule: 'Skill Check',
-			description: `${skill.charAt(0).toUpperCase() + skill.slice(1)} check`,
-			effect: 'Determines success or failure of the action',
-			diceRoll: `1d20+${modifier}`,
-			modifier,
-		}];
+		return [
+			{
+				rule: 'Skill Check',
+				description: `${skill.charAt(0).toUpperCase() + skill.slice(1)} check`,
+				effect: 'Determines success or failure of the action',
+				diceRoll: `1d20+${modifier}`,
+				modifier,
+			},
+		];
 	}
 
 	private processExploration(actionAnalysis: any, context: GameContext): RuleApplication[] {
@@ -845,11 +873,11 @@ class DnDRuleEngine {
 
 	private getWeaponDamage(weaponType: string): string {
 		const weaponDamage: Record<string, string> = {
-			'sword': '1d8+3',
-			'dagger': '1d4+2',
-			'bow': '1d6+2',
-			'staff': '1d6+1',
-			'mace': '1d6+3',
+			sword: '1d8+3',
+			dagger: '1d4+2',
+			bow: '1d6+2',
+			staff: '1d6+1',
+			mace: '1d6+3',
 		};
 
 		return weaponDamage[weaponType.toLowerCase()] || '1d6+2';
@@ -1052,7 +1080,10 @@ class ContextAnalyzer {
 		console.log('✅ ContextAnalyzer: Initialized successfully');
 	}
 
-	analyzePlayerAction(action: string, context: GameContext): {
+	analyzePlayerAction(
+		action: string,
+		context: GameContext,
+	): {
 		action: string;
 		type: 'combat' | 'skill_check' | 'dialogue' | 'exploration' | 'narrative';
 		intent: string;
@@ -1128,22 +1159,58 @@ class ContextAnalyzer {
 	}
 
 	private isCombatAction(action: string): boolean {
-		const combatKeywords = ['attack', 'hit', 'strike', 'fight', 'battle', 'swing', 'shoot', 'cast spell'];
+		const combatKeywords = [
+			'attack',
+			'hit',
+			'strike',
+			'fight',
+			'battle',
+			'swing',
+			'shoot',
+			'cast spell',
+		];
 		return combatKeywords.some(keyword => action.includes(keyword));
 	}
 
 	private isSkillCheck(action: string): boolean {
-		const skillKeywords = ['check', 'search', 'look', 'listen', 'investigate', 'perceive', 'climb', 'jump'];
+		const skillKeywords = [
+			'check',
+			'search',
+			'look',
+			'listen',
+			'investigate',
+			'perceive',
+			'climb',
+			'jump',
+		];
 		return skillKeywords.some(keyword => action.includes(keyword));
 	}
 
 	private isDialogue(action: string): boolean {
-		const dialogueKeywords = ['talk', 'speak', 'say', 'ask', 'tell', 'convince', 'persuade', 'intimidate'];
+		const dialogueKeywords = [
+			'talk',
+			'speak',
+			'say',
+			'ask',
+			'tell',
+			'convince',
+			'persuade',
+			'intimidate',
+		];
 		return dialogueKeywords.some(keyword => action.includes(keyword));
 	}
 
 	private isExploration(action: string): boolean {
-		const explorationKeywords = ['explore', 'move', 'go', 'walk', 'run', 'enter', 'exit', 'travel'];
+		const explorationKeywords = [
+			'explore',
+			'move',
+			'go',
+			'walk',
+			'run',
+			'enter',
+			'exit',
+			'travel',
+		];
 		return explorationKeywords.some(keyword => action.includes(keyword));
 	}
 
@@ -1159,13 +1226,13 @@ class ContextAnalyzer {
 
 	private extractSkill(action: string): string {
 		const skillMap: Record<string, string> = {
-			'search': 'investigation',
-			'look': 'perception',
-			'listen': 'perception',
-			'climb': 'athletics',
-			'jump': 'athletics',
-			'sneak': 'stealth',
-			'hide': 'stealth',
+			search: 'investigation',
+			look: 'perception',
+			listen: 'perception',
+			climb: 'athletics',
+			jump: 'athletics',
+			sneak: 'stealth',
+			hide: 'stealth',
 		};
 
 		for (const [keyword, skill] of Object.entries(skillMap)) {

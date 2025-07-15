@@ -4,19 +4,22 @@ export const WORLDS: WorldOption[] = [
 	{
 		id: 'faerun',
 		name: 'Faerûn',
-		description: 'The classic Forgotten Realms setting, a land of magic, monsters, and adventure.',
+		description:
+			'The classic Forgotten Realms setting, a land of magic, monsters, and adventure.',
 		image: require('../assets/images/worlds/faerun.png'),
 	},
 	{
 		id: 'eberron',
 		name: 'Eberron',
-		description: 'A world of magic-fueled technology, airships, and intrigue, where anything is possible.',
+		description:
+			'A world of magic-fueled technology, airships, and intrigue, where anything is possible.',
 		image: require('../assets/images/worlds/eberron.png'),
 	},
 	{
 		id: 'underdark',
 		name: 'Underdark',
-		description: 'A vast, dark, and dangerous subterranean realm filled with drow, mind flayers, and ancient secrets.',
+		description:
+			'A vast, dark, and dangerous subterranean realm filled with drow, mind flayers, and ancient secrets.',
 		image: require('../assets/images/worlds/underdark.png'),
 	},
 	{

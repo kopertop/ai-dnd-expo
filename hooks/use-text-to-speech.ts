@@ -55,7 +55,7 @@ export const useTextToSpeech = (): TextToSpeechResult => {
 					language: voice.language,
 					quality: voice.quality,
 				}));
-				
+
 				setAvailableVoices(formattedVoices);
 			} catch (error) {
 				console.error('TTS not available:', error);
@@ -69,53 +69,57 @@ export const useTextToSpeech = (): TextToSpeechResult => {
 	/**
 	 * Speak text with optional configuration
 	 */
-	const speak = useCallback(async (text: string, options: TTSOptions = {}) => {
-		if (!isAvailable || !text.trim()) {
-			return;
-		}
-
-		try {
-			// Stop any current speech
-			if (isSpeaking) {
-				Speech.stop();
+	const speak = useCallback(
+		async (text: string, options: TTSOptions = {}) => {
+			if (!isAvailable || !text.trim()) {
+				return;
 			}
 
-			setIsSpeaking(true);
+			try {
+				// Stop any current speech
+				if (isSpeaking) {
+					Speech.stop();
+				}
 
-			// Configure speech options
-			const speechOptions: Speech.SpeechOptions = {
-				language: options.language || getDMVoiceLanguage(),
-				pitch: options.pitch || getDMVoicePitch(),
-				rate: options.rate || getDMVoiceRate(),
-				voice: options.voice || getDMVoiceIdentifier(),
-				onStart: () => {
-					setIsSpeaking(true);
-					options.onStart?.();
-				},
-				onDone: () => {
-					setIsSpeaking(false);
-					options.onDone?.();
-				},
-				onStopped: () => {
-					setIsSpeaking(false);
-					options.onStopped?.();
-				},
-				onError: (error: any) => {
-					setIsSpeaking(false);
-					const errorMessage = error?.error || error?.message || 'Speech synthesis failed';
-					console.error('TTS Error:', errorMessage);
-					options.onError?.(errorMessage);
-				},
-			};
+				setIsSpeaking(true);
 
-			await Speech.speak(text, speechOptions);
-		} catch (error) {
-			setIsSpeaking(false);
-			const errorMessage = error instanceof Error ? error.message : 'Unknown TTS error';
-			console.error('TTS Error:', errorMessage);
-			options.onError?.(errorMessage);
-		}
-	}, [isAvailable, isSpeaking]);
+				// Configure speech options
+				const speechOptions: Speech.SpeechOptions = {
+					language: options.language || getDMVoiceLanguage(),
+					pitch: options.pitch || getDMVoicePitch(),
+					rate: options.rate || getDMVoiceRate(),
+					voice: options.voice || getDMVoiceIdentifier(),
+					onStart: () => {
+						setIsSpeaking(true);
+						options.onStart?.();
+					},
+					onDone: () => {
+						setIsSpeaking(false);
+						options.onDone?.();
+					},
+					onStopped: () => {
+						setIsSpeaking(false);
+						options.onStopped?.();
+					},
+					onError: (error: any) => {
+						setIsSpeaking(false);
+						const errorMessage =
+							error?.error || error?.message || 'Speech synthesis failed';
+						console.error('TTS Error:', errorMessage);
+						options.onError?.(errorMessage);
+					},
+				};
+
+				await Speech.speak(text, speechOptions);
+			} catch (error) {
+				setIsSpeaking(false);
+				const errorMessage = error instanceof Error ? error.message : 'Unknown TTS error';
+				console.error('TTS Error:', errorMessage);
+				options.onError?.(errorMessage);
+			}
+		},
+		[isAvailable, isSpeaking],
+	);
 
 	/**
 	 * Stop current speech
@@ -196,16 +200,18 @@ const getDMVoiceIdentifier = (): string | undefined => {
  * Utility function to clean text for better TTS pronunciation
  */
 export const cleanTextForTTS = (text: string): string => {
-	return text
-		// Remove dice notation for cleaner speech
-		.replace(/\[ROLL:[^\]]+\]/g, '')
-		// Remove character update commands
-		.replace(/\[UPDATE:[^\]]+\]/g, '')
-		// Remove rule lookup commands
-		.replace(/\[LOOKUP:[^\]]+\]/g, '')
-		// Clean up extra whitespace
-		.replace(/\s+/g, ' ')
-		.trim();
+	return (
+		text
+			// Remove dice notation for cleaner speech
+			.replace(/\[ROLL:[^\]]+\]/g, '')
+			// Remove character update commands
+			.replace(/\[UPDATE:[^\]]+\]/g, '')
+			// Remove rule lookup commands
+			.replace(/\[LOOKUP:[^\]]+\]/g, '')
+			// Clean up extra whitespace
+			.replace(/\s+/g, ' ')
+			.trim()
+	);
 };
 
 /**
@@ -245,26 +251,38 @@ export const DMVoicePresets = {
 export const useDMVoice = () => {
 	const tts = useTextToSpeech();
 
-	const speakAsNarrator = useCallback((text: string) => {
-		const cleanText = cleanTextForTTS(text);
-		return tts.speak(cleanText, DMVoicePresets.narration);
-	}, [tts]);
+	const speakAsNarrator = useCallback(
+		(text: string) => {
+			const cleanText = cleanTextForTTS(text);
+			return tts.speak(cleanText, DMVoicePresets.narration);
+		},
+		[tts],
+	);
 
-	const speakAsCharacter = useCallback((text: string, characterName?: string) => {
-		const cleanText = cleanTextForTTS(text);
-		const prefixedText = characterName ? `${characterName} says: ${cleanText}` : cleanText;
-		return tts.speak(prefixedText, DMVoicePresets.dialogue);
-	}, [tts]);
+	const speakAsCharacter = useCallback(
+		(text: string, characterName?: string) => {
+			const cleanText = cleanTextForTTS(text);
+			const prefixedText = characterName ? `${characterName} says: ${cleanText}` : cleanText;
+			return tts.speak(prefixedText, DMVoicePresets.dialogue);
+		},
+		[tts],
+	);
 
-	const speakCombatAction = useCallback((text: string) => {
-		const cleanText = cleanTextForTTS(text);
-		return tts.speak(cleanText, DMVoicePresets.combat);
-	}, [tts]);
+	const speakCombatAction = useCallback(
+		(text: string) => {
+			const cleanText = cleanTextForTTS(text);
+			return tts.speak(cleanText, DMVoicePresets.combat);
+		},
+		[tts],
+	);
 
-	const speakDramatically = useCallback((text: string) => {
-		const cleanText = cleanTextForTTS(text);
-		return tts.speak(cleanText, DMVoicePresets.dramatic);
-	}, [tts]);
+	const speakDramatically = useCallback(
+		(text: string) => {
+			const cleanText = cleanTextForTTS(text);
+			return tts.speak(cleanText, DMVoicePresets.dramatic);
+		},
+		[tts],
+	);
 
 	return {
 		...tts,

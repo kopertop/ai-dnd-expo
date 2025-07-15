@@ -110,7 +110,8 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 		if (speakerMatch) {
 			const [, speaker, messageContent] = speakerMatch;
 			speakerId = speaker.toLowerCase() === 'player' ? 'player' : 'dm';
-			speakerName = speakerId === 'player' ? (playerCharacter?.name || 'Player') : 'Dungeon Master';
+			speakerName =
+				speakerId === 'player' ? playerCharacter?.name || 'Player' : 'Dungeon Master';
 			content = messageContent;
 		} else if (msg.speaker === 'Player') {
 			// Only mark as player if explicitly marked as such
@@ -159,45 +160,67 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 	};
 
 	const renderMessage = (message: ChatMessage) => {
-		const isPlayer = message.speakerId === 'player' || companions.activeCompanions.some(c => c.id === message.speakerId);
+		const isPlayer =
+			message.speakerId === 'player' ||
+			companions.activeCompanions.some(c => c.id === message.speakerId);
 		const isDM = message.speakerId === 'dm';
 
 		return (
-			<View key={message.id} style={[
-				styles.messageContainer,
-				isPlayer ? styles.playerMessageContainer : styles.dmMessageContainer,
-			]}>
-				<View style={[
-					styles.messageContent,
-					isPlayer ? styles.playerMessageContent : styles.dmMessageContent,
-				]}>
+			<View
+				key={message.id}
+				style={[
+					styles.messageContainer,
+					isPlayer ? styles.playerMessageContainer : styles.dmMessageContainer,
+				]}
+			>
+				<View
+					style={[
+						styles.messageContent,
+						isPlayer ? styles.playerMessageContent : styles.dmMessageContent,
+					]}
+				>
 					{isDM && (
-						<Image source={getSpeakerImage(message.speakerId)} style={styles.speakerAvatar} />
+						<Image
+							source={getSpeakerImage(message.speakerId)}
+							style={styles.speakerAvatar}
+						/>
 					)}
-					<View style={[
-						styles.messageBubble,
-						isPlayer ? styles.playerBubble : styles.dmBubble,
-					]}>
+					<View
+						style={[
+							styles.messageBubble,
+							isPlayer ? styles.playerBubble : styles.dmBubble,
+						]}
+					>
 						<View style={styles.messageHeader}>
-							<Text style={[
-								styles.speakerName,
-								isPlayer ? styles.playerSpeakerName : styles.dmSpeakerName,
-							]}>
+							<Text
+								style={[
+									styles.speakerName,
+									isPlayer ? styles.playerSpeakerName : styles.dmSpeakerName,
+								]}
+							>
 								{getSpeakerName(message.speakerId)}
 							</Text>
 							<Text style={styles.timestamp}>
-								{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+								{new Date(message.timestamp).toLocaleTimeString([], {
+									hour: '2-digit',
+									minute: '2-digit',
+								})}
 							</Text>
 						</View>
-						<Text style={[
-							styles.messageText,
-							isPlayer ? styles.playerMessageText : styles.dmMessageText,
-						]}>
+						<Text
+							style={[
+								styles.messageText,
+								isPlayer ? styles.playerMessageText : styles.dmMessageText,
+							]}
+						>
 							{message.content}
 						</Text>
 					</View>
 					{isPlayer && (
-						<Image source={getSpeakerImage(message.speakerId)} style={styles.speakerAvatar} />
+						<Image
+							source={getSpeakerImage(message.speakerId)}
+							style={styles.speakerAvatar}
+						/>
 					)}
 				</View>
 			</View>
@@ -223,10 +246,9 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 					: styles.containerDesktop,
 			]}
 		>
-			<KeyboardAvoidingView style={[
-				styles.chatContainer,
-				keyboardOpen ? { flex: 1 } : { height: chatHeight },
-			]}>
+			<KeyboardAvoidingView
+				style={[styles.chatContainer, keyboardOpen ? { flex: 1 } : { height: chatHeight }]}
+			>
 				{/* Chat Header */}
 				<View style={styles.chatHeader}>
 					<Feather name="message-circle" size={20} color="#000" />
@@ -246,21 +268,38 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 				</ScrollView>
 
 				{suggestions.length > 0 && (
-					<View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 8, justifyContent: 'flex-start' }}>
+					<View
+						style={{
+							flexDirection: 'row',
+							flexWrap: 'wrap',
+							gap: 8,
+							padding: 8,
+							justifyContent: 'flex-start',
+						}}
+					>
 						{suggestions.map(s => (
 							<TouchableOpacity
 								key={s.label}
-								style={{ backgroundColor: '#FFD700', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 6 }}
+								style={{
+									backgroundColor: '#FFD700',
+									borderRadius: 8,
+									paddingVertical: 8,
+									paddingHorizontal: 14,
+									marginBottom: 6,
+								}}
 								onPress={() => onSendMessage(s.action, activeCharacter)}
 							>
-								<Text style={{ color: '#8B2323', fontWeight: 'bold' }}>{s.label}</Text>
+								<Text style={{ color: '#8B2323', fontWeight: 'bold' }}>
+									{s.label}
+								</Text>
 							</TouchableOpacity>
 						))}
 					</View>
 				)}
 
 				{/* Input Area - Only show if it's player's turn */}
-				{(activeCharacter === 'player' || companions.activeCompanions.some(c => c.id === activeCharacter)) && (
+				{(activeCharacter === 'player' ||
+					companions.activeCompanions.some(c => c.id === activeCharacter)) && (
 					<KeyboardAvoidingView
 						style={styles.inputContainer}
 						behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -279,7 +318,9 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 						/>
 						<TouchableOpacity
 							style={styles.micButton}
-							onPress={() => {/* TODO: Add mic functionality */ }}
+							onPress={() => {
+								/* TODO: Add mic functionality */
+							}}
 						>
 							<Feather name="mic" size={20} color="#8B2323" />
 						</TouchableOpacity>

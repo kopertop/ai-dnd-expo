@@ -1,13 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-	View,
-	TouchableOpacity,
-	StyleSheet,
-	Animated,
-	Text,
-	Alert,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, Text, Alert } from 'react-native';
 
 import { Colors } from '@/constants/colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -38,16 +31,16 @@ export const VoiceChatButton: React.FC<VoiceChatButtonProps> = ({
 		maxDuration: 30000, // 30 seconds max
 		onTranscription: (text, isFinal) => {
 			console.log(`🎤 VoiceChatButton onTranscription: "${text}", isFinal: ${isFinal}`);
-			
+
 			// Notify parent about transcript changes
 			onTranscriptChange?.(text, voiceRecognition.isListening);
-			
+
 			if (isFinal && text.trim()) {
 				console.log('✅ Calling handleVoiceInput');
 				handleVoiceInput(text);
 			}
 		},
-		onError: (error) => {
+		onError: error => {
 			console.error('❌ Voice recognition error:', error);
 			Alert.alert('Voice Recognition Error', error);
 		},
@@ -65,23 +58,26 @@ export const VoiceChatButton: React.FC<VoiceChatButtonProps> = ({
 	/**
 	 * Handle successful voice input
 	 */
-	const handleVoiceInput = useCallback(async (transcript: string) => {
-		try {
-			console.log(`🗣️ handleVoiceInput called with: "${transcript}"`);
-			setShowTranscript(true);
-			console.log('📞 Calling onVoiceInput prop');
-			await onVoiceInput(transcript);
-			
-			// Hide transcript after a delay
-			setTimeout(() => {
-				console.log('👻 Hiding transcript');
-				setShowTranscript(false);
-			}, 3000);
-		} catch (error) {
-			console.error('❌ Error processing voice input:', error);
-			Alert.alert('Error', 'Failed to process voice command');
-		}
-	}, [onVoiceInput]);
+	const handleVoiceInput = useCallback(
+		async (transcript: string) => {
+			try {
+				console.log(`🗣️ handleVoiceInput called with: "${transcript}"`);
+				setShowTranscript(true);
+				console.log('📞 Calling onVoiceInput prop');
+				await onVoiceInput(transcript);
+
+				// Hide transcript after a delay
+				setTimeout(() => {
+					console.log('👻 Hiding transcript');
+					setShowTranscript(false);
+				}, 3000);
+			} catch (error) {
+				console.error('❌ Error processing voice input:', error);
+				Alert.alert('Error', 'Failed to process voice command');
+			}
+		},
+		[onVoiceInput],
+	);
 
 	/**
 	 * Toggle voice recording
@@ -228,21 +224,14 @@ export const VoiceChatButton: React.FC<VoiceChatButtonProps> = ({
 				]}
 			>
 				<TouchableOpacity
-					style={[
-						styles.voiceButton,
-						{ backgroundColor: getButtonColor() },
-					]}
+					style={[styles.voiceButton, { backgroundColor: getButtonColor() }]}
 					onPress={toggleVoiceRecording}
 					onPressIn={handlePressIn}
 					onPressOut={handlePressOut}
 					disabled={isDisabled}
 					activeOpacity={0.8}
 				>
-					<Feather
-						name={getIconName()}
-						size={24}
-						color={getIconColor()}
-					/>
+					<Feather name={getIconName()} size={24} color={getIconColor()} />
 				</TouchableOpacity>
 
 				{/* Recording Indicator */}
@@ -263,9 +252,7 @@ export const VoiceChatButton: React.FC<VoiceChatButtonProps> = ({
 			{/* Error Display */}
 			{voiceRecognition.error && (
 				<View style={styles.errorContainer}>
-					<Text style={styles.errorText}>
-						{voiceRecognition.error}
-					</Text>
+					<Text style={styles.errorText}>{voiceRecognition.error}</Text>
 				</View>
 			)}
 		</View>

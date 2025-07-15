@@ -112,9 +112,9 @@ export class ONNXModelManager {
 	}
 
 	/**
-	* Load Gemma3 model from ONNX file
-	* Requirement 1.1: Model loading with validation
-	*/
+	 * Load Gemma3 model from ONNX file
+	 * Requirement 1.1: Model loading with validation
+	 */
 	async loadGemma3Model(modelPath: string): Promise<InferenceSession> {
 		try {
 			console.log('🤖 Loading ONNX model from:', modelPath);
@@ -153,7 +153,6 @@ export class ONNXModelManager {
 			await this.loadModelMetadata();
 
 			return this.session;
-
 		} catch (error) {
 			this.isLoaded = false;
 			this.session = null;
@@ -166,9 +165,9 @@ export class ONNXModelManager {
 	}
 
 	/**
-	* Validate loaded model for Gemma3 compatibility
-	* Requirement 1.2: Model validation
-	*/
+	 * Validate loaded model for Gemma3 compatibility
+	 * Requirement 1.2: Model validation
+	 */
 	async validateModel(session: InferenceSession): Promise<boolean> {
 		try {
 			if (!session) {
@@ -212,11 +211,11 @@ export class ONNXModelManager {
 			console.log('✅ Model validation successful');
 
 			return true;
-
 		} catch (error) {
 			this.isValidated = false;
 
-			const errorMessage = error instanceof Error ? error.message : 'Unknown validation error';
+			const errorMessage =
+				error instanceof Error ? error.message : 'Unknown validation error';
 			console.error('❌ Model validation failed:', errorMessage);
 
 			return false;
@@ -224,9 +223,9 @@ export class ONNXModelManager {
 	}
 
 	/**
-	* Run inference with proper input/output handling
-	* Requirement 1.1: Inference execution
-	*/
+	 * Run inference with proper input/output handling
+	 * Requirement 1.1: Inference execution
+	 */
 	async runInference(session: InferenceSession, input: ModelInput): Promise<ModelOutput> {
 		if (!session) {
 			throw new Error('Session not initialized');
@@ -258,7 +257,6 @@ export class ONNXModelManager {
 			console.log(`✅ Inference completed in ${inferenceTime}ms`);
 
 			return output;
-
 		} catch (error) {
 			const inferenceTime = Date.now() - startTime;
 			this.updatePerformanceMetrics(inferenceTime, false, input.input_ids.length);
@@ -271,9 +269,9 @@ export class ONNXModelManager {
 	}
 
 	/**
-	* Optimize session for specific device capabilities
-	* Requirement 1.2: Device optimization
-	*/
+	 * Optimize session for specific device capabilities
+	 * Requirement 1.2: Device optimization
+	 */
 	optimizeSession(session: InferenceSession, deviceInfo: DeviceInfo): void {
 		try {
 			console.log('⚡ Optimizing session for device:', deviceInfo);
@@ -283,11 +281,13 @@ export class ONNXModelManager {
 			this.sessionConfig.intraOpNumThreads = optimalThreads;
 
 			// Adjust memory settings based on available memory
-			if (deviceInfo.availableMemory < 1024) { // Less than 1GB
+			if (deviceInfo.availableMemory < 1024) {
+				// Less than 1GB
 				this.sessionConfig.enableCpuMemArena = false;
 				this.sessionConfig.enableMemPattern = false;
 				this.sessionConfig.graphOptimizationLevel = 'basic';
-			} else if (deviceInfo.availableMemory < 2048) { // Less than 2GB
+			} else if (deviceInfo.availableMemory < 2048) {
+				// Less than 2GB
 				this.sessionConfig.graphOptimizationLevel = 'extended';
 			} else {
 				this.sessionConfig.graphOptimizationLevel = 'all';
@@ -305,7 +305,6 @@ export class ONNXModelManager {
 			}
 
 			console.log('🔧 Optimized session config:', this.sessionConfig);
-
 		} catch (error) {
 			console.error('❌ Session optimization failed:', error);
 			// Continue with default settings
@@ -313,16 +312,16 @@ export class ONNXModelManager {
 	}
 
 	/**
-	* Monitor performance metrics during inference
-	*/
+	 * Monitor performance metrics during inference
+	 */
 	monitorPerformance(): PerformanceMetrics {
 		return { ...this.performanceMetrics };
 	}
 
 	/**
-	* Clean up session and free memory
-	* Requirement 1.2: Proper cleanup
-	*/
+	 * Clean up session and free memory
+	 * Requirement 1.2: Proper cleanup
+	 */
 	async cleanupSession(session: InferenceSession): Promise<void> {
 		try {
 			if (session) {
@@ -354,12 +353,14 @@ export class ONNXModelManager {
 	}
 
 	/**
-	* Get current memory usage statistics
-	*/
+	 * Get current memory usage statistics
+	 */
 	getMemoryUsage(): MemoryStats {
 		// Note: ONNX Runtime React Native doesn't provide detailed memory stats
 		// These are estimated values based on model size and inference patterns
-		const estimatedModelMemory = this.metadata?.size ? Math.ceil(this.metadata.size / (1024 * 1024)) : 0;
+		const estimatedModelMemory = this.metadata?.size
+			? Math.ceil(this.metadata.size / (1024 * 1024))
+			: 0;
 		const estimatedSessionMemory = estimatedModelMemory * 0.3; // Rough estimate
 		const totalUsage = estimatedModelMemory + estimatedSessionMemory;
 
@@ -373,15 +374,15 @@ export class ONNXModelManager {
 	}
 
 	/**
-	* Check if model is loaded and ready
-	*/
+	 * Check if model is loaded and ready
+	 */
 	isModelReady(): boolean {
 		return this.isLoaded && this.isValidated && this.session !== null;
 	}
 
 	/**
-	* Get model metadata
-	*/
+	 * Get model metadata
+	 */
 	getModelMetadata(): ModelMetadata | null {
 		return this.metadata;
 	}
@@ -389,8 +390,8 @@ export class ONNXModelManager {
 	// Private helper methods
 
 	/**
-	* Validate model file accessibility
-	*/
+	 * Validate model file accessibility
+	 */
 	private async validateModelFile(modelPath: string): Promise<void> {
 		try {
 			// In React Native, we can't directly check file existence
@@ -404,15 +405,14 @@ export class ONNXModelManager {
 			if (!modelPath.endsWith('.onnx')) {
 				throw new Error('Model file must have .onnx extension');
 			}
-
 		} catch (error) {
 			throw new Error(`Model file validation failed: ${error}`);
 		}
 	}
 
 	/**
-	* Load model file as Uint8Array buffer for ONNX Runtime
-	*/
+	 * Load model file as Uint8Array buffer for ONNX Runtime
+	 */
 	private async loadModelBuffer(modelPath: string): Promise<Uint8Array> {
 		try {
 			console.log('📂 Loading model buffer from:', modelPath);
@@ -422,7 +422,9 @@ export class ONNXModelManager {
 			const response = await fetch(modelPath);
 
 			if (!response.ok) {
-				throw new Error(`Failed to fetch model file: ${response.status} ${response.statusText}`);
+				throw new Error(
+					`Failed to fetch model file: ${response.status} ${response.statusText}`,
+				);
 			}
 
 			const arrayBuffer = await response.arrayBuffer();
@@ -431,7 +433,6 @@ export class ONNXModelManager {
 			console.log(`✅ Model buffer loaded: ${uint8Array.length} bytes`);
 
 			return uint8Array;
-
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 			console.error('❌ Failed to load model buffer:', errorMessage);
@@ -440,8 +441,8 @@ export class ONNXModelManager {
 	}
 
 	/**
-	* Load model metadata from companion file or infer from model
-	*/
+	 * Load model metadata from companion file or infer from model
+	 */
 	private async loadModelMetadata(): Promise<void> {
 		try {
 			// Try to load metadata from companion JSON file
@@ -466,7 +467,6 @@ export class ONNXModelManager {
 			};
 
 			console.log('📋 Model metadata loaded:', this.metadata);
-
 		} catch (error) {
 			console.warn('⚠️ Could not load model metadata:', error);
 			// Continue without metadata
@@ -474,8 +474,8 @@ export class ONNXModelManager {
 	}
 
 	/**
-	* Infer quantization type from model path
-	*/
+	 * Infer quantization type from model path
+	 */
 	private inferQuantizationFromPath(path: string): 'int8' | 'int4' | 'fp16' | 'fp32' {
 		const lowerPath = path.toLowerCase();
 
@@ -488,8 +488,8 @@ export class ONNXModelManager {
 	}
 
 	/**
-	* Run a small validation inference to test model functionality
-	*/
+	 * Run a small validation inference to test model functionality
+	 */
 	private async runValidationInference(session: InferenceSession): Promise<void> {
 		try {
 			console.log('🧪 Running validation inference...');
@@ -507,37 +507,46 @@ export class ONNXModelManager {
 			if (!results.logits) {
 				throw new Error('Missing logits output in validation inference');
 			}
-
-
-
 		} catch (error) {
 			throw new Error(`Validation inference failed: ${error}`);
 		}
 	}
 
 	/**
-	* Prepare input tensors for ONNX Runtime
-	*/
+	 * Prepare input tensors for ONNX Runtime
+	 */
 	private prepareInputTensors(input: ModelInput): Record<string, Tensor> {
 		const tensors: Record<string, Tensor> = {};
 
 		// Convert input_ids to tensor
-		tensors.input_ids = new Tensor('int64', BigInt64Array.from(input.input_ids.map(x => BigInt(x))), [1, input.input_ids.length]);
+		tensors.input_ids = new Tensor(
+			'int64',
+			BigInt64Array.from(input.input_ids.map(x => BigInt(x))),
+			[1, input.input_ids.length],
+		);
 
 		// Convert attention_mask to tensor
-		tensors.attention_mask = new Tensor('int64', BigInt64Array.from(input.attention_mask.map(x => BigInt(x))), [1, input.attention_mask.length]);
+		tensors.attention_mask = new Tensor(
+			'int64',
+			BigInt64Array.from(input.attention_mask.map(x => BigInt(x))),
+			[1, input.attention_mask.length],
+		);
 
 		// Add position_ids if provided
 		if (input.position_ids) {
-			tensors.position_ids = new Tensor('int64', BigInt64Array.from(input.position_ids.map(x => BigInt(x))), [1, input.position_ids.length]);
+			tensors.position_ids = new Tensor(
+				'int64',
+				BigInt64Array.from(input.position_ids.map(x => BigInt(x))),
+				[1, input.position_ids.length],
+			);
 		}
 
 		return tensors;
 	}
 
 	/**
-	* Process output tensors from ONNX Runtime
-	*/
+	 * Process output tensors from ONNX Runtime
+	 */
 	private processOutputTensors(results: Record<string, Tensor>): ModelOutput {
 		const output: ModelOutput = {
 			logits: new Float32Array(0),
@@ -557,15 +566,23 @@ export class ONNXModelManager {
 	}
 
 	/**
-	* Update performance metrics after inference
-	*/
-	private updatePerformanceMetrics(inferenceTime: number, success: boolean, tokenCount: number): void {
+	 * Update performance metrics after inference
+	 */
+	private updatePerformanceMetrics(
+		inferenceTime: number,
+		success: boolean,
+		tokenCount: number,
+	): void {
 		this.performanceMetrics.totalInferences++;
 
 		if (success) {
 			// Update average inference time
-			const totalTime = this.performanceMetrics.averageInferenceTime * (this.performanceMetrics.totalInferences - 1) + inferenceTime;
-			this.performanceMetrics.averageInferenceTime = totalTime / this.performanceMetrics.totalInferences;
+			const totalTime =
+				this.performanceMetrics.averageInferenceTime *
+					(this.performanceMetrics.totalInferences - 1) +
+				inferenceTime;
+			this.performanceMetrics.averageInferenceTime =
+				totalTime / this.performanceMetrics.totalInferences;
 
 			// Update tokens per second
 			this.performanceMetrics.tokensPerSecond = (tokenCount / inferenceTime) * 1000;
@@ -581,8 +598,11 @@ export class ONNXModelManager {
 		}
 
 		// Update success rate
-		const successfulInferences = this.performanceMetrics.totalInferences * this.performanceMetrics.successRate + (success ? 1 : 0);
-		this.performanceMetrics.successRate = successfulInferences / this.performanceMetrics.totalInferences;
+		const successfulInferences =
+			this.performanceMetrics.totalInferences * this.performanceMetrics.successRate +
+			(success ? 1 : 0);
+		this.performanceMetrics.successRate =
+			successfulInferences / this.performanceMetrics.totalInferences;
 	}
 }
 
@@ -591,8 +611,8 @@ export class ONNXModelManager {
  */
 export const ONNXModelUtils = {
 	/**
-	* Get recommended session config for device
-	*/
+	 * Get recommended session config for device
+	 */
 	getRecommendedSessionConfig(deviceInfo: DeviceInfo): SessionConfig {
 		const baseConfig: SessionConfig = {
 			executionProviders: ['cpu'],
@@ -627,26 +647,30 @@ export const ONNXModelUtils = {
 	},
 
 	/**
-	* Estimate memory requirements for model
-	*/
+	 * Estimate memory requirements for model
+	 */
 	estimateMemoryRequirements(modelSize: number, quantization: string): number {
 		const baseMemory = Math.ceil(modelSize / (1024 * 1024)); // Convert to MB
 
 		// Add overhead based on quantization
-		const overhead = {
-			'int4': 1.2,
-			'int8': 1.3,
-			'fp16': 1.5,
-			'fp32': 2.0,
-		}[quantization] || 2.0;
+		const overhead =
+			{
+				int4: 1.2,
+				int8: 1.3,
+				fp16: 1.5,
+				fp32: 2.0,
+			}[quantization] || 2.0;
 
 		return Math.ceil(baseMemory * overhead);
 	},
 
 	/**
-	* Validate model compatibility with device
-	*/
-	validateModelCompatibility(metadata: ModelMetadata, deviceInfo: DeviceInfo): {
+	 * Validate model compatibility with device
+	 */
+	validateModelCompatibility(
+		metadata: ModelMetadata,
+		deviceInfo: DeviceInfo,
+	): {
 		compatible: boolean;
 		issues: string[];
 		recommendations: string[];
@@ -656,7 +680,9 @@ export const ONNXModelUtils = {
 
 		// Check memory requirements
 		if (deviceInfo.availableMemory < metadata.minMemoryRequirement) {
-			issues.push(`Insufficient memory: ${deviceInfo.availableMemory}MB available, ${metadata.minMemoryRequirement}MB required`);
+			issues.push(
+				`Insufficient memory: ${deviceInfo.availableMemory}MB available, ${metadata.minMemoryRequirement}MB required`,
+			);
 		}
 
 		if (deviceInfo.availableMemory < metadata.recommendedMemory) {
@@ -664,8 +690,8 @@ export const ONNXModelUtils = {
 		}
 
 		// Check device support
-		const deviceSupported = metadata.supportedDevices.some(device =>
-			deviceInfo.platform.includes(device) || device === 'cpu',
+		const deviceSupported = metadata.supportedDevices.some(
+			device => deviceInfo.platform.includes(device) || device === 'cpu',
 		);
 
 		if (!deviceSupported) {

@@ -34,8 +34,15 @@ export interface ThrottlingState {
 }
 
 export interface OptimizationAction {
-	type: 'reduce_threads' | 'reduce_batch_size' | 'reduce_cache' | 'disable_gpu' |
-	'reduce_tokens' | 'increase_timeout' | 'pause_inference' | 'emergency_stop';
+	type:
+		| 'reduce_threads'
+		| 'reduce_batch_size'
+		| 'reduce_cache'
+		| 'disable_gpu'
+		| 'reduce_tokens'
+		| 'increase_timeout'
+		| 'pause_inference'
+		| 'emergency_stop';
 	priority: number; // 1-10, higher = more important
 	description: string;
 	impact: 'low' | 'medium' | 'high';
@@ -195,9 +202,9 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Initialize performance optimizer
-	* Requirement 3.1: Performance optimization initialization
-	*/
+	 * Initialize performance optimizer
+	 * Requirement 3.1: Performance optimization initialization
+	 */
 	async initialize(): Promise<void> {
 		try {
 			console.log('⚡ Initializing Performance Optimizer...');
@@ -209,7 +216,6 @@ export class PerformanceOptimizer {
 
 			console.log('✅ Performance Optimizer initialized');
 			console.log('📊 Initial performance profile:', this.currentProfile.mode);
-
 		} catch (error) {
 			console.error('❌ Failed to initialize Performance Optimizer:', error);
 			throw error;
@@ -217,9 +223,9 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Switch performance mode
-	* Requirement 3.1: Dynamic performance mode switching
-	*/
+	 * Switch performance mode
+	 * Requirement 3.1: Dynamic performance mode switching
+	 */
 	async switchPerformanceMode(mode: PerformanceMode): Promise<void> {
 		console.log(`🔄 Switching to ${mode} performance mode...`);
 
@@ -238,31 +244,31 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Get current performance profile
-	*/
+	 * Get current performance profile
+	 */
 	getCurrentProfile(): PerformanceProfile {
 		return { ...this.currentProfile };
 	}
 
 	/**
-	* Get current performance metrics
-	*/
+	 * Get current performance metrics
+	 */
 	getMetrics(): PerformanceMetrics {
 		this.updateMetrics();
 		return { ...this.metrics };
 	}
 
 	/**
-	* Get throttling state
-	*/
+	 * Get throttling state
+	 */
 	getThrottlingState(): ThrottlingState {
 		return { ...this.throttlingState };
 	}
 
 	/**
-	* Force optimization based on current resource state
-	* Requirement 3.1: Manual performance optimization
-	*/
+	 * Force optimization based on current resource state
+	 * Requirement 3.1: Manual performance optimization
+	 */
 	async optimizePerformance(): Promise<void> {
 		if (this.isOptimizing) {
 			console.log('⚠️ Optimization already in progress');
@@ -288,22 +294,21 @@ export class PerformanceOptimizer {
 			} else {
 				console.log('✅ No optimizations needed');
 			}
-
 		} finally {
 			this.isOptimizing = false;
 		}
 	}
 
 	/**
-	* Add optimization event callback
-	*/
+	 * Add optimization event callback
+	 */
 	addEventListener(callback: OptimizationEventCallback): void {
 		this.eventCallbacks.push(callback);
 	}
 
 	/**
-	* Remove optimization event callback
-	*/
+	 * Remove optimization event callback
+	 */
 	removeEventListener(callback: OptimizationEventCallback): void {
 		const index = this.eventCallbacks.indexOf(callback);
 		if (index > -1) {
@@ -312,8 +317,8 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Update optimization configuration
-	*/
+	 * Update optimization configuration
+	 */
 	updateConfig(newConfig: Partial<OptimizationConfig>): void {
 		this.config = { ...this.config, ...newConfig };
 
@@ -325,15 +330,15 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Get optimization configuration
-	*/
+	 * Get optimization configuration
+	 */
 	getConfig(): OptimizationConfig {
 		return { ...this.config };
 	}
 
 	/**
-	* Record inference performance metrics
-	*/
+	 * Record inference performance metrics
+	 */
 	recordInferenceMetrics(inferenceTime: number, tokenCount: number): void {
 		// Update running averages
 		const alpha = 0.1; // Smoothing factor
@@ -359,8 +364,8 @@ export class PerformanceOptimizer {
 	// Private methods
 
 	/**
-	* Start automatic optimization monitoring
-	*/
+	 * Start automatic optimization monitoring
+	 */
 	private startOptimization(): void {
 		if (this.optimizationInterval) {
 			return;
@@ -378,8 +383,8 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Stop automatic optimization monitoring
-	*/
+	 * Stop automatic optimization monitoring
+	 */
 	private stopOptimization(): void {
 		if (this.optimizationInterval) {
 			clearInterval(this.optimizationInterval);
@@ -389,8 +394,8 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Handle resource events from DeviceResourceManager
-	*/
+	 * Handle resource events from DeviceResourceManager
+	 */
 	private handleResourceEvent(event: ResourceEvent): void {
 		if (!this.config.enableAutoOptimization) {
 			return;
@@ -406,9 +411,9 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Analyze optimization needs based on resource usage
-	* Requirement 3.3: Memory pressure handling and thermal throttling
-	*/
+	 * Analyze optimization needs based on resource usage
+	 * Requirement 3.3: Memory pressure handling and thermal throttling
+	 */
 	private analyzeOptimizationNeeds(resourceUsage: ResourceUsage): OptimizationAction[] {
 		const actions: OptimizationAction[] = [];
 
@@ -441,9 +446,9 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Analyze thermal optimization needs
-	* Requirement 3.1: Thermal throttling with automatic performance reduction
-	*/
+	 * Analyze thermal optimization needs
+	 * Requirement 3.1: Thermal throttling with automatic performance reduction
+	 */
 	private analyzeThermalOptimization(resourceUsage: ResourceUsage): OptimizationAction[] {
 		const actions: OptimizationAction[] = [];
 		const { thermal } = resourceUsage;
@@ -487,9 +492,9 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Analyze memory optimization needs
-	* Requirement 3.3: Memory pressure handling with model optimization
-	*/
+	 * Analyze memory optimization needs
+	 * Requirement 3.3: Memory pressure handling with model optimization
+	 */
 	private analyzeMemoryOptimization(resourceUsage: ResourceUsage): OptimizationAction[] {
 		const actions: OptimizationAction[] = [];
 		const { memory } = resourceUsage;
@@ -542,8 +547,8 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Analyze battery optimization needs
-	*/
+	 * Analyze battery optimization needs
+	 */
 	private analyzeBatteryOptimization(resourceUsage: ResourceUsage): OptimizationAction[] {
 		const actions: OptimizationAction[] = [];
 		const { battery } = resourceUsage;
@@ -581,8 +586,8 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Analyze CPU optimization needs
-	*/
+	 * Analyze CPU optimization needs
+	 */
 	private analyzeCPUOptimization(resourceUsage: ResourceUsage): OptimizationAction[] {
 		const actions: OptimizationAction[] = [];
 		const { cpu } = resourceUsage;
@@ -609,8 +614,8 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Apply optimization actions
-	*/
+	 * Apply optimization actions
+	 */
 	private async applyOptimizations(actions: OptimizationAction[]): Promise<void> {
 		const appliedOptimizations: string[] = [];
 		let performanceReduction = 0;
@@ -634,8 +639,12 @@ export class PerformanceOptimizer {
 		if (appliedOptimizations.length > 0) {
 			this.throttlingState = {
 				isActive: true,
-				level: performanceReduction > 50 ? 'aggressive' :
-					performanceReduction > 25 ? 'moderate' : 'light',
+				level:
+					performanceReduction > 50
+						? 'aggressive'
+						: performanceReduction > 25
+							? 'moderate'
+							: 'light',
 				reason: this.determineThrottlingReason(actions),
 				appliedOptimizations,
 				performanceReduction: Math.min(100, performanceReduction),
@@ -647,20 +656,29 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Apply individual optimization action
-	*/
+	 * Apply individual optimization action
+	 */
 	private async applyOptimizationAction(action: OptimizationAction): Promise<void> {
 		switch (action.type) {
 		case 'reduce_threads':
-			this.currentProfile.numThreads = Math.max(1, Math.floor(this.currentProfile.numThreads * 0.7));
+			this.currentProfile.numThreads = Math.max(
+				1,
+				Math.floor(this.currentProfile.numThreads * 0.7),
+			);
 			break;
 
 		case 'reduce_batch_size':
-			this.currentProfile.batchSize = Math.max(1, Math.floor(this.currentProfile.batchSize * 0.7));
+			this.currentProfile.batchSize = Math.max(
+				1,
+				Math.floor(this.currentProfile.batchSize * 0.7),
+			);
 			break;
 
 		case 'reduce_cache':
-			this.currentProfile.cacheSize = Math.max(64, Math.floor(this.currentProfile.cacheSize * 0.6));
+			this.currentProfile.cacheSize = Math.max(
+				64,
+				Math.floor(this.currentProfile.cacheSize * 0.6),
+			);
 			break;
 
 		case 'disable_gpu':
@@ -668,11 +686,17 @@ export class PerformanceOptimizer {
 			break;
 
 		case 'reduce_tokens':
-			this.currentProfile.maxTokens = Math.max(256, Math.floor(this.currentProfile.maxTokens * 0.7));
+			this.currentProfile.maxTokens = Math.max(
+				256,
+				Math.floor(this.currentProfile.maxTokens * 0.7),
+			);
 			break;
 
 		case 'increase_timeout':
-			this.currentProfile.inferenceTimeout = Math.min(30000, this.currentProfile.inferenceTimeout * 1.5);
+			this.currentProfile.inferenceTimeout = Math.min(
+				30000,
+				this.currentProfile.inferenceTimeout * 1.5,
+			);
 			break;
 
 		case 'pause_inference':
@@ -688,14 +712,14 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Apply throttling adjustments to profile
-	*/
+	 * Apply throttling adjustments to profile
+	 */
 	private applyThrottlingToProfile(profile: PerformanceProfile): void {
 		if (!this.throttlingState.isActive) {
 			return;
 		}
 
-		const reductionFactor = 1 - (this.throttlingState.performanceReduction / 100);
+		const reductionFactor = 1 - this.throttlingState.performanceReduction / 100;
 
 		profile.numThreads = Math.max(1, Math.floor(profile.numThreads * reductionFactor));
 		profile.batchSize = Math.max(1, Math.floor(profile.batchSize * reductionFactor));
@@ -704,13 +728,18 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Determine primary throttling reason
-	*/
-	private determineThrottlingReason(actions: OptimizationAction[]): 'thermal' | 'memory' | 'cpu' | 'battery' | 'multiple' {
+	 * Determine primary throttling reason
+	 */
+	private determineThrottlingReason(
+		actions: OptimizationAction[],
+	): 'thermal' | 'memory' | 'cpu' | 'battery' | 'multiple' {
 		const reasons = new Set<string>();
 
 		for (const action of actions) {
-			if (action.description.includes('thermal') || action.description.includes('temperature')) {
+			if (
+				action.description.includes('thermal') ||
+				action.description.includes('temperature')
+			) {
 				reasons.add('thermal');
 			} else if (action.description.includes('memory')) {
 				reasons.add('memory');
@@ -737,8 +766,8 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Update performance metrics
-	*/
+	 * Update performance metrics
+	 */
 	private updateMetrics(): void {
 		const resourceUsage = this.resourceManager.getCachedResourceUsage();
 
@@ -747,20 +776,25 @@ export class PerformanceOptimizer {
 			this.metrics.memoryEfficiency = Math.max(0, 100 - resourceUsage.memory.percentage);
 
 			this.metrics.thermalEfficiency =
-				resourceUsage.thermal.state === 'nominal' ? 100 :
-					resourceUsage.thermal.state === 'fair' ? 80 :
-						resourceUsage.thermal.state === 'serious' ? 60 : 40;
+				resourceUsage.thermal.state === 'nominal'
+					? 100
+					: resourceUsage.thermal.state === 'fair'
+						? 80
+						: resourceUsage.thermal.state === 'serious'
+							? 60
+							: 40;
 
-			this.metrics.batteryEfficiency = resourceUsage.battery.isCharging ? 100 :
-				Math.max(0, resourceUsage.battery.level);
+			this.metrics.batteryEfficiency = resourceUsage.battery.isCharging
+				? 100
+				: Math.max(0, resourceUsage.battery.level);
 		}
 
 		// Calculate overall score
 		this.metrics.overallScore = Math.floor(
-			(this.metrics.memoryEfficiency * 0.3 +
+			this.metrics.memoryEfficiency * 0.3 +
 				this.metrics.thermalEfficiency * 0.3 +
 				this.metrics.batteryEfficiency * 0.2 +
-				(this.throttlingState.isActive ? 50 : 100) * 0.2),
+				(this.throttlingState.isActive ? 50 : 100) * 0.2,
 		);
 
 		this.metrics.uptime = Date.now() - this.startTime;
@@ -768,8 +802,8 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Notify listeners of optimization changes
-	*/
+	 * Notify listeners of optimization changes
+	 */
 	private notifyOptimizationChange(): void {
 		this.eventCallbacks.forEach(callback => {
 			try {
@@ -781,8 +815,8 @@ export class PerformanceOptimizer {
 	}
 
 	/**
-	* Cleanup resources
-	*/
+	 * Cleanup resources
+	 */
 	dispose(): void {
 		this.stopOptimization();
 		this.eventCallbacks = [];
@@ -794,20 +828,28 @@ export class PerformanceOptimizer {
  */
 export const PerformanceUtils = {
 	/**
-	* Get performance mode recommendation based on device capabilities
-	*/
+	 * Get performance mode recommendation based on device capabilities
+	 */
 	recommendPerformanceMode(resourceUsage: ResourceUsage): PerformanceMode {
 		const { memory, thermal, battery, cpu } = resourceUsage;
 
 		// Critical conditions - use quality mode
-		if (memory.percentage > 85 || thermal.state === 'critical' ||
-			(battery.level < 15 && !battery.isCharging) || cpu.usage > 85) {
+		if (
+			memory.percentage > 85 ||
+			thermal.state === 'critical' ||
+			(battery.level < 15 && !battery.isCharging) ||
+			cpu.usage > 85
+		) {
 			return 'quality';
 		}
 
 		// Warning conditions - use balanced mode
-		if (memory.percentage > 70 || thermal.state === 'serious' ||
-			(battery.level < 30 && !battery.isCharging) || cpu.usage > 70) {
+		if (
+			memory.percentage > 70 ||
+			thermal.state === 'serious' ||
+			(battery.level < 30 && !battery.isCharging) ||
+			cpu.usage > 70
+		) {
 			return 'balanced';
 		}
 
@@ -816,8 +858,8 @@ export const PerformanceUtils = {
 	},
 
 	/**
-	* Calculate performance score for current settings
-	*/
+	 * Calculate performance score for current settings
+	 */
 	calculatePerformanceScore(profile: PerformanceProfile, resourceUsage: ResourceUsage): number {
 		let score = 100;
 
@@ -848,26 +890,34 @@ export const PerformanceUtils = {
 	},
 
 	/**
-	* Format throttling level for display
-	*/
+	 * Format throttling level for display
+	 */
 	formatThrottlingLevel(level: 'none' | 'light' | 'moderate' | 'aggressive'): string {
 		switch (level) {
-		case 'none': return 'No Throttling';
-		case 'light': return 'Light Optimization';
-		case 'moderate': return 'Moderate Throttling';
-		case 'aggressive': return 'Aggressive Throttling';
+		case 'none':
+			return 'No Throttling';
+		case 'light':
+			return 'Light Optimization';
+		case 'moderate':
+			return 'Moderate Throttling';
+		case 'aggressive':
+			return 'Aggressive Throttling';
 		}
 	},
 
 	/**
-	* Get throttling color for UI
-	*/
+	 * Get throttling color for UI
+	 */
 	getThrottlingColor(level: 'none' | 'light' | 'moderate' | 'aggressive'): string {
 		switch (level) {
-		case 'none': return '#44AA44'; // Green
-		case 'light': return '#AAAA44'; // Yellow
-		case 'moderate': return '#FF8800'; // Orange
-		case 'aggressive': return '#FF4444'; // Red
+		case 'none':
+			return '#44AA44'; // Green
+		case 'light':
+			return '#AAAA44'; // Yellow
+		case 'moderate':
+			return '#FF8800'; // Orange
+		case 'aggressive':
+			return '#FF4444'; // Red
 		}
 	},
 };

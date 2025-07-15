@@ -10,10 +10,12 @@
 ## 🎯 Development Phases
 
 ### Phase 1: Foundation & Setup ⏳
+
 **Goal**: Establish core project structure and basic functionality
 **Timeline**: 2-3 weeks
 
 #### Infrastructure Setup
+
 - [x] Project initialization with Expo
 - [x] TypeScript configuration
 - [x] ESLint and development tools
@@ -23,6 +25,7 @@
 - [ ] Error tracking integration (Sentry)
 
 #### Core Project Structure
+
 - [ ] Create service layer architecture
 - [ ] Set up state management (Redux Toolkit)
 - [ ] Implement navigation structure
@@ -31,6 +34,7 @@
 - [ ] Database schema design
 
 #### Basic UI Components
+
 - [ ] Character sheet component
 - [ ] Dice roller component
 - [ ] Chat interface component
@@ -39,10 +43,12 @@
 - [ ] Settings/preferences component
 
 ### Phase 2: Core Game Engine 🎲
+
 **Goal**: Implement D&D 5e rule system and basic gameplay
 **Timeline**: 4-5 weeks
 
 #### D&D 5e Rule Engine
+
 - [ ] Character creation system
   - [ ] Race and class selection
   - [ ] Ability score generation
@@ -63,6 +69,7 @@
   - [ ] Advantage/disadvantage mechanics
 
 #### Game State Management
+
 - [ ] Session state persistence
 - [ ] Character progression tracking
 - [ ] Inventory management
@@ -71,6 +78,7 @@
 - [ ] Save/load functionality
 
 #### Basic Multiplayer Infrastructure
+
 - [ ] WebSocket server setup
 - [ ] Room creation and management
 - [ ] Player authentication
@@ -78,10 +86,12 @@
 - [ ] Reconnection handling
 
 ### Phase 3: AI Integration Foundation 🤖
+
 **Goal**: Implement basic AI agents and integrate core AI services
 **Timeline**: 6-8 weeks
 
 #### AI Service Integration
+
 - [ ] OpenAI/Anthropic API integration
 - [ ] Resemble.ai voice synthesis setup
 - [ ] Flux.dev image generation setup
@@ -90,6 +100,7 @@
 - [ ] Cost monitoring and budgeting
 
 #### Basic AI Agents
+
 - [ ] **Rule Advisor AI**
   - [ ] Rule lookup functionality
   - [ ] Spell description retrieval
@@ -107,6 +118,7 @@
   - [ ] Player action acknowledgment
 
 #### AI Context Management
+
 - [ ] Conversation memory system
 - [ ] Game state context integration
 - [ ] Token usage optimization
@@ -114,10 +126,12 @@
 - [ ] Response caching system
 
 ### Phase 4: Advanced AI Features 🎭
+
 **Goal**: Implement sophisticated AI agents and advanced features
 **Timeline**: 8-10 weeks
 
 #### Advanced Dungeon Master AI
+
 - [ ] Dynamic story generation
 - [ ] Adaptive difficulty adjustment
 - [ ] Complex NPC management
@@ -126,6 +140,7 @@
 - [ ] Cross-session continuity
 
 #### Player Character AI
+
 - [ ] Personality-driven decision making
 - [ ] Strategic combat AI
 - [ ] Roleplay scenario participation
@@ -134,6 +149,7 @@
 - [ ] Backstory integration
 
 #### Advanced NPC System
+
 - [ ] Relationship tracking
 - [ ] Reputation system
 - [ ] Dynamic dialogue trees
@@ -142,6 +158,7 @@
 - [ ] Voice personality matching
 
 #### Image Generation Integration
+
 - [ ] Character portrait generation
 - [ ] Scene illustration system
 - [ ] Item and equipment visuals
@@ -150,10 +167,12 @@
 - [ ] Art style consistency
 
 ### Phase 5: User Experience & Polish 🎨
+
 **Goal**: Optimize UX, performance, and platform-specific features
 **Timeline**: 4-6 weeks
 
 #### User Interface Enhancements
+
 - [ ] Responsive design optimization
 - [ ] Accessibility improvements
 - [ ] Animation and transitions
@@ -162,6 +181,7 @@
 - [ ] Dark/light theme refinement
 
 #### Performance Optimization
+
 - [ ] AI response caching
 - [ ] Image optimization and caching
 - [ ] Voice clip caching
@@ -170,6 +190,7 @@
 - [ ] Bundle size optimization
 
 #### Platform-Specific Features
+
 - [ ] iOS-specific optimizations
 - [ ] Android-specific optimizations
 - [ ] Web app enhancements
@@ -178,10 +199,12 @@
 - [ ] Native device integrations
 
 ### Phase 6: Advanced Features & Scaling 🚀
+
 **Goal**: Implement advanced features and prepare for scaling
 **Timeline**: 6-8 weeks
 
 #### Advanced Gameplay Features
+
 - [ ] Campaign creation tools
 - [ ] Custom rule modifications
 - [ ] Homebrew content support
@@ -190,6 +213,7 @@
 - [ ] Spectator mode
 
 #### Social Features
+
 - [ ] Friend system
 - [ ] Party matchmaking
 - [ ] Campaign sharing
@@ -198,6 +222,7 @@
 - [ ] Community features
 
 #### Content Management
+
 - [ ] Official D&D content integration
 - [ ] Community-generated content
 - [ ] Content moderation system
@@ -208,6 +233,7 @@
 ## 🎯 Current Sprint Tasks
 
 ### Week 1-2: Project Foundation
+
 - [ ] Complete project structure setup
 - [ ] Implement basic navigation
 - [ ] Create fundamental UI components
@@ -215,6 +241,7 @@
 - [ ] Establish testing framework
 
 ### Week 3-4: Core Game Components
+
 - [ ] Character creation flow
 - [ ] Basic dice rolling mechanics
 - [ ] Simple combat interface
@@ -224,6 +251,7 @@
 ## 🔧 Technical Debt & Maintenance
 
 ### Code Quality
+
 - [ ] Implement comprehensive test coverage
 - [ ] Set up automated testing pipeline
 - [ ] Code review processes
@@ -231,6 +259,7 @@
 - [ ] Performance monitoring
 
 ### Security & Privacy
+
 - [ ] API key rotation system
 - [ ] User data encryption
 - [ ] Privacy policy implementation
@@ -238,6 +267,7 @@
 - [ ] Security audit
 
 ### Monitoring & Analytics
+
 - [ ] Error tracking implementation
 - [ ] Performance metrics
 - [ ] User behavior analytics
@@ -247,17 +277,21 @@
 ## 🐛 Known Issues & Bugs
 
 ### High Priority
+
 - [ ] None identified yet
 
 ### Medium Priority
+
 - [ ] None identified yet
 
 ### Low Priority
+
 - [ ] None identified yet
 
 ## 🌟 Future Considerations
 
 ### Potential Features (Post-MVP)
+
 - [ ] VR/AR integration
 - [ ] Advanced AI voice recognition
 - [ ] Real-time collaboration tools
@@ -266,6 +300,7 @@
 - [ ] Desktop application (Electron)
 
 ### Scaling Considerations
+
 - [ ] Database optimization
 - [ ] CDN implementation
 - [ ] Load balancing
@@ -276,6 +311,7 @@
 ## 📊 Success Metrics
 
 ### MVP Success Criteria
+
 - [ ] 100 active users in beta
 - [ ] 95% uptime
 - [ ] <3 second AI response time
@@ -283,6 +319,7 @@
 - [ ] 80% user retention after 1 week
 
 ### Feature Completion Tracking
+
 - **Foundation**: 15% complete
 - **Core Game Engine**: 0% complete
 - **AI Integration**: 0% complete
@@ -292,6 +329,7 @@
 ## 🤝 Contributors & Assignments
 
 ### Core Team
+
 - **Project Lead**: [Assign]
 - **AI Integration Lead**: [Assign]
 - **Frontend Lead**: [Assign]
@@ -299,6 +337,7 @@
 - **UI/UX Designer**: [Assign]
 
 ### Open Source Contributors
+
 - Welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines
 - Check issues labeled "good first issue"
 - Join our Discord for collaboration
@@ -306,12 +345,14 @@
 ## 📝 Notes & Decisions
 
 ### Architecture Decisions
+
 - **State Management**: Redux Toolkit chosen for predictable state updates
 - **Navigation**: Expo Router for file-based routing
 - **AI Services**: Multiple providers for redundancy and cost optimization
 - **Database**: TBD - considering Firebase vs. custom backend
 
 ### Design Decisions
+
 - **Theme**: Fantasy-themed with modern, accessible UI
 - **Voice**: Priority on character voice distinction
 - **Images**: Consistent art style across all generated content
@@ -319,7 +360,7 @@
 
 ---
 
-*This TODO is a living document. Update regularly as development progresses and priorities shift.*
+_This TODO is a living document. Update regularly as development progresses and priorities shift._
 
 **Last Updated**: [Current Date]
 **Next Review**: [Weekly]

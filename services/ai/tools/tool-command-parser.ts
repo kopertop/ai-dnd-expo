@@ -11,47 +11,47 @@ import { Character } from '@/types/character';
 import { GameState } from '@/types/game';
 
 export interface ToolCommand {
-  type: 'roll' | 'update' | 'damage' | 'heal' | 'status' | 'inventory';
-  params: string;
-  parsed?: any;
-  result?: any;
-  error?: string;
+	type: 'roll' | 'update' | 'damage' | 'heal' | 'status' | 'inventory';
+	params: string;
+	parsed?: any;
+	result?: any;
+	error?: string;
 }
 
 export interface ParsedRollCommand {
-  notation: string;
-  modifier?: number;
-  advantage?: boolean;
-  disadvantage?: boolean;
-  purpose?: string;
+	notation: string;
+	modifier?: number;
+	advantage?: boolean;
+	disadvantage?: boolean;
+	purpose?: string;
 }
 
 export interface ParsedUpdateCommand {
-  target: 'hp' | 'maxhp' | 'ap' | 'maxap' | 'stat' | 'skill';
-  operation: 'add' | 'subtract' | 'set';
-  value: number;
-  stat?: string; // For stat updates like 'strength'
+	target: 'hp' | 'maxhp' | 'ap' | 'maxap' | 'stat' | 'skill';
+	operation: 'add' | 'subtract' | 'set';
+	value: number;
+	stat?: string; // For stat updates like 'strength'
 }
 
 export interface ParsedInventoryCommand {
-  action: 'add' | 'remove' | 'equip' | 'unequip';
-  item: string;
-  quantity?: number;
-  slot?: string;
+	action: 'add' | 'remove' | 'equip' | 'unequip';
+	item: string;
+	quantity?: number;
+	slot?: string;
 }
 
 export interface ToolCommandResult {
-  success: boolean;
-  message: string;
-  value?: any;
-  characterUpdates?: Partial<Character>;
+	success: boolean;
+	message: string;
+	value?: any;
+	characterUpdates?: Partial<Character>;
 }
 
 export class ToolCommandParser {
 	/**
-   * Extract tool commands from AI model output
-   * Supports formats: [ROLL:1d20+3], [UPDATE:HP-5], [DAMAGE:2d6], etc.
-   */
+	 * Extract tool commands from AI model output
+	 * Supports formats: [ROLL:1d20+3], [UPDATE:HP-5], [DAMAGE:2d6], etc.
+	 */
 	static extractToolCommands(text: string): ToolCommand[] {
 		const commands: ToolCommand[] = [];
 		const regex = /\[(\w+):([^\]]+)\]/g;
@@ -74,24 +74,24 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Remove tool commands from display text
-   */
+	 * Remove tool commands from display text
+	 */
 	static removeToolCommands(text: string): string {
 		return text.replace(/\[(\w+):([^\]]+)\]/g, '').trim();
 	}
 
 	/**
-   * Parse and execute tool commands
-   */
+	 * Parse and execute tool commands
+	 */
 	static async executeToolCommands(
 		commands: ToolCommand[],
 		character: Character,
 		gameState: GameState,
 	): Promise<{
-    results: ToolCommandResult[];
-    characterUpdates: Partial<Character>;
-    gameStateUpdates: Partial<GameState>;
-  }> {
+		results: ToolCommandResult[];
+		characterUpdates: Partial<Character>;
+		gameStateUpdates: Partial<GameState>;
+	}> {
 		const results: ToolCommandResult[] = [];
 		let characterUpdates: Partial<Character> = {};
 		const gameStateUpdates: Partial<GameState> = {};
@@ -126,8 +126,8 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Parse command parameters based on command type
-   */
+	 * Parse command parameters based on command type
+	 */
 	private static parseCommandParams(command: ToolCommand): any {
 		switch (command.type) {
 		case 'roll':
@@ -148,8 +148,8 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Execute individual command
-   */
+	 * Execute individual command
+	 */
 	private static async executeCommand(
 		command: ToolCommand,
 		character: Character,
@@ -174,9 +174,9 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Parse dice roll commands
-   * Formats: 1d20+3, 2d6, 1d20+5 advantage, 3d8+2 fire damage
-   */
+	 * Parse dice roll commands
+	 * Formats: 1d20+3, 2d6, 1d20+5 advantage, 3d8+2 fire damage
+	 */
 	private static parseRollCommand(params: string): ParsedRollCommand {
 		const parts = params.toLowerCase().split(' ');
 		const notation = parts[0];
@@ -195,7 +195,11 @@ export class ToolCommandParser {
 				parsed.advantage = true;
 			} else if (part === 'disadvantage') {
 				parsed.disadvantage = true;
-			} else if (part.includes('damage') || part.includes('attack') || part.includes('check')) {
+			} else if (
+				part.includes('damage') ||
+				part.includes('attack') ||
+				part.includes('check')
+			) {
 				parsed.purpose = parts.slice(i).join(' ');
 				break;
 			}
@@ -205,9 +209,9 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Parse character update commands
-   * Formats: HP-5, HP+10, MAXHP=25, STR+1
-   */
+	 * Parse character update commands
+	 * Formats: HP-5, HP+10, MAXHP=25, STR+1
+	 */
 	private static parseUpdateCommand(params: string): ParsedUpdateCommand {
 		const match = params.match(/^(HP|MAXHP|AP|MAXAP|STR|DEX|CON|INT|WIS|CHA)([+-=])(\d+)$/i);
 
@@ -249,10 +253,13 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Parse damage commands
-   * Formats: 2d6, 1d8+3 fire, 10 piercing
-   */
-	private static parseDamageCommand(params: string): { damage: ParsedRollCommand | number; type?: string } {
+	 * Parse damage commands
+	 * Formats: 2d6, 1d8+3 fire, 10 piercing
+	 */
+	private static parseDamageCommand(params: string): {
+		damage: ParsedRollCommand | number;
+		type?: string;
+	} {
 		const parts = params.split(' ');
 		const damageStr = parts[0];
 
@@ -271,10 +278,13 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Parse heal commands
-   * Formats: 2d4+2, 15, 1d8+3 magical
-   */
-	private static parseHealCommand(params: string): { healing: ParsedRollCommand | number; type?: string } {
+	 * Parse heal commands
+	 * Formats: 2d4+2, 15, 1d8+3 magical
+	 */
+	private static parseHealCommand(params: string): {
+		healing: ParsedRollCommand | number;
+		type?: string;
+	} {
 		const parts = params.split(' ');
 		const healStr = parts[0];
 
@@ -293,10 +303,14 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Parse status effect commands
-   * Formats: poisoned, stunned 2, blessed 3 rounds
-   */
-	private static parseStatusCommand(params: string): { effect: string; duration?: number; unit?: string } {
+	 * Parse status effect commands
+	 * Formats: poisoned, stunned 2, blessed 3 rounds
+	 */
+	private static parseStatusCommand(params: string): {
+		effect: string;
+		duration?: number;
+		unit?: string;
+	} {
 		const parts = params.split(' ');
 		const effect = parts[0];
 
@@ -315,9 +329,9 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Parse inventory commands
-   * Formats: add sword, remove potion 2, equip helmet, unequip shield
-   */
+	 * Parse inventory commands
+	 * Formats: add sword, remove potion 2, equip helmet, unequip shield
+	 */
 	private static parseInventoryCommand(params: string): ParsedInventoryCommand {
 		const parts = params.split(' ');
 		const action = parts[0] as ParsedInventoryCommand['action'];
@@ -338,8 +352,8 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Execute dice roll command
-   */
+	 * Execute dice roll command
+	 */
 	private static executeRollCommand(parsed: ParsedRollCommand): ToolCommandResult {
 		const result = this.rollDice(parsed.notation, parsed.advantage, parsed.disadvantage);
 
@@ -359,9 +373,12 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Execute character update command
-   */
-	private static executeUpdateCommand(parsed: ParsedUpdateCommand, character: Character): ToolCommandResult {
+	 * Execute character update command
+	 */
+	private static executeUpdateCommand(
+		parsed: ParsedUpdateCommand,
+		character: Character,
+	): ToolCommandResult {
 		const updates: Partial<Character> = {};
 		let currentValue: number;
 		let newValue: number;
@@ -422,8 +439,12 @@ export class ToolCommandParser {
 			(updates as any)[fieldName.split('.')[0]] = newValue;
 		}
 
-		const operationText = parsed.operation === 'set' ? 'set to' :
-			parsed.operation === 'add' ? 'increased by' : 'decreased by';
+		const operationText =
+			parsed.operation === 'set'
+				? 'set to'
+				: parsed.operation === 'add'
+					? 'increased by'
+					: 'decreased by';
 
 		return {
 			success: true,
@@ -434,9 +455,12 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Execute damage command
-   */
-	private static executeDamageCommand(parsed: { damage: ParsedRollCommand | number; type?: string }, character: Character): ToolCommandResult {
+	 * Execute damage command
+	 */
+	private static executeDamageCommand(
+		parsed: { damage: ParsedRollCommand | number; type?: string },
+		character: Character,
+	): ToolCommandResult {
 		let damageAmount: number;
 		let rollMessage = '';
 
@@ -463,9 +487,12 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Execute heal command
-   */
-	private static executeHealCommand(parsed: { healing: ParsedRollCommand | number; type?: string }, character: Character): ToolCommandResult {
+	 * Execute heal command
+	 */
+	private static executeHealCommand(
+		parsed: { healing: ParsedRollCommand | number; type?: string },
+		character: Character,
+	): ToolCommandResult {
 		let healAmount: number;
 		let rollMessage = '';
 
@@ -492,11 +519,16 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Execute status effect command
-   */
-	private static executeStatusCommand(parsed: { effect: string; duration?: number; unit?: string }, character: Character): ToolCommandResult {
+	 * Execute status effect command
+	 */
+	private static executeStatusCommand(
+		parsed: { effect: string; duration?: number; unit?: string },
+		character: Character,
+	): ToolCommandResult {
 		// Note: This is a placeholder - full status effect system would need more complex state management
-		const durationText = parsed.duration ? ` for ${parsed.duration} ${parsed.unit || 'rounds'}` : '';
+		const durationText = parsed.duration
+			? ` for ${parsed.duration} ${parsed.unit || 'rounds'}`
+			: '';
 		const message = `Applied ${parsed.effect} status effect${durationText}`;
 
 		return {
@@ -507,9 +539,12 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Execute inventory command
-   */
-	private static executeInventoryCommand(parsed: ParsedInventoryCommand, character: Character): ToolCommandResult {
+	 * Execute inventory command
+	 */
+	private static executeInventoryCommand(
+		parsed: ParsedInventoryCommand,
+		character: Character,
+	): ToolCommandResult {
 		// Note: This is a placeholder - full inventory system would need proper item management
 		const quantityText = parsed.quantity && parsed.quantity > 1 ? ` (${parsed.quantity})` : '';
 		const message = `${parsed.action} ${parsed.item}${quantityText}`;
@@ -522,9 +557,13 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Roll dice with optional advantage/disadvantage
-   */
-	private static rollDice(notation: string, advantage?: boolean, disadvantage?: boolean): { total: number; rolls: number[]; modifier: number } {
+	 * Roll dice with optional advantage/disadvantage
+	 */
+	private static rollDice(
+		notation: string,
+		advantage?: boolean,
+		disadvantage?: boolean,
+	): { total: number; rolls: number[]; modifier: number } {
 		const match = notation.match(/^(\d+)d(\d+)([+-]\d+)?$/);
 		if (!match) {
 			throw new Error(`Invalid dice notation: ${notation}`);
@@ -559,8 +598,8 @@ export class ToolCommandParser {
 	}
 
 	/**
-   * Check if command type is valid
-   */
+	 * Check if command type is valid
+	 */
 	private static isValidCommandType(type: string): boolean {
 		return ['roll', 'update', 'damage', 'heal', 'status', 'inventory'].includes(type);
 	}

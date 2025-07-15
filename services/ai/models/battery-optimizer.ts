@@ -37,8 +37,13 @@ export interface PowerSavingState {
 }
 
 export interface BatteryOptimization {
-	type: 'reduce_frequency' | 'suspend_background' | 'reduce_complexity' |
-	'disable_features' | 'emergency_suspend' | 'enable_charging_boost';
+	type:
+		| 'reduce_frequency'
+		| 'suspend_background'
+		| 'reduce_complexity'
+		| 'disable_features'
+		| 'emergency_suspend'
+		| 'enable_charging_boost';
 	description: string;
 	batteryImpact: number; // estimated minutes saved
 	performanceImpact: 'none' | 'low' | 'medium' | 'high';
@@ -95,10 +100,7 @@ export class BatteryOptimizer {
 		chargingOptimizations: true,
 	};
 
-	constructor(
-		resourceManager: DeviceResourceManager,
-		config?: Partial<PowerSavingConfig>,
-	) {
+	constructor(resourceManager: DeviceResourceManager, config?: Partial<PowerSavingConfig>) {
 		this.resourceManager = resourceManager;
 		this.config = { ...BatteryOptimizer.DEFAULT_CONFIG, ...config };
 
@@ -126,9 +128,9 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Initialize battery optimizer
-	* Requirement 3.2: Battery optimization initialization
-	*/
+	 * Initialize battery optimizer
+	 * Requirement 3.2: Battery optimization initialization
+	 */
 	async initialize(): Promise<void> {
 		try {
 			console.log('🔋 Initializing Battery Optimizer...');
@@ -141,7 +143,6 @@ export class BatteryOptimizer {
 
 			console.log('✅ Battery Optimizer initialized');
 			console.log('🔋 Initial battery level:', this.metrics.currentLevel + '%');
-
 		} catch (error) {
 			console.error('❌ Failed to initialize Battery Optimizer:', error);
 			throw error;
@@ -149,17 +150,19 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Set performance optimizer reference for coordination
-	*/
+	 * Set performance optimizer reference for coordination
+	 */
 	setPerformanceOptimizer(optimizer: PerformanceOptimizer): void {
 		this.performanceOptimizer = optimizer;
 	}
 
 	/**
-	* Enable power-saving mode
-	* Requirement 3.2: Power-saving mode that reduces model complexity
-	*/
-	async enablePowerSavingMode(reason: PowerSavingState['reason'] = 'user_request'): Promise<void> {
+	 * Enable power-saving mode
+	 * Requirement 3.2: Power-saving mode that reduces model complexity
+	 */
+	async enablePowerSavingMode(
+		reason: PowerSavingState['reason'] = 'user_request',
+	): Promise<void> {
 		if (this.powerSavingState.isActive) {
 			console.log('⚠️ Power saving mode already active');
 			return;
@@ -194,8 +197,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Disable power-saving mode
-	*/
+	 * Disable power-saving mode
+	 */
 	async disablePowerSavingMode(): Promise<void> {
 		if (!this.powerSavingState.isActive) {
 			return;
@@ -220,9 +223,9 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Suspend background processing when device is idle
-	* Requirement 3.2: Background processing suspension when device is idle
-	*/
+	 * Suspend background processing when device is idle
+	 * Requirement 3.2: Background processing suspension when device is idle
+	 */
 	suspendBackgroundProcessing(): void {
 		if (!this.config.enableBackgroundSuspension) {
 			return;
@@ -241,8 +244,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Resume background processing
-	*/
+	 * Resume background processing
+	 */
 	resumeBackgroundProcessing(): void {
 		if (this.powerSavingState.reason === 'background') {
 			console.log('▶️ Resuming background processing...');
@@ -260,9 +263,9 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Scale performance based on battery level
-	* Requirement 3.2: Battery level-based performance scaling
-	*/
+	 * Scale performance based on battery level
+	 * Requirement 3.2: Battery level-based performance scaling
+	 */
 	async scaleBatteryPerformance(): Promise<void> {
 		if (!this.config.enableBatteryScaling) {
 			return;
@@ -300,22 +303,22 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Get current battery metrics
-	*/
+	 * Get current battery metrics
+	 */
 	getMetrics(): BatteryMetrics {
 		return { ...this.metrics };
 	}
 
 	/**
-	* Get power saving state
-	*/
+	 * Get power saving state
+	 */
 	getPowerSavingState(): PowerSavingState {
 		return { ...this.powerSavingState };
 	}
 
 	/**
-	* Record user activity to reset idle timer
-	*/
+	 * Record user activity to reset idle timer
+	 */
 	recordActivity(): void {
 		this.lastActivityTime = Date.now();
 
@@ -331,15 +334,15 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Add battery event callback
-	*/
+	 * Add battery event callback
+	 */
 	addEventListener(callback: BatteryEventCallback): void {
 		this.eventCallbacks.push(callback);
 	}
 
 	/**
-	* Remove battery event callback
-	*/
+	 * Remove battery event callback
+	 */
 	removeEventListener(callback: BatteryEventCallback): void {
 		const index = this.eventCallbacks.indexOf(callback);
 		if (index > -1) {
@@ -348,8 +351,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Update battery optimization configuration
-	*/
+	 * Update battery optimization configuration
+	 */
 	updateConfig(newConfig: Partial<PowerSavingConfig>): void {
 		this.config = { ...this.config, ...newConfig };
 
@@ -358,8 +361,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Get battery optimization configuration
-	*/
+	 * Get battery optimization configuration
+	 */
 	getConfig(): PowerSavingConfig {
 		return { ...this.config };
 	}
@@ -367,19 +370,22 @@ export class BatteryOptimizer {
 	// Private methods
 
 	/**
-	* Setup event listeners
-	*/
+	 * Setup event listeners
+	 */
 	private setupEventListeners(): void {
 		// Listen to resource manager events
 		this.resourceManager.addEventListener(this.handleResourceEvent.bind(this));
 
 		// Listen to app state changes
-		this.appStateSubscription = AppState.addEventListener('change', this.handleAppStateChange.bind(this));
+		this.appStateSubscription = AppState.addEventListener(
+			'change',
+			this.handleAppStateChange.bind(this),
+		);
 	}
 
 	/**
-	* Handle resource events from DeviceResourceManager
-	*/
+	 * Handle resource events from DeviceResourceManager
+	 */
 	private handleResourceEvent(event: ResourceEvent): void {
 		if (event.type === 'battery_low' || event.type === 'battery_critical') {
 			this.evaluatePowerSavingNeed();
@@ -391,8 +397,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Handle app state changes
-	*/
+	 * Handle app state changes
+	 */
 	private handleAppStateChange(nextAppState: AppStateStatus): void {
 		const wasInBackground = this.isInBackground;
 		this.isInBackground = nextAppState === 'background' || nextAppState === 'inactive';
@@ -405,8 +411,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Handle app entering background
-	*/
+	 * Handle app entering background
+	 */
 	private handleBackgroundMode(): void {
 		if (!this.config.enableBackgroundSuspension) {
 			return;
@@ -421,8 +427,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Handle app entering foreground
-	*/
+	 * Handle app entering foreground
+	 */
 	private handleForegroundMode(): void {
 		console.log('📱 App entered foreground mode');
 
@@ -440,8 +446,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Start idle detection
-	*/
+	 * Start idle detection
+	 */
 	private startIdleDetection(): void {
 		if (!this.config.enableIdleDetection) {
 			return;
@@ -453,8 +459,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Handle idle timeout
-	*/
+	 * Handle idle timeout
+	 */
 	private handleIdleTimeout(): void {
 		console.log('😴 Device idle timeout reached');
 
@@ -468,8 +474,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Resume from idle state
-	*/
+	 * Resume from idle state
+	 */
 	private resumeFromIdle(): void {
 		if (this.powerSavingState.reason === 'idle') {
 			console.log('😊 Resuming from idle state');
@@ -487,8 +493,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Update battery metrics
-	*/
+	 * Update battery metrics
+	 */
 	private async updateBatteryMetrics(): Promise<void> {
 		const resourceUsage = this.resourceManager.getCachedResourceUsage();
 		if (!resourceUsage) {
@@ -517,15 +523,18 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Evaluate if power saving should be enabled
-	*/
+	 * Evaluate if power saving should be enabled
+	 */
 	private evaluatePowerSavingNeed(): void {
 		const shouldEnable = this.shouldEnablePowerSaving();
 
 		if (shouldEnable && !this.powerSavingState.isActive) {
 			this.enablePowerSavingMode('battery_level');
-		} else if (!shouldEnable && this.powerSavingState.isActive &&
-			this.powerSavingState.reason === 'battery_level') {
+		} else if (
+			!shouldEnable &&
+			this.powerSavingState.isActive &&
+			this.powerSavingState.reason === 'battery_level'
+		) {
 			this.disablePowerSavingMode();
 		} else if (shouldEnable && this.powerSavingState.isActive) {
 			// Update power saving mode intensity
@@ -539,8 +548,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Check if power saving should be enabled
-	*/
+	 * Check if power saving should be enabled
+	 */
 	private shouldEnablePowerSaving(): boolean {
 		const batteryLevel = this.metrics.currentLevel;
 		const isCharging = this.metrics.isCharging;
@@ -554,8 +563,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Determine appropriate power saving mode
-	*/
+	 * Determine appropriate power saving mode
+	 */
 	private determinePowerSavingMode(): PowerSavingState['mode'] {
 		const batteryLevel = this.metrics.currentLevel;
 
@@ -569,8 +578,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Apply power saving optimizations
-	*/
+	 * Apply power saving optimizations
+	 */
 	private async applyPowerSavingOptimizations(): Promise<void> {
 		const optimizations: BatteryOptimization[] = [];
 
@@ -646,8 +655,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Remove power saving optimizations
-	*/
+	 * Remove power saving optimizations
+	 */
 	private async removePowerSavingOptimizations(): Promise<void> {
 		this.metrics.optimizationsActive = [];
 
@@ -655,25 +664,27 @@ export class BatteryOptimizer {
 		if (this.performanceOptimizer) {
 			await this.performanceOptimizer.switchPerformanceMode('balanced');
 		}
-
-
 	}
 
 	/**
-	* Calculate power reduction percentage
-	*/
+	 * Calculate power reduction percentage
+	 */
 	private calculatePowerReduction(mode: PowerSavingState['mode']): number {
 		switch (mode) {
-		case 'emergency': return 80;
-		case 'aggressive': return 60;
-		case 'power_saving': return 30;
-		case 'normal': return 0;
+		case 'emergency':
+			return 80;
+		case 'aggressive':
+			return 60;
+		case 'power_saving':
+			return 30;
+		case 'normal':
+			return 0;
 		}
 	}
 
 	/**
-	* Calculate estimated battery life
-	*/
+	 * Calculate estimated battery life
+	 */
 	private calculateEstimatedBatteryLife(): number {
 		const currentLevel = this.metrics.currentLevel;
 		const consumptionRate = this.metrics.powerConsumptionRate;
@@ -691,8 +702,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Calculate power consumption rate
-	*/
+	 * Calculate power consumption rate
+	 */
 	private calculatePowerConsumptionRate(): number {
 		if (this.batteryHistory.length < 2) {
 			return 0;
@@ -728,8 +739,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Assess battery health
-	*/
+	 * Assess battery health
+	 */
 	private assessBatteryHealth(): 'excellent' | 'good' | 'fair' | 'poor' {
 		// This would use actual battery health APIs in a real implementation
 		// For now, estimate based on charging patterns and consumption
@@ -748,8 +759,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Calculate charging efficiency
-	*/
+	 * Calculate charging efficiency
+	 */
 	private calculateChargingEfficiency(): number {
 		// This would use actual charging metrics in a real implementation
 		// For now, return a reasonable estimate
@@ -757,8 +768,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Notify listeners of battery changes
-	*/
+	 * Notify listeners of battery changes
+	 */
 	private notifyBatteryChange(): void {
 		this.eventCallbacks.forEach(callback => {
 			try {
@@ -770,8 +781,8 @@ export class BatteryOptimizer {
 	}
 
 	/**
-	* Cleanup resources
-	*/
+	 * Cleanup resources
+	 */
 	dispose(): void {
 		if (this.idleTimer) {
 			clearTimeout(this.idleTimer);
@@ -797,20 +808,25 @@ export class BatteryOptimizer {
  */
 export const BatteryUtils = {
 	/**
-	* Format battery level with appropriate icon
-	*/
+	 * Format battery level with appropriate icon
+	 */
 	formatBatteryLevel(level: number, isCharging: boolean): string {
-		const icon = isCharging ? '🔌' :
-			level > 80 ? '🔋' :
-				level > 50 ? '🔋' :
-					level > 20 ? '🪫' : '🪫';
+		const icon = isCharging
+			? '🔌'
+			: level > 80
+				? '🔋'
+				: level > 50
+					? '🔋'
+					: level > 20
+						? '🪫'
+						: '🪫';
 
 		return `${icon} ${level}%`;
 	},
 
 	/**
-	* Get battery color for UI
-	*/
+	 * Get battery color for UI
+	 */
 	getBatteryColor(level: number, isCharging: boolean): string {
 		if (isCharging) {
 			return '#44AA44'; // Green when charging
@@ -824,20 +840,24 @@ export const BatteryUtils = {
 	},
 
 	/**
-	* Format power saving mode for display
-	*/
+	 * Format power saving mode for display
+	 */
 	formatPowerSavingMode(mode: PowerSavingState['mode']): string {
 		switch (mode) {
-		case 'normal': return 'Normal';
-		case 'power_saving': return 'Power Saving';
-		case 'aggressive': return 'Aggressive Saving';
-		case 'emergency': return 'Emergency Mode';
+		case 'normal':
+			return 'Normal';
+		case 'power_saving':
+			return 'Power Saving';
+		case 'aggressive':
+			return 'Aggressive Saving';
+		case 'emergency':
+			return 'Emergency Mode';
 		}
 	},
 
 	/**
-	* Calculate estimated usage time
-	*/
+	 * Calculate estimated usage time
+	 */
 	calculateUsageTime(batteryLevel: number, consumptionRate: number): string {
 		if (consumptionRate <= 0) {
 			return 'Unknown';
@@ -855,8 +875,8 @@ export const BatteryUtils = {
 	},
 
 	/**
-	* Get power saving recommendation
-	*/
+	 * Get power saving recommendation
+	 */
 	getPowerSavingRecommendation(batteryLevel: number, isCharging: boolean): string {
 		if (isCharging) {
 			return 'Device is charging - full performance available';
