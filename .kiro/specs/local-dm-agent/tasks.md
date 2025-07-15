@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Set up local DM provider infrastructure and core interfaces
+- [-] 1. Set up local DM provider infrastructure and core interfaces
   - Create LocalDMProvider class that implements the AIProvider interface
   - Define TypeScript interfaces for local model configuration and status
   - Implement basic provider registration in AI Service Manager
@@ -51,7 +51,7 @@
     - Create narrative generation with story consistency
     - _Requirements: 2.1, 2.2, 2.3_
 
-  - [-] 4.2 Add tool command parsing and execution
+  - [ ] 4.2 Add tool command parsing and execution
     - Implement dice roll command parsing from model output ([ROLL:1d20+3])
     - Create character stat update parsing ([UPDATE:HP-5])
     - Write tool command execution with game state integration
