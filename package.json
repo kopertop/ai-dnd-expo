@@ -18,9 +18,9 @@
     "lint": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck && npx expo-doctor",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "type-check": "tsc --noEmit",
     "build:local": "eas build --profile development",
     "build:development": "eas build --profile development",
@@ -88,10 +88,15 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@testing-library/jest-dom": "^6.6.3",
     "@types/react": "~19.0.10",
+    "@vitejs/plugin-react": "^4.6.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~9.2.0",
-    "typescript": "~5.8.3"
+    "jsdom": "^26.1.0",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4",
+    "vitest": "^3.2.4"
   },
   "eslintConfig": {
     "extends": [
