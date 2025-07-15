@@ -13,34 +13,34 @@ import { DeviceCapabilities, DeviceCapabilityManager, ModelVariant, Quantization
 import { ONNXModelManager } from './onnx-model-manager';
 
 export interface QuantizationConfig {
-  type: QuantizationType;
-  modelPath: string;
-  configPath?: string;
-  tokenizerPath?: string;
-  metadata: {
-    size: number; // in MB
-    memoryRequirement: number; // in MB
-    expectedSpeed: 'fast' | 'medium' | 'slow';
-    qualityScore: number; // 0-100
-  };
+	type: QuantizationType;
+	modelPath: string;
+	configPath?: string;
+	tokenizerPath?: string;
+	metadata: {
+		size: number; // in MB
+		memoryRequirement: number; // in MB
+		expectedSpeed: 'fast' | 'medium' | 'slow';
+		qualityScore: number; // 0-100
+	};
 }
 
 export interface ModelLoadingProgress {
-  stage: 'downloading' | 'loading' | 'validating' | 'optimizing' | 'ready' | 'error';
-  progress: number; // 0-100
-  message: string;
-  bytesLoaded?: number;
-  totalBytes?: number;
+	stage: 'downloading' | 'loading' | 'validating' | 'optimizing' | 'ready' | 'error';
+	progress: number; // 0-100
+	message: string;
+	bytesLoaded?: number;
+	totalBytes?: number;
 }
 
 export interface QuantizationPerformance {
-  quantization: QuantizationType;
-  averageInferenceTime: number;
-  tokensPerSecond: number;
-  memoryUsage: number;
-  qualityScore: number;
-  thermalImpact: 'low' | 'medium' | 'high';
-  batteryImpact: 'low' | 'medium' | 'high';
+	quantization: QuantizationType;
+	averageInferenceTime: number;
+	tokensPerSecond: number;
+	memoryUsage: number;
+	qualityScore: number;
+	thermalImpact: 'low' | 'medium' | 'high';
+	batteryImpact: 'low' | 'medium' | 'high';
 }
 
 /**
@@ -62,9 +62,9 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-   * Initialize quantization manager with available model variants
-   * Requirement 1.4: Support for different quantization levels
-   */
+	* Initialize quantization manager with available model variants
+	* Requirement 1.4: Support for different quantization levels
+	*/
 	async initialize(configs: QuantizationConfig[]): Promise<void> {
 		try {
 			console.log('⚙️ Initializing quantization manager...');
@@ -89,9 +89,9 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-   * Load optimal model based on device capabilities
-   * Requirement 3.1: Optimal quantization selection
-   */
+	* Load optimal model based on device capabilities
+	* Requirement 3.1: Optimal quantization selection
+	*/
 	async loadOptimalModel(progressCallback?: (progress: ModelLoadingProgress) => void): Promise<InferenceSession> {
 		if (!this.isInitialized) {
 			throw new Error('Quantization manager not initialized');
@@ -141,9 +141,9 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-   * Load specific quantized model
-   * Requirement 1.4: Model variant loading
-   */
+	* Load specific quantized model
+	* Requirement 1.4: Model variant loading
+	*/
 	async loadSpecificModel(
 		config: QuantizationConfig,
 		progressCallback?: (progress: ModelLoadingProgress) => void,
@@ -233,9 +233,9 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-   * Switch to different quantization level
-   * Requirement 1.4: Dynamic quantization switching
-   */
+	* Switch to different quantization level
+	* Requirement 1.4: Dynamic quantization switching
+	*/
 	async switchQuantization(
 		targetQuantization: QuantizationType,
 		progressCallback?: (progress: ModelLoadingProgress) => void,
@@ -256,8 +256,8 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-   * Get available model variants based on device capabilities
-   */
+	* Get available model variants based on device capabilities
+	*/
 	getAvailableModelVariants(): ModelVariant[] {
 		const variants: ModelVariant[] = [];
 
@@ -279,28 +279,28 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-   * Get current quantization configuration
-   */
+	* Get current quantization configuration
+	*/
 	getCurrentConfig(): QuantizationConfig | null {
 		return this.currentConfig;
 	}
 
 	/**
-   * Get current model session
-   */
+	* Get current model session
+	*/
 	getCurrentSession(): InferenceSession | null {
 		return this.currentSession;
 	}
 
 	/**
-   * Record performance metrics for current quantization
-   */
+	* Record performance metrics for current quantization
+	*/
 	recordPerformance(metrics: {
-    inferenceTime: number;
-    tokenCount: number;
-    memoryUsage: number;
-    thermalImpact: 'low' | 'medium' | 'high';
-  }): void {
+		inferenceTime: number;
+		tokenCount: number;
+		memoryUsage: number;
+		thermalImpact: 'low' | 'medium' | 'high';
+	}): void {
 		if (!this.currentConfig) {
 			return;
 		}
@@ -332,15 +332,15 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-   * Get performance history for all quantizations
-   */
+	* Get performance history for all quantizations
+	*/
 	getPerformanceHistory(): QuantizationPerformance[] {
 		return [...this.performanceHistory];
 	}
 
 	/**
-   * Get recommended quantization based on current conditions
-   */
+	* Get recommended quantization based on current conditions
+	*/
 	getRecommendedQuantization(): QuantizationType | null {
 		const capabilities = this.deviceManager.getCapabilities();
 		if (!capabilities) {
@@ -354,22 +354,22 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-   * Check if model is compatible with device
-   */
+	* Check if model is compatible with device
+	*/
 	private isModelCompatible(config: QuantizationConfig, capabilities: DeviceCapabilities): boolean {
 		return (
 			config.metadata.memoryRequirement <= capabilities.availableMemory &&
-      capabilities.supportedQuantizations.includes(config.type)
+			capabilities.supportedQuantizations.includes(config.type)
 		);
 	}
 
 	/**
-   * Estimate battery impact based on performance metrics
-   */
+	* Estimate battery impact based on performance metrics
+	*/
 	private estimateBatteryImpact(metrics: {
-    inferenceTime: number;
-    thermalImpact: 'low' | 'medium' | 'high';
-  }): 'low' | 'medium' | 'high' {
+		inferenceTime: number;
+		thermalImpact: 'low' | 'medium' | 'high';
+	}): 'low' | 'medium' | 'high' {
 		if (metrics.thermalImpact === 'high' || metrics.inferenceTime > 5000) {
 			return 'high';
 		} else if (metrics.thermalImpact === 'medium' || metrics.inferenceTime > 2000) {
@@ -380,8 +380,8 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-   * Clean up all resources
-   */
+	* Clean up all resources
+	*/
 	async cleanup(): Promise<void> {
 		try {
 			if (this.currentSession) {
@@ -402,8 +402,8 @@ export class ModelQuantizationManager {
 	}
 
 	/**
-   * Check if manager is ready
-   */
+	* Check if manager is ready
+	*/
 	isReady(): boolean {
 		return this.isInitialized && this.deviceManager.isReady();
 	}
@@ -414,8 +414,8 @@ export class ModelQuantizationManager {
  */
 export const QuantizationUtils = {
 	/**
-   * Create quantization config from model variant
-   */
+	* Create quantization config from model variant
+	*/
 	createConfigFromVariant(variant: ModelVariant, basePath: string): QuantizationConfig {
 		return {
 			type: variant.quantization,
@@ -432,14 +432,14 @@ export const QuantizationUtils = {
 	},
 
 	/**
-   * Compare quantization performance
-   */
+	* Compare quantization performance
+	*/
 	compareQuantizations(a: QuantizationPerformance, b: QuantizationPerformance): {
-    faster: QuantizationType;
-    higherQuality: QuantizationType;
-    moreEfficient: QuantizationType;
-    recommendation: QuantizationType;
-  } {
+		faster: QuantizationType;
+		higherQuality: QuantizationType;
+		moreEfficient: QuantizationType;
+		recommendation: QuantizationType;
+	} {
 		return {
 			faster: a.tokensPerSecond > b.tokensPerSecond ? a.quantization : b.quantization,
 			higherQuality: a.qualityScore > b.qualityScore ? a.quantization : b.quantization,
@@ -449,8 +449,8 @@ export const QuantizationUtils = {
 	},
 
 	/**
-   * Get overall better quantization based on weighted score
-   */
+	* Get overall better quantization based on weighted score
+	*/
 	getOverallBetter(a: QuantizationPerformance, b: QuantizationPerformance): QuantizationType {
 		// Weighted scoring: speed (30%), quality (40%), efficiency (30%)
 		const scoreA = (a.tokensPerSecond / 10) * 0.3 + (a.qualityScore / 100) * 0.4 + (1 - a.memoryUsage / 4000) * 0.3;
@@ -460,8 +460,8 @@ export const QuantizationUtils = {
 	},
 
 	/**
-   * Get quantization display name
-   */
+	* Get quantization display name
+	*/
 	getDisplayName(quantization: QuantizationType): string {
 		const names = {
 			int4: '4-bit Integer',
@@ -474,8 +474,8 @@ export const QuantizationUtils = {
 	},
 
 	/**
-   * Get quantization description
-   */
+	* Get quantization description
+	*/
 	getDescription(quantization: QuantizationType): string {
 		const descriptions = {
 			int4: 'Fastest inference with good quality, lowest memory usage',
@@ -488,12 +488,12 @@ export const QuantizationUtils = {
 	},
 
 	/**
-   * Validate quantization config
-   */
+	* Validate quantization config
+	*/
 	validateConfig(config: QuantizationConfig): {
-    valid: boolean;
-    issues: string[];
-  } {
+		valid: boolean;
+		issues: string[];
+	} {
 		const issues: string[] = [];
 
 		if (!config.modelPath) {

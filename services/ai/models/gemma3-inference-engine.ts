@@ -13,48 +13,48 @@ import { DnDPromptContext, Gemma3Tokenizer, TokenizationResult } from './gemma3-
 import { ModelInput, ONNXModelManager } from './onnx-model-manager';
 
 export interface InferenceConfig {
-  maxNewTokens: number;
-  temperature: number;
-  topP: number;
-  topK: number;
-  repetitionPenalty: number;
-  doSample: boolean;
-  stopTokens: string[];
-  maxInferenceTime: number; // in milliseconds
+	maxNewTokens: number;
+	temperature: number;
+	topP: number;
+	topK: number;
+	repetitionPenalty: number;
+	doSample: boolean;
+	stopTokens: string[];
+	maxInferenceTime: number; // in milliseconds
 }
 
 export interface InferenceRequest {
-  prompt: string;
-  context?: DnDPromptContext;
-  config?: Partial<InferenceConfig>;
+	prompt: string;
+	context?: DnDPromptContext;
+	config?: Partial<InferenceConfig>;
 }
 
 export interface InferenceResponse {
-  text: string;
-  confidence: number;
-  toolCommands: Array<{ type: string; params: string }>;
-  processingTime: number;
-  tokenCount: {
-    input: number;
-    output: number;
-    total: number;
-  };
-  metadata: {
-    temperature: number;
-    topP: number;
-    stopReason: 'max_tokens' | 'stop_token' | 'eos' | 'timeout';
-    truncated: boolean;
-  };
+	text: string;
+	confidence: number;
+	toolCommands: Array<{ type: string; params: string }>;
+	processingTime: number;
+	tokenCount: {
+		input: number;
+		output: number;
+		total: number;
+	};
+	metadata: {
+		temperature: number;
+		topP: number;
+		stopReason: 'max_tokens' | 'stop_token' | 'eos' | 'timeout';
+		truncated: boolean;
+	};
 }
 
 export interface GenerationState {
-  inputIds: number[];
-  attentionMask: number[];
-  positionIds: number[];
-  generatedTokens: number[];
-  currentLength: number;
-  isComplete: boolean;
-  stopReason?: 'max_tokens' | 'stop_token' | 'eos' | 'timeout';
+	inputIds: number[];
+	attentionMask: number[];
+	positionIds: number[];
+	generatedTokens: number[];
+	currentLength: number;
+	isComplete: boolean;
+	stopReason?: 'max_tokens' | 'stop_token' | 'eos' | 'timeout';
 }
 
 /**
@@ -85,9 +85,9 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-   * Initialize the inference engine
-   * Requirement 2.1: Proper initialization
-   */
+	* Initialize the inference engine
+	* Requirement 2.1: Proper initialization
+	*/
 	async initialize(modelPath: string): Promise<void> {
 		try {
 			console.log('🚀 Initializing Gemma3 inference engine...');
@@ -117,9 +117,9 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-   * Generate D&D response using Gemma3 model
-   * Requirement 2.1: Generate contextually appropriate responses
-   */
+	* Generate D&D response using Gemma3 model
+	* Requirement 2.1: Generate contextually appropriate responses
+	*/
 	async generateDnDResponse(request: InferenceRequest): Promise<InferenceResponse> {
 		if (!this.isInitialized || !this.session) {
 			throw new Error('Inference engine not initialized');
@@ -197,9 +197,9 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-   * Generate tokens using the ONNX model with sampling
-   * Requirement 2.2: Proper input/output handling
-   */
+	* Generate tokens using the ONNX model with sampling
+	* Requirement 2.2: Proper input/output handling
+	*/
 	private async generateTokens(
 		tokenizationResult: TokenizationResult,
 		config: InferenceConfig,
@@ -280,8 +280,8 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-   * Sample next token from model logits using temperature and top-p sampling
-   */
+	* Sample next token from model logits using temperature and top-p sampling
+	*/
 	private sampleNextToken(logits: Float32Array, config: InferenceConfig, state: GenerationState): number {
 		try {
 			// Get logits for the last position (next token prediction)
@@ -329,8 +329,8 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-   * Apply repetition penalty to logits
-   */
+	* Apply repetition penalty to logits
+	*/
 	private applyRepetitionPenalty(logits: Float32Array, inputIds: number[], penalty: number): void {
 		const seenTokens = new Set(inputIds);
 
@@ -346,8 +346,8 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-   * Apply softmax to convert logits to probabilities
-   */
+	* Apply softmax to convert logits to probabilities
+	*/
 	private softmax(logits: Float32Array): Float32Array {
 		const maxLogit = Math.max(...logits);
 		const expLogits = logits.map(x => Math.exp(x - maxLogit));
@@ -357,8 +357,8 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-   * Apply top-k filtering
-   */
+	* Apply top-k filtering
+	*/
 	private applyTopKFiltering(probabilities: Float32Array, topK: number): void {
 		const indexed = Array.from(probabilities).map((prob, index) => ({ prob, index }));
 		indexed.sort((a, b) => b.prob - a.prob);
@@ -378,8 +378,8 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-   * Apply top-p (nucleus) sampling
-   */
+	* Apply top-p (nucleus) sampling
+	*/
 	private applyTopPFiltering(probabilities: Float32Array, topP: number): void {
 		const indexed = Array.from(probabilities).map((prob, index) => ({ prob, index }));
 		indexed.sort((a, b) => b.prob - a.prob);
@@ -410,8 +410,8 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-   * Sample from probability distribution
-   */
+	* Sample from probability distribution
+	*/
 	private sampleFromDistribution(probabilities: Float32Array): number {
 		const random = Math.random();
 		let cumulativeProb = 0;
@@ -428,8 +428,8 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-   * Get argmax (greedy sampling)
-   */
+	* Get argmax (greedy sampling)
+	*/
 	private argmax(probabilities: Float32Array): number {
 		let maxIndex = 0;
 		let maxValue = probabilities[0];
@@ -445,9 +445,9 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-   * Post-process D&D response text
-   * Requirement 2.1: D&D-specific formatting
-   */
+	* Post-process D&D response text
+	* Requirement 2.1: D&D-specific formatting
+	*/
 	private postProcessDnDResponse(text: string): string {
 		// Remove special tokens that shouldn't appear in output
 		let processed = text
@@ -473,8 +473,8 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-   * Extract tool commands from response text
-   */
+	* Extract tool commands from response text
+	*/
 	private extractToolCommands(text: string): Array<{ type: string; params: string }> {
 		const commands: Array<{ type: string; params: string }> = [];
 		const regex = /\[(\w+):([^\]]+)\]/g;
@@ -493,15 +493,15 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-   * Remove tool commands from display text
-   */
+	* Remove tool commands from display text
+	*/
 	private removeToolCommands(text: string): string {
 		return text.replace(/\[(\w+):([^\]]+)\]/g, '').replace(/\s+/g, ' ').trim();
 	}
 
 	/**
-   * Calculate confidence score based on generation quality
-   */
+	* Calculate confidence score based on generation quality
+	*/
 	private calculateConfidence(
 		generationState: GenerationState,
 		processingTime: number,
@@ -541,29 +541,29 @@ export class Gemma3InferenceEngine {
 	}
 
 	/**
-   * Check if inference engine is ready
-   */
+	* Check if inference engine is ready
+	*/
 	isReady(): boolean {
 		return this.isInitialized && this.session !== null && this.tokenizer.isReady();
 	}
 
 	/**
-   * Get current configuration
-   */
+	* Get current configuration
+	*/
 	getConfig(): InferenceConfig {
 		return { ...this.defaultConfig };
 	}
 
 	/**
-   * Update inference configuration
-   */
+	* Update inference configuration
+	*/
 	updateConfig(config: Partial<InferenceConfig>): void {
 		this.defaultConfig = { ...this.defaultConfig, ...config };
 	}
 
 	/**
-   * Clean up resources
-   */
+	* Clean up resources
+	*/
 	async cleanup(): Promise<void> {
 		try {
 			if (this.session) {
@@ -586,8 +586,8 @@ export class Gemma3InferenceEngine {
  */
 export const Gemma3InferenceUtils = {
 	/**
-   * Get recommended inference config for device performance
-   */
+	* Get recommended inference config for device performance
+	*/
 	getRecommendedConfig(devicePerformance: 'high' | 'medium' | 'low'): Partial<InferenceConfig> {
 		switch (devicePerformance) {
 		case 'high':
@@ -621,12 +621,12 @@ export const Gemma3InferenceUtils = {
 	},
 
 	/**
-   * Validate inference request
-   */
+	* Validate inference request
+	*/
 	validateInferenceRequest(request: InferenceRequest): {
-    valid: boolean;
-    issues: string[];
-  } {
+		valid: boolean;
+		issues: string[];
+	} {
 		const issues: string[] = [];
 
 		if (!request.prompt || request.prompt.trim().length === 0) {
@@ -656,8 +656,8 @@ export const Gemma3InferenceUtils = {
 	},
 
 	/**
-   * Estimate inference time based on token count and device performance
-   */
+	* Estimate inference time based on token count and device performance
+	*/
 	estimateInferenceTime(
 		inputTokens: number,
 		maxNewTokens: number,

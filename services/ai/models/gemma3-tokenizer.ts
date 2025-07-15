@@ -8,35 +8,35 @@
  */
 
 export interface TokenizerConfig {
-  vocabSize: number;
-  bosToken: string;
-  eosToken: string;
-  unkToken: string;
-  padToken: string;
-  specialTokens: Record<string, number>;
-  maxSequenceLength: number;
+	vocabSize: number;
+	bosToken: string;
+	eosToken: string;
+	unkToken: string;
+	padToken: string;
+	specialTokens: Record<string, number>;
+	maxSequenceLength: number;
 }
 
 export interface TokenizationResult {
-  inputIds: number[];
-  attentionMask: number[];
-  positionIds?: number[];
-  tokenCount: number;
+	inputIds: number[];
+	attentionMask: number[];
+	positionIds?: number[];
+	tokenCount: number;
 }
 
 export interface DetokenizationResult {
-  text: string;
-  specialTokensFound: string[];
-  truncated: boolean;
+	text: string;
+	specialTokensFound: string[];
+	truncated: boolean;
 }
 
 export interface DnDPromptContext {
-  playerName: string;
-  playerClass: string;
-  playerRace: string;
-  currentScene: string;
-  gameHistory: string[];
-  systemPrompt?: string;
+	playerName: string;
+	playerClass: string;
+	playerRace: string;
+	currentScene: string;
+	gameHistory: string[];
+	systemPrompt?: string;
 }
 
 /**
@@ -72,9 +72,9 @@ export class Gemma3Tokenizer {
 	}
 
 	/**
-   * Initialize tokenizer with vocabulary
-   * In a real implementation, this would load from a tokenizer.json file
-   */
+	* Initialize tokenizer with vocabulary
+	* In a real implementation, this would load from a tokenizer.json file
+	*/
 	async initialize(): Promise<void> {
 		try {
 			console.log('🔤 Initializing Gemma3 tokenizer...');
@@ -99,9 +99,9 @@ export class Gemma3Tokenizer {
 	}
 
 	/**
-   * Tokenize text with D&D-specific formatting
-   * Requirement 2.1: D&D-specific prompt formatting
-   */
+	* Tokenize text with D&D-specific formatting
+	* Requirement 2.1: D&D-specific prompt formatting
+	*/
 	async tokenize(text: string, context?: DnDPromptContext): Promise<TokenizationResult> {
 		if (!this.isInitialized) {
 			await this.initialize();
@@ -151,9 +151,9 @@ export class Gemma3Tokenizer {
 	}
 
 	/**
-   * Detokenize token IDs back to text
-   * Requirement 2.2: Proper output handling
-   */
+	* Detokenize token IDs back to text
+	* Requirement 2.2: Proper output handling
+	*/
 	async detokenize(tokenIds: number[]): Promise<DetokenizationResult> {
 		if (!this.isInitialized) {
 			await this.initialize();
@@ -202,9 +202,9 @@ export class Gemma3Tokenizer {
 	}
 
 	/**
-   * Format D&D-specific prompt with context
-   * Requirement 2.1: D&D-specific prompt formatting
-   */
+	* Format D&D-specific prompt with context
+	* Requirement 2.1: D&D-specific prompt formatting
+	*/
 	private formatDnDPrompt(userInput: string, context: DnDPromptContext): string {
 		const systemPrompt = context.systemPrompt || this.getDefaultDnDSystemPrompt();
 
@@ -231,8 +231,8 @@ export class Gemma3Tokenizer {
 	}
 
 	/**
-   * Get default D&D system prompt for Gemma3
-   */
+	* Get default D&D system prompt for Gemma3
+	*/
 	private getDefaultDnDSystemPrompt(): string {
 		return `You are an experienced Dungeon Master running a D&D 5e campaign. Your role is to:
 
@@ -254,9 +254,9 @@ Always stay in character as the DM and maintain the fantasy atmosphere.`;
 	}
 
 	/**
-   * Basic tokenization (simplified version)
-   * In a real implementation, this would use SentencePiece or similar
-   */
+	* Basic tokenization (simplified version)
+	* In a real implementation, this would use SentencePiece or similar
+	*/
 	private basicTokenize(text: string): number[] {
 		// Simple word-based tokenization for demonstration
 		// Real implementation would use subword tokenization
@@ -282,8 +282,8 @@ Always stay in character as the DM and maintain the fantasy atmosphere.`;
 	}
 
 	/**
-   * Initialize basic vocabulary for common words
-   */
+	* Initialize basic vocabulary for common words
+	*/
 	private async initializeBasicVocabulary(): Promise<void> {
 		// Common D&D and English words
 		const commonWords = [
@@ -306,8 +306,8 @@ Always stay in character as the DM and maintain the fantasy atmosphere.`;
 	}
 
 	/**
-   * Simple hash function for generating token IDs
-   */
+	* Simple hash function for generating token IDs
+	*/
 	private simpleHash(str: string): number {
 		let hash = 0;
 		for (let i = 0; i < str.length; i++) {
@@ -319,8 +319,8 @@ Always stay in character as the DM and maintain the fantasy atmosphere.`;
 	}
 
 	/**
-   * Post-process detokenized text
-   */
+	* Post-process detokenized text
+	*/
 	private postProcessText(text: string): string {
 		return text
 			.replace(/\s+/g, ' ') // Normalize whitespace
@@ -331,36 +331,36 @@ Always stay in character as the DM and maintain the fantasy atmosphere.`;
 	}
 
 	/**
-   * Get tokenizer configuration
-   */
+	* Get tokenizer configuration
+	*/
 	getConfig(): TokenizerConfig {
 		return { ...this.config };
 	}
 
 	/**
-   * Check if tokenizer is ready
-   */
+	* Check if tokenizer is ready
+	*/
 	isReady(): boolean {
 		return this.isInitialized;
 	}
 
 	/**
-   * Get vocabulary size
-   */
+	* Get vocabulary size
+	*/
 	getVocabSize(): number {
 		return this.config.vocabSize;
 	}
 
 	/**
-   * Get special token ID
-   */
+	* Get special token ID
+	*/
 	getSpecialTokenId(token: string): number | undefined {
 		return this.config.specialTokens[token];
 	}
 
 	/**
-   * Encode special D&D commands in text
-   */
+	* Encode special D&D commands in text
+	*/
 	encodeDnDCommands(text: string): string {
 		// Replace D&D tool commands with special tokens for better model understanding
 		return text
@@ -371,8 +371,8 @@ Always stay in character as the DM and maintain the fantasy atmosphere.`;
 	}
 
 	/**
-   * Decode special D&D commands from text
-   */
+	* Decode special D&D commands from text
+	*/
 	decodeDnDCommands(text: string): string {
 		// Convert special tokens back to D&D tool commands
 		return text
@@ -388,16 +388,16 @@ Always stay in character as the DM and maintain the fantasy atmosphere.`;
  */
 export const Gemma3TokenizerUtils = {
 	/**
-   * Estimate token count for text (rough approximation)
-   */
+	* Estimate token count for text (rough approximation)
+	*/
 	estimateTokenCount(text: string): number {
 		// Rough estimation: ~4 characters per token for English text
 		return Math.ceil(text.length / 4);
 	},
 
 	/**
-   * Truncate text to fit within token limit
-   */
+	* Truncate text to fit within token limit
+	*/
 	truncateToTokenLimit(text: string, maxTokens: number): string {
 		const estimatedTokens = Gemma3TokenizerUtils.estimateTokenCount(text);
 
@@ -411,13 +411,13 @@ export const Gemma3TokenizerUtils = {
 	},
 
 	/**
-   * Validate D&D prompt format
-   */
+	* Validate D&D prompt format
+	*/
 	validateDnDPrompt(prompt: string): {
-    valid: boolean;
-    issues: string[];
-    suggestions: string[];
-  } {
+		valid: boolean;
+		issues: string[];
+		suggestions: string[];
+	} {
 		const issues: string[] = [];
 		const suggestions: string[] = [];
 
@@ -451,18 +451,18 @@ export const Gemma3TokenizerUtils = {
 	},
 
 	/**
-   * Extract D&D commands from tokenized output
-   */
+	* Extract D&D commands from tokenized output
+	*/
 	extractDnDCommands(text: string): Array<{
-    type: 'roll' | 'update' | 'damage' | 'heal' | 'status';
-    params: string;
-    position: number;
-  }> {
+		type: 'roll' | 'update' | 'damage' | 'heal' | 'status';
+		params: string;
+		position: number;
+	}> {
 		const commands: Array<{
-      type: 'roll' | 'update' | 'damage' | 'heal' | 'status';
-      params: string;
-      position: number;
-    }> = [];
+			type: 'roll' | 'update' | 'damage' | 'heal' | 'status';
+			params: string;
+			position: number;
+		}> = [];
 
 		const patterns = [
 			{ type: 'roll' as const, regex: /\[ROLL:([^\]]+)\]/g },

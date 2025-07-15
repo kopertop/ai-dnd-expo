@@ -10,47 +10,47 @@
 import { Platform } from 'react-native';
 
 export interface DeviceCapabilities {
-  platform: 'ios' | 'android' | 'web';
-  deviceModel: string;
-  osVersion: string;
-  totalMemory: number; // in MB
-  availableMemory: number; // in MB
-  cpuCores: number;
-  cpuArchitecture: string;
-  hasGPU: boolean;
-  gpuModel?: string;
-  thermalState: 'nominal' | 'fair' | 'serious' | 'critical';
-  batteryLevel: number; // 0-100
-  isCharging: boolean;
-  performanceClass: 'high' | 'medium' | 'low';
-  supportedQuantizations: QuantizationType[];
-  recommendedQuantization: QuantizationType;
+	platform: 'ios' | 'android' | 'web';
+	deviceModel: string;
+	osVersion: string;
+	totalMemory: number; // in MB
+	availableMemory: number; // in MB
+	cpuCores: number;
+	cpuArchitecture: string;
+	hasGPU: boolean;
+	gpuModel?: string;
+	thermalState: 'nominal' | 'fair' | 'serious' | 'critical';
+	batteryLevel: number; // 0-100
+	isCharging: boolean;
+	performanceClass: 'high' | 'medium' | 'low';
+	supportedQuantizations: QuantizationType[];
+	recommendedQuantization: QuantizationType;
 }
 
 export type QuantizationType = 'int8' | 'int4' | 'fp16' | 'fp32';
 
 export interface ModelVariant {
-  name: string;
-  quantization: QuantizationType;
-  modelSize: number; // in MB
-  memoryRequirement: number; // in MB
-  estimatedSpeed: 'fast' | 'medium' | 'slow';
-  qualityScore: number; // 0-100
-  supportedDevices: string[];
-  minMemoryMB: number;
-  recommendedMemoryMB: number;
+	name: string;
+	quantization: QuantizationType;
+	modelSize: number; // in MB
+	memoryRequirement: number; // in MB
+	estimatedSpeed: 'fast' | 'medium' | 'slow';
+	qualityScore: number; // 0-100
+	supportedDevices: string[];
+	minMemoryMB: number;
+	recommendedMemoryMB: number;
 }
 
 export interface QuantizationRecommendation {
-  recommended: QuantizationType;
-  alternatives: QuantizationType[];
-  reasoning: string;
-  expectedPerformance: {
-    speed: 'fast' | 'medium' | 'slow';
-    quality: 'high' | 'medium' | 'low';
-    memoryUsage: number; // in MB
-  };
-  warnings: string[];
+	recommended: QuantizationType;
+	alternatives: QuantizationType[];
+	reasoning: string;
+	expectedPerformance: {
+		speed: 'fast' | 'medium' | 'slow';
+		quality: 'high' | 'medium' | 'low';
+		memoryUsage: number; // in MB
+	};
+	warnings: string[];
 }
 
 /**
@@ -66,9 +66,9 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Initialize device capability detection
-   * Requirement 3.1: Device capability detection
-   */
+	* Initialize device capability detection
+	* Requirement 3.1: Device capability detection
+	*/
 	async initialize(): Promise<void> {
 		try {
 			console.log('📱 Detecting device capabilities...');
@@ -88,16 +88,16 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Get current device capabilities
-   */
+	* Get current device capabilities
+	*/
 	getCapabilities(): DeviceCapabilities | null {
 		return this.capabilities;
 	}
 
 	/**
-   * Get optimal quantization recommendation for current device
-   * Requirement 1.4: Optimal quantization selection
-   */
+	* Get optimal quantization recommendation for current device
+	* Requirement 1.4: Optimal quantization selection
+	*/
 	getQuantizationRecommendation(availableVariants: ModelVariant[]): QuantizationRecommendation {
 		if (!this.capabilities) {
 			throw new Error('Device capabilities not initialized');
@@ -108,7 +108,7 @@ export class DeviceCapabilityManager {
 		// Filter variants that can run on this device
 		const compatibleVariants = availableVariants.filter(variant =>
 			variant.memoryRequirement <= availableMemory &&
-      this.capabilities!.supportedQuantizations.includes(variant.quantization),
+			this.capabilities!.supportedQuantizations.includes(variant.quantization),
 		);
 
 		if (compatibleVariants.length === 0) {
@@ -177,9 +177,9 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Load model variant based on available memory
-   * Requirement 3.1: Memory-based model selection
-   */
+	* Load model variant based on available memory
+	* Requirement 3.1: Memory-based model selection
+	*/
 	selectModelVariant(availableVariants: ModelVariant[]): ModelVariant | null {
 		if (!this.capabilities) {
 			return null;
@@ -193,8 +193,8 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Check if device can run specific model variant
-   */
+	* Check if device can run specific model variant
+	*/
 	canRunModelVariant(variant: ModelVariant): boolean {
 		if (!this.capabilities) {
 			return false;
@@ -202,20 +202,20 @@ export class DeviceCapabilityManager {
 
 		return (
 			variant.memoryRequirement <= this.capabilities.availableMemory &&
-      this.capabilities.supportedQuantizations.includes(variant.quantization) &&
-      variant.minMemoryMB <= this.capabilities.totalMemory
+			this.capabilities.supportedQuantizations.includes(variant.quantization) &&
+			variant.minMemoryMB <= this.capabilities.totalMemory
 		);
 	}
 
 	/**
-   * Get performance estimate for model variant on current device
-   */
+	* Get performance estimate for model variant on current device
+	*/
 	getPerformanceEstimate(variant: ModelVariant): {
-    tokensPerSecond: number;
-    averageLatency: number;
-    memoryPressure: 'low' | 'medium' | 'high';
-    thermalImpact: 'low' | 'medium' | 'high';
-  } {
+		tokensPerSecond: number;
+		averageLatency: number;
+		memoryPressure: 'low' | 'medium' | 'high';
+		thermalImpact: 'low' | 'medium' | 'high';
+	} {
 		if (!this.capabilities) {
 			return {
 				tokensPerSecond: 1,
@@ -251,10 +251,10 @@ export class DeviceCapabilityManager {
 
 		// Calculate thermal impact
 		const thermalImpact =
-      thermalState === 'critical' ? 'high' :
-      	thermalState === 'serious' ? 'high' :
-      		variant.quantization === 'fp32' ? 'high' :
-      			variant.quantization === 'fp16' ? 'medium' : 'low';
+			thermalState === 'critical' ? 'high' :
+				thermalState === 'serious' ? 'high' :
+					variant.quantization === 'fp32' ? 'high' :
+						variant.quantization === 'fp16' ? 'medium' : 'low';
 
 		return {
 			tokensPerSecond,
@@ -265,8 +265,8 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Monitor device state changes
-   */
+	* Monitor device state changes
+	*/
 	async updateDeviceState(): Promise<void> {
 		if (!this.isInitialized) {
 			return;
@@ -291,8 +291,8 @@ export class DeviceCapabilityManager {
 	// Private helper methods
 
 	/**
-   * Detect device capabilities using available APIs
-   */
+	* Detect device capabilities using available APIs
+	*/
 	private async detectDeviceCapabilities(): Promise<DeviceCapabilities> {
 		const platform = Platform.OS as 'ios' | 'android';
 
@@ -327,8 +327,8 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Get device model information
-   */
+	* Get device model information
+	*/
 	private async getDeviceModel(): Promise<string> {
 		// In React Native, we'd use react-native-device-info
 		// For now, return platform-based estimate
@@ -336,8 +336,8 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Get total device memory
-   */
+	* Get total device memory
+	*/
 	private async getTotalMemory(): Promise<number> {
 		// This would require native modules to get actual memory
 		// Return conservative estimates based on platform
@@ -349,8 +349,8 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Get available memory
-   */
+	* Get available memory
+	*/
 	private async getAvailableMemory(): Promise<number> {
 		const totalMemory = await this.getTotalMemory();
 		// Assume 60% of total memory is available for our use
@@ -358,8 +358,8 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Get CPU core count
-   */
+	* Get CPU core count
+	*/
 	private async getCPUCores(): Promise<number> {
 		// This would require native modules
 		// Return reasonable estimates
@@ -367,23 +367,23 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Get CPU architecture
-   */
+	* Get CPU architecture
+	*/
 	private async getCPUArchitecture(): Promise<string> {
 		return Platform.OS === 'ios' ? 'arm64' : 'arm64-v8a';
 	}
 
 	/**
-   * Check for GPU acceleration support
-   */
+	* Check for GPU acceleration support
+	*/
 	private async hasGPUAcceleration(): Promise<boolean> {
 		// iOS has Metal, Android has Vulkan/OpenGL ES
 		return true;
 	}
 
 	/**
-   * Get thermal state
-   */
+	* Get thermal state
+	*/
 	private async getThermalState(): Promise<'nominal' | 'fair' | 'serious' | 'critical'> {
 		// This would require native thermal monitoring
 		// Return nominal as default
@@ -391,8 +391,8 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Get battery level
-   */
+	* Get battery level
+	*/
 	private async getBatteryLevel(): Promise<number> {
 		// This would require battery info API
 		// Return reasonable default
@@ -400,16 +400,16 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Get charging state
-   */
+	* Get charging state
+	*/
 	private async getChargingState(): Promise<boolean> {
 		// This would require battery info API
 		return false;
 	}
 
 	/**
-   * Calculate performance class based on device specs
-   */
+	* Calculate performance class based on device specs
+	*/
 	private calculatePerformanceClass(capabilities: DeviceCapabilities): 'high' | 'medium' | 'low' {
 		const { totalMemory, cpuCores, platform } = capabilities;
 
@@ -433,8 +433,8 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Get supported quantizations for device
-   */
+	* Get supported quantizations for device
+	*/
 	private getSupportedQuantizations(capabilities: DeviceCapabilities): QuantizationType[] {
 		const { performanceClass, hasGPU, totalMemory } = capabilities;
 
@@ -459,8 +459,8 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Get default quantization for device
-   */
+	* Get default quantization for device
+	*/
 	private getDefaultQuantization(capabilities: DeviceCapabilities): QuantizationType {
 		const { performanceClass, availableMemory } = capabilities;
 
@@ -474,8 +474,8 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Score model variant for current device
-   */
+	* Score model variant for current device
+	*/
 	private scoreVariantForDevice(variant: ModelVariant): number {
 		if (!this.capabilities) {
 			return 0;
@@ -526,8 +526,8 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Get conservative capabilities for fallback
-   */
+	* Get conservative capabilities for fallback
+	*/
 	private getConservativeCapabilities(): DeviceCapabilities {
 		return {
 			platform: Platform.OS as 'ios' | 'android',
@@ -548,8 +548,8 @@ export class DeviceCapabilityManager {
 	}
 
 	/**
-   * Check if device capabilities are initialized
-   */
+	* Check if device capabilities are initialized
+	*/
 	isReady(): boolean {
 		return this.isInitialized && this.capabilities !== null;
 	}
@@ -621,45 +621,45 @@ export const Gemma3ModelVariants: ModelVariant[] = [
  */
 export const DeviceCapabilityUtils = {
 	/**
-   * Get model variant by quantization type
-   */
+	* Get model variant by quantization type
+	*/
 	getVariantByQuantization(quantization: QuantizationType): ModelVariant | undefined {
 		return Gemma3ModelVariants.find(variant => variant.quantization === quantization);
 	},
 
 	/**
-   * Filter variants by device compatibility
-   */
+	* Filter variants by device compatibility
+	*/
 	getCompatibleVariants(capabilities: DeviceCapabilities): ModelVariant[] {
 		return Gemma3ModelVariants.filter(variant =>
 			variant.memoryRequirement <= capabilities.availableMemory &&
-      capabilities.supportedQuantizations.includes(variant.quantization) &&
-      variant.supportedDevices.includes(capabilities.platform),
+			capabilities.supportedQuantizations.includes(variant.quantization) &&
+			variant.supportedDevices.includes(capabilities.platform),
 		);
 	},
 
 	/**
-   * Estimate download size for model variant
-   */
+	* Estimate download size for model variant
+	*/
 	estimateDownloadSize(variant: ModelVariant): number {
 		// Add ~20% overhead for tokenizer and config files
 		return Math.ceil(variant.modelSize * 1.2);
 	},
 
 	/**
-   * Check if device meets minimum requirements
-   */
+	* Check if device meets minimum requirements
+	*/
 	meetsMinimumRequirements(capabilities: DeviceCapabilities): boolean {
 		return (
 			capabilities.totalMemory >= 2048 && // At least 2GB RAM
-      capabilities.availableMemory >= 1024 && // At least 1GB available
-      capabilities.cpuCores >= 4 // At least 4 CPU cores
+			capabilities.availableMemory >= 1024 && // At least 1GB available
+			capabilities.cpuCores >= 4 // At least 4 CPU cores
 		);
 	},
 
 	/**
-   * Get performance tier description
-   */
+	* Get performance tier description
+	*/
 	getPerformanceTierDescription(capabilities: DeviceCapabilities): string {
 		switch (capabilities.performanceClass) {
 		case 'high':
