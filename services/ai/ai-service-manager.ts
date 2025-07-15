@@ -18,11 +18,13 @@ export interface AIServiceConfig {
 		enabled: boolean;
 		modelPath: string;
 		contextSize?: number;
+		apiKey?: string;
 	};
 	local: {
 		enabled: boolean;
 		modelPath: string;
 		powerSavingMode?: boolean;
+		priority?: number; // Higher number = higher priority
 	};
 	fallback: {
 		enabled: boolean;
@@ -33,6 +35,11 @@ export interface AIServiceConfig {
 		retryAttempts: number;
 		cacheResponses: boolean;
 	};
+	providerSelection: {
+		preferLocal: boolean;
+		fallbackChain: ('local' | 'cactus' | 'rule-based')[];
+		healthCheckInterval: number; // ms
+	};
 }
 
 export interface AIResponse {
@@ -41,6 +48,28 @@ export interface AIResponse {
 	source: 'cactus' | 'local' | 'fallback';
 	toolCommands: Array<{ type: string; params: string }>;
 	processingTime: number;
+	contextId?: string; // For state synchronization
+	metadata?: {
+		modelUsed?: string;
+		tokensGenerated?: number;
+		resourceUsage?: any;
+	};
+}
+
+export interface GameContextState {
+	contextId: string;
+	playerName: string;
+	playerClass: string;
+	playerRace: string;
+	currentScene: string;
+	gameHistory: string[];
+	lastProvider: 'cactus' | 'local' | 'fallback';
+	timestamp: number;
+	sessionData?: {
+		conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
+		worldState?: any;
+		characterState?: any;
+	};
 }
 
 export class AIServiceManager {
@@ -50,6 +79,13 @@ export class AIServiceManager {
 	private responseCache = new Map<string, AIResponse>();
 	private isHealthy = false;
 	private isLocalReady = false;
+	private healthCheckInterval: ReturnType<typeof setInterval> | null = null;
+	private providerHealthStatus = {
+		cactus: { healthy: false, lastCheck: 0, consecutiveFailures: 0 },
+		local: { healthy: false, lastCheck: 0, consecutiveFailures: 0 },
+	};
+	private gameContextStates = new Map<string, GameContextState>();
+	private currentContextId: string | null = null;
 
 	constructor(config: AIServiceConfig) {
 		this.config = config;
@@ -57,6 +93,7 @@ export class AIServiceManager {
 		if (config.local.enabled) {
 			this.initializeLocalDMProvider();
 		}
+		this.startHealthMonitoring();
 	}
 
 	/**
@@ -119,7 +156,8 @@ export class AIServiceManager {
 	}
 
 	/**
-	 * Generate D&D response with intelligent fallback
+	 * Generate D&D response with intelligent fallback chain
+	 * Requirement 4.1, 4.2, 6.1: Seamless fallback chain: local → cloud → rule-based
 	 */
 	async generateDnDResponse(
 		prompt: string,
@@ -142,82 +180,163 @@ export class AIServiceManager {
 			}
 		}
 
-		// Try Cactus + Gemma3 first (distributed)
-		if (this.cactusProvider && this.isHealthy) {
+		// Execute fallback chain based on configuration
+		const fallbackChain = this.config.providerSelection.fallbackChain;
+		let lastError: Error | null = null;
+
+		for (const providerType of fallbackChain) {
 			try {
-				const response = await this.tryWithRetry(async () => {
-					if (!this.cactusProvider) {
-						throw new Error('Cactus provider not available');
-					}
-					return await this.cactusProvider.generateDnDResponse({
-						prompt,
-						context,
-						systemPrompt: DnDSystemPrompts.DUNGEON_MASTER,
-					});
-				});
-
-				const aiResponse: AIResponse = {
-					text: response.text,
-					confidence: 0.9,
-					source: 'cactus',
-					toolCommands: response.metadata?.toolCommands || [],
-					processingTime: Date.now() - startTime,
-				};
-
-				this.cacheResponse(cacheKey, aiResponse);
-				return aiResponse;
+				const response = await this.tryProvider(providerType, prompt, context, startTime);
+				if (response) {
+					this.cacheResponse(cacheKey, response);
+					return response;
+				}
 			} catch (error) {
-				console.warn('🌵 Cactus provider failed, trying local AI:', error);
-				this.isHealthy = false;
+				lastError = error as Error;
+				console.warn(`🔄 Provider ${providerType} failed, trying next in chain:`, error);
+
+				// Update provider health status
+				if (providerType === 'cactus') {
+					this.isHealthy = false;
+				} else if (providerType === 'local') {
+					this.isLocalReady = false;
+				}
 			}
 		}
 
-		// Try Local DM Provider second (on-device)
-		if (this.localDMProvider && this.isLocalReady) {
-			try {
-				const localContext = {
-					playerName: context.playerName,
-					playerClass: context.playerClass,
-					playerRace: context.playerRace,
-					currentScene: context.currentScene,
-					gameHistory: context.gameHistory,
-				};
+		// If all providers in chain failed, throw the last error
+		throw lastError || new Error('All providers in fallback chain failed');
+	}
 
-				const response = await this.localDMProvider.generateDnDResponse(
-					prompt,
-					localContext,
-					this.config.performance.timeout,
-				);
+	/**
+	 * Try a specific provider type
+	 */
+	private async tryProvider(
+		providerType: 'local' | 'cactus' | 'rule-based',
+		prompt: string,
+		context: {
+			playerName: string;
+			playerClass: string;
+			playerRace: string;
+			currentScene: string;
+			gameHistory: string[];
+		},
+		startTime: number,
+	): Promise<AIResponse | null> {
+		switch (providerType) {
+		case 'local':
+			return await this.tryLocalProvider(prompt, context, startTime);
+		case 'cactus':
+			return await this.tryCactusProvider(prompt, context, startTime);
+		case 'rule-based':
+			return await this.tryRuleBasedProvider(prompt, context, startTime);
+		default:
+			throw new Error(`Unknown provider type: ${providerType}`);
+		}
+	}
 
-				const aiResponse: AIResponse = {
-					text: response.text,
-					confidence: response.confidence,
-					source: 'local',
-					toolCommands: response.toolCommands,
-					processingTime: response.processingTime,
-				};
-
-				this.cacheResponse(cacheKey, aiResponse);
-				return aiResponse;
-			} catch (error) {
-				console.warn('🤖 Local DM provider failed, falling back to rules:', error);
-				this.isLocalReady = false;
-			}
+	/**
+	 * Try Local DM Provider
+	 */
+	private async tryLocalProvider(
+		prompt: string,
+		context: {
+			playerName: string;
+			playerClass: string;
+			playerRace: string;
+			currentScene: string;
+			gameHistory: string[];
+		},
+		startTime: number,
+	): Promise<AIResponse | null> {
+		if (!this.localDMProvider || !this.isLocalReady || !this.config.local.enabled) {
+			return null;
 		}
 
-		// Fallback to rule-based responses
+		const localContext = {
+			playerName: context.playerName,
+			playerClass: context.playerClass,
+			playerRace: context.playerRace,
+			currentScene: context.currentScene,
+			gameHistory: context.gameHistory,
+		};
+
+		const response = await this.localDMProvider.generateDnDResponse(
+			prompt,
+			localContext,
+			this.config.performance.timeout,
+		);
+
+		return {
+			text: response.text,
+			confidence: response.confidence,
+			source: 'local',
+			toolCommands: response.toolCommands,
+			processingTime: response.processingTime,
+		};
+	}
+
+	/**
+	 * Try Cactus Provider
+	 */
+	private async tryCactusProvider(
+		prompt: string,
+		context: {
+			playerName: string;
+			playerClass: string;
+			playerRace: string;
+			currentScene: string;
+			gameHistory: string[];
+		},
+		startTime: number,
+	): Promise<AIResponse | null> {
+		if (!this.cactusProvider || !this.isHealthy || !this.config.cactus.enabled) {
+			return null;
+		}
+
+		const response = await this.tryWithRetry(async () => {
+			if (!this.cactusProvider) {
+				throw new Error('Cactus provider not available');
+			}
+			return await this.cactusProvider.generateDnDResponse({
+				prompt,
+				context,
+				systemPrompt: DnDSystemPrompts.DUNGEON_MASTER,
+			});
+		});
+
+		return {
+			text: response.text,
+			confidence: 0.9,
+			source: 'cactus',
+			toolCommands: response.metadata?.toolCommands || [],
+			processingTime: Date.now() - startTime,
+		};
+	}
+
+	/**
+	 * Try Rule-based Provider (always available as final fallback)
+	 */
+	private async tryRuleBasedProvider(
+		prompt: string,
+		context: {
+			playerName: string;
+			playerClass: string;
+			playerRace: string;
+			currentScene: string;
+			gameHistory: string[];
+		},
+		startTime: number,
+	): Promise<AIResponse> {
 		const fallbackResponse = await this.generateFallbackResponse(prompt, context);
 
-		const aiResponse: AIResponse = {
+		return {
 			text: fallbackResponse.text,
 			confidence: 0.7,
 			source: 'fallback',
 			toolCommands: fallbackResponse.toolCommands,
 			processingTime: Date.now() - startTime,
 		};
-
-		this.cacheResponse(cacheKey, aiResponse);
-		return aiResponse;
 	}
 
 	/**
@@ -431,11 +550,434 @@ export class AIServiceManager {
 	}
 
 	/**
+	 * Start health monitoring for all providers
+	 * Requirement 6.4: Provider health monitoring and automatic switching
+	 */
+	private startHealthMonitoring(): void {
+		if (this.healthCheckInterval) {
+			clearInterval(this.healthCheckInterval);
+		}
+
+		this.healthCheckInterval = setInterval(async () => {
+			await this.performHealthChecks();
+		}, this.config.providerSelection.healthCheckInterval);
+
+		// Perform initial health check
+		this.performHealthChecks();
+	}
+
+	/**
+	 * Perform health checks on all providers
+	 */
+	private async performHealthChecks(): Promise<void> {
+		const now = Date.now();
+
+		// Check Cactus provider health
+		if (this.cactusProvider && this.config.cactus.enabled) {
+			try {
+				const isHealthy = await this.cactusProvider.healthCheck();
+				this.providerHealthStatus.cactus.healthy = isHealthy;
+				this.providerHealthStatus.cactus.lastCheck = now;
+
+				if (isHealthy) {
+					this.providerHealthStatus.cactus.consecutiveFailures = 0;
+					this.isHealthy = true;
+				} else {
+					this.providerHealthStatus.cactus.consecutiveFailures++;
+					if (this.providerHealthStatus.cactus.consecutiveFailures >= 3) {
+						this.isHealthy = false;
+					}
+				}
+			} catch (error) {
+				this.providerHealthStatus.cactus.healthy = false;
+				this.providerHealthStatus.cactus.consecutiveFailures++;
+				this.isHealthy = false;
+			}
+		}
+
+		// Check Local DM provider health
+		if (this.localDMProvider && this.config.local.enabled) {
+			try {
+				const isHealthy = await this.localDMProvider.healthCheck();
+				this.providerHealthStatus.local.healthy = isHealthy;
+				this.providerHealthStatus.local.lastCheck = now;
+
+				if (isHealthy) {
+					this.providerHealthStatus.local.consecutiveFailures = 0;
+					this.isLocalReady = true;
+				} else {
+					this.providerHealthStatus.local.consecutiveFailures++;
+					if (this.providerHealthStatus.local.consecutiveFailures >= 3) {
+						this.isLocalReady = false;
+					}
+				}
+			} catch (error) {
+				this.providerHealthStatus.local.healthy = false;
+				this.providerHealthStatus.local.consecutiveFailures++;
+				this.isLocalReady = false;
+			}
+		}
+	}
+
+	/**
+	 * Get optimal provider based on current health and configuration
+	 * Requirement 4.1: Prioritize local when available
+	 */
+	getOptimalProvider(): 'local' | 'cactus' | 'fallback' {
+		// If preferLocal is set and local is healthy, use local
+		if (this.config.providerSelection.preferLocal && this.isLocalReady && this.config.local.enabled) {
+			return 'local';
+		}
+
+		// Otherwise, use the first healthy provider in the fallback chain
+		for (const provider of this.config.providerSelection.fallbackChain) {
+			if (provider === 'local' && this.isLocalReady && this.config.local.enabled) {
+				return 'local';
+			}
+			if (provider === 'cactus' && this.isHealthy && this.config.cactus.enabled) {
+				return 'cactus';
+			}
+			if (provider === 'rule-based') {
+				return 'fallback';
+			}
+		}
+
+		// Final fallback
+		return 'fallback';
+	}
+
+	/**
+	 * Switch provider configuration dynamically
+	 * Requirement 4.2: Provider switching without losing game context
+	 */
+	async switchProvider(newConfig: Partial<AIServiceConfig>): Promise<boolean> {
+		try {
+			// Update configuration
+			this.config = { ...this.config, ...newConfig };
+
+			// Reinitialize providers if needed
+			if (newConfig.cactus?.enabled !== undefined) {
+				if (newConfig.cactus.enabled && !this.cactusProvider) {
+					await this.initializeCactusProvider();
+				} else if (!newConfig.cactus.enabled && this.cactusProvider) {
+					this.cactusProvider = null;
+					this.isHealthy = false;
+				}
+			}
+
+			if (newConfig.local?.enabled !== undefined) {
+				if (newConfig.local.enabled && !this.localDMProvider) {
+					await this.initializeLocalDMProvider();
+				} else if (!newConfig.local.enabled && this.localDMProvider) {
+					await this.localDMProvider.cleanup();
+					this.localDMProvider = null;
+					this.isLocalReady = false;
+				}
+			}
+
+			// Update health monitoring interval if changed
+			if (newConfig.providerSelection?.healthCheckInterval) {
+				this.startHealthMonitoring();
+			}
+
+			console.log('🔄 Provider configuration updated successfully');
+			return true;
+		} catch (error) {
+			console.error('❌ Failed to switch provider configuration:', error);
+			return false;
+		}
+	}
+
+	/**
+	 * Get comprehensive provider health status
+	 */
+	getProviderHealthStatus(): {
+		cactus: { healthy: boolean; lastCheck: number; consecutiveFailures: number };
+		local: { healthy: boolean; lastCheck: number; consecutiveFailures: number };
+		optimal: 'local' | 'cactus' | 'fallback';
+		} {
+		return {
+			...this.providerHealthStatus,
+			optimal: this.getOptimalProvider(),
+		};
+	}
+
+	/**
+	 * Create or update game context state for provider switching
+	 * Requirement 4.2: Provider switching without losing game context
+	 */
+	createGameContext(
+		contextId: string,
+		context: {
+			playerName: string;
+			playerClass: string;
+			playerRace: string;
+			currentScene: string;
+			gameHistory: string[];
+		},
+		sessionData?: {
+			conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
+			worldState?: any;
+			characterState?: any;
+		},
+	): void {
+		const gameContextState: GameContextState = {
+			contextId,
+			playerName: context.playerName,
+			playerClass: context.playerClass,
+			playerRace: context.playerRace,
+			currentScene: context.currentScene,
+			gameHistory: [...context.gameHistory],
+			lastProvider: this.getOptimalProvider(),
+			timestamp: Date.now(),
+			sessionData,
+		};
+
+		this.gameContextStates.set(contextId, gameContextState);
+		this.currentContextId = contextId;
+	}
+
+	/**
+	 * Update existing game context state
+	 */
+	updateGameContext(
+		contextId: string,
+		updates: Partial<GameContextState>,
+	): boolean {
+		const existingContext = this.gameContextStates.get(contextId);
+		if (!existingContext) {
+			return false;
+		}
+
+		const updatedContext: GameContextState = {
+			...existingContext,
+			...updates,
+			timestamp: Date.now(),
+		};
+
+		this.gameContextStates.set(contextId, updatedContext);
+		return true;
+	}
+
+	/**
+	 * Get game context state for provider switching
+	 */
+	getGameContext(contextId: string): GameContextState | null {
+		return this.gameContextStates.get(contextId) || null;
+	}
+
+	/**
+	 * Switch provider while preserving game context
+	 * Requirement 4.2: State synchronization between local and cloud providers
+	 */
+	async switchProviderWithContext(
+		newProviderType: 'local' | 'cactus',
+		contextId?: string,
+	): Promise<{ success: boolean; newProvider: string; contextPreserved: boolean }> {
+		try {
+			const activeContextId = contextId || this.currentContextId;
+			let contextPreserved = false;
+
+			// Preserve current context if available
+			if (activeContextId) {
+				const currentContext = this.gameContextStates.get(activeContextId);
+				if (currentContext) {
+					// Update the context with the new provider preference
+					this.updateGameContext(activeContextId, {
+						lastProvider: newProviderType,
+					});
+					contextPreserved = true;
+				}
+			}
+
+			// Update provider configuration to prefer the new provider
+			const newConfig: Partial<AIServiceConfig> = {
+				providerSelection: {
+					...this.config.providerSelection,
+					preferLocal: newProviderType === 'local',
+					fallbackChain: newProviderType === 'local'
+						? ['local', 'cactus', 'rule-based']
+						: ['cactus', 'local', 'rule-based'],
+				},
+			};
+
+			const switchSuccess = await this.switchProvider(newConfig);
+
+			return {
+				success: switchSuccess,
+				newProvider: this.getOptimalProvider(),
+				contextPreserved,
+			};
+		} catch (error) {
+			console.error('❌ Failed to switch provider with context:', error);
+			return {
+				success: false,
+				newProvider: this.getOptimalProvider(),
+				contextPreserved: false,
+			};
+		}
+	}
+
+	/**
+	 * Generate response with context-aware provider selection
+	 * Enhanced version that uses game context for better provider decisions
+	 */
+	async generateDnDResponseWithContext(
+		prompt: string,
+		contextId: string,
+		context: {
+			playerName: string;
+			playerClass: string;
+			playerRace: string;
+			currentScene: string;
+			gameHistory: string[];
+		},
+	): Promise<AIResponse> {
+		// Update or create game context
+		this.createGameContext(contextId, context, {
+			conversationHistory: [
+				{ role: 'user', content: prompt },
+			],
+		});
+
+		// Generate response using the standard method
+		const response = await this.generateDnDResponse(prompt, context);
+
+		// Update context with the response
+		const gameContext = this.gameContextStates.get(contextId);
+		if (gameContext && gameContext.sessionData) {
+			gameContext.sessionData.conversationHistory.push({
+				role: 'assistant',
+				content: response.text,
+			});
+			gameContext.lastProvider = response.source;
+			gameContext.timestamp = Date.now();
+		}
+
+		// Add context ID to response for tracking
+		response.contextId = contextId;
+
+		return response;
+	}
+
+	/**
+	 * Get conversation history for a context
+	 */
+	getConversationHistory(contextId: string): Array<{ role: 'user' | 'assistant'; content: string }> {
+		const context = this.gameContextStates.get(contextId);
+		return context?.sessionData?.conversationHistory || [];
+	}
+
+	/**
+	 * Clear game context state
+	 */
+	clearGameContext(contextId: string): boolean {
+		const deleted = this.gameContextStates.delete(contextId);
+		if (this.currentContextId === contextId) {
+			this.currentContextId = null;
+		}
+		return deleted;
+	}
+
+	/**
+	 * Get all active game contexts
+	 */
+	getActiveContexts(): string[] {
+		return Array.from(this.gameContextStates.keys());
+	}
+
+	/**
+	 * Synchronize state between providers
+	 * Requirement 6.1: State synchronization between local and cloud providers
+	 */
+	async synchronizeProviderState(contextId: string): Promise<boolean> {
+		try {
+			const context = this.gameContextStates.get(contextId);
+			if (!context) {
+				return false;
+			}
+
+			// Ensure both providers have the same context understanding
+			// This is a placeholder for more sophisticated state sync
+			const syncData = {
+				gameHistory: context.gameHistory,
+				conversationHistory: context.sessionData?.conversationHistory || [],
+				lastProvider: context.lastProvider,
+				timestamp: context.timestamp,
+			};
+
+			// In a real implementation, this would sync state between providers
+			// For now, we just update the context timestamp to indicate sync
+			this.updateGameContext(contextId, {
+				timestamp: Date.now(),
+			});
+
+			return true;
+		} catch (error) {
+			console.error('❌ Failed to synchronize provider state:', error);
+			return false;
+		}
+	}
+
+	/**
+	 * Get provider switching recommendations based on context
+	 */
+	getProviderRecommendation(contextId: string): {
+		recommended: 'local' | 'cactus' | 'fallback';
+		reason: string;
+		confidence: number;
+	} {
+		const context = this.gameContextStates.get(contextId);
+		const healthStatus = this.getProviderHealthStatus();
+
+		// Default recommendation
+		let recommended: 'local' | 'cactus' | 'fallback' = 'fallback';
+		let reason = 'No providers available';
+		let confidence = 0.5;
+
+		// Prefer local if healthy and configured
+		if (healthStatus.local.healthy && this.config.local.enabled) {
+			recommended = 'local';
+			reason = 'Local provider is healthy and provides privacy benefits';
+			confidence = 0.9;
+		}
+		// Fall back to cactus if local is not available
+		else if (healthStatus.cactus.healthy && this.config.cactus.enabled) {
+			recommended = 'cactus';
+			reason = 'Cactus provider is healthy, local provider unavailable';
+			confidence = 0.8;
+		}
+
+		// Consider context-specific factors
+		if (context) {
+			const conversationLength = context.sessionData?.conversationHistory?.length || 0;
+
+			// For long conversations, prefer local for consistency
+			if (conversationLength > 10 && healthStatus.local.healthy) {
+				recommended = 'local';
+				reason = 'Long conversation benefits from local consistency';
+				confidence = Math.min(confidence + 0.1, 1.0);
+			}
+		}
+
+		return { recommended, reason, confidence };
+	}
+
+	/**
 	 * Cleanup all resources
 	 * Requirement 5: Complete data removal
 	 */
 	async cleanup(): Promise<void> {
+		// Stop health monitoring
+		if (this.healthCheckInterval) {
+			clearInterval(this.healthCheckInterval);
+			this.healthCheckInterval = null;
+		}
+
+		// Clear all caches and context states
 		this.responseCache.clear();
+		this.gameContextStates.clear();
+		this.currentContextId = null;
 
 		if (this.localDMProvider) {
 			await this.localDMProvider.cleanup();
@@ -461,6 +1003,7 @@ export const DefaultAIConfig: AIServiceConfig = {
 		enabled: true, // Enable local AI by default for iOS
 		modelPath: DefaultLocalDMConfig.modelPath,
 		powerSavingMode: false,
+		priority: 2, // Higher priority than cactus for offline-first approach
 	},
 	fallback: {
 		enabled: true,
@@ -470,6 +1013,11 @@ export const DefaultAIConfig: AIServiceConfig = {
 		timeout: 15000,
 		retryAttempts: 2,
 		cacheResponses: true,
+	},
+	providerSelection: {
+		preferLocal: true, // Prefer local for privacy and offline capability
+		fallbackChain: ['local', 'cactus', 'rule-based'],
+		healthCheckInterval: 30000, // Check provider health every 30 seconds
 	},
 };
 
@@ -490,6 +1038,12 @@ export const AIConfigPresets = {
 		local: {
 			enabled: false,
 			modelPath: '',
+			priority: 1,
+		},
+		providerSelection: {
+			preferLocal: false,
+			fallbackChain: ['cactus', 'rule-based'],
+			healthCheckInterval: 30000,
 		},
 	},
 
@@ -506,6 +1060,12 @@ export const AIConfigPresets = {
 			enabled: true,
 			modelPath: DefaultLocalDMConfig.modelPath,
 			powerSavingMode: false,
+			priority: 3,
+		},
+		providerSelection: {
+			preferLocal: true,
+			fallbackChain: ['local', 'rule-based'],
+			healthCheckInterval: 30000,
 		},
 	},
 
@@ -518,11 +1078,17 @@ export const AIConfigPresets = {
 			enabled: true,
 			modelPath: LocalDMModelConfigs.PERFORMANCE.modelPath,
 			powerSavingMode: false,
+			priority: 3,
 		},
 		performance: {
 			timeout: 10000,
 			retryAttempts: 1,
 			cacheResponses: true,
+		},
+		providerSelection: {
+			preferLocal: true,
+			fallbackChain: ['local', 'cactus', 'rule-based'],
+			healthCheckInterval: 15000, // More frequent checks for performance mode
 		},
 	},
 
@@ -535,11 +1101,17 @@ export const AIConfigPresets = {
 			enabled: true,
 			modelPath: LocalDMModelConfigs.POWER_SAVING.modelPath,
 			powerSavingMode: true,
+			priority: 2,
 		},
 		performance: {
 			timeout: 20000,
 			retryAttempts: 1,
 			cacheResponses: true,
+		},
+		providerSelection: {
+			preferLocal: true,
+			fallbackChain: ['local', 'rule-based'], // Skip cactus to save battery
+			healthCheckInterval: 60000, // Less frequent checks to save battery
 		},
 	},
 };

@@ -27,10 +27,31 @@ export interface UseEnhancedDungeonMasterReturn {
 	replaceWelcomeMessage: (newContent: string) => void;
 	serviceStatus: {
 		cactus: { available: boolean; latency?: number };
+		local: { available: boolean; resourceUsage?: import('../services/ai/providers/local-dm-provider').ResourceUsage };
 		cache: { size: number; hitRate: number };
 		overall: 'healthy' | 'degraded' | 'offline';
 	};
 	retryConnection: () => Promise<void>;
+	// New local provider functionality
+	localProviderStatus: {
+		isReady: boolean;
+		modelLoaded: boolean;
+		error: string | null;
+		resourceUsage?: import('../services/ai/providers/local-dm-provider').ResourceUsage;
+	};
+	switchProvider: (providerType: 'local' | 'cactus') => Promise<boolean>;
+	getProviderRecommendation: () => {
+		recommended: 'local' | 'cactus' | 'fallback';
+		reason: string;
+		confidence: number;
+	};
+	currentProvider: 'local' | 'cactus' | 'fallback';
+	providerPreferences: {
+		preferLocal: boolean;
+		setPreferLocal: (prefer: boolean) => void;
+		fallbackChain: ('local' | 'cactus' | 'rule-based')[];
+		setFallbackChain: (chain: ('local' | 'cactus' | 'rule-based')[]) => void;
+	};
 }
 
 export interface EnhancedDungeonMasterConfig {
@@ -59,10 +80,65 @@ export const useEnhancedDungeonMaster = (
 				overall: 'offline',
 			});
 
+	// New state for local provider functionality
+	const [localProviderStatus, setLocalProviderStatus] = useState<{
+		isReady: boolean;
+		modelLoaded: boolean;
+		error: string | null;
+		resourceUsage?: import('../services/ai/providers/local-dm-provider').ResourceUsage;
+			}>({
+				isReady: false,
+				modelLoaded: false,
+				error: null,
+			});
+
+	const [currentProvider, setCurrentProvider] = useState<'local' | 'cactus' | 'fallback'>('fallback');
+	const [preferLocal, setPreferLocal] = useState<boolean>(true); // Default to prefer local for privacy
+	const [fallbackChain, setFallbackChain] = useState<('local' | 'cactus' | 'rule-based')[]>(['local', 'cactus', 'rule-based']);
+	const [gameContextId] = useState<string>(() => `game_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+
 	const aiServiceRef = useRef<AIServiceManager | null>(null);
 	const dmVoice = useDMVoice();
 
-	// Initialize AI Service Manager
+	// Monitor local provider status
+	const updateLocalProviderStatus = useCallback(async () => {
+		if (!aiServiceRef.current) return;
+
+		try {
+			const detailedStatus = aiServiceRef.current.getDetailedStatus();
+			const localStatus = detailedStatus.local;
+
+			// Convert resource usage to match expected type
+			let resourceUsage: import('../services/ai/providers/local-dm-provider').ResourceUsage | undefined;
+			if (localStatus.status?.resourceUsage) {
+				const rawUsage = localStatus.status.resourceUsage;
+				resourceUsage = {
+					memory: rawUsage.memory,
+					cpu: rawUsage.cpu,
+					battery: {
+						level: rawUsage.battery.level,
+						isCharging: rawUsage.battery.isCharging,
+						estimatedTimeRemaining: (rawUsage.battery as any).estimatedTimeRemaining || 0,
+					},
+					thermal: {
+						state: rawUsage.thermal.state,
+						temperature: (rawUsage.thermal as any).temperature || 0,
+					},
+				};
+			}
+
+			setLocalProviderStatus({
+				isReady: localStatus.ready,
+				modelLoaded: localStatus.initialized,
+				error: localStatus.status?.error || null,
+				resourceUsage,
+			});
+		} catch (error) {
+			console.error('Failed to update local provider status:', error);
+		}
+	}, []);
+
+	// Initialize AI Service Manager with local provider support
 	useEffect(() => {
 		const initializeAIService = async () => {
 			try {
@@ -72,6 +148,11 @@ export const useEnhancedDungeonMaster = (
 						...DefaultAIConfig.cactus,
 						apiKey: config.cactusApiKey || process.env.EXPO_PUBLIC_CACTUS_API_KEY || '',
 					},
+					providerSelection: {
+						...DefaultAIConfig.providerSelection,
+						preferLocal,
+						fallbackChain,
+					},
 				};
 
 				aiServiceRef.current = new AIServiceManager(aiConfig);
@@ -79,6 +160,10 @@ export const useEnhancedDungeonMaster = (
 				// Get initial service status
 				const status = await aiServiceRef.current.getServiceStatus();
 				setServiceStatus(status);
+				setCurrentProvider(status.overall === 'healthy' ? aiServiceRef.current.getOptimalProvider() : 'fallback');
+
+				// Monitor local provider status
+				await updateLocalProviderStatus();
 
 				console.log('🤖 Enhanced AI Service initialized:', status.overall);
 			} catch (error) {
@@ -88,7 +173,21 @@ export const useEnhancedDungeonMaster = (
 		};
 
 		initializeAIService();
-	}, [config.cactusApiKey]);
+	}, [config.cactusApiKey, preferLocal, fallbackChain, updateLocalProviderStatus]);
+
+	// Periodic status monitoring
+	useEffect(() => {
+		const interval = setInterval(async () => {
+			if (aiServiceRef.current) {
+				const status = await aiServiceRef.current.getServiceStatus();
+				setServiceStatus(status);
+				setCurrentProvider(aiServiceRef.current.getOptimalProvider());
+				await updateLocalProviderStatus();
+			}
+		}, 10000); // Update every 10 seconds
+
+		return () => clearInterval(interval);
+	}, [updateLocalProviderStatus]);
 
 	// Initialize welcome message when dependencies are ready
 	useEffect(() => {
@@ -256,17 +355,168 @@ export const useEnhancedDungeonMaster = (
 		}
 	}, []);
 
+	// Provider switching functionality
+	// Requirement 4.1: Support local provider selection
+	const switchProvider = useCallback(async (providerType: 'local' | 'cactus'): Promise<boolean> => {
+		if (!aiServiceRef.current) {
+			return false;
+		}
+
+		try {
+			setIsLoading(true);
+			const result = await aiServiceRef.current.switchProviderWithContext(providerType, gameContextId);
+
+			if (result.success) {
+				setCurrentProvider(result.newProvider as 'local' | 'cactus' | 'fallback');
+
+				// Update preferences based on successful switch
+				if (providerType === 'local') {
+					setPreferLocal(true);
+				} else {
+					setPreferLocal(false);
+				}
+
+				// Update service status
+				const status = await aiServiceRef.current.getServiceStatus();
+				setServiceStatus(status);
+				await updateLocalProviderStatus();
+
+				console.log(`🔄 Successfully switched to ${result.newProvider} provider`);
+			}
+
+			return result.success;
+		} catch (error) {
+			console.error('Failed to switch provider:', error);
+			return false;
+		} finally {
+			setIsLoading(false);
+		}
+	}, [gameContextId, updateLocalProviderStatus]);
+
+	// Get provider recommendation based on current context
+	// Requirement 4.3: User preference handling for provider selection
+	const getProviderRecommendation = useCallback(() => {
+		if (!aiServiceRef.current) {
+			return {
+				recommended: 'fallback' as const,
+				reason: 'AI service not initialized',
+				confidence: 0.1,
+			};
+		}
+
+		return aiServiceRef.current.getProviderRecommendation(gameContextId);
+	}, [gameContextId]);
+
+	// Enhanced sendMessage with context-aware provider selection
+	const sendMessageWithContext = useCallback(async (playerInput: string) => {
+		if (!aiServiceRef.current || !config.playerCharacter || !config.worldState) {
+			setError('AI service or game state not ready');
+			return;
+		}
+
+		setIsLoading(true);
+		setError(null);
+
+		try {
+			// Add player message to chat
+			const playerMessage: DMMessage = {
+				id: `player_${Date.now()}`,
+				content: playerInput,
+				timestamp: Date.now(),
+				type: 'system',
+				speaker: 'Player',
+			};
+
+			setMessages(prev => [...prev, playerMessage]);
+
+			// Prepare context for AI
+			const aiContext = {
+				playerName: config.playerCharacter.name,
+				playerClass: config.playerCharacter.class,
+				playerRace: config.playerCharacter.race,
+				currentScene: config.worldState.worldMap.name,
+				gameHistory: messages.slice(-5).map(m => `${m.speaker}: ${m.content}`),
+			};
+
+			// Use context-aware response generation
+			const aiResponse = await aiServiceRef.current.generateDnDResponseWithContext(
+				playerInput,
+				gameContextId,
+				aiContext,
+			);
+
+			// Update current provider based on response source
+			setCurrentProvider(aiResponse.source);
+
+			// Create DM message
+			const dmMessage: DMMessage = {
+				id: `dm_${Date.now()}`,
+				content: aiResponse.text,
+				timestamp: Date.now(),
+				type: 'narration',
+				speaker: 'Dungeon Master',
+				toolCalls: aiResponse.toolCommands.map(cmd => ({
+					type: cmd.type as any,
+					parameters: { notation: cmd.params },
+					result: null,
+				})),
+			};
+
+			setMessages(prev => [...prev, dmMessage]);
+
+			// Speak DM response if voice is enabled
+			if (config.enableVoice && dmMessage.content.trim()) {
+				await speakDMResponse(dmMessage);
+			}
+
+			// Update service status
+			const status = await aiServiceRef.current.getServiceStatus();
+			setServiceStatus(status);
+			await updateLocalProviderStatus();
+
+			console.log(`🎲 Response generated via ${aiResponse.source} in ${aiResponse.processingTime}ms`);
+
+		} catch (err) {
+			const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+			setError(errorMessage);
+
+			// Add error message to chat
+			const errorDMMessage: DMMessage = {
+				id: `error_${Date.now()}`,
+				content: '*The DM seems confused...* I\'m having trouble processing that. Could you try rephrasing your action?',
+				timestamp: Date.now(),
+				type: 'system',
+				speaker: 'Dungeon Master',
+			};
+
+			setMessages(prev => [...prev, errorDMMessage]);
+		} finally {
+			setIsLoading(false);
+		}
+	}, [config.playerCharacter, config.worldState, config.enableVoice, messages, gameContextId, speakDMResponse, updateLocalProviderStatus]);
+
 	return {
 		messages,
 		isLoading,
-		sendMessage,
-		sendVoiceMessage,
+		sendMessage: sendMessageWithContext, // Use the enhanced version
+		sendVoiceMessage: sendMessageWithContext, // Use the enhanced version for voice too
 		clearHistory,
 		error,
 		dmVoice,
 		replaceWelcomeMessage,
 		serviceStatus,
 		retryConnection,
+		// New local provider functionality
+		localProviderStatus,
+		switchProvider,
+		getProviderRecommendation,
+		currentProvider,
+		providerPreferences: {
+			preferLocal,
+			setPreferLocal,
+			fallbackChain,
+			setFallbackChain,
+		},
 	};
 };
 
