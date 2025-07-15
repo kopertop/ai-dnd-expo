@@ -6,20 +6,20 @@
   - Implement basic provider registration in AI Service Manager
   - _Requirements: 1.1, 4.1_
 
-- [ ] 2. Implement ONNX Runtime integration for Gemma3 models
-  - [ ] 2.1 Create ONNXModelManager class for model lifecycle management
+- [x] 2. Implement ONNX Runtime integration for Gemma3 models
+  - [x] 2.1 Create ONNXModelManager class for model lifecycle management
     - Write model loading and validation functions using onnxruntime-react-native
     - Implement model session management with proper cleanup
     - Create model metadata parsing and validation
     - _Requirements: 1.1, 1.2_
 
-  - [ ] 2.2 Implement Gemma3-specific tokenization and inference
+  - [x] 2.2 Implement Gemma3-specific tokenization and inference
     - Create tokenizer integration for Gemma3 model format
     - Write inference execution with proper input/output handling
     - Implement D&D-specific prompt formatting for local models
     - _Requirements: 2.1, 2.2_
 
-  - [ ] 2.3 Add model quantization support for different device capabilities
+  - [x] 2.3 Add model quantization support for different device capabilities
     - Implement support for int8, int4, fp16, and fp32 quantization levels
     - Create device capability detection for optimal quantization selection
     - Write model variant loading based on available memory

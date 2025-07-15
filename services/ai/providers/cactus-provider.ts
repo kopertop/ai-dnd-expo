@@ -89,7 +89,7 @@ export class CactusAIProvider {
 			const processingTime = Date.now() - startTime;
 
 			return this.processDnDResponse(response, processingTime);
-		} catch (error: unknown) {
+		} catch (error: any) {
 			console.error('Cactus inference error:', error);
 			throw new Error(`AI generation failed: ${error.message}`);
 		}
