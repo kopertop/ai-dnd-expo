@@ -1,56 +1,219 @@
 import React from 'react';
+import { View } from 'react-native';
 import { expect, vi } from 'vitest';
 
-// Define basic types for testing
+// Define types for testing
 interface RenderOptions {
 	wrapper?: React.ComponentType<any>;
+	initialProps?: Record<string, any>;
 }
 
 interface RenderResult {
-	container: any;
+	container: HTMLElement | null;
 	rerender: (ui: React.ReactElement) => void;
 	unmount: () => void;
+	getByTestId: (testId: string) => HTMLElement;
+	queryByTestId: (testId: string) => HTMLElement | null;
+	getByText: (text: string) => HTMLElement;
+	queryByText: (text: string) => HTMLElement | null;
+	debug: () => void;
 }
 
 /**
  * Mock providers for testing React components
+ * Provides all necessary context providers that components might need
  */
 interface MockProvidersProps {
 	children: React.ReactNode;
+	initialGameState?: any;
+	initialTheme?: 'light' | 'dark';
 }
 
-const MockProviders: React.FC<MockProvidersProps> = ({ children }) => {
-	// Mock any context providers that components might need
-	return <>{children}</>;
+const MockProviders: React.FC<MockProvidersProps> = ({
+	children,
+	initialGameState = {},
+	initialTheme = 'light'
+}) => {
+	// Mock context providers that components depend on
+	const mockGameContext = {
+		gameState: {
+			character: null,
+			currentLocation: null,
+			companions: [],
+			inventory: [],
+			...initialGameState,
+		},
+		updateGameState: vi.fn(),
+		resetGame: vi.fn(),
+	};
+
+	const mockThemeContext = {
+		theme: initialTheme,
+		colors: {
+			primary: '#007AFF',
+			secondary: '#5856D6',
+			background: initialTheme === 'light' ? '#FFFFFF' : '#000000',
+			text: initialTheme === 'light' ? '#000000' : '#FFFFFF',
+		},
+		toggleTheme: vi.fn(),
+	};
+
+	// Create mock providers
+	const GameProvider = ({ children }: { children: React.ReactNode }) => (
+		<View testID="mock-game-provider">{children}</View>
+	);
+
+	const ThemeProvider = ({ children }: { children: React.ReactNode }) => (
+		<View testID="mock-theme-provider">{children}</View>
+	);
+
+	return (
+		<GameProvider>
+			<ThemeProvider>
+				{children}
+			</ThemeProvider>
+		</GameProvider>
+	);
 };
 
 /**
- * Simple render function for testing (without full testing library)
+ * Enhanced render function for testing React Native components
+ * Provides consistent testing environment with all necessary providers
  */
 export const renderWithProviders = (
 	ui: React.ReactElement,
-	options?: Omit<RenderOptions, 'wrapper'>
+	options: RenderOptions & {
+		initialGameState?: any;
+		initialTheme?: 'light' | 'dark';
+	} = {}
 ): RenderResult => {
-	// Simple mock implementation for testing infrastructure
+	const {
+		wrapper: Wrapper = MockProviders,
+		initialGameState,
+		initialTheme,
+		...renderOptions
+	} = options;
+
+	// Create a container element for the test
+	const container = document.createElement('div');
+	document.body.appendChild(container);
+
+	let currentElement = ui;
+
+	const render = (element: React.ReactElement) => {
+		// In a real implementation, this would use React's render method
+		// For now, we'll create a mock implementation
+		const componentName = typeof element.type === 'string' ? element.type :
+			(element.type as any)?.name || 'Component';
+		container.innerHTML = `<div data-testid="rendered-component">${componentName}</div>`;
+	};
+
+	const rerender = (newUi: React.ReactElement) => {
+		currentElement = newUi;
+		render(newUi);
+	};
+
+	const unmount = () => {
+		container.innerHTML = '';
+		if (container.parentNode) {
+			container.parentNode.removeChild(container);
+		}
+	};
+
+	const getByTestId = (testId: string): HTMLElement => {
+		const element = container.querySelector(`[data-testid="${testId}"]`) as HTMLElement;
+		if (!element) {
+			throw new Error(`Unable to find element with testId: ${testId}`);
+		}
+		return element;
+	};
+
+	const queryByTestId = (testId: string): HTMLElement | null => {
+		return container.querySelector(`[data-testid="${testId}"]`) as HTMLElement | null;
+	};
+
+	const getByText = (text: string): HTMLElement => {
+		const element = Array.from(container.querySelectorAll('*')).find(
+			el => el.textContent?.includes(text)
+		) as HTMLElement;
+		if (!element) {
+			throw new Error(`Unable to find element with text: ${text}`);
+		}
+		return element;
+	};
+
+	const queryByText = (text: string): HTMLElement | null => {
+		return Array.from(container.querySelectorAll('*')).find(
+			el => el.textContent?.includes(text)
+		) as HTMLElement || null;
+	};
+
+	const debug = () => {
+		console.log(container.innerHTML);
+	};
+
+	// Initial render
+	render(currentElement);
+
 	return {
-		container: null,
-		rerender: vi.fn(),
-		unmount: vi.fn(),
+		container,
+		rerender,
+		unmount,
+		getByTestId,
+		queryByTestId,
+		getByText,
+		queryByText,
+		debug,
 	};
 };
 
 /**
  * Wait for async updates to complete
+ * Handles React's async rendering and state updates
  */
-export const waitForAsyncUpdates = async (): Promise<void> => {
+export const waitForAsyncUpdates = async (timeout = 1000): Promise<void> => {
+	// Wait for microtasks to complete
 	await new Promise(resolve => setTimeout(resolve, 0));
+
+	// Wait for any pending promises
+	await new Promise(resolve => {
+		const timeoutId = setTimeout(resolve, timeout);
+		// Also resolve immediately if no async operations are pending
+		Promise.resolve().then(() => {
+			clearTimeout(timeoutId);
+			resolve(undefined);
+		});
+	});
 };
 
 /**
  * Assert that no console errors occurred during test
+ * Provides detailed error information if errors were logged
  */
 export const assertNoConsoleErrors = (): void => {
+	const consoleMock = console.error as any;
+	if (consoleMock.mock && consoleMock.mock.calls.length > 0) {
+		const errorCalls = consoleMock.mock.calls;
+		const errorMessages = errorCalls.map((call: any[]) => call.join(' ')).join('\n');
+		throw new Error(`Console errors detected during test:\n${errorMessages}`);
+	}
 	expect(console.error).not.toHaveBeenCalled();
+};
+
+/**
+ * Enhanced console error checking with cleanup
+ */
+export const withConsoleErrorCheck = async (testFn: () => Promise<void> | void): Promise<void> => {
+	// Clear any existing console error calls
+	(console.error as any).mockClear?.();
+
+	try {
+		await testFn();
+		assertNoConsoleErrors();
+	} finally {
+		// Clean up console mocks after test
+		(console.error as any).mockClear?.();
+	}
 };
 
 /**

@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Task Completion Quality Check",
+  "description": "Manual hook that runs comprehensive quality checks (lint, typecheck, code smell detection) and creates a properly formatted commit when a task is completed. Stages all changes and performs git diff analysis before committing.",
+  "version": "1",
+  "when": {
+    "type": "userTriggered",
+    "patterns": [
+      "MANUAL"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A task has been marked as completed. Please perform the following steps in order:\n\n1. **Quality Checks**: Run `npm run lint` and `npm run typecheck` to ensure code quality and TypeScript compatibility\n2. **Code Analysis**: Check for any code smells, potential bugs, or issues in the current changes\n3. **Staging**: Run `git add .` to stage all remaining changes (both staged and unstaged)\n4. **Diff Review**: Run `git diff --cached` to review all staged changes and look for potential issues\n5. **Commit Creation**: ONLY if all linting and typechecking passes without errors, create a commit using this format:\n\n```\n[type]: [Description]\n[details....]\n```\n\nWhere `[type]` should be one of:\n- **feat**: Feature improvement or addition\n- **chore**: Cleanup, linting, refactoring, etc  \n- **fix**: Bug fix\n\nThe description should be concise and the details should explain what was changed and why. Analyze the git diff to determine the appropriate commit type and write a meaningful commit message. Make sure there are no secrets being committed (error out if you find any tokens or secret keys that appear to be committed).\n\nIf any quality checks fail, DO NOT create a commit. Instead, report the issues that need to be fixed first."
+  }
+}

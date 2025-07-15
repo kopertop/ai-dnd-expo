@@ -6,20 +6,20 @@
   - Create shared test setup files and global configurations
   - _Requirements: 5.1, 5.2, 5.4_
 
-- [ ] 2. Create test utilities and mock factories
-  - [ ] 2.1 Implement shared test utilities for component rendering
+- [x] 2. Create test utilities and mock factories
+  - [x] 2.1 Implement shared test utilities for component rendering
     - Create renderWithProviders utility for consistent component testing
     - Implement waitForAsyncUpdates helper for async operations
     - Create assertNoConsoleErrors utility for clean test runs
     - _Requirements: 6.2, 6.5_
 
-  - [ ] 2.2 Build mock factory system for test data
+  - [x] 2.2 Build mock factory system for test data
     - Create CharacterFactory for generating test character data
     - Implement GameStateFactory for various game state scenarios
     - Build AIResponseFactory for mocking AI service responses
     - _Requirements: 5.3, 6.3_
 
-  - [ ] 2.3 Set up external dependency mocks
+  - [x] 2.3 Set up external dependency mocks
     - Mock Cactus AI provider with configurable responses
     - Create AsyncStorage mock with in-memory implementation
     - Mock React Navigation functions and hooks

@@ -43,6 +43,11 @@
 	"npm run format",
 	"npm run format:check",
 	"npm run test:services -- --run",
-	"npm run test:coverage -- --run"
+	"npm run test:coverage -- --run",
+	"git add .",
+	"git diff *",
+	"git diff",
+	"git status",
+	"git add *"
 ]
 }

@@ -157,16 +157,11 @@ vi.mock('@shopify/react-native-skia', () => ({
 	Group: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-// Mock Cactus React Native
-vi.mock('cactus-react-native', () => ({
-	CactusClient: vi.fn().mockImplementation(() => ({
-		generateText: vi.fn().mockResolvedValue({
-			text: 'Mock AI response',
-			usage: { totalTokens: 10 },
-		}),
-		isAvailable: vi.fn().mockReturnValue(true),
-	})),
-}));
+// Import and setup enhanced external dependency mocks
+import { MockManager } from '../unit/__mocks__/external-dependencies';
+
+// Setup all external dependency mocks
+MockManager.setupAll();
 
 // Global test utilities
 global.console = {
