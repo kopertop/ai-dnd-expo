@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Pre-commit Quality Checks",
+  "description": "Runs typecheck and lint with auto-fix before commits to ensure all issues are resolved (excluding warnings)",
+  "version": "1",
+  "when": {
+    "type": "userTriggered",
+    "patterns": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.js",
+      "**/*.jsx"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A commit is about to be made. Run `npm run typecheck` and `npm run lint -- --fix` to ensure all TypeScript type errors and linting issues are fixed before the commit proceeds. All errors must be resolved - warnings can be ignored. If any errors are found, fix them and re-run the commands until they pass cleanly."
+  }
+}

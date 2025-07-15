@@ -42,16 +42,22 @@ export interface EnhancedDungeonMasterConfig {
 }
 
 export const useEnhancedDungeonMaster = (
-	config: EnhancedDungeonMasterConfig
+	config: EnhancedDungeonMasterConfig,
 ): UseEnhancedDungeonMasterReturn => {
 	const [messages, setMessages] = useState<DMMessage[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [serviceStatus, setServiceStatus] = useState({
-		cactus: { available: false },
-		cache: { size: 0, hitRate: 0 },
-		overall: 'offline' as const,
-	});
+	const [serviceStatus, setServiceStatus] = useState<{
+		cactus: { available: boolean; latency?: number };
+		local: { available: boolean; resourceUsage?: import('../services/ai/providers/local-dm-provider').ResourceUsage };
+		cache: { size: number; hitRate: number };
+		overall: 'healthy' | 'degraded' | 'offline';
+			}>({
+				cactus: { available: false },
+				local: { available: false },
+				cache: { size: 0, hitRate: 0 },
+				overall: 'offline',
+			});
 
 	const aiServiceRef = useRef<AIServiceManager | null>(null);
 	const dmVoice = useDMVoice();
@@ -132,7 +138,7 @@ export const useEnhancedDungeonMaster = (
 			// Generate AI response
 			const aiResponse = await aiServiceRef.current.generateDnDResponse(
 				playerInput,
-				aiContext
+				aiContext,
 			);
 
 			// Create DM message
@@ -270,7 +276,7 @@ export const useEnhancedDungeonMaster = (
 export const useEnhancedDungeonMasterAgent = (
 	worldState: GameWorldState | null,
 	playerCharacter: Character | null,
-	cactusApiKey?: string
+	cactusApiKey?: string,
 ) => {
 	const aiServiceRef = useRef<AIServiceManager | null>(null);
 

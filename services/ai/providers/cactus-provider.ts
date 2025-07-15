@@ -1,22 +1,21 @@
 /**
  * Cactus Compute Provider for AI D&D Platform
  *
- * Integrates with Cactus distributed compute network for running Gemma3 models
+ * Integrates with Cactus React Native for local model inference
  * https://github.com/cactus-compute/cactus
  */
-
-import { CactusClient, InferenceRequest, InferenceResponse, ModelConfig } from '@cactus-compute/client';
+import { CactusLM } from 'cactus-react-native';
 
 export interface CactusConfig {
-	apiKey: string;
-	endpoint?: string;
-	modelName: string;
+	modelPath: string;
+	contextSize?: number;
 	maxTokens?: number;
 	temperature?: number;
 	timeout?: number;
 }
 
-export interface DnDInferenceRequest extends InferenceRequest {
+export interface DnDInferenceRequest {
+	prompt: string;
 	context: {
 		playerName: string;
 		playerClass: string;
@@ -27,44 +26,70 @@ export interface DnDInferenceRequest extends InferenceRequest {
 	systemPrompt: string;
 }
 
+export interface CactusResponse {
+	text: string;
+	metadata?: {
+		toolCommands?: Array<{ type: string; params: string }>;
+		processingTime?: number;
+	};
+}
+
 export class CactusAIProvider {
-	private client: CactusClient;
+	private lm: any = null; // TODO: Add proper CactusLM type when available
 	private config: CactusConfig;
+	private isInitialized = false;
 
 	constructor(config: CactusConfig) {
 		this.config = config;
-		this.client = new CactusClient({
-			apiKey: config.apiKey,
-			endpoint: config.endpoint || 'https://api.cactus-compute.com',
-		});
 	}
 
 	/**
-	 * Generate D&D response using Gemma3 via Cactus network
+	 * Initialize the Cactus LM model
 	 */
-	async generateDnDResponse(request: DnDInferenceRequest): Promise<InferenceResponse> {
-		const modelConfig: ModelConfig = {
-			name: this.config.modelName,
-			parameters: {
-				max_tokens: this.config.maxTokens || 150,
-				temperature: this.config.temperature || 0.7,
-				top_p: 0.9,
-				stop_sequences: ['[END]', '\n\nPlayer:', '\n\nDM:'],
-			},
-		};
-
-		const prompt = this.buildDnDPrompt(request);
-
+	async initialize(): Promise<boolean> {
 		try {
-			const response = await this.client.inference({
-				model: modelConfig,
-				prompt,
-				context: request.context,
-				timeout: this.config.timeout || 30000,
+			const { lm, error } = await CactusLM.init({
+				model: this.config.modelPath,
+				n_ctx: this.config.contextSize || 2048,
 			});
 
-			return this.processDnDResponse(response);
-		} catch (error: any) {
+			if (error) {
+				console.error('Failed to initialize Cactus LM:', error);
+				return false;
+			}
+
+			this.lm = lm;
+			this.isInitialized = true;
+			return true;
+		} catch (error) {
+			console.error('Failed to initialize Cactus LM:', error);
+			return false;
+		}
+	}
+
+	/**
+	 * Generate D&D response using local model via Cactus LM
+	 */
+	async generateDnDResponse(request: DnDInferenceRequest): Promise<CactusResponse> {
+		if (!this.isInitialized || !this.lm) {
+			throw new Error('Cactus LM not initialized. Call initialize() first.');
+		}
+
+		const prompt = this.buildDnDPrompt(request);
+		const startTime = Date.now();
+
+		try {
+			const messages = [{ role: 'user', content: prompt }];
+			const params = {
+				n_predict: this.config.maxTokens || 150,
+				temperature: this.config.temperature || 0.7,
+			};
+
+			const response = await this.lm.completion(messages, params);
+			const processingTime = Date.now() - startTime;
+
+			return this.processDnDResponse(response, processingTime);
+		} catch (error: unknown) {
 			console.error('Cactus inference error:', error);
 			throw new Error(`AI generation failed: ${error.message}`);
 		}
@@ -90,8 +115,8 @@ DM Response:`;
 	/**
 	 * Process and validate D&D response
 	 */
-	private processDnDResponse(response: InferenceResponse): InferenceResponse {
-		let text = response.text.trim();
+	private processDnDResponse(response: string, processingTime: number): CactusResponse {
+		let text = response.trim();
 
 		// Clean up common artifacts
 		text = text.replace(/^DM:\s*/i, '');
@@ -102,64 +127,49 @@ DM Response:`;
 		text = this.removeToolCommands(text);
 
 		return {
-			...response,
 			text,
 			metadata: {
-				...response.metadata,
 				toolCommands,
-				processingTime: response.metadata?.processingTime || 0,
+				processingTime,
 			},
 		};
 	}
 
 	/**
 	 * Extract D&D tool commands like [ROLL:1d20+3]
+	 * Now uses the centralized tool command parser
 	 */
 	private extractToolCommands(text: string): Array<{ type: string; params: string }> {
-		const commands: Array<{ type: string; params: string }> = [];
-		const regex = /\[(\w+):([^\]]+)\]/g;
-		let match;
-
-		while ((match = regex.exec(text)) !== null) {
-			commands.push({
-				type: match[1].toLowerCase(),
-				params: match[2],
-			});
-		}
-
-		return commands;
+		const { ToolCommandParser } = require('../tools/tool-command-parser');
+		return ToolCommandParser.extractToolCommands(text).map((cmd: { type: string; params: string }) => ({
+			type: cmd.type,
+			params: cmd.params,
+		}));
 	}
 
 	/**
 	 * Remove tool commands from display text
 	 */
 	private removeToolCommands(text: string): string {
-		return text.replace(/\[(\w+):([^\]]+)\]/g, '').trim();
+		const { ToolCommandParser } = require('../tools/tool-command-parser');
+		return ToolCommandParser.removeToolCommands(text);
 	}
 
 	/**
-	 * Check if Cactus service is available
+	 * Check if Cactus LM is available and ready
 	 */
 	async healthCheck(): Promise<boolean> {
-		try {
-			const response = await this.client.health();
-			return response.status === 'healthy';
-		} catch {
-			return false;
-		}
+		return this.isInitialized && this.lm !== null;
 	}
 
 	/**
-	 * Get available models on Cactus network
+	 * Get model information (for local models, this returns the configured model path)
 	 */
 	async getAvailableModels(): Promise<string[]> {
-		try {
-			const models = await this.client.listModels();
-			return models.filter(model => model.includes('gemma'));
-		} catch (error) {
-			console.error('Failed to fetch available models:', error);
-			return [];
+		if (this.isInitialized) {
+			return [this.config.modelPath];
 		}
+		return [];
 	}
 }
 

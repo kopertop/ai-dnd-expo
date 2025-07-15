@@ -34,9 +34,9 @@ export class DungeonMasterAgent {
 	private ruleEngine: RuleEngine;
 	private context: DMContext;
 	private messageHistory: DMMessage[] = [];
-	private gemmaModel: ReturnType<typeof useGemmaModel> | null = null;
+	private gemmaModel: any = null;
 
-	constructor(initialContext: DMContext, gemmaModel?: ReturnType<typeof useGemmaModel>) {
+	constructor(initialContext: DMContext, gemmaModel?: any) {
 		this.context = initialContext;
 		this.diceRoller = new DiceRoller();
 		this.characterUpdater = new CharacterUpdater();

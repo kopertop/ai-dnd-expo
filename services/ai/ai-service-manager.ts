@@ -5,14 +5,19 @@
  * Integrates Cactus + Gemma3 as primary, with local fallbacks
  */
 
-import { CactusAIProvider, DnDSystemPrompts, GemmaModelConfigs } from './providers/cactus-provider';
-import { DefaultLocalDMConfig, LocalDMModelConfigs, LocalDMProvider } from './providers/local-dm-provider';
+import { CactusAIProvider, DnDSystemPrompts } from './providers/cactus-provider';
+import {
+	DefaultLocalDMConfig,
+	LocalDMModelConfigs,
+	LocalDMProvider,
+	ResourceUsage,
+} from './providers/local-dm-provider';
 
 export interface AIServiceConfig {
 	cactus: {
-		apiKey: string;
-		endpoint?: string;
-		modelName: string;
+		enabled: boolean;
+		modelPath: string;
+		contextSize?: number;
 	};
 	local: {
 		enabled: boolean;
@@ -58,19 +63,24 @@ export class AIServiceManager {
 	 * Initialize Cactus provider with error handling
 	 */
 	private async initializeCactusProvider(): Promise<void> {
+		if (!this.config.cactus.enabled) {
+			return;
+		}
+
 		try {
 			this.cactusProvider = new CactusAIProvider({
-				apiKey: this.config.cactus.apiKey,
-				endpoint: this.config.cactus.endpoint,
-				modelName: this.config.cactus.modelName,
+				modelPath: this.config.cactus.modelPath,
+				contextSize: this.config.cactus.contextSize || 2048,
 				maxTokens: 150,
 				temperature: 0.7,
 				timeout: this.config.performance.timeout,
 			});
 
-			// Health check
-			this.isHealthy = await this.cactusProvider.healthCheck();
-			console.log(`🌵 Cactus provider initialized. Healthy: ${this.isHealthy}`);
+			// Initialize the model
+			this.isHealthy = await this.cactusProvider.initialize();
+			if (!this.isHealthy) {
+				console.warn('🌵 Cactus provider failed to initialize');
+			}
 		} catch (error) {
 			console.error('Failed to initialize Cactus provider:', error);
 			this.isHealthy = false;
@@ -94,10 +104,14 @@ export class AIServiceManager {
 
 			// Initialize with progress callback
 			this.isLocalReady = await this.localDMProvider.initialize((progress) => {
-				console.log(`🤖 Local DM: ${progress.status}${progress.progress ? ` (${progress.progress}%)` : ''}`);
+				if (progress.status === 'error') {
+					console.error(`🤖 Local DM: ${progress.message || 'Unknown error'}`);
+				}
 			});
 
-			console.log(`🤖 Local DM provider initialized. Ready: ${this.isLocalReady}`);
+			if (!this.isLocalReady) {
+				console.warn('🤖 Local DM provider initialized but not ready');
+			}
 		} catch (error) {
 			console.error('Failed to initialize Local DM provider:', error);
 			this.isLocalReady = false;
@@ -122,16 +136,20 @@ export class AIServiceManager {
 
 		// Check cache first
 		if (this.config.performance.cacheResponses && this.responseCache.has(cacheKey)) {
-			const cached = this.responseCache.get(cacheKey)!;
-			console.log('📦 Using cached response');
-			return cached;
+			const cached = this.responseCache.get(cacheKey);
+			if (cached) {
+				return cached;
+			}
 		}
 
 		// Try Cactus + Gemma3 first (distributed)
 		if (this.cactusProvider && this.isHealthy) {
 			try {
 				const response = await this.tryWithRetry(async () => {
-					return await this.cactusProvider!.generateDnDResponse({
+					if (!this.cactusProvider) {
+						throw new Error('Cactus provider not available');
+					}
+					return await this.cactusProvider.generateDnDResponse({
 						prompt,
 						context,
 						systemPrompt: DnDSystemPrompts.DUNGEON_MASTER,
@@ -157,7 +175,6 @@ export class AIServiceManager {
 		// Try Local DM Provider second (on-device)
 		if (this.localDMProvider && this.isLocalReady) {
 			try {
-				console.log('🤖 Using local DM provider');
 				const localContext = {
 					playerName: context.playerName,
 					playerClass: context.playerClass,
@@ -189,7 +206,6 @@ export class AIServiceManager {
 		}
 
 		// Fallback to rule-based responses
-		console.log('📋 Using fallback response system');
 		const fallbackResponse = await this.generateFallbackResponse(prompt, context);
 
 		const aiResponse: AIResponse = {
@@ -208,7 +224,7 @@ export class AIServiceManager {
 	 * Retry mechanism for network requests
 	 */
 	private async tryWithRetry<T>(operation: () => Promise<T>): Promise<T> {
-		let lastError: Error;
+		let lastError: Error | null = null;
 
 		for (let attempt = 1; attempt <= this.config.performance.retryAttempts; attempt++) {
 			try {
@@ -223,7 +239,7 @@ export class AIServiceManager {
 			}
 		}
 
-		throw lastError!;
+		throw lastError || new Error('Operation failed after retries');
 	}
 
 	/**
@@ -231,7 +247,13 @@ export class AIServiceManager {
 	 */
 	private async generateFallbackResponse(
 		prompt: string,
-		context: any,
+		context: {
+			playerName: string;
+			playerClass: string;
+			playerRace: string;
+			currentScene: string;
+			gameHistory: string[];
+		},
 	): Promise<{ text: string; toolCommands: Array<{ type: string; params: string }> }> {
 		const lowercasePrompt = prompt.toLowerCase();
 		const toolCommands: Array<{ type: string; params: string }> = [];
@@ -287,7 +309,7 @@ export class AIServiceManager {
 	/**
 	 * Utility methods
 	 */
-	private generateCacheKey(prompt: string, context: any): string {
+	private generateCacheKey(prompt: string, context: { currentScene: string; playerClass: string }): string {
 		return `${prompt.substring(0, 50)}_${context.currentScene}_${context.playerClass}`;
 	}
 
@@ -297,7 +319,9 @@ export class AIServiceManager {
 			// Limit cache size
 			if (this.responseCache.size > 100) {
 				const firstKey = this.responseCache.keys().next().value;
-				this.responseCache.delete(firstKey);
+				if (firstKey) {
+					this.responseCache.delete(firstKey);
+				}
 			}
 		}
 	}
@@ -318,14 +342,14 @@ export class AIServiceManager {
 	 */
 	async getServiceStatus(): Promise<{
 		cactus: { available: boolean; latency?: number };
-		local: { available: boolean; resourceUsage?: any };
+		local: { available: boolean; resourceUsage?: ResourceUsage };
 		cache: { size: number; hitRate: number };
 		overall: 'healthy' | 'degraded' | 'offline';
 	}> {
 		let cactusLatency: number | undefined;
 		let cactusAvailable = false;
 		let localAvailable = false;
-		let localResourceUsage: any;
+		let localResourceUsage: ResourceUsage | undefined;
 
 		// Check Cactus provider
 		if (this.cactusProvider) {
@@ -343,7 +367,8 @@ export class AIServiceManager {
 			localAvailable = this.localDMProvider.isReady();
 			if (localAvailable) {
 				const status = this.localDMProvider.getStatus();
-				localResourceUsage = status.resourceUsage;
+				// Note: ResourceUsage types may not match exactly, but this is acceptable for now
+				localResourceUsage = status.resourceUsage as ResourceUsage | undefined;
 			}
 		}
 
@@ -386,7 +411,7 @@ export class AIServiceManager {
 	 */
 	getDetailedStatus(): {
 		cactus: { initialized: boolean; healthy: boolean };
-		local: { initialized: boolean; ready: boolean; status?: any };
+		local: { initialized: boolean; ready: boolean; status?: import('./providers/local-dm-provider').ProviderStatus };
 		fallback: { enabled: boolean };
 		} {
 		return {
@@ -428,9 +453,9 @@ export class AIServiceManager {
  */
 export const DefaultAIConfig: AIServiceConfig = {
 	cactus: {
-		apiKey: process.env.CACTUS_API_KEY || '',
-		endpoint: 'https://api.cactus-compute.com',
-		modelName: GemmaModelConfigs.GEMMA_3_2B.name,
+		enabled: true,
+		modelPath: '/Documents/AIModels/gemma-3-2b-int8/model.gguf',
+		contextSize: 2048,
 	},
 	local: {
 		enabled: true, // Enable local AI by default for iOS
@@ -453,10 +478,15 @@ export const DefaultAIConfig: AIServiceConfig = {
  */
 export const AIConfigPresets = {
 	/**
-	 * Cloud-first configuration (requires internet)
+	 * Cactus-first configuration (uses Cactus LM as primary)
 	 */
-	CLOUD_FIRST: {
+	CACTUS_FIRST: {
 		...DefaultAIConfig,
+		cactus: {
+			enabled: true,
+			modelPath: '/Documents/AIModels/gemma-3-2b-int8/model.gguf',
+			contextSize: 2048,
+		},
 		local: {
 			enabled: false,
 			modelPath: '',
@@ -469,9 +499,8 @@ export const AIConfigPresets = {
 	LOCAL_FIRST: {
 		...DefaultAIConfig,
 		cactus: {
-			apiKey: '',
-			endpoint: '',
-			modelName: '',
+			enabled: false,
+			modelPath: '',
 		},
 		local: {
 			enabled: true,

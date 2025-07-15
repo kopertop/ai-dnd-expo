@@ -11,11 +11,13 @@
  * - Fallback to rule-based responses
  */
 
+import { TextGenerationPipeline, env, pipeline } from '@fugood/transformers';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { pipeline, TextGenerationPipeline, env } from '@fugood/transformers';
 
 // Configure environment for React Native - try WebAssembly backend
-env.backends.onnx.wasm.numThreads = 1;
+if (env.backends.onnx.wasm) {
+	env.backends.onnx.wasm.numThreads = 1;
+}
 env.allowLocalModels = true;
 env.allowRemoteModels = true;
 
@@ -191,20 +193,20 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 			// Create text generation pipeline using transformers.js
 			console.log('📦 Creating text generation pipeline...');
 			console.log('🔗 Model:', modelConfig.modelName);
-			
+
 			const textPipeline = await pipeline('text-generation', modelConfig.modelName, {
 				progress_callback: (progress: any) => {
 					console.log('📊 Loading progress:', progress);
 					if (modelConfig.progressCallback) {
-						modelConfig.progressCallback({ 
+						modelConfig.progressCallback({
 							status: progress.status || 'progress',
-							url: progress.file 
+							url: progress.file,
 						});
 					}
 				},
 				local_files_only: false, // Allow downloading on first use
 			});
-			
+
 			pipelineRef.current = textPipeline;
 
 			setIsReady(true);
@@ -219,15 +221,15 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 			console.error('Error details:', {
 				message: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
-				name: error instanceof Error ? error.name : undefined
+				name: error instanceof Error ? error.name : undefined,
 			});
 			setIsReady(false);
-			
+
 			if (retryCountRef.current >= maxRetries) {
 				console.warn('🔄 Max retries reached. Switching to fallback mode permanently.');
 				setHasError(true);
 			}
-			
+
 			if (modelConfig.progressCallback) {
 				modelConfig.progressCallback({ status: 'error' });
 			}
@@ -248,7 +250,7 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 	 */
 	const runInference = async (
 		prompt: string,
-		context?: Record<string, any>
+		context?: Record<string, any>,
 	): Promise<{
 		text: string;
 		confidence: number;
@@ -335,11 +337,11 @@ export const useGemmaModel = (config?: GemmaModelConfig) => {
 
 		// Clean up the text
 		let cleanText = text.replace(diceRegex, '').trim();
-		
+
 		// Remove any prompt artifacts
 		cleanText = cleanText.replace(/^DM:\s*/i, '');
 		cleanText = cleanText.replace(/^You:\s*/i, '');
-		
+
 		// Limit length for mobile display
 		if (cleanText.length > 200) {
 			cleanText = cleanText.substring(0, 197) + '...';

@@ -3,5 +3,10 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  "kiroAgent.trustedCommands": [
+    "npm run typecheck",
+    "npm run lint *",
+    "npx tsc --noEmit *"
+  ]
 }

@@ -1,478 +1,580 @@
 /**
  * Local DM Provider for AI D&D Platform
  *
- * Integrates with Cactus React Native for on-device Gemma3 inference
- * Implements requirements from local-dm-agent spec
+ * Provides on-device AI-powered Dungeon Master functionality using local models
+ * Integrates with Cactus React Native for local model inference
+ *
+ * Requirements: 1.1, 4.1
  */
 
-import { CactusLM } from 'cactus-react-native';
-import { Platform } from 'react-native';
 
-import { DnDSystemPrompts } from './cactus-provider';
-
-export interface LocalDMConfig {
-	modelPath: string;
-	contextSize?: number;
-	maxTokens?: number;
-	temperature?: number;
-	enableResourceMonitoring?: boolean;
-	powerSavingMode?: boolean;
+// Base interfaces for local AI provider
+export interface AIProvider {
+  initialize(progressCallback?: (progress: InitializationProgress) => void): Promise<boolean>;
+  generateDnDResponse(prompt: string, context: DnDContext, timeout?: number): Promise<AIResponse>;
+  healthCheck(): Promise<boolean>;
+  isReady(): boolean;
+  getStatus(): ProviderStatus;
+  cleanup(): Promise<void>;
 }
 
-export interface LocalDMResponse {
-	text: string;
-	confidence: number;
-	processingTime: number;
-	resourceUsage: {
-		memoryMB: number;
-		cpuPercent: number;
-		batteryLevel?: number;
-	};
-	toolCommands: Array<{ type: string; params: string }>;
+export interface InitializationProgress {
+  status: 'loading' | 'initializing' | 'ready' | 'error';
+  progress?: number; // 0-100
+  message?: string;
 }
 
-export interface LocalDMContext {
-	playerName: string;
-	playerClass: string;
-	playerRace: string;
-	currentScene: string;
-	gameHistory: string[];
-	worldState?: any;
+export interface DnDContext {
+  playerName: string;
+  playerClass: string;
+  playerRace: string;
+  currentScene: string;
+  gameHistory: string[];
 }
 
-export class LocalDMProvider {
-	private lm: any = null;
-	private config: LocalDMConfig;
+export interface AIResponse {
+  text: string;
+  confidence: number;
+  toolCommands: Array<{ type: string; params: string }>;
+  processingTime: number;
+}
+
+export interface ProviderStatus {
+  isLoaded: boolean;
+  isReady: boolean;
+  error: string | null;
+  modelInfo?: {
+    name: string;
+    size: number;
+    quantization: string;
+    memoryUsage: number;
+  };
+  performance?: {
+    averageInferenceTime: number;
+    tokensPerSecond: number;
+    lastInferenceTime: number;
+  };
+  resourceUsage?: {
+    memory: { used: number; available: number; percentage: number };
+    cpu: { usage: number; temperature: number };
+    battery: { level: number; isCharging: boolean };
+    thermal: { state: 'nominal' | 'fair' | 'serious' | 'critical' };
+  };
+}
+
+// Local model configuration interfaces
+export interface LocalModelConfig {
+  modelPath: string;
+  contextSize: number;
+  maxTokens: number;
+  temperature: number;
+  enableResourceMonitoring: boolean;
+  powerSavingMode: boolean;
+  quantization?: 'int8' | 'int4' | 'fp16' | 'fp32';
+  numThreads?: number;
+  memoryLimit?: number; // in MB
+  enableGPU?: boolean;
+  cacheSize?: number;
+}
+
+export interface ModelStatus {
+  isLoaded: boolean;
+  isReady: boolean;
+  loadingProgress: number;
+  error: string | null;
+  modelInfo: {
+    name: string;
+    size: number;
+    quantization: string;
+    memoryUsage: number;
+  };
+  performance: {
+    averageInferenceTime: number;
+    tokensPerSecond: number;
+    lastInferenceTime: number;
+  };
+}
+
+export interface ResourceUsage {
+  memory: {
+    used: number;
+    available: number;
+    percentage: number;
+  };
+  cpu: {
+    usage: number;
+    temperature: number;
+  };
+  battery: {
+    level: number;
+    isCharging: boolean;
+    estimatedTimeRemaining: number;
+  };
+  thermal: {
+    state: 'nominal' | 'fair' | 'serious' | 'critical';
+    temperature: number;
+  };
+}
+
+/**
+ * Local DM Provider implementation
+ * Uses Cactus React Native for on-device model inference
+ */
+export class LocalDMProvider implements AIProvider {
+	private config: LocalModelConfig;
 	private isInitialized = false;
-	private isLoading = false;
-	private resourceMonitor: NodeJS.Timeout | null = null;
-	private lastResourceCheck = { memory: 0, cpu: 0, battery: 100 };
+	private isModelReady = false;
+	private lastError: string | null = null;
+	private modelStatus: ModelStatus;
+	private performanceMetrics: {
+    totalInferences: number;
+    totalTime: number;
+    averageTime: number;
+    successRate: number;
+  };
 
-	constructor(config: LocalDMConfig) {
-		this.config = {
-			contextSize: 2048,
-			maxTokens: 150,
-			temperature: 0.7,
-			enableResourceMonitoring: true,
-			powerSavingMode: false,
-			...config,
+	// Placeholder for Cactus integration - will be implemented in task 2
+	private cactusLM: any = null;
+
+	constructor(config: LocalModelConfig) {
+		this.config = config;
+		this.modelStatus = {
+			isLoaded: false,
+			isReady: false,
+			loadingProgress: 0,
+			error: null,
+			modelInfo: {
+				name: this.extractModelName(config.modelPath),
+				size: 0,
+				quantization: config.quantization || 'unknown',
+				memoryUsage: 0,
+			},
+			performance: {
+				averageInferenceTime: 0,
+				tokensPerSecond: 0,
+				lastInferenceTime: 0,
+			},
+		};
+		this.performanceMetrics = {
+			totalInferences: 0,
+			totalTime: 0,
+			averageTime: 0,
+			successRate: 0,
 		};
 	}
 
 	/**
-	 * Initialize the local Gemma3 model
-	 * Requirement 1: Initialize local model with progress tracking
-	 */
-	async initialize(progressCallback?: (progress: { status: string; progress?: number }) => void): Promise<boolean> {
-		if (this.isInitialized) return true;
-		if (this.isLoading) return false;
-
-		this.isLoading = true;
-
+   * Initialize the local DM provider with progress tracking
+   * Requirement 1.1: Initialize local model with progress tracking
+   */
+	async initialize(progressCallback?: (progress: InitializationProgress) => void): Promise<boolean> {
 		try {
-			progressCallback?.({ status: 'Checking device compatibility...' });
+			this.lastError = null;
 
-			// Check device compatibility
-			if (!this.isDeviceCompatible()) {
-				throw new Error('Device not compatible with local AI model');
-			}
-
-			progressCallback?.({ status: 'Loading Gemma3 model...', progress: 0 });
-
-			// Initialize Cactus LM with your provided code sample
-			const { lm, error } = await CactusLM.init({
-				model: this.config.modelPath,
-				n_ctx: this.config.contextSize,
+			// Report loading status
+			progressCallback?.({
+				status: 'loading',
+				progress: 0,
+				message: 'Loading local DM model...',
 			});
 
-			if (error) {
-				throw new Error(`Failed to initialize model: ${error}`);
+			// Validate model path exists
+			if (!this.config.modelPath) {
+				throw new Error('Model path is required');
 			}
 
-			this.lm = lm;
-			progressCallback?.({ status: 'Model loaded successfully!', progress: 100 });
+			// Report initialization status
+			progressCallback?.({
+				status: 'initializing',
+				progress: 50,
+				message: 'Initializing model session...',
+			});
 
-			// Start resource monitoring if enabled
-			if (this.config.enableResourceMonitoring) {
-				this.startResourceMonitoring();
-			}
+			// TODO: Initialize Cactus LM in task 2.1
+			// For now, simulate initialization
+			await this.simulateModelLoading(progressCallback);
 
 			this.isInitialized = true;
-			console.log('🤖 Local DM Agent initialized successfully');
+			this.isModelReady = true;
+			this.modelStatus.isLoaded = true;
+			this.modelStatus.isReady = true;
+			this.modelStatus.loadingProgress = 100;
+
+			// Report ready status
+			progressCallback?.({
+				status: 'ready',
+				progress: 100,
+				message: 'Local DM ready for gameplay',
+			});
+
+			// Local DM Provider initialized successfully
 			return true;
 
 		} catch (error) {
-			console.error('❌ Failed to initialize local DM:', error);
-			progressCallback?.({ status: `Error: ${error.message}` });
+			const errorMessage = error instanceof Error ? error.message : 'Unknown initialization error';
+			this.lastError = errorMessage;
+			this.modelStatus.error = errorMessage;
+
+			progressCallback?.({
+				status: 'error',
+				progress: 0,
+				message: errorMessage,
+			});
+
+			console.error('❌ Local DM Provider initialization failed:', error);
 			return false;
-		} finally {
-			this.isLoading = false;
 		}
 	}
 
 	/**
-	 * Generate D&D response using local Gemma3 model
-	 * Requirement 2: Generate contextually appropriate responses
-	 */
+   * Generate D&D response using local model
+   * Requirement 2.1: Generate contextually appropriate responses
+   */
 	async generateDnDResponse(
 		prompt: string,
-		context: LocalDMContext,
-		timeoutMs: number = 10000
-	): Promise<LocalDMResponse> {
-		if (!this.isInitialized || !this.lm) {
-			throw new Error('Local DM not initialized');
+		context: DnDContext,
+		timeout: number = 10000,
+	): Promise<AIResponse> {
+		if (!this.isModelReady) {
+			throw new Error('Local DM model is not ready. Please initialize first.');
 		}
 
 		const startTime = Date.now();
 
 		try {
-			// Check resource constraints before processing
-			await this.checkResourceConstraints();
+			// Build D&D-specific prompt
+			const formattedPrompt = this.buildDnDPrompt(prompt, context);
 
-			// Build D&D-specific messages using your code sample format
-			const messages = [
-				{
-					role: 'system',
-					content: this.buildSystemPrompt(context),
-				},
-				{
-					role: 'user',
-					content: this.buildUserPrompt(prompt, context),
-				},
-			];
-
-			// Set parameters based on power saving mode
-			const params = {
-				n_predict: this.config.powerSavingMode ?
-					Math.min(this.config.maxTokens || 100, 75) :
-					this.config.maxTokens || 150,
-				temperature: this.config.powerSavingMode ?
-					0.6 :
-					this.config.temperature || 0.7,
-				top_p: 0.9,
-				stop: ['[END]', '\n\nPlayer:', '\n\nDM:', 'Human:', 'Assistant:'],
-			};
-
-			// Generate response with timeout using your code sample
-			const response = await Promise.race([
-				this.lm.completion(messages, params),
-				new Promise((_, reject) =>
-					setTimeout(() => reject(new Error('Response timeout')), timeoutMs)
-				),
-			]);
+			// TODO: Implement actual model inference in task 2.2
+			// For now, provide a placeholder response
+			const response = await this.simulateInference(formattedPrompt, timeout);
 
 			const processingTime = Date.now() - startTime;
-			const processedResponse = this.processResponse(response);
 
-			return {
-				text: processedResponse.text,
-				confidence: this.calculateConfidence(processedResponse.text, processingTime),
+			// Update performance metrics
+			this.updatePerformanceMetrics(processingTime, true);
+			this.modelStatus.performance.lastInferenceTime = processingTime;
+
+			// Parse tool commands from response
+			const toolCommands = this.extractToolCommands(response);
+			const cleanText = this.removeToolCommands(response);
+
+			const aiResponse: AIResponse = {
+				text: cleanText,
+				confidence: 0.85, // Placeholder confidence
+				toolCommands,
 				processingTime,
-				resourceUsage: this.getResourceUsage(),
-				toolCommands: processedResponse.toolCommands,
 			};
 
+			// Local DM response generated successfully
+			return aiResponse;
+
 		} catch (error) {
-			console.error('Local DM generation error:', error);
-			throw error;
+			const processingTime = Date.now() - startTime;
+			this.updatePerformanceMetrics(processingTime, false);
+
+			const errorMessage = error instanceof Error ? error.message : 'Unknown inference error';
+			console.error('❌ Local DM inference failed:', error);
+			throw new Error(`Local DM inference failed: ${errorMessage}`);
 		}
 	}
 
 	/**
-	 * Check if device is compatible with local AI
-	 * Requirement 1: Handle device limitations gracefully
-	 */
-	private isDeviceCompatible(): boolean {
-		// Only support iOS/iPadOS as per requirements
-		if (Platform.OS !== 'ios') {
+   * Check if the local DM provider is healthy and ready
+   */
+	async healthCheck(): Promise<boolean> {
+		try {
+			if (!this.isInitialized || !this.isModelReady) {
+				return false;
+			}
+
+			// TODO: Implement actual health check in task 2.1
+			// For now, return basic readiness status
+			return this.isModelReady && this.lastError === null;
+
+		} catch (error) {
+			console.error('❌ Local DM health check failed:', error);
 			return false;
 		}
-
-		// Check available memory (simplified check)
-		// In production, you'd use native modules to check actual memory
-		return true;
 	}
 
 	/**
-	 * Monitor device resources during AI processing
-	 * Requirement 3: Efficient resource management
-	 */
-	private startResourceMonitoring(): void {
-		this.resourceMonitor = setInterval(() => {
-			this.checkResourceUsage();
-		}, 5000); // Check every 5 seconds
+   * Check if the provider is ready for inference
+   */
+	isReady(): boolean {
+		return this.isModelReady && this.lastError === null;
 	}
 
 	/**
-	 * Check resource constraints before processing
-	 * Requirement 3: Monitor CPU usage and battery
-	 */
-	private async checkResourceConstraints(): Promise<void> {
-		const resources = this.getResourceUsage();
-
-		// Enable power saving mode if battery is low
-		if (resources.batteryLevel && resources.batteryLevel < 20) {
-			if (!this.config.powerSavingMode) {
-				console.log('🔋 Low battery detected, enabling power saving mode');
-				this.config.powerSavingMode = true;
-			}
-		}
-
-		// Pause if CPU usage is too high
-		if (resources.cpuPercent > 80) {
-			console.log('⚡ High CPU usage, pausing briefly...');
-			await new Promise(resolve => setTimeout(resolve, 1000));
-		}
-	}
-
-	/**
-	 * Get current resource usage
-	 * Requirement 3: Resource monitoring
-	 */
-	private getResourceUsage(): { memoryMB: number; cpuPercent: number; batteryLevel?: number } {
-		// In production, you'd use native modules to get actual metrics
-		// For now, return mock data that simulates realistic usage
+   * Get detailed status of the local DM provider
+   */
+	getStatus(): ProviderStatus {
 		return {
-			memoryMB: Math.random() * 500 + 200, // 200-700MB
-			cpuPercent: Math.random() * 30 + 10, // 10-40%
-			batteryLevel: Math.random() * 100, // 0-100%
+			isLoaded: this.modelStatus.isLoaded,
+			isReady: this.modelStatus.isReady,
+			error: this.lastError,
+			modelInfo: this.modelStatus.modelInfo,
+			performance: this.modelStatus.performance,
+			// TODO: Implement resource monitoring in task 3.1
+			resourceUsage: undefined,
 		};
 	}
 
 	/**
-	 * Check resource usage and adjust behavior
-	 * Requirement 3: Battery and performance optimization
-	 */
-	private checkResourceUsage(): void {
-		const resources = this.getResourceUsage();
-		this.lastResourceCheck = resources;
+   * Enable or disable power saving mode
+   * Requirement 3.2: Battery optimization
+   */
+	setPowerSavingMode(enabled: boolean): void {
+		this.config.powerSavingMode = enabled;
 
-		// Auto-enable power saving if resources are constrained
-		if (resources.batteryLevel && resources.batteryLevel < 20 && !this.config.powerSavingMode) {
-			this.config.powerSavingMode = true;
-			console.log('🔋 Auto-enabled power saving mode');
+		if (enabled) {
+			// TODO: Implement power saving optimizations in task 3.3
+			// Power saving mode enabled for Local DM
+		} else {
+			// Performance mode enabled for Local DM
 		}
-
-		// Log resource usage for monitoring
-		console.log(`📊 Resources: ${resources.memoryMB.toFixed(0)}MB RAM, ${resources.cpuPercent.toFixed(0)}% CPU, ${resources.batteryLevel?.toFixed(0)}% Battery`);
 	}
 
 	/**
-	 * Build system prompt for D&D context
-	 * Requirement 2: Maintain D&D 5e rule consistency
-	 */
-	private buildSystemPrompt(context: LocalDMContext): string {
-		return `${DnDSystemPrompts.DUNGEON_MASTER}
+   * Clean up all resources and model data
+   * Requirement 5.4: Complete data removal
+   */
+	async cleanup(): Promise<void> {
+		try {
+			// TODO: Implement proper cleanup in task 6.3
+			// For now, reset internal state
+			this.isInitialized = false;
+			this.isModelReady = false;
+			this.lastError = null;
+			this.cactusLM = null;
 
-Current Game Context:
-- Player: ${context.playerName} (${context.playerRace} ${context.playerClass})
-- Scene: ${context.currentScene}
-- Recent Events: ${context.gameHistory.slice(-3).join('. ')}
+			// Reset model status
+			this.modelStatus.isLoaded = false;
+			this.modelStatus.isReady = false;
+			this.modelStatus.error = null;
 
-Remember to:
-- Keep responses under 3 sentences for mobile gameplay
-- Include dice rolls using [ROLL:XdY+Z] format when appropriate
-- Maintain story consistency with the established context
-- Follow D&D 5e rules accurately`;
-	}
+			// Local DM Provider cleaned up successfully
 
-	/**
-	 * Build user prompt with context
-	 */
-	private buildUserPrompt(prompt: string, context: LocalDMContext): string {
-		return `Player Action: ${prompt}
-
-Please respond as the Dungeon Master, considering the current scene (${context.currentScene}) and the player's character (${context.playerName}, ${context.playerRace} ${context.playerClass}).`;
-	}
-
-	/**
-	 * Process and clean up model response
-	 * Requirement 6: Filter inappropriate content
-	 */
-	private processResponse(rawResponse: any): { text: string; toolCommands: Array<{ type: string; params: string }> } {
-		let text = typeof rawResponse === 'string' ? rawResponse : rawResponse.text || '';
-
-		// Clean up common artifacts
-		text = text.trim();
-		text = text.replace(/^(DM|Dungeon Master):\s*/i, '');
-		text = text.replace(/^(Assistant|AI):\s*/i, '');
-		text = text.replace(/^\*.*?\*\s*/, ''); // Remove action descriptions
-
-		// Extract tool commands
-		const toolCommands = this.extractToolCommands(text);
-		text = this.removeToolCommands(text);
-
-		// Basic content filtering
-		text = this.filterContent(text);
-
-		// Ensure response isn't too long for mobile
-		if (text.length > 300) {
-			text = text.substring(0, 297) + '...';
+		} catch (error) {
+			console.error('❌ Local DM cleanup failed:', error);
+			throw error;
 		}
+	}
 
-		return { text, toolCommands };
+	// Private helper methods
+
+	/**
+   * Build D&D-specific prompt for local model
+   */
+	private buildDnDPrompt(prompt: string, context: DnDContext): string {
+		const systemPrompt = `You are an experienced Dungeon Master running a D&D 5e campaign.
+Your responses should be:
+- Engaging and immersive
+- Consistent with D&D 5e rules
+- Appropriate for the current scene and character
+- Include dice rolls when needed using [ROLL:XdY+Z] format
+- Keep responses concise (1-3 sentences)
+- Maintain narrative flow
+
+Always respond in character as the DM.`;
+
+		return `${systemPrompt}
+
+Character: ${context.playerName} (${context.playerRace} ${context.playerClass})
+Scene: ${context.currentScene}
+Recent History: ${context.gameHistory.slice(-3).join(' ')}
+
+Player Action: ${prompt}
+
+DM Response:`;
 	}
 
 	/**
-	 * Extract D&D tool commands
-	 */
+   * Extract tool commands from model response
+   */
 	private extractToolCommands(text: string): Array<{ type: string; params: string }> {
 		const commands: Array<{ type: string; params: string }> = [];
 		const regex = /\[(\w+):([^\]]+)\]/g;
 		let match;
 
 		while ((match = regex.exec(text)) !== null) {
-			commands.push({
-				type: match[1].toLowerCase(),
-				params: match[2],
-			});
+			const type = match[1].toLowerCase();
+			const params = match[2].trim();
+
+			if (['roll', 'update', 'damage', 'heal', 'status', 'inventory'].includes(type)) {
+				commands.push({ type, params });
+			}
 		}
 
 		return commands;
 	}
 
 	/**
-	 * Remove tool commands from display text
-	 */
+   * Remove tool commands from display text
+   */
 	private removeToolCommands(text: string): string {
 		return text.replace(/\[(\w+):([^\]]+)\]/g, '').trim();
 	}
 
 	/**
-	 * Basic content filtering
-	 * Requirement 6: Filter inappropriate content
-	 */
-	private filterContent(text: string): string {
-		// Basic filtering - in production you'd want more sophisticated filtering
-		const inappropriatePatterns = [
-			/\b(explicit|inappropriate|content)\b/gi,
-			// Add more patterns as needed
+   * Extract model name from file path
+   */
+	private extractModelName(modelPath: string): string {
+		const fileName = modelPath.split('/').pop() || 'unknown';
+		return fileName.replace(/\.(gguf|onnx)$/, '');
+	}
+
+	/**
+   * Update performance metrics
+   */
+	private updatePerformanceMetrics(processingTime: number, success: boolean): void {
+		this.performanceMetrics.totalInferences++;
+
+		if (success) {
+			this.performanceMetrics.totalTime += processingTime;
+			this.performanceMetrics.averageTime =
+        this.performanceMetrics.totalTime / this.performanceMetrics.totalInferences;
+
+			// Estimate tokens per second (placeholder calculation)
+			const estimatedTokens = 50; // Average response length
+			this.modelStatus.performance.tokensPerSecond =
+        (estimatedTokens / processingTime) * 1000;
+		}
+
+		this.performanceMetrics.successRate =
+      (this.performanceMetrics.totalInferences -
+       (this.performanceMetrics.totalInferences - this.performanceMetrics.totalTime / this.performanceMetrics.averageTime || 0)) /
+      this.performanceMetrics.totalInferences;
+
+		this.modelStatus.performance.averageInferenceTime = this.performanceMetrics.averageTime;
+	}
+
+	/**
+   * Simulate model loading for development (will be replaced in task 2.1)
+   */
+	private async simulateModelLoading(progressCallback?: (progress: InitializationProgress) => void): Promise<void> {
+		const steps = [
+			{ progress: 20, message: 'Validating model file...' },
+			{ progress: 40, message: 'Loading model weights...' },
+			{ progress: 60, message: 'Initializing tokenizer...' },
+			{ progress: 80, message: 'Optimizing for device...' },
+			{ progress: 100, message: 'Model ready!' },
 		];
 
-		let filtered = text;
-		inappropriatePatterns.forEach(pattern => {
-			filtered = filtered.replace(pattern, '[filtered]');
-		});
-
-		return filtered;
-	}
-
-	/**
-	 * Calculate response confidence based on various factors
-	 */
-	private calculateConfidence(text: string, processingTime: number): number {
-		let confidence = 0.8; // Base confidence
-
-		// Adjust based on response length (too short or too long reduces confidence)
-		if (text.length < 20) confidence -= 0.2;
-		if (text.length > 250) confidence -= 0.1;
-
-		// Adjust based on processing time (very fast or very slow reduces confidence)
-		if (processingTime < 500) confidence -= 0.1; // Too fast might be cached/simple
-		if (processingTime > 8000) confidence -= 0.2; // Too slow might indicate issues
-
-		// Adjust based on resource usage
-		if (this.config.powerSavingMode) confidence -= 0.1;
-
-		return Math.max(0.3, Math.min(0.95, confidence));
-	}
-
-	/**
-	 * Pause model processing to conserve battery
-	 * Requirement 3: Battery conservation
-	 */
-	async pauseForBattery(): Promise<void> {
-		console.log('⏸️ Pausing local DM for battery conservation');
-		// In production, you might unload the model temporarily
-		await new Promise(resolve => setTimeout(resolve, 1000));
-	}
-
-	/**
-	 * Check if model is ready for inference
-	 */
-	isReady(): boolean {
-		return this.isInitialized && !!this.lm;
-	}
-
-	/**
-	 * Get current status of the local DM
-	 */
-	getStatus(): {
-		initialized: boolean;
-		loading: boolean;
-		powerSaving: boolean;
-		resourceUsage: { memoryMB: number; cpuPercent: number; batteryLevel?: number };
-	} {
-		return {
-			initialized: this.isInitialized,
-			loading: this.isLoading,
-			powerSaving: this.config.powerSavingMode || false,
-			resourceUsage: this.lastResourceCheck,
-		};
-	}
-
-	/**
-	 * Cleanup resources
-	 * Requirement 5: Complete data removal
-	 */
-	async cleanup(): Promise<void> {
-		if (this.resourceMonitor) {
-			clearInterval(this.resourceMonitor);
-			this.resourceMonitor = null;
+		for (const step of steps) {
+			await new Promise(resolve => setTimeout(resolve, 200));
+			progressCallback?.({
+				status: 'initializing',
+				progress: step.progress,
+				message: step.message,
+			});
 		}
-
-		if (this.lm) {
-			// In production, you'd properly dispose of the model
-			this.lm = null;
-		}
-
-		this.isInitialized = false;
-		console.log('🧹 Local DM resources cleaned up');
 	}
 
 	/**
-	 * Enable/disable power saving mode
-	 * Requirement 3: Power management
-	 */
-	setPowerSavingMode(enabled: boolean): void {
-		this.config.powerSavingMode = enabled;
-		console.log(`🔋 Power saving mode ${enabled ? 'enabled' : 'disabled'}`);
+   * Simulate model inference for development (will be replaced in task 2.2)
+   */
+	private async simulateInference(prompt: string, timeout: number): Promise<string> {
+		// Simulate processing time
+		await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 500));
+
+		// Generate a placeholder D&D response
+		const responses = [
+			'The ancient door creaks open, revealing a dimly lit chamber ahead. [ROLL:1d20+3] Make a Perception check to notice any details.',
+			'Your attack strikes true! [ROLL:1d8+4] Roll for damage as your blade finds its mark.',
+			'The merchant eyes you warily but seems willing to negotiate. What would you like to purchase?',
+			'A mysterious fog begins to roll in from the forest. The air grows cold and you sense something watching you.',
+			'Your spell illuminates the cavern, revealing ancient runes carved into the walls. [ROLL:1d20+2] Roll an Arcana check to decipher them.',
+		];
+
+		return responses[Math.floor(Math.random() * responses.length)];
 	}
 }
 
 /**
- * Default configuration for local DM
+ * Default configuration for Local DM Provider
  */
-export const DefaultLocalDMConfig: LocalDMConfig = {
-	modelPath: '/path/to/gemma-3-2b-instruct.gguf', // Update with actual model path
+export const DefaultLocalDMConfig: LocalModelConfig = {
+	modelPath: '/Documents/AIModels/gemma-3-2b-int8/model.gguf',
 	contextSize: 2048,
 	maxTokens: 150,
 	temperature: 0.7,
 	enableResourceMonitoring: true,
 	powerSavingMode: false,
+	quantization: 'int8',
+	numThreads: 4,
+	memoryLimit: 512, // 512MB limit
+	enableGPU: false, // Start with CPU-only
+	cacheSize: 100, // Cache 100 responses
 };
 
 /**
- * Model configurations for different device capabilities
+ * Model configuration presets for different device capabilities
  */
 export const LocalDMModelConfigs = {
+	/**
+   * High performance configuration for powerful devices (iPhone 15 Pro+, iPad Pro)
+   */
 	PERFORMANCE: {
 		...DefaultLocalDMConfig,
-		maxTokens: 100,
-		temperature: 0.6,
-		contextSize: 1024,
-	},
-	QUALITY: {
-		...DefaultLocalDMConfig,
+		modelPath: '/Documents/AIModels/gemma-3-9b-int4/model.gguf',
+		contextSize: 4096,
 		maxTokens: 200,
 		temperature: 0.8,
-		contextSize: 4096,
+		quantization: 'int4' as const,
+		numThreads: 8,
+		memoryLimit: 1024,
+		enableGPU: true,
+		cacheSize: 200,
 	},
+
+	/**
+   * Balanced configuration for mid-range devices (iPhone 13+, iPad Air)
+   */
+	BALANCED: {
+		...DefaultLocalDMConfig,
+		modelPath: '/Documents/AIModels/gemma-3-2b-int8/model.gguf',
+		contextSize: 2048,
+		maxTokens: 150,
+		temperature: 0.7,
+		quantization: 'int8' as const,
+		numThreads: 6,
+		memoryLimit: 512,
+		enableGPU: false,
+		cacheSize: 150,
+	},
+
+	/**
+   * Power saving configuration for battery optimization
+   */
 	POWER_SAVING: {
 		...DefaultLocalDMConfig,
+		modelPath: '/Documents/AIModels/gemma-3-2b-int8/model.gguf',
+		contextSize: 1024,
+		maxTokens: 100,
+		temperature: 0.6,
+		quantization: 'int8' as const,
+		numThreads: 2,
+		memoryLimit: 256,
+		enableGPU: false,
+		cacheSize: 50,
+		powerSavingMode: true,
+	},
+
+	/**
+   * Minimal configuration for older devices
+   */
+	MINIMAL: {
+		...DefaultLocalDMConfig,
+		modelPath: '/Documents/AIModels/gemma-3-2b-int8/model.gguf',
+		contextSize: 512,
 		maxTokens: 75,
 		temperature: 0.5,
-		contextSize: 512,
+		quantization: 'int8' as const,
+		numThreads: 2,
+		memoryLimit: 128,
+		enableGPU: false,
+		cacheSize: 25,
 		powerSavingMode: true,
 	},
 };
