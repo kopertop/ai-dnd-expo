@@ -174,6 +174,13 @@ global.console = {
 	// Suppress console.warn and console.error in tests unless explicitly needed
 	warn: vi.fn(),
 	error: vi.fn(),
+	log: vi.fn(), // Also suppress console.log in tests
+};
+
+// Mock performance API for performance testing
+global.performance = {
+	...performance,
+	now: vi.fn(() => Date.now()),
 };
 
 // Setup DOM environment

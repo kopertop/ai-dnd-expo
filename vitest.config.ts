@@ -13,6 +13,10 @@ export default defineConfig({
 		mockReset: true,
 		clearMocks: true,
 		restoreMocks: true,
+
+		// Performance settings for fast execution
+		maxConcurrency: 5,
+
 		// Include only our project test files
 		include: [
 			'tests/**/*.test.{js,ts,tsx}',
@@ -25,7 +29,8 @@ export default defineConfig({
 			'tests/unit/services/**/*.test.{js,ts,tsx}', // Services use separate config
 			'**/*.spec.{js,ts,tsx}', // Exclude spec files (e2e tests)
 		],
-		// Coverage configuration
+
+		// Coverage configuration for 100% coverage requirement
 		coverage: {
 			provider: 'v8',
 			reporter: ['text', 'json', 'html', 'lcov'],
@@ -43,14 +48,15 @@ export default defineConfig({
 				'assets/**',
 				'**/*.test.{js,ts,tsx}',
 				'**/*.spec.{js,ts,tsx}',
+				'**/mock*.{js,ts,tsx}',
 			],
-			// Coverage thresholds - start with reasonable targets
+			// 100% coverage thresholds as per requirements
 			thresholds: {
 				global: {
-					branches: 80,
-					functions: 80,
-					lines: 80,
-					statements: 80,
+					branches: 100,
+					functions: 100,
+					lines: 100,
+					statements: 100,
 				},
 			},
 			// Include all source files for coverage analysis
@@ -62,13 +68,18 @@ export default defineConfig({
 				'types/**/*.{js,ts}',
 				'styles/**/*.{js,ts}',
 			],
+			// Ensure all files are included even if not imported in tests
+			all: true,
 		},
-		// Test timeout
+
+		// Test timeout for fast execution (under 30 seconds total)
 		testTimeout: 10000,
+
 		// Environment-specific configurations
 		environmentOptions: {
 			jsdom: {
 				resources: 'usable',
+				runScripts: 'dangerously',
 			},
 		},
 	},

@@ -16,7 +16,7 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "vscode.typescript-language-features"
   },
   "[typescriptreact]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
@@ -34,13 +34,15 @@
   "prettier.endOfLine": "lf",
   "prettier.printWidth": 100,
   "kiroAgent.trustedCommands": [
-    "npm run typecheck",
-    "npm run lint *",
-    "npx tsc --noEmit *",
-    "npm run test",
-    "npm run test:*",
-    "npm run test *",
-    "npm run format",
-    "npm run format:check"
-  ]
+	"npm run typecheck",
+	"npm run lint *",
+	"npx tsc --noEmit *",
+	"npm run test",
+	"npm run test:*",
+	"npm run test *",
+	"npm run format",
+	"npm run format:check",
+	"npm run test:services -- --run",
+	"npm run test:coverage -- --run"
+]
 }
