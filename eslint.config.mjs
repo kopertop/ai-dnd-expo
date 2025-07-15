@@ -94,7 +94,7 @@ export default defineConfig([globalIgnores([
 		}],
 
 		'@typescript-eslint/no-unused-vars': 'warn',
-		'unused-imports/no-unused-imports': 'error',
+		'unused-imports/no-unused-imports': 'warn',
 
 		// Do not allow using default exports (always use named exports)
 		'import/no-default-export': 'off',
