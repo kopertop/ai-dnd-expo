@@ -44,20 +44,20 @@
     - Implement battery level-based performance scaling
     - _Requirements: 3.2, 3.4_
 
-- [ ] 4. Build local DM agent with D&D-specific functionality
-  - [ ] 4.1 Create LocalDMAgent class with core D&D processing
+- [x] 4. Build local DM agent with D&D-specific functionality
+  - [x] 4.1 Create LocalDMAgent class with core D&D processing
     - Write player action processing with context awareness
     - Implement D&D rule integration for combat and skill checks
     - Create narrative generation with story consistency
     - _Requirements: 2.1, 2.2, 2.3_
 
-  - [ ] 4.2 Add tool command parsing and execution
+  - [x] 4.2 Add tool command parsing and execution
     - Implement dice roll command parsing from model output ([ROLL:1d20+3])
     - Create character stat update parsing ([UPDATE:HP-5])
     - Write tool command execution with game state integration
     - _Requirements: 2.3, 4.2_
 
-  - [ ] 4.3 Implement response quality filtering and validation
+  - [x] 4.3 Implement response quality filtering and validation
     - Create content filtering for inappropriate responses
     - Write response length and format validation
     - Implement response regeneration for failed validations

@@ -4,12 +4,10 @@
   "description": "Automatically runs ESLint with --fix flag on saved files to fix linting issues and maintain code quality",
   "version": "1",
   "when": {
-    "type": "userTriggered",
+    "type": "fileEdited",
     "patterns": [
       "**/*.ts",
-      "**/*.tsx",
-      "**/*.js",
-      "**/*.jsx"
+      "**/*.tsx"
     ]
   },
   "then": {
