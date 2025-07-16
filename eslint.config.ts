@@ -6,14 +6,14 @@ import { FlatCompat } from '@eslint/eslintrc';
 import js from '@eslint/js';
 import typescriptEslint from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
-import { defineConfig, globalIgnores } from 'eslint/config';
+import { defineConfig } from 'eslint/config';
 import _import from 'eslint-plugin-import';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactNative from 'eslint-plugin-react-native';
 import unicorn from 'eslint-plugin-unicorn';
-import globals from 'globals';
 import unusedImports from 'eslint-plugin-unused-imports';
+import globals from 'globals';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,35 +24,36 @@ const compat = new FlatCompat({
 });
 
 export default defineConfig([
-	globalIgnores([
-		'**/node_modules/',
-		'**/babel.config.js',
-		'**/metro.config.js',
-		'**/.eslintrc.js',
-		'**/node_modules/',
-		'**/build/',
-		'**/dist/',
-		'**/.expo/',
-		'.wrangler/',
-		'**/babel.config.js',
-		'**/metro.config.js',
-		'**/*.config.js',
-		'**/.eslintcache',
-		'**/*.d.ts',
-		'**/*.mjs',
-		'**/*.cjs',
-		'**/*.js',
-		'tests/**/*',
-	]),
 	{
-		extends: fixupConfigRules(
+		ignores: [
+			'**/node_modules/',
+			'**/babel.config.js',
+			'**/metro.config.js',
+			'**/.eslintrc.js',
+			'**/node_modules/',
+			'**/build/',
+			'**/dist/',
+			'**/.expo/',
+			'.wrangler/',
+			'**/babel.config.js',
+			'**/metro.config.js',
+			'**/*.config.js',
+			'**/.eslintcache',
+			'**/*.d.ts',
+			'**/*.mjs',
+			'**/*.cjs',
+			'**/*.js',
+		],
+	},
+	{
+		...fixupConfigRules(
 			compat.extends(
 				'eslint:recommended',
 				'plugin:react/recommended',
 				'plugin:react-hooks/recommended',
-				'plugin:@typescript-eslint/recommended'
-			)
-		),
+				'plugin:@typescript-eslint/recommended',
+			),
+		)[0],
 
 		plugins: {
 			react: fixupPluginRules(react),
@@ -67,7 +68,7 @@ export default defineConfig([
 		languageOptions: {
 			globals: {
 				...Object.fromEntries(
-					Object.entries(globals.browser).map(([k, v]) => [k.trim(), v])
+					Object.entries(globals.browser).map(([k, v]) => [k.trim(), v]),
 				),
 				...globals.node,
 				...reactNative.environments['react-native']['react-native'],
@@ -187,9 +188,21 @@ export default defineConfig([
 		},
 	},
 	{
-		files: ['eslint.config.mjs'],
+		files: ['eslint.config.ts'],
 		rules: {
 			'import/no-default-export': 'off', // Allow default export for ESLint config
+		},
+	},
+	{
+		files: ['tests/**/*.{ts,tsx}', '**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+		rules: {
+			'no-restricted-syntax': [
+				'error',
+				{
+					selector: 'CallExpression[callee.object.name="vi"][callee.property.name="mock"]',
+					message: 'Use vi.spyOn within beforeEach hooks instead',
+				},
+			],
 		},
 	},
 ]);
