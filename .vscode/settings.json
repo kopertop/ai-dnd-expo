@@ -19,7 +19,7 @@
     "editor.defaultFormatter": "vscode.typescript-language-features"
   },
   "[typescriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "vscode.typescript-language-features"
   },
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
@@ -48,6 +48,10 @@
 	"git diff *",
 	"git diff",
 	"git status",
-	"git add *"
+	"git add *",
+	"git log *",
+	"npm test *",
+	"find *",
+	"npx eslint *"
 ]
 }

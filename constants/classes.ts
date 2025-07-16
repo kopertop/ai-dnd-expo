@@ -1,3 +1,5 @@
+
+// Import all class images
 import { ClassOption } from '../types/class-option';
 
 export const CLASSES: ClassOption[] = [

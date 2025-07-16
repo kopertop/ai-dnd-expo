@@ -88,7 +88,7 @@ export class CactusAIProvider {
 			const response = await this.lm.completion(messages, params);
 			const processingTime = Date.now() - startTime;
 
-			return this.processDnDResponse(response, processingTime);
+			return await this.processDnDResponse(response, processingTime);
 		} catch (error: any) {
 			console.error('Cactus inference error:', error);
 			throw new Error(`AI generation failed: ${error.message}`);
@@ -115,7 +115,7 @@ DM Response:`;
 	/**
 	 * Process and validate D&D response
 	 */
-	private processDnDResponse(response: string, processingTime: number): CactusResponse {
+	private async processDnDResponse(response: string, processingTime: number): Promise<CactusResponse> {
 		let text = response.trim();
 
 		// Clean up common artifacts
@@ -123,8 +123,8 @@ DM Response:`;
 		text = text.replace(/^\*.*?\*\s*/, ''); // Remove action descriptions
 
 		// Parse tool commands
-		const toolCommands = this.extractToolCommands(text);
-		text = this.removeToolCommands(text);
+		const toolCommands = await this.extractToolCommands(text);
+		text = await this.removeToolCommands(text);
 
 		return {
 			text,
@@ -139,8 +139,8 @@ DM Response:`;
 	 * Extract D&D tool commands like [ROLL:1d20+3]
 	 * Now uses the centralized tool command parser
 	 */
-	private extractToolCommands(text: string): Array<{ type: string; params: string }> {
-		const { ToolCommandParser } = require('../tools/tool-command-parser');
+	private async extractToolCommands(text: string): Promise<Array<{ type: string; params: string }>> {
+		const { ToolCommandParser } = await import('../tools/tool-command-parser');
 		return ToolCommandParser.extractToolCommands(text).map(
 			(cmd: { type: string; params: string }) => ({
 				type: cmd.type,
@@ -152,8 +152,8 @@ DM Response:`;
 	/**
 	 * Remove tool commands from display text
 	 */
-	private removeToolCommands(text: string): string {
-		const { ToolCommandParser } = require('../tools/tool-command-parser');
+	private async removeToolCommands(text: string): Promise<string> {
+		const { ToolCommandParser } = await import('../tools/tool-command-parser');
 		return ToolCommandParser.removeToolCommands(text);
 	}
 

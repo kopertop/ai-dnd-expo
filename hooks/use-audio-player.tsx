@@ -2,7 +2,7 @@ import { useAudioPlayer } from 'expo-audio';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
-const audioSource = require('../assets/audio/background.mp3');
+import audioSource from '../assets/audio/background.mp3';
 
 interface AudioContextType {
 	player: ReturnType<typeof useAudioPlayer>;

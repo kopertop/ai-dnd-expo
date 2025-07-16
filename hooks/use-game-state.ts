@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import customImage from '@/assets/images/custom.png';
 import { RACES } from '@/constants/races';
 import { Character } from '@/types/character';
 import { GameState, GameStateSchema } from '@/types/game';
@@ -9,7 +10,7 @@ const GAME_STATE_KEY = 'gameState';
 
 export const getCharacterImage = (character: Character | undefined | null) => {
 	if (!character) {
-		return require('@/assets/images/custom.png');
+		return customImage;
 	}
 
 	if (character.race) {
@@ -19,7 +20,7 @@ export const getCharacterImage = (character: Character | undefined | null) => {
 		}
 	}
 
-	return require('@/assets/images/custom.png');
+	return customImage;
 };
 
 export const useGameState = () => {

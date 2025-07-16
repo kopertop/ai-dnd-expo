@@ -26,21 +26,21 @@
     - Mock Expo APIs (Audio, Speech, etc.) for platform independence
     - _Requirements: 1.4, 4.2, 4.6_
 
-- [ ] 3. Implement component test suite
-  - [ ] 3.1 Test core game components
+- [x] 3. Implement component test suite
+  - [x] 3.1 Test core game components
     - Write tests for GameCanvas component rendering and interactions
     - Test GameStatusBar component with various game states
     - Implement TurnBasedChat component tests with message handling
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-  - [ ] 3.2 Test character creation components
+  - [x] 3.2 Test character creation components
     - Create tests for CharacterSheetModal with form validation
     - Test ClassChooser component with selection logic
     - Implement RaceChooser component tests with prop handling
     - Test SkillChooser component with multi-selection behavior
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-  - [ ] 3.3 Test UI primitive components
+  - [x] 3.3 Test UI primitive components
     - Write tests for ThemedText component with theme variations
     - Test ThemedView component with styling props
     - Implement Collapsible component tests with animation states

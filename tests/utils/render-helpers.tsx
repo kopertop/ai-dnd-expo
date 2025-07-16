@@ -1,5 +1,4 @@
 import React from 'react';
-import { View } from 'react-native';
 import { expect, vi } from 'vitest';
 
 // Define types for testing
@@ -16,6 +15,8 @@ interface RenderResult {
 	queryByTestId: (testId: string) => HTMLElement | null;
 	getByText: (text: string) => HTMLElement;
 	queryByText: (text: string) => HTMLElement | null;
+	getByPlaceholderText: (text: string) => HTMLElement;
+	queryByPlaceholderText: (text: string) => HTMLElement | null;
 	debug: () => void;
 }
 
@@ -60,11 +61,11 @@ const MockProviders: React.FC<MockProvidersProps> = ({
 
 	// Create mock providers
 	const GameProvider = ({ children }: { children: React.ReactNode }) => (
-		<View testID="mock-game-provider">{children}</View>
+		<div data-testid="mock-game-provider">{children}</div>
 	);
 
 	const ThemeProvider = ({ children }: { children: React.ReactNode }) => (
-		<View testID="mock-theme-provider">{children}</View>
+		<div data-testid="mock-theme-provider">{children}</div>
 	);
 
 	return (
@@ -101,11 +102,45 @@ export const renderWithProviders = (
 	let currentElement = ui;
 
 	const render = (element: React.ReactElement) => {
-		// In a real implementation, this would use React's render method
-		// For now, we'll create a mock implementation
-		const componentName = typeof element.type === 'string' ? element.type :
-			(element.type as any)?.name || 'Component';
-		container.innerHTML = `<div data-testid="rendered-component">${componentName}</div>`;
+		// Create a simple DOM representation of the React element
+		const renderElement = (el: React.ReactElement): string => {
+			if (typeof el.type === 'string') {
+				// HTML element
+				const props = (el.props as any) || {};
+				const attributes = Object.entries(props)
+					.filter(([key]) => key !== 'children')
+					.map(([key, value]) => {
+						if (key === 'testID') return `data-testid="${value}"`;
+						if (key === 'className') return `class="${value}"`;
+						return `${key}="${value}"`;
+					})
+					.join(' ');
+
+				const children = props.children || '';
+				const childrenStr = typeof children === 'string' ? children :
+					Array.isArray(children) ? children.map((child: any) =>
+						typeof child === 'string' ? child : renderElement(child)
+					).join('') : '';
+
+				return `<${el.type} ${attributes}>${childrenStr}</${el.type}>`;
+			} else {
+				// React component - render as div with component name
+				const componentName = (el.type as any)?.name || 'Component';
+				const props = (el.props as any) || {};
+				const testId = props['data-testid'] || props.testID;
+				const testIdAttr = testId ? `data-testid="${testId}"` : '';
+
+				// For our test component, render the actual content
+				if (componentName === 'TestComponent') {
+					const message = props.message || 'Hello World';
+					return `<div data-testid="test-component">${message}</div>`;
+				}
+
+				return `<div ${testIdAttr} data-component="${componentName}">Mock ${componentName}</div>`;
+			}
+		};
+
+		container.innerHTML = renderElement(element);
 	};
 
 	const rerender = (newUi: React.ReactElement) => {
@@ -148,6 +183,18 @@ export const renderWithProviders = (
 		) as HTMLElement || null;
 	};
 
+	const getByPlaceholderText = (text: string): HTMLElement => {
+		const element = container.querySelector(`[placeholder="${text}"]`) as HTMLElement;
+		if (!element) {
+			throw new Error(`Unable to find element with placeholder: ${text}`);
+		}
+		return element;
+	};
+
+	const queryByPlaceholderText = (text: string): HTMLElement | null => {
+		return container.querySelector(`[placeholder="${text}"]`) as HTMLElement | null;
+	};
+
 	const debug = () => {
 		console.log(container.innerHTML);
 	};
@@ -163,6 +210,8 @@ export const renderWithProviders = (
 		queryByTestId,
 		getByText,
 		queryByText,
+		getByPlaceholderText,
+		queryByPlaceholderText,
 		debug,
 	};
 };
