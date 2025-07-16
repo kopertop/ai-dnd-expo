@@ -11,6 +11,7 @@ import _import from 'eslint-plugin-import';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactNative from 'eslint-plugin-react-native';
+// @ts-ignore - No type definitions available for eslint-plugin-react-native
 import unicorn from 'eslint-plugin-unicorn';
 import unusedImports from 'eslint-plugin-unused-imports';
 import globals from 'globals';
@@ -58,6 +59,7 @@ export default defineConfig([
 		plugins: {
 			react: fixupPluginRules(react),
 			'react-hooks': fixupPluginRules(reactHooks),
+			// @ts-ignore - Type compatibility issues with TypeScript ESLint plugin
 			'@typescript-eslint': fixupPluginRules(typescriptEslint),
 			import: fixupPluginRules(_import),
 			'react-native': reactNative,
@@ -195,6 +197,7 @@ export default defineConfig([
 	},
 	{
 		files: ['tests/**/*.{ts,tsx}', '**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+		ignores: ['**/vitest.setup.ts'],
 		rules: {
 			'no-restricted-syntax': [
 				'error',

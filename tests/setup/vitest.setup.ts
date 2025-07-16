@@ -1,48 +1,44 @@
-import '@testing-library/jest-dom';
+import React from 'react';
 import { vi } from 'vitest';
 
 // Mock React Native modules that don't work in test environment
-vi.mock('react-native', async () => {
-	const RN = (await vi.importActual('react-native')) as Record<string, unknown>;
+vi.mock('react-native', () => ({
+	// Core components
+	View: ({ children, ...props }: any) => React.createElement('div', props, children),
+	Text: ({ children, ...props }: any) => React.createElement('span', props, children),
+	ScrollView: ({ children, ...props }: any) => React.createElement('div', { ...props, 'data-testid': 'scroll-view' }, children),
+	TouchableOpacity: ({ children, onPress, ...props }: any) => React.createElement('button', { ...props, onClick: onPress }, children),
+	TextInput: (props: any) => React.createElement('input', props),
+	Image: (props: any) => React.createElement('img', { ...props, alt: props.alt || 'image' }),
+	SafeAreaView: ({ children, ...props }: any) => React.createElement('div', { ...props, 'data-testid': 'safe-area-view' }, children),
 
-	return {
-		...RN,
-		NativeModules: {
-			...((RN?.NativeModules as Record<string, unknown>) || {}),
-			ExpoSpeech: {
-				speak: vi.fn(),
-				stop: vi.fn(),
-				pause: vi.fn(),
-				resume: vi.fn(),
-				isSpeaking: vi.fn().mockResolvedValue(false),
-			},
-			ExpoSpeechRecognition: {
-				requestPermissionsAsync: vi.fn().mockResolvedValue({ granted: true }),
-				getPermissionsAsync: vi.fn().mockResolvedValue({ granted: true }),
-				getSupportedLocales: vi.fn().mockResolvedValue(['en-US']),
-				start: vi.fn(),
-				stop: vi.fn(),
-				abort: vi.fn(),
-			},
-		},
-		Platform: {
-			OS: 'ios',
-			select: vi.fn(options => options.ios || options.default),
-		},
-		Dimensions: {
-			get: vi.fn().mockReturnValue({ width: 375, height: 812 }),
-			addEventListener: vi.fn(),
-			removeEventListener: vi.fn(),
-		},
-		StyleSheet: {
-			create: vi.fn(styles => styles),
-			flatten: vi.fn(style => style),
-		},
-		Alert: {
-			alert: vi.fn(),
-		},
-	};
-});
+	// Platform
+	Platform: {
+		OS: 'ios',
+		select: vi.fn((options: any) => options.ios || options.default),
+	},
+
+	// Dimensions
+	Dimensions: {
+		get: vi.fn().mockReturnValue({ width: 375, height: 812 }),
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
+	},
+
+	// StyleSheet
+	StyleSheet: {
+		create: vi.fn((styles: any) => styles),
+		flatten: vi.fn((style: any) => style),
+	},
+
+	// Alert
+	Alert: {
+		alert: vi.fn(),
+	},
+
+	// Color scheme
+	useColorScheme: vi.fn().mockReturnValue('light'),
+}));
 
 // Mock Expo modules
 vi.mock('expo-speech', () => ({
@@ -156,6 +152,8 @@ vi.mock('@shopify/react-native-skia', () => ({
 	Path: () => null,
 	Group: ({ children }: { children: React.ReactNode }) => children,
 }));
+
+// Note: Hook mocks removed - we test actual behavior instead of mocking our own code
 
 // Import and setup enhanced external dependency mocks
 import { MockManager } from '../unit/__mocks__/external-dependencies';

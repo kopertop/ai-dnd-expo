@@ -198,27 +198,15 @@ export class PlatformMockManager {
 	}
 
 	static setupReactNative(): void {
-		vi.mock('react-native', async () => {
-			const RN = await vi.importActual('react-native');
-			return {
-				...RN,
-				Platform: mockPlatform,
-				Dimensions: mockDimensions,
-				Alert: mockAlert,
-				StyleSheet: mockStyleSheet,
-				Linking: mockLinking,
-			};
-		});
+		// Use vi.mock('react-native', () => ({ ... })) in test files
 	}
 
 	static setupExpo(): void {
-		vi.mock('expo-constants', () => mockExpoConstants);
-		vi.mock('expo-font', () => mockExpoFont);
-		vi.mock('expo-image', () => mockExpoImage);
+		// Use vi.mock('expo-constants', () => ({ ... })) in test files
 	}
 
 	static setupSVG(): void {
-		vi.mock('react-native-svg', () => mockReactNativeSVG);
+		// Use vi.mock('react-native-svg', () => ({ ... })) in test files
 	}
 
 	static resetAll(): void {
@@ -238,5 +226,6 @@ export class PlatformMockManager {
 export {
 	mockAlert as AlertMock, mockDimensions as DimensionsMock, mockExpoConstants as ExpoConstantsMock,
 	mockExpoFont as ExpoFontMock,
-	mockExpoImage as ExpoImageMock, mockLinking as LinkingMock, mockPlatform as PlatformMock, mockReactNativeSVG as SVGMock, mockStyleSheet as StyleSheetMock
+	mockExpoImage as ExpoImageMock, mockLinking as LinkingMock, mockPlatform as PlatformMock, mockReactNativeSVG as SVGMock, mockStyleSheet as StyleSheetMock,
 };
+

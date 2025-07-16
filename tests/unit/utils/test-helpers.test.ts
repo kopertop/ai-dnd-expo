@@ -1,5 +1,6 @@
-import { TestAssertions, TestDataGenerator } from '@/tests/utils/test-helpers';
 import { describe, expect, it } from 'vitest';
+
+import { TestAssertions, TestDataGenerator } from '@/tests/utils/test-helpers';
 
 describe('TestDataGenerator', () => {
 	describe('generateCharacter', () => {

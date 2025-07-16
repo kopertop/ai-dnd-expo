@@ -5,46 +5,47 @@ import { GameStatusBar } from '@/components/game-status-bar';
 import { CharacterFactory, CompanionFactory, GameStateFactory } from '@/tests/fixtures/mock-factories';
 import { assertNoConsoleErrors, renderWithProviders, waitForAsyncUpdates } from '@/tests/utils/render-helpers';
 
-// Mock the hooks
-vi.mock('@/hooks/use-screen-size', () => ({
-	useScreenSize: vi.fn(() => ({
-		width: 1024,
-		height: 768,
-		isMobile: false,
-		isTablet: false,
-		isDesktop: true,
-	})),
-}));
 
-vi.mock('@/hooks/use-simple-companions', () => ({
-	useSimpleCompanions: vi.fn(() => ({
-		activeCompanions: [],
-		companions: [],
-		partyConfig: { maxSize: 4, activeCompanions: [], leadershipStyle: 'democratic' },
-		isLoading: false,
-		error: null,
-	})),
-}));
-
-vi.mock('@/hooks/use-game-state', () => ({
-	getCharacterImage: vi.fn(() => require('@/assets/images/races/human.png')),
-}));
-
-// Mock constants
-vi.mock('@/constants/races', () => ({
-	RaceByID: {
-		human: {
-			image: require('@/assets/images/races/human.png'),
-		},
-	},
-}));
 
 describe('GameStatusBar', () => {
 	const mockGameState = GameStateFactory.createNew();
 	const mockOnPortraitPress = vi.fn();
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		vi.clearAllMocks();
+
+		// Mock the hooks
+		const useScreenSize = await import('@/hooks/use-screen-size');
+		const useSimpleCompanions = await import('@/hooks/use-simple-companions');
+		const useGameState = await import('@/hooks/use-game-state');
+
+		vi.spyOn(useScreenSize, 'useScreenSize').mockReturnValue({
+			width: 1024,
+			height: 768,
+			isMobile: false,
+			isTablet: false,
+			isDesktop: true,
+		});
+
+		vi.spyOn(useSimpleCompanions, 'useSimpleCompanions').mockReturnValue({
+			activeCompanions: [],
+			companions: [],
+			partyConfig: { maxSize: 4, activeCompanions: [], leadershipStyle: 'democratic' },
+			isLoading: false,
+			error: null,
+			createCompanion: vi.fn(),
+			addToParty: vi.fn(),
+			removeFromParty: vi.fn(),
+			updateCompanion: vi.fn(),
+			deleteCompanion: vi.fn(),
+			getCompanion: vi.fn(),
+			canAddToParty: vi.fn(),
+			generateRandomCompanion: vi.fn(),
+			saveAll: vi.fn(),
+			loadAll: vi.fn(),
+		});
+
+		vi.spyOn(useGameState, 'getCharacterImage').mockReturnValue(require('@/assets/images/races/human.png'));
 	});
 
 	afterEach(() => {
@@ -54,7 +55,7 @@ describe('GameStatusBar', () => {
 	describe('Component rendering', () => {
 		it('should render without crashing', async () => {
 			const { container } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />
+				<GameStatusBar gameState={mockGameState} />,
 			);
 
 			await waitForAsyncUpdates();
@@ -80,7 +81,7 @@ describe('GameStatusBar', () => {
 			});
 
 			const { getByText } = renderWithProviders(
-				<GameStatusBar gameState={gameState} />
+				<GameStatusBar gameState={gameState} />,
 			);
 
 			await waitForAsyncUpdates();
@@ -99,7 +100,7 @@ describe('GameStatusBar', () => {
 			});
 
 			const { container } = renderWithProviders(
-				<GameStatusBar gameState={gameState} />
+				<GameStatusBar gameState={gameState} />,
 			);
 
 			await waitForAsyncUpdates();
@@ -114,7 +115,7 @@ describe('GameStatusBar', () => {
 				<GameStatusBar
 					gameState={mockGameState}
 					onPortraitPress={mockOnPortraitPress}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -131,7 +132,7 @@ describe('GameStatusBar', () => {
 
 		it('should not crash when onPortraitPress is not provided', async () => {
 			const { container } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />
+				<GameStatusBar gameState={mockGameState} />,
 			);
 
 			await waitForAsyncUpdates();
@@ -146,7 +147,7 @@ describe('GameStatusBar', () => {
 				<GameStatusBar
 					gameState={mockGameState}
 					activeCharacter="dm"
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -163,7 +164,7 @@ describe('GameStatusBar', () => {
 				<GameStatusBar
 					gameState={mockGameState}
 					activeCharacter="player"
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -198,7 +199,7 @@ describe('GameStatusBar', () => {
 				<GameStatusBar
 					gameState={mockGameState}
 					activeCharacter="companion-1"
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -208,7 +209,7 @@ describe('GameStatusBar', () => {
 
 		it('should default to player when no activeCharacter is specified', async () => {
 			const { container } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />
+				<GameStatusBar gameState={mockGameState} />,
 			);
 
 			await waitForAsyncUpdates();
@@ -229,7 +230,7 @@ describe('GameStatusBar', () => {
 			});
 
 			const { container } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />
+				<GameStatusBar gameState={mockGameState} />,
 			);
 
 			await waitForAsyncUpdates();
@@ -249,7 +250,7 @@ describe('GameStatusBar', () => {
 			});
 
 			const { container } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />
+				<GameStatusBar gameState={mockGameState} />,
 			);
 
 			await waitForAsyncUpdates();
@@ -269,7 +270,7 @@ describe('GameStatusBar', () => {
 				partyConfig: {
 					maxSize: 4,
 					activeCompanions: companions.map(c => c.id),
-					leadershipStyle: 'democratic'
+					leadershipStyle: 'democratic',
 				},
 				isLoading: false,
 				error: null,
@@ -286,7 +287,7 @@ describe('GameStatusBar', () => {
 			});
 
 			const { container } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />
+				<GameStatusBar gameState={mockGameState} />,
 			);
 
 			await waitForAsyncUpdates();
@@ -304,7 +305,7 @@ describe('GameStatusBar', () => {
 				partyConfig: {
 					maxSize: 4,
 					activeCompanions: companions.map(c => c.id),
-					leadershipStyle: 'democratic'
+					leadershipStyle: 'democratic',
 				},
 				isLoading: false,
 				error: null,
@@ -321,7 +322,7 @@ describe('GameStatusBar', () => {
 			});
 
 			const { container } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />
+				<GameStatusBar gameState={mockGameState} />,
 			);
 
 			await waitForAsyncUpdates();
@@ -332,7 +333,7 @@ describe('GameStatusBar', () => {
 		it('should display companion initials when no image is provided', async () => {
 			const companion = CompanionFactory.createBasic({
 				name: 'Test Companion',
-				image: undefined
+				image: undefined,
 			});
 
 			const { useSimpleCompanions } = await import('@/hooks/use-simple-companions');
@@ -342,7 +343,7 @@ describe('GameStatusBar', () => {
 				partyConfig: {
 					maxSize: 4,
 					activeCompanions: [companion.id],
-					leadershipStyle: 'democratic'
+					leadershipStyle: 'democratic',
 				},
 				isLoading: false,
 				error: null,
@@ -359,7 +360,7 @@ describe('GameStatusBar', () => {
 			});
 
 			const { getByText } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />
+				<GameStatusBar gameState={mockGameState} />,
 			);
 
 			await waitForAsyncUpdates();
@@ -376,7 +377,7 @@ describe('GameStatusBar', () => {
 				<GameStatusBar
 					gameState={mockGameState}
 					style={customStyle}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -398,7 +399,7 @@ describe('GameStatusBar', () => {
 			});
 
 			const { getByText } = renderWithProviders(
-				<GameStatusBar gameState={gameState} />
+				<GameStatusBar gameState={gameState} />,
 			);
 
 			await waitForAsyncUpdates();
@@ -418,7 +419,7 @@ describe('GameStatusBar', () => {
 			});
 
 			const { getByText } = renderWithProviders(
-				<GameStatusBar gameState={gameState} />
+				<GameStatusBar gameState={gameState} />,
 			);
 
 			await waitForAsyncUpdates();
@@ -435,7 +436,7 @@ describe('GameStatusBar', () => {
 			});
 
 			const { getByText } = renderWithProviders(
-				<GameStatusBar gameState={gameState} />
+				<GameStatusBar gameState={gameState} />,
 			);
 
 			await waitForAsyncUpdates();

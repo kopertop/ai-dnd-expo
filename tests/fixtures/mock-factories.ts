@@ -1,7 +1,8 @@
+import { vi } from 'vitest';
+
 import type { Character } from '@/types/character';
 import type { Companion } from '@/types/companion';
 import type { GameState } from '@/types/game';
-import { vi } from 'vitest';
 
 /**
  * Factory for creating test characters with various configurations
@@ -76,7 +77,7 @@ export class CharacterFactory {
 				id: `test-char-${Date.now()}-${index}`,
 				name: `Test Hero ${index + 1}`,
 				...overrides,
-			})
+			}),
 		);
 	}
 
@@ -202,7 +203,7 @@ export class MockDependencyFactory {
 			}),
 			getAllKeys: vi.fn(() => Promise.resolve(Array.from(storage.keys()))),
 			multiGet: vi.fn((keys: string[]) =>
-				Promise.resolve(keys.map(key => [key, storage.get(key) || null]))
+				Promise.resolve(keys.map(key => [key, storage.get(key) || null])),
 			),
 			multiSet: vi.fn((keyValuePairs: [string, string][]) => {
 				keyValuePairs.forEach(([key, value]) => storage.set(key, value));
@@ -295,7 +296,7 @@ export class CompanionFactory {
 				id: `test-companion-${Date.now()}-${index}`,
 				name: `Test Companion ${index + 1}`,
 				...overrides,
-			})
+			}),
 		);
 	}
 }
@@ -367,7 +368,7 @@ export class WorldMapFactory {
 
 	static createRegion(overrides?: any) {
 		const tiles = Array.from({ length: 10 }, (_, i) =>
-			this.createMapTile({ x: i % 5, y: Math.floor(i / 5) })
+			this.createMapTile({ x: i % 5, y: Math.floor(i / 5) }),
 		);
 
 		return {
@@ -517,7 +518,7 @@ export class InventoryFactory {
 
 	static createInventory(itemCount: number = 5) {
 		return Array.from({ length: itemCount }, (_, i) =>
-			this.createBasicItem({ name: `Test Item ${i + 1}` })
+			this.createBasicItem({ name: `Test Item ${i + 1}` }),
 		);
 	}
 }

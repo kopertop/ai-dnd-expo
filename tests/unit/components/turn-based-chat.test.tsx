@@ -6,67 +6,7 @@ import { DMMessage } from '@/services/ai/agents/dungeon-master-agent';
 import { CharacterFactory, CompanionFactory } from '@/tests/fixtures/mock-factories';
 import { assertNoConsoleErrors, renderWithProviders, waitForAsyncUpdates } from '@/tests/utils/render-helpers';
 
-// Mock the hooks
-vi.mock('@/hooks/use-simple-companions', () => ({
-	useSimpleCompanions: vi.fn(() => ({
-		activeCompanions: [],
-		companions: [],
-		partyConfig: { maxSize: 4, activeCompanions: [], leadershipStyle: 'democratic' },
-		isLoading: false,
-		error: null,
-	})),
-}));
 
-// Mock constants
-vi.mock('@/constants/colors', () => ({
-	Colors: {
-		light: {
-			textSecondary: '#666666',
-			backgroundSecondary: '#f0f0f0',
-			backgroundHighlight: '#e0e0e0',
-		},
-	},
-}));
-
-vi.mock('@/constants/races', () => ({
-	RaceByID: {
-		human: {
-			image: require('@/assets/images/races/human.png'),
-		},
-	},
-}));
-
-vi.mock('@/constants/skills', () => ({
-	SKILL_LIST: [
-		{ id: 'athletics', name: 'Athletics' },
-		{ id: 'perception', name: 'Perception' },
-		{ id: 'stealth', name: 'Stealth' },
-		{ id: 'investigation', name: 'Investigation' },
-	],
-}));
-
-// Mock React Native components
-vi.mock('react-native', () => ({
-	Keyboard: {
-		addListener: vi.fn(() => ({ remove: vi.fn() })),
-	},
-	Dimensions: {
-		get: vi.fn(() => ({ width: 375, height: 812 })),
-	},
-	useWindowDimensions: vi.fn(() => ({
-		width: 375,
-		height: 812,
-		scale: 1,
-		fontScale: 1
-	})),
-	Platform: {
-		OS: 'ios',
-		select: vi.fn(options => options.ios || options.default),
-	},
-	StyleSheet: {
-		create: vi.fn(styles => styles),
-	},
-}));
 
 describe('TurnBasedChat', () => {
 	const mockPlayerCharacter = CharacterFactory.createBasic({
@@ -101,8 +41,47 @@ describe('TurnBasedChat', () => {
 	const mockOnSendMessage = vi.fn();
 	const mockOnTurnChange = vi.fn();
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		vi.clearAllMocks();
+
+		// Mock the hooks and external dependencies
+		const useSimpleCompanions = await import('@/hooks/use-simple-companions');
+		const ReactNative = await import('react-native');
+
+		vi.spyOn(useSimpleCompanions, 'useSimpleCompanions').mockReturnValue({
+			activeCompanions: [],
+			companions: [],
+			partyConfig: { maxSize: 4, activeCompanions: [], leadershipStyle: 'democratic' },
+			isLoading: false,
+			error: null,
+			createCompanion: vi.fn(),
+			addToParty: vi.fn(),
+			removeFromParty: vi.fn(),
+			updateCompanion: vi.fn(),
+			deleteCompanion: vi.fn(),
+			getCompanion: vi.fn(),
+			canAddToParty: vi.fn(),
+			generateRandomCompanion: vi.fn(),
+			saveAll: vi.fn(),
+			loadAll: vi.fn(),
+		});
+
+		// Mock React Native components
+		vi.spyOn(ReactNative.Keyboard, 'addListener').mockReturnValue({
+			remove: vi.fn(),
+		} as any);
+		vi.spyOn(ReactNative.Dimensions, 'get').mockReturnValue({
+			width: 375,
+			height: 812,
+			scale: 1,
+			fontScale: 1,
+		});
+		vi.spyOn(ReactNative, 'useWindowDimensions').mockReturnValue({
+			width: 375,
+			height: 812,
+			scale: 1,
+			fontScale: 1,
+		});
 	});
 
 	afterEach(() => {
@@ -118,7 +97,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -134,7 +113,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -151,7 +130,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="dm"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -169,7 +148,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -187,7 +166,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -204,7 +183,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -221,7 +200,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -239,7 +218,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -255,7 +234,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="dm"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -266,7 +245,7 @@ describe('TurnBasedChat', () => {
 		it('should show input field for companion turns', async () => {
 			const companion = CompanionFactory.createBasic({
 				id: 'companion-1',
-				name: 'Test Companion'
+				name: 'Test Companion',
 			});
 
 			const { useSimpleCompanions } = await import('@/hooks/use-simple-companions');
@@ -276,7 +255,7 @@ describe('TurnBasedChat', () => {
 				partyConfig: {
 					maxSize: 4,
 					activeCompanions: [companion.id],
-					leadershipStyle: 'democratic'
+					leadershipStyle: 'democratic',
 				},
 				isLoading: false,
 				error: null,
@@ -299,7 +278,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="companion-1"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -317,7 +296,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -342,7 +321,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -368,7 +347,7 @@ describe('TurnBasedChat', () => {
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
 					isLoading={true}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -404,7 +383,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -430,7 +409,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -456,7 +435,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -480,7 +459,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -497,7 +476,7 @@ describe('TurnBasedChat', () => {
 				width: 375,
 				height: 812,
 				scale: 1,
-				fontScale: 1
+				fontScale: 1,
 			});
 
 			const { container } = renderWithProviders(
@@ -507,7 +486,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -521,7 +500,7 @@ describe('TurnBasedChat', () => {
 				width: 1024,
 				height: 768,
 				scale: 1,
-				fontScale: 1
+				fontScale: 1,
 			});
 
 			const { container } = renderWithProviders(
@@ -531,7 +510,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -549,7 +528,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -573,7 +552,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();
@@ -599,7 +578,7 @@ describe('TurnBasedChat', () => {
 					onSendMessage={mockOnSendMessage}
 					activeCharacter="player"
 					onTurnChange={mockOnTurnChange}
-				/>
+				/>,
 			);
 
 			await waitForAsyncUpdates();

@@ -3,6 +3,7 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
+
 import {
 	AIResponseFactory,
 	CharacterFactory,
@@ -12,7 +13,7 @@ import {
 	GameStateFactory,
 	InventoryFactory,
 	StatsFactory,
-	WorldMapFactory
+	WorldMapFactory,
 } from '../../fixtures/mock-factories';
 
 describe('Mock Factories', () => {
@@ -151,7 +152,7 @@ describe('Mock Factories', () => {
 		it('should create contextual conversation response', () => {
 			const response = EnhancedAIResponseFactory.createConversationResponse(
 				['combat'],
-				'attack with sword'
+				'attack with sword',
 			);
 
 			expect(response.text).toContain('attack with sword');

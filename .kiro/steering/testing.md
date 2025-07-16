@@ -12,6 +12,8 @@ fileMatchPattern: ['**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/*.spec.t
 - Use Vitest for fast unit tests with mocking capabilities for isolated component and service testing
 - Prioritize E2E tests for critical user flows and AI integration points
 - Mock AI services consistently to ensure predictable test outcomes
+- Avoice using `vi.mock`, and instead use `vi.spyOn` within individual `beforeEach` hooks
+- Keep all imports at the top level, and all mocks within `beforeEach` or `it` handlers
 
 ## Testing Stack
 - **Playwright**: End-to-end testing framework with cross-browser and mobile device support

@@ -343,47 +343,32 @@ export const mockSkia = {
 
 /**
  * Centralized mock manager for easy setup and teardown
+ * Note: This class is kept for compatibility but individual vi.mock calls should be used in test files
  */
 export class MockManager {
 	static setupAll(): void {
-		// Setup all mocks with default behavior
-		this.setupCactus();
-		this.setupAsyncStorage();
-		this.setupNavigation();
-		this.setupExpoAPIs();
-		this.setupReactNativeLibraries();
+		// Mock setup is now handled by individual vi.mock calls in test files
+		// This method is kept for backward compatibility
 	}
 
 	static setupCactus(): void {
-		vi.mock('cactus-react-native', () => ({
-			CactusClient: vi.fn().mockImplementation(() => mockCactusProvider),
-		}));
+		// Use vi.mock('cactus-react-native', () => ({ ... })) in test files
 	}
 
 	static setupAsyncStorage(): void {
-		vi.mock('@react-native-async-storage/async-storage', () => mockAsyncStorage);
+		// Use vi.mock('@react-native-async-storage/async-storage', () => ({ ... })) in test files
 	}
 
 	static setupNavigation(): void {
-		vi.mock('expo-router', () => mockExpoRouter);
-		vi.mock('@react-navigation/native', () => ({
-			useNavigation: () => mockNavigation,
-			useFocusEffect: vi.fn(),
-			NavigationContainer: ({ children }: any) => children,
-		}));
+		// Use vi.mock('expo-router', () => ({ ... })) in test files
 	}
 
 	static setupExpoAPIs(): void {
-		vi.mock('expo-speech', () => mockExpoSpeech);
-		vi.mock('expo-speech-recognition', () => mockExpoSpeechRecognition);
-		vi.mock('expo-audio', () => mockExpoAudio);
-		vi.mock('expo-haptics', () => mockExpoHaptics);
+		// Use vi.mock('expo-speech', () => ({ ... })) in test files
 	}
 
 	static setupReactNativeLibraries(): void {
-		vi.mock('react-native-gesture-handler', () => mockGestureHandler);
-		vi.mock('react-native-reanimated', () => mockReanimated);
-		vi.mock('@shopify/react-native-skia', () => mockSkia);
+		// Use vi.mock('react-native-gesture-handler', () => ({ ... })) in test files
 	}
 
 	static resetAll(): void {
@@ -409,5 +394,6 @@ export class MockManager {
 export {
 	mockAsyncStorage as AsyncStorageMock, mockExpoAudio as AudioMock, mockCactusProvider as CactusMock, mockExpoRouter as ExpoRouterMock, mockGestureHandler as GestureHandlerMock, mockExpoHaptics as HapticsMock, mockNavigation as NavigationMock, mockReanimated as ReanimatedMock,
 	mockSkia as SkiaMock, mockExpoSpeech as SpeechMock,
-	mockExpoSpeechRecognition as SpeechRecognitionMock
+	mockExpoSpeechRecognition as SpeechRecognitionMock,
 };
+

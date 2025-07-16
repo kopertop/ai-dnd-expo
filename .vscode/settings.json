@@ -52,6 +52,13 @@
 	"git log *",
 	"npm test *",
 	"find *",
-	"npx eslint *"
-]
+	"npx eslint *",
+	"export PAGER=cat && git diff --cached --stat"
+],
+"[markdown]": {
+	"editor.defaultFormatter": "yzhang.markdown-all-in-one"
+},
+"[jsonc]": {
+	"editor.defaultFormatter": "vscode.json-language-features"
+}
 }

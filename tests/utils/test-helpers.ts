@@ -1,6 +1,7 @@
+import { expect, vi } from 'vitest';
+
 import type { Character } from '@/types/character';
 import type { GameState } from '@/types/game';
-import { expect, vi } from 'vitest';
 
 /**
  * Test data generators for consistent test fixtures
@@ -172,7 +173,7 @@ export class PerformanceTestHelper {
 	 * Measure execution time of a function
 	 */
 	static async measureExecutionTime<T>(
-		fn: () => Promise<T>
+		fn: () => Promise<T>,
 	): Promise<{ result: T; duration: number }> {
 		const startTime = performance.now();
 		const result = await fn();
@@ -189,7 +190,7 @@ export class PerformanceTestHelper {
 	static async assertExecutionTime<T>(
 		fn: () => Promise<T>,
 		maxDuration: number,
-		description?: string
+		description?: string,
 	): Promise<T> {
 		const { result, duration } = await this.measureExecutionTime(fn);
 		expect(duration).toBeLessThan(maxDuration);
@@ -210,7 +211,7 @@ export class WaitHelper {
 	static async waitFor(
 		condition: () => boolean | Promise<boolean>,
 		timeout = 5000,
-		interval = 100
+		interval = 100,
 	): Promise<void> {
 		const startTime = Date.now();
 
