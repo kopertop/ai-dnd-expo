@@ -1,64 +1,66 @@
 {
-  "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit",
-    "source.organizeImports": "explicit",
-    "source.sortMembers": "explicit"
-  },
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.insertSpaces": false,
-  "editor.tabSize": 4,
-  "editor.detectIndentation": false,
-  "[javascript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "[javascriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "[typescript]": {
-    "editor.defaultFormatter": "vscode.typescript-language-features"
-  },
-  "[typescriptreact]": {
-    "editor.defaultFormatter": "vscode.typescript-language-features"
-  },
-  "[json]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "prettier.useTabs": true,
-  "prettier.tabWidth": 4,
-  "prettier.semi": true,
-  "prettier.singleQuote": true,
-  "prettier.trailingComma": "es5",
-  "prettier.bracketSpacing": true,
-  "prettier.arrowParens": "avoid",
-  "prettier.endOfLine": "lf",
-  "prettier.printWidth": 100,
-  "kiroAgent.trustedCommands": [
-	"npm run typecheck",
-	"npm run lint *",
-	"npx tsc --noEmit *",
-	"npm run test",
-	"npm run test:*",
-	"npm run test *",
-	"npm run format",
-	"npm run format:check",
-	"npm run test:services -- --run",
-	"npm run test:coverage -- --run",
-	"git add .",
-	"git diff *",
-	"git diff",
-	"git status",
-	"git add *",
-	"git log *",
-	"npm test *",
-	"find *",
-	"npx eslint *",
-	"export PAGER=cat && git diff --cached --stat"
-],
-"[markdown]": {
-	"editor.defaultFormatter": "yzhang.markdown-all-in-one"
-},
-"[jsonc]": {
-	"editor.defaultFormatter": "vscode.json-language-features"
-}
+	"editor.codeActionsOnSave": {
+		"source.fixAll": "explicit",
+		"source.organizeImports": "explicit",
+		"source.sortMembers": "explicit"
+	},
+	"editor.formatOnSave": true,
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"editor.insertSpaces": false,
+	"editor.tabSize": 4,
+	"editor.detectIndentation": false,
+	"[javascript]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"[javascriptreact]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "vscode.typescript-language-features"
+	},
+	"[typescriptreact]": {
+		"editor.defaultFormatter": "vscode.typescript-language-features"
+	},
+	"[json]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"prettier.useTabs": true,
+	"prettier.tabWidth": 4,
+	"prettier.semi": true,
+	"prettier.singleQuote": true,
+	"prettier.trailingComma": "es5",
+	"prettier.bracketSpacing": true,
+	"prettier.arrowParens": "avoid",
+	"prettier.endOfLine": "lf",
+	"prettier.printWidth": 100,
+	"kiroAgent.trustedCommands": [
+		"npm run typecheck",
+		"npm run lint *",
+		"npx tsc --noEmit *",
+		"npm run test",
+		"npm run test:*",
+		"npm run test *",
+		"npm run format",
+		"npm run format:check",
+		"npm run test:services -- --run",
+		"npm run test:coverage -- --run",
+		"git add .",
+		"git diff *",
+		"git diff",
+		"git status",
+		"git add *",
+		"git log *",
+		"npm test *",
+		"find *",
+		"npx eslint *",
+		"export PAGER=cat && git diff --cached --stat",
+		"npm run test:coverage",
+		"npm run test:services:coverage"
+	],
+	"[markdown]": {
+		"editor.defaultFormatter": "yzhang.markdown-all-in-one"
+	},
+	"[jsonc]": {
+		"editor.defaultFormatter": "vscode.json-language-features"
+	}
 }
