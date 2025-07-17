@@ -54,7 +54,7 @@
     - Implement useSimpleCompanions hook tests with state updates
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-  - [ ] 4.2 Test media and input hooks
+  - [x] 4.2 Test media and input hooks
     - Create tests for useAudioPlayer hook with playback controls
     - Test useTextToSpeech hook with voice synthesis
     - Implement useVoiceRecognition hook tests with speech input

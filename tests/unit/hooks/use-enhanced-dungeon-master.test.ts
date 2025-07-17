@@ -1,422 +1,414 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CharacterFactory, AIResponseFactory } from '@/tests/fixtures/mock-factories';
+import * as textToSpeechModule from '@/hooks/use-text-to-speech';
+import * as aiServiceManagerModule from '@/services/ai/ai-service-manager';
+import { AIResponseFactory, CharacterFactory } from '@/tests/fixtures/mock-factories';
 
-// Mock the hook's dependencies
-const mockDMVoice = {
-  speak: vi.fn(),
-  stop: vi.fn(),
-  isPlaying: false,
+// Define mock objects
+const mockDMVoice: any = {
+	speak: vi.fn(),
+	stop: vi.fn(),
+	isPlaying: false,
 };
 
-const mockCactusProvider = {
-  generateText: vi.fn().mockResolvedValue(AIResponseFactory.createSuccess('Mock response')),
-  isAvailable: vi.fn().mockReturnValue(true),
-  configure: vi.fn(),
-  setModel: vi.fn(),
-  getModel: vi.fn().mockReturnValue('gemma-3-2b-instruct'),
+const mockCactusProvider: any = {
+	generateText: vi.fn().mockResolvedValue(AIResponseFactory.createSuccess('Mock response')),
+	isAvailable: vi.fn().mockReturnValue(true),
+	configure: vi.fn(),
+	setModel: vi.fn(),
+	getModel: vi.fn().mockReturnValue('gemma-3-2b-instruct'),
 };
 
-const mockAIServiceManager = {
-  initialize: vi.fn(() => Promise.resolve(true)),
-  getProvider: vi.fn(() => mockCactusProvider),
-  switchProvider: vi.fn(() => Promise.resolve(true)),
-  getProviderStatus: vi.fn(() => ({
-    current: 'cactus',
-    available: ['cactus', 'local', 'fallback'],
-    performance: { responseTime: 500, successRate: 0.95 },
-  })),
-  getUsageStats: vi.fn(() => ({
-    totalRequests: 10,
-    totalTokens: 500,
-    averageResponseTime: 450,
-  })),
+const mockAIServiceManager: any = {
+	initialize: vi.fn(() => Promise.resolve(true)),
+	getProvider: vi.fn(() => mockCactusProvider),
+	switchProvider: vi.fn((_?: string) => Promise.resolve(true)),
+	getProviderStatus: vi.fn(() => ({
+		current: 'cactus',
+		available: ['cactus', 'local', 'fallback'],
+		performance: { responseTime: 500, successRate: 0.95 },
+	})),
+	getUsageStats: vi.fn(() => ({
+		totalRequests: 10,
+		totalTokens: 500,
+		averageResponseTime: 450,
+	})),
 };
 
-vi.mock('@/hooks/use-text-to-speech', () => ({
-  useDMVoice: vi.fn(() => mockDMVoice),
-}));
-
-vi.mock('@/services/ai/ai-service-manager', () => ({
-  AIServiceManager: vi.fn(() => mockAIServiceManager),
-  DefaultAIConfig: {
-    provider: 'cactus',
-    model: 'gemma-3-2b-instruct',
-    temperature: 0.7,
-    maxTokens: 1000,
-  },
-}));
-
-// Mock console methods to avoid noise in tests
-const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 describe('useEnhancedDungeonMaster', () => {
-  const mockCharacter = CharacterFactory.createBasic();
-  const mockWorldState = {
-    worldMap: { name: 'Test World' },
-    playerPosition: { position: { x: 0, y: 0 } },
-  };
+	const mockCharacter = CharacterFactory.createBasic();
+	const mockWorldState = {
+		worldMap: { name: 'Test World' },
+		playerPosition: { position: { x: 0, y: 0 } },
+	};
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockAIServiceManager.getProvider.mockReturnValue(mockCactusProvider);
-  });
+	beforeEach(() => {
+		vi.clearAllMocks();
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+		// Setup spies instead of mocks
+		vi.spyOn(textToSpeechModule, 'useDMVoice').mockReturnValue(mockDMVoice);
+		vi.spyOn(aiServiceManagerModule, 'AIServiceManager').mockImplementation(() => mockAIServiceManager);
 
-  describe('dependencies and mocking', () => {
-    it('should have properly configured mock dependencies', () => {
-      // Test that our mocks are working
-      expect(mockDMVoice).toBeDefined();
-      expect(mockDMVoice.speak).toBeDefined();
-      expect(mockDMVoice.stop).toBeDefined();
-      expect(mockAIServiceManager).toBeDefined();
-      expect(mockCactusProvider).toBeDefined();
-    });
+		// Ensure the mock provider is returned
+		mockAIServiceManager.getProvider.mockReturnValue(mockCactusProvider);
+	});
 
-    it('should verify mock interfaces match expected patterns', () => {
-      // Verify mocks have the expected function signatures
-      expect(typeof mockDMVoice.speak).toBe('function');
-      expect(typeof mockDMVoice.stop).toBe('function');
-      expect(typeof mockAIServiceManager.initialize).toBe('function');
-      expect(typeof mockCactusProvider.generateText).toBe('function');
-    });
-  });
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
 
-  describe('AI service integration', () => {
-    it('should handle successful AI responses', async () => {
-      const responseText = 'Welcome to the tavern, adventurer!';
-      mockCactusProvider.generateText.mockResolvedValueOnce(
-        AIResponseFactory.createSuccess(responseText)
-      );
+	describe('dependencies and mocking', () => {
+		it('should have properly configured mock dependencies', () => {
+			// Test that our mocks are working
+			expect(mockDMVoice).toBeDefined();
+			expect(mockDMVoice.speak).toBeDefined();
+			expect(mockDMVoice.stop).toBeDefined();
+			expect(mockAIServiceManager).toBeDefined();
+			expect(mockCactusProvider).toBeDefined();
+		});
 
-      const result = await mockCactusProvider.generateText({
-        messages: [{ role: 'user', content: 'Hello DM' }],
-        character: mockCharacter,
-        worldState: mockWorldState,
-      });
+		it('should verify mock interfaces match expected patterns', () => {
+			// Verify mocks have the expected function signatures
+			expect(typeof mockDMVoice.speak).toBe('function');
+			expect(typeof mockDMVoice.stop).toBe('function');
+			expect(typeof mockAIServiceManager.initialize).toBe('function');
+			expect(typeof mockCactusProvider.generateText).toBe('function');
+		});
+	});
 
-      expect(result.text).toBe(responseText);
-      expect(mockCactusProvider.generateText).toHaveBeenCalledWith(
-        expect.objectContaining({
-          character: mockCharacter,
-          worldState: mockWorldState,
-        })
-      );
-    });
+	describe('AI service integration', () => {
+		it('should handle successful AI responses', async () => {
+			const responseText = 'Welcome to the tavern, adventurer!';
+			mockCactusProvider.generateText.mockResolvedValueOnce(
+				AIResponseFactory.createSuccess(responseText),
+			);
 
-    it('should handle AI service errors', async () => {
-      const error = new Error('AI service unavailable');
-      mockCactusProvider.generateText.mockRejectedValueOnce(error);
+			const result = await mockCactusProvider.generateText({
+				messages: [{ role: 'user', content: 'Hello DM' }],
+				character: mockCharacter,
+				worldState: mockWorldState,
+			});
 
-      await expect(
-        mockCactusProvider.generateText({
-          messages: [{ role: 'user', content: 'Test message' }],
-        })
-      ).rejects.toThrow('AI service unavailable');
-    });
+			expect(result.text).toBe(responseText);
+			expect(mockCactusProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					character: mockCharacter,
+					worldState: mockWorldState,
+				}),
+			);
+		});
 
-    it('should handle timeout errors', async () => {
-      const timeoutError = new Error('Request timeout');
-      (timeoutError as any).code = 'TIMEOUT';
-      mockCactusProvider.generateText.mockRejectedValueOnce(timeoutError);
+		it('should handle AI service errors', async () => {
+			const error = new Error('AI service unavailable');
+			mockCactusProvider.generateText.mockRejectedValueOnce(error);
 
-      await expect(
-        mockCactusProvider.generateText({
-          messages: [{ role: 'user', content: 'Test message' }],
-        })
-      ).rejects.toThrow('Request timeout');
-    });
+			await expect(
+				mockCactusProvider.generateText({
+					messages: [{ role: 'user', content: 'Test message' }],
+				}),
+			).rejects.toThrow('AI service unavailable');
+		});
 
-    it('should handle rate limit errors', async () => {
-      const rateLimitError = new Error('Rate limit exceeded');
-      (rateLimitError as any).status = 429;
-      mockCactusProvider.generateText.mockRejectedValueOnce(rateLimitError);
+		it('should handle timeout errors', async () => {
+			const timeoutError = new Error('Request timeout');
+			(timeoutError as { code?: string }).code = 'TIMEOUT';
+			mockCactusProvider.generateText.mockRejectedValueOnce(timeoutError);
 
-      await expect(
-        mockCactusProvider.generateText({
-          messages: [{ role: 'user', content: 'Test message' }],
-        })
-      ).rejects.toThrow('Rate limit exceeded');
-    });
-  });
+			await expect(
+				mockCactusProvider.generateText({
+					messages: [{ role: 'user', content: 'Test message' }],
+				}),
+			).rejects.toThrow('Request timeout');
+		});
 
-  describe('provider management logic', () => {
-    it('should support AI service manager operations', async () => {
-      // Test initialization
-      const initResult = await mockAIServiceManager.initialize();
-      expect(initResult).toBe(true);
-      expect(mockAIServiceManager.initialize).toHaveBeenCalled();
-    });
+		it('should handle rate limit errors', async () => {
+			const rateLimitError = new Error('Rate limit exceeded');
+			(rateLimitError as { status?: number }).status = 429;
+			mockCactusProvider.generateText.mockRejectedValueOnce(rateLimitError);
 
-    it('should support provider switching operations', async () => {
-      const switchResult = await mockAIServiceManager.switchProvider('local');
-      expect(switchResult).toBe(true);
-      expect(mockAIServiceManager.switchProvider).toHaveBeenCalledWith('local');
-    });
+			await expect(
+				mockCactusProvider.generateText({
+					messages: [{ role: 'user', content: 'Test message' }],
+				}),
+			).rejects.toThrow('Rate limit exceeded');
+		});
+	});
 
-    it('should provide status information', () => {
-      const status = mockAIServiceManager.getProviderStatus();
-      expect(status).toEqual({
-        current: 'cactus',
-        available: ['cactus', 'local', 'fallback'],
-        performance: { responseTime: 500, successRate: 0.95 },
-      });
-    });
-  });
+	describe('provider management logic', () => {
+		it('should support AI service manager operations', async () => {
+			// Test initialization
+			const initResult = await mockAIServiceManager.initialize();
+			expect(initResult).toBe(true);
+			expect(mockAIServiceManager.initialize).toHaveBeenCalled();
+		});
 
-  describe('voice synthesis integration', () => {
-    it('should call voice synthesis with correct text', async () => {
-      const text = 'Welcome to the tavern!';
-      await mockDMVoice.speak(text);
-      
-      expect(mockDMVoice.speak).toHaveBeenCalledWith(text);
-    });
+		it('should support provider switching operations', async () => {
+			const switchResult = await mockAIServiceManager.switchProvider('local');
+			expect(switchResult).toBe(true);
+			expect(mockAIServiceManager.switchProvider).toHaveBeenCalledWith('local');
+		});
 
-    it('should handle voice synthesis errors', async () => {
-      const error = new Error('Voice synthesis failed');
-      mockDMVoice.speak.mockRejectedValueOnce(error);
+		it('should provide status information', () => {
+			const status = mockAIServiceManager.getProviderStatus();
+			expect(status).toEqual({
+				current: 'cactus',
+				available: ['cactus', 'local', 'fallback'],
+				performance: { responseTime: 500, successRate: 0.95 },
+			});
+		});
+	});
 
-      await expect(mockDMVoice.speak('test')).rejects.toThrow('Voice synthesis failed');
-    });
+	describe('voice synthesis integration', () => {
+		it('should call voice synthesis with correct text', async () => {
+			const text = 'Welcome to the tavern!';
+			await mockDMVoice.speak(text);
 
-    it('should stop voice synthesis', async () => {
-      await mockDMVoice.stop();
-      expect(mockDMVoice.stop).toHaveBeenCalled();
-    });
-  });
+			expect(mockDMVoice.speak).toHaveBeenCalledWith(text);
+		});
 
-  describe('message context building', () => {
-    it('should include character context in AI requests', async () => {
-      const messages = [
-        { role: 'user' as const, content: 'Hello DM' },
-      ];
+		it('should handle voice synthesis errors', async () => {
+			const error = new Error('Voice synthesis failed');
+			mockDMVoice.speak.mockRejectedValueOnce(error);
 
-      await mockCactusProvider.generateText({
-        messages,
-        character: mockCharacter,
-        worldState: mockWorldState,
-      });
+			await expect(mockDMVoice.speak('test')).rejects.toThrow('Voice synthesis failed');
+		});
 
-      expect(mockCactusProvider.generateText).toHaveBeenCalledWith(
-        expect.objectContaining({
-          messages,
-          character: mockCharacter,
-          worldState: mockWorldState,
-        })
-      );
-    });
+		it('should stop voice synthesis', async () => {
+			await mockDMVoice.stop();
+			expect(mockDMVoice.stop).toHaveBeenCalled();
+		});
+	});
 
-    it('should handle conversation history', async () => {
-      const conversationHistory = [
-        { role: 'user' as const, content: 'Message 1' },
-        { role: 'assistant' as const, content: 'Response 1' },
-        { role: 'user' as const, content: 'Message 2' },
-      ];
+	describe('message context building', () => {
+		it('should include character context in AI requests', async () => {
+			const messages = [
+				{ role: 'user' as const, content: 'Hello DM' },
+			];
 
-      await mockCactusProvider.generateText({
-        messages: conversationHistory,
-        character: mockCharacter,
-        worldState: mockWorldState,
-      });
+			await mockCactusProvider.generateText({
+				messages,
+				character: mockCharacter,
+				worldState: mockWorldState,
+			});
 
-      expect(mockCactusProvider.generateText).toHaveBeenCalledWith(
-        expect.objectContaining({
-          messages: conversationHistory,
-        })
-      );
-    });
-  });
+			expect(mockCactusProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					messages,
+					character: mockCharacter,
+					worldState: mockWorldState,
+				}),
+			);
+		});
 
-  describe('error handling and recovery', () => {
-    it('should handle initialization failures', async () => {
-      const initError = new Error('Initialization failed');
-      mockAIServiceManager.initialize.mockRejectedValueOnce(initError);
+		it('should handle conversation history', async () => {
+			const conversationHistory = [
+				{ role: 'user' as const, content: 'Message 1' },
+				{ role: 'assistant' as const, content: 'Response 1' },
+				{ role: 'user' as const, content: 'Message 2' },
+			];
 
-      await expect(mockAIServiceManager.initialize()).rejects.toThrow('Initialization failed');
-    });
+			await mockCactusProvider.generateText({
+				messages: conversationHistory,
+				character: mockCharacter,
+				worldState: mockWorldState,
+			});
 
-    it('should handle provider switch failures', async () => {
-      const switchError = new Error('Provider switch failed');
-      mockAIServiceManager.switchProvider.mockRejectedValueOnce(switchError);
+			expect(mockCactusProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					messages: conversationHistory,
+				}),
+			);
+		});
+	});
 
-      await expect(mockAIServiceManager.switchProvider('local')).rejects.toThrow('Provider switch failed');
-    });
+	describe('error handling and recovery', () => {
+		it('should handle initialization failures', async () => {
+			const initError = new Error('Initialization failed');
+			mockAIServiceManager.initialize.mockRejectedValueOnce(initError);
 
-    it('should handle empty messages gracefully', async () => {
-      // Empty message should not be sent to AI
-      const emptyMessage = '';
-      
-      if (emptyMessage.trim()) {
-        await mockCactusProvider.generateText({
-          messages: [{ role: 'user', content: emptyMessage }],
-        });
-      }
+			await expect(mockAIServiceManager.initialize()).rejects.toThrow('Initialization failed');
+		});
 
-      expect(mockCactusProvider.generateText).not.toHaveBeenCalled();
-    });
+		it('should handle provider switch failures', async () => {
+			const switchError = new Error('Provider switch failed');
+			mockAIServiceManager.switchProvider.mockRejectedValueOnce(switchError);
 
-    it('should handle whitespace-only messages', () => {
-      const whitespaceMessage = '   \n\t  ';
-      
-      if (whitespaceMessage.trim()) {
-        mockCactusProvider.generateText({
-          messages: [{ role: 'user', content: whitespaceMessage }],
-        });
-      }
+			await expect(mockAIServiceManager.switchProvider('local')).rejects.toThrow('Provider switch failed');
+		});
 
-      expect(mockCactusProvider.generateText).not.toHaveBeenCalled();
-    });
-  });
+		it('should handle empty messages gracefully', async () => {
+			// Empty message should not be sent to AI
+			const emptyMessage = '';
 
-  describe('performance considerations', () => {
-    it('should complete AI requests within reasonable time', async () => {
-      const fastResponse = AIResponseFactory.createSuccess('Quick response');
-      mockCactusProvider.generateText.mockResolvedValueOnce(fastResponse);
+			if (emptyMessage.trim()) {
+				await mockCactusProvider.generateText({
+					messages: [{ role: 'user', content: emptyMessage }],
+				});
+			}
 
-      const startTime = performance.now();
-      
-      await mockCactusProvider.generateText({
-        messages: [{ role: 'user', content: 'Test message' }],
-      });
+			expect(mockCactusProvider.generateText).not.toHaveBeenCalled();
+		});
 
-      const endTime = performance.now();
-      const duration = endTime - startTime;
+		it('should handle whitespace-only messages', () => {
+			const whitespaceMessage = '   \n\t  ';
 
-      // Should complete quickly in test environment
-      expect(duration).toBeLessThan(100);
-    });
+			if (whitespaceMessage.trim()) {
+				mockCactusProvider.generateText({
+					messages: [{ role: 'user', content: whitespaceMessage }],
+				});
+			}
 
-    it('should handle concurrent requests', async () => {
-      const response1 = AIResponseFactory.createSuccess('Response 1');
-      const response2 = AIResponseFactory.createSuccess('Response 2');
-      
-      mockCactusProvider.generateText
-        .mockResolvedValueOnce(response1)
-        .mockResolvedValueOnce(response2);
+			expect(mockCactusProvider.generateText).not.toHaveBeenCalled();
+		});
+	});
 
-      const promises = [
-        mockCactusProvider.generateText({
-          messages: [{ role: 'user', content: 'Message 1' }],
-        }),
-        mockCactusProvider.generateText({
-          messages: [{ role: 'user', content: 'Message 2' }],
-        }),
-      ];
+	describe('performance considerations', () => {
+		it('should complete AI requests within reasonable time', async () => {
+			const fastResponse = AIResponseFactory.createSuccess('Quick response');
+			mockCactusProvider.generateText.mockResolvedValueOnce(fastResponse);
 
-      const results = await Promise.all(promises);
+			const startTime = performance.now();
 
-      expect(results[0].text).toBe('Response 1');
-      expect(results[1].text).toBe('Response 2');
-      expect(mockCactusProvider.generateText).toHaveBeenCalledTimes(2);
-    });
-  });
+			await mockCactusProvider.generateText({
+				messages: [{ role: 'user', content: 'Test message' }],
+			});
 
-  describe('provider recommendations', () => {
-    it('should generate provider recommendations based on performance', () => {
-      const mockRecommendations = [
-        {
-          provider: 'cactus',
-          score: 0.95,
-          reasons: ['High success rate', 'Good performance'],
-        },
-        {
-          provider: 'local',
-          score: 0.8,
-          reasons: ['Privacy focused', 'No API costs'],
-        },
-      ];
+			const endTime = performance.now();
+			const duration = endTime - startTime;
 
-      // Test the recommendation algorithm logic
-      const status = mockAIServiceManager.getProviderStatus();
-      const recommendations = [];
+			// Should complete quickly in test environment
+			expect(duration).toBeLessThan(100);
+		});
 
-      if (status && status.performance && status.performance.successRate >= 0.9) {
-        recommendations.push({
-          provider: status.current,
-          score: status.performance.successRate,
-          reasons: ['High success rate', 'Good performance'],
-        });
-      }
+		it('should handle concurrent requests', async () => {
+			const response1 = AIResponseFactory.createSuccess('Response 1');
+			const response2 = AIResponseFactory.createSuccess('Response 2');
 
-      recommendations.push({
-        provider: 'local',
-        score: 0.8,
-        reasons: ['Privacy focused', 'No API costs'],
-      });
+			mockCactusProvider.generateText
+				.mockResolvedValueOnce(response1)
+				.mockResolvedValueOnce(response2);
 
-      expect(recommendations).toEqual(mockRecommendations);
-    });
-  });
+			const promises = [
+				mockCactusProvider.generateText({
+					messages: [{ role: 'user', content: 'Message 1' }],
+				}),
+				mockCactusProvider.generateText({
+					messages: [{ role: 'user', content: 'Message 2' }],
+				}),
+			];
 
-  describe('character and world state changes', () => {
-    it('should handle character level changes', async () => {
-      const updatedCharacter = { ...mockCharacter, level: 5 };
+			const results = await Promise.all(promises);
 
-      await mockCactusProvider.generateText({
-        messages: [{ role: 'user', content: 'Test message' }],
-        character: updatedCharacter,
-        worldState: mockWorldState,
-      });
+			expect(results[0].text).toBe('Response 1');
+			expect(results[1].text).toBe('Response 2');
+			expect(mockCactusProvider.generateText).toHaveBeenCalledTimes(2);
+		});
+	});
 
-      expect(mockCactusProvider.generateText).toHaveBeenCalledWith(
-        expect.objectContaining({
-          character: expect.objectContaining({ level: 5 }),
-        })
-      );
-    });
+	describe('provider recommendations', () => {
+		it('should generate provider recommendations based on performance', () => {
+			const mockRecommendations = [
+				{
+					provider: 'cactus',
+					score: 0.95,
+					reasons: ['High success rate', 'Good performance'],
+				},
+				{
+					provider: 'local',
+					score: 0.8,
+					reasons: ['Privacy focused', 'No API costs'],
+				},
+			];
 
-    it('should handle world state position changes', async () => {
-      const updatedWorldState = {
-        ...mockWorldState,
-        playerPosition: { position: { x: 5, y: 5 } },
-      };
+			// Test the recommendation algorithm logic
+			const status = mockAIServiceManager.getProviderStatus();
+			const recommendations = [];
 
-      await mockCactusProvider.generateText({
-        messages: [{ role: 'user', content: 'Test message' }],
-        character: mockCharacter,
-        worldState: updatedWorldState,
-      });
+			if (status && status.performance && status.performance.successRate >= 0.9) {
+				recommendations.push({
+					provider: status.current,
+					score: status.performance.successRate,
+					reasons: ['High success rate', 'Good performance'],
+				});
+			}
 
-      expect(mockCactusProvider.generateText).toHaveBeenCalledWith(
-        expect.objectContaining({
-          worldState: expect.objectContaining({
-            playerPosition: { position: { x: 5, y: 5 } },
-          }),
-        })
-      );
-    });
-  });
+			recommendations.push({
+				provider: 'local',
+				score: 0.8,
+				reasons: ['Privacy focused', 'No API costs'],
+			});
 
-  describe('configuration and defaults', () => {
-    it('should use default AI configuration from mocks', () => {
-      // Test that our mocked configuration is being used
-      expect(mockAIServiceManager.getProviderStatus()).toEqual({
-        current: 'cactus',
-        available: ['cactus', 'local', 'fallback'],
-        performance: { responseTime: 500, successRate: 0.95 },
-      });
-    });
+			expect(recommendations).toEqual(mockRecommendations);
+		});
+	});
 
-    it('should validate message roles', () => {
-      const validRoles = ['user', 'assistant'] as const;
-      const testMessage = { role: 'user' as const, content: 'Test' };
-      
-      expect(validRoles).toContain(testMessage.role);
-    });
+	describe('character and world state changes', () => {
+		it('should handle character level changes', async () => {
+			const updatedCharacter = { ...mockCharacter, level: 5 };
 
-    it('should handle conversation context limits', () => {
-      const longConversation = Array.from({ length: 50 }, (_, i) => ({
-        role: (i % 2 === 0 ? 'user' : 'assistant') as const,
-        content: `Message ${i + 1}`,
-      }));
+			await mockCactusProvider.generateText({
+				messages: [{ role: 'user', content: 'Test message' }],
+				character: updatedCharacter,
+				worldState: mockWorldState,
+			});
 
-      // Test that we can handle long conversations
-      expect(longConversation).toHaveLength(50);
-      expect(longConversation[0].role).toBe('user');
-      expect(longConversation[1].role).toBe('assistant');
-    });
-  });
+			expect(mockCactusProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					character: expect.objectContaining({ level: 5 }),
+				}),
+			);
+		});
+
+		it('should handle world state position changes', async () => {
+			const updatedWorldState = {
+				...mockWorldState,
+				playerPosition: { position: { x: 5, y: 5 } },
+			};
+
+			await mockCactusProvider.generateText({
+				messages: [{ role: 'user', content: 'Test message' }],
+				character: mockCharacter,
+				worldState: updatedWorldState,
+			});
+
+			expect(mockCactusProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					worldState: expect.objectContaining({
+						playerPosition: { position: { x: 5, y: 5 } },
+					}),
+				}),
+			);
+		});
+	});
+
+	describe('configuration and defaults', () => {
+		it('should use default AI configuration from mocks', () => {
+			// Test that our mocked configuration is being used
+			expect(mockAIServiceManager.getProviderStatus()).toEqual({
+				current: 'cactus',
+				available: ['cactus', 'local', 'fallback'],
+				performance: { responseTime: 500, successRate: 0.95 },
+			});
+		});
+
+		it('should validate message roles', () => {
+			const validRoles = ['user', 'assistant'] as const;
+			const testMessage = { role: 'user' as const, content: 'Test' };
+
+			expect(validRoles).toContain(testMessage.role);
+		});
+
+		it('should handle conversation context limits', () => {
+			const longConversation = Array.from({ length: 50 }, (_, i) => ({
+				role: i % 2 === 0 ? 'user' as const : 'assistant' as const,
+				content: `Message ${i + 1}`,
+			}));
+
+			// Test that we can handle long conversations
+			expect(longConversation).toHaveLength(50);
+			expect(longConversation[0].role).toBe('user');
+			expect(longConversation[1].role).toBe('assistant');
+		});
+	});
 });

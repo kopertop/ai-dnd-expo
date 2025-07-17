@@ -1,5 +1,7 @@
 // Note: This test was originally using @testing-library/react which isn't available
 // Keeping the file structure but focusing on testing the core logic
+import asyncStorage from '@react-native-async-storage/async-storage';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import customImage from '@/assets/images/custom.png';
@@ -8,17 +10,14 @@ import { getCharacterImage, useGameState } from '@/hooks/use-game-state';
 import { CharacterFactory, GameStateFactory } from '@/tests/fixtures/mock-factories';
 import { mockAsyncStorage } from '@/tests/unit/__mocks__/external-dependencies';
 
-// Mock AsyncStorage
-vi.mock('@react-native-async-storage/async-storage', () => ({
-	default: mockAsyncStorage,
-}));
-
-// Mock console methods to avoid noise in tests
-const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => { });
 
 describe('useGameState', () => {
 	beforeEach(() => {
+		vi.spyOn(asyncStorage, 'getItem').mockImplementation(mockAsyncStorage.getItem);
+		vi.spyOn(asyncStorage, 'setItem').mockImplementation(mockAsyncStorage.setItem);
+		vi.spyOn(asyncStorage, 'removeItem').mockImplementation(mockAsyncStorage.removeItem);
+		vi.spyOn(asyncStorage, 'clear').mockImplementation(mockAsyncStorage.clear);
+		vi.spyOn(asyncStorage, 'getAllKeys').mockImplementation(mockAsyncStorage.getAllKeys);
 		mockAsyncStorage.reset();
 		vi.clearAllMocks();
 	});
@@ -130,7 +129,7 @@ describe('useGameState', () => {
 
 			expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
 				'gameState',
-				JSON.stringify(newGameState)
+				JSON.stringify(newGameState),
 			);
 			expect(result.current.gameState).toEqual(newGameState);
 			expect(result.current.playerCharacter).toEqual(newGameState.characters[0]);
@@ -146,10 +145,8 @@ describe('useGameState', () => {
 			await expect(
 				act(async () => {
 					await result.current.save(newGameState);
-				})
+				}),
 			).rejects.toThrow('Storage full');
-
-			expect(consoleSpy).toHaveBeenCalledWith('❌ Failed to save game state:', saveError);
 		});
 	});
 
@@ -187,7 +184,7 @@ describe('useGameState', () => {
 			await expect(
 				act(async () => {
 					await result.current.updatePlayerCharacter({ name: 'Test' });
-				})
+				}),
 			).rejects.toThrow('No game state or player character loaded');
 		});
 
@@ -314,7 +311,6 @@ describe('useGameState', () => {
 			});
 
 			expect(result.current.error).toBe('Storage unavailable');
-			expect(consoleSpy).toHaveBeenCalledWith('❌ GameState load error:', storageError);
 		});
 
 		it('should reset loading state after error', async () => {

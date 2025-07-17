@@ -135,7 +135,7 @@ export const mockNavigation = {
 /**
  * Mock Expo Router functions
  */
-export const mockExpoRouter = {
+export const mockExpoRouter: any = {
 	router: {
 		push: vi.fn(),
 		replace: vi.fn(),
@@ -391,9 +391,14 @@ export class MockManager {
 }
 
 // Export individual mocks for specific use cases
-export {
-	mockAsyncStorage as AsyncStorageMock, mockExpoAudio as AudioMock, mockCactusProvider as CactusMock, mockExpoRouter as ExpoRouterMock, mockGestureHandler as GestureHandlerMock, mockExpoHaptics as HapticsMock, mockNavigation as NavigationMock, mockReanimated as ReanimatedMock,
-	mockSkia as SkiaMock, mockExpoSpeech as SpeechMock,
-	mockExpoSpeechRecognition as SpeechRecognitionMock,
-};
-
+export const AsyncStorageMock = mockAsyncStorage;
+export const AudioMock = mockExpoAudio;
+export const CactusMock = mockCactusProvider;
+export const ExpoRouterMock = mockExpoRouter;
+export const GestureHandlerMock = mockGestureHandler;
+export const HapticsMock = mockExpoHaptics;
+export const NavigationMock = mockNavigation;
+export const ReanimatedMock = mockReanimated;
+export const SkiaMock = mockSkia;
+export const SpeechMock = mockExpoSpeech;
+export const SpeechRecognitionMock = mockExpoSpeechRecognition;
