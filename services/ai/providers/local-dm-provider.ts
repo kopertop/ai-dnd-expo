@@ -7,8 +7,10 @@
  * Requirements: 1.1, 4.1, 6.1, 6.2, 6.3
  */
 
+import { Platform } from 'react-native';
+
 import { DeviceResourceManager } from '../models/device-resource-manager';
-import { ModelCacheManager, InferenceContext } from '../models/model-cache-manager';
+import { InferenceContext, ModelCacheManager } from '../models/model-cache-manager';
 import { ModelCatalog, ModelRecommendation } from '../models/model-catalog';
 import { ModelDownloadManager, ModelMetadata } from '../models/model-download-manager';
 import { ModelPrivacyManager } from '../models/model-privacy-manager';
@@ -148,7 +150,7 @@ export class LocalDMProvider implements ILocalDMProvider {
 	private privacyManager: ModelPrivacyManager;
 	private onnxManager: ONNXModelManager;
 	private deviceResourceManager: DeviceResourceManager;
-	
+
 	// Current model information
 	private currentModelId: string | null = null;
 	private currentModelPath: string | null = null;
@@ -299,7 +301,7 @@ export class LocalDMProvider implements ILocalDMProvider {
 			if (this.onnxManager && this.currentModelPath) {
 				response = await this.generateWithONNX(formattedPrompt, timeout);
 			} else {
-				// Fallback to simulation for now
+				// Fallback to simulation
 				response = await this.simulateInference(formattedPrompt, timeout);
 			}
 
@@ -388,7 +390,7 @@ export class LocalDMProvider implements ILocalDMProvider {
 			this.isInitialized = false;
 			this.isModelReady = false;
 			this.lastError = null;
-			this.cactusLM = null;
+			// Remove reference to cactusLM as it doesn't exist in this class
 
 			// Reset model status
 			this.modelStatus.isLoaded = false;
@@ -462,28 +464,29 @@ DM Response:`;
 	 */
 	private async generateWithONNX(prompt: string, timeout: number): Promise<AIResponse> {
 		const startTime = Date.now();
-		
+
 		try {
-			// Perform inference using ONNX model manager
-			const result = await this.onnxManager.performInference(
-				{ input_ids: [], attention_mask: [] }, // Tokenization would happen here
-				timeout,
-			);
+			// Load the model and run inference
+			const session = await this.onnxManager.loadGemma3Model(this.currentModelPath || '');
+			const result = await this.onnxManager.runInference(session, {
+				input_ids: [], // Tokenization would happen here
+				attention_mask: [],
+			});
 
 			// Convert ONNX output to AI response format
 			const text = this.convertONNXOutputToText(result);
 			const cleanText = this.removeToolCommands(text);
 			const toolCommands = this.extractToolCommands(text);
-			
+
 			const processingTime = Date.now() - startTime;
-			
+
 			return {
 				text: cleanText,
 				confidence: 0.85, // Would be calculated from model output
 				toolCommands,
 				processingTime,
 			};
-			
+
 		} catch (error) {
 			console.error('ONNX inference failed:', error);
 			// Fallback to simulation
@@ -561,7 +564,7 @@ DM Response:`;
 	/**
 	 * Simulate model inference for development (will be replaced in task 2.2)
 	 */
-	private async simulateInference(prompt: string, timeout: number): Promise<string> {
+	private async simulateInference(prompt: string, timeout: number): Promise<AIResponse> {
 		// Simulate processing time
 		await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 500));
 
@@ -574,7 +577,16 @@ DM Response:`;
 			'Your spell illuminates the cavern, revealing ancient runes carved into the walls. [ROLL:1d20+2] Roll an Arcana check to decipher them.',
 		];
 
-		return responses[Math.floor(Math.random() * responses.length)];
+		const text = responses[Math.floor(Math.random() * responses.length)];
+		const toolCommands = this.extractToolCommands(text);
+		const cleanText = this.removeToolCommands(text);
+
+		return {
+			text: cleanText,
+			confidence: 0.85,
+			toolCommands,
+			processingTime: Math.random() * 2000 + 500,
+		};
 	}
 
 	/**
@@ -593,7 +605,19 @@ DM Response:`;
 	 * Get model recommendations for current device
 	 */
 	async getModelRecommendations(limit: number = 5): Promise<ModelRecommendation[]> {
-		const deviceInfo = await this.deviceResourceManager.getDeviceInfo();
+		// Create a DeviceInfo object from the resource usage
+		const resourceUsage = await this.deviceResourceManager.getCurrentResourceUsage();
+
+		// Convert ResourceUsage to DeviceInfo
+		const deviceInfo = {
+			platform: (Platform.OS === 'ios' ? 'ios' : 'android') as 'ios' | 'android' | 'web',
+			totalMemory: resourceUsage.memory.total || 4096,
+			availableMemory: resourceUsage.memory.available || 2048,
+			cpuCores: resourceUsage.cpu.cores || 4,
+			hasGPU: true, // Assume GPU is available
+			thermalState: resourceUsage.thermal.state,
+		};
+
 		await this.catalog.initialize(deviceInfo);
 		return this.catalog.getRecommendations(limit);
 	}
@@ -609,14 +633,14 @@ DM Response:`;
 	 * Download model with progress tracking
 	 */
 	async downloadModel(
-		modelId: string, 
+		modelId: string,
 		progressCallback?: (progress: any) => void,
 	): Promise<string> {
 		const model = this.catalog.getModel(modelId);
 		if (!model) {
 			throw new Error(`Model ${modelId} not found in catalog`);
 		}
-		
+
 		return await this.downloadManager.downloadModel(model, {
 			progressCallback,
 			checksumValidation: true,
@@ -632,7 +656,7 @@ DM Response:`;
 		if (!modelPath) {
 			throw new Error(`Model ${modelId} not found in storage`);
 		}
-		
+
 		// Model is already installed if it exists in storage
 		return;
 	}
@@ -652,17 +676,21 @@ DM Response:`;
 		if (!modelPath) {
 			throw new Error(`Model ${modelId} not installed`);
 		}
-		
+
 		// Cleanup current model
 		if (this.onnxManager) {
-			await this.onnxManager.cleanup();
+			// Use cleanupSession instead of cleanup
+			const session = await this.onnxManager.loadGemma3Model(this.currentModelPath || '');
+			await this.onnxManager.cleanupSession(session);
 		}
-		
+
 		// Load new model
-		const deviceInfo = await this.deviceResourceManager.getDeviceInfo();
-		await this.onnxManager.initialize(deviceInfo);
-		await this.onnxManager.loadModel(modelPath);
-		
+		// Get device info using getCurrentResourceUsage instead of getDeviceInfo
+		const deviceInfo = await this.deviceResourceManager.getCurrentResourceUsage();
+		// Initialize and load model using the correct methods
+		const session = await this.onnxManager.loadGemma3Model(modelPath);
+		await this.onnxManager.validateModel(session);
+
 		this.currentModelId = modelId;
 		this.currentModelPath = modelPath;
 		this.isModelReady = true;
@@ -824,24 +852,24 @@ export interface ILocalDMProvider extends AIProvider {
 	getAvailableModels(): Promise<ModelMetadata[]>;
 	getModelRecommendations(limit?: number): Promise<ModelRecommendation[]>;
 	searchModels(query: string): Promise<ModelMetadata[]>;
-	
+
 	// Model download and installation
 	downloadModel(modelId: string, progressCallback?: (progress: any) => void): Promise<string>;
 	installModel(modelId: string): Promise<void>;
 	isModelInstalled(modelId: string): Promise<boolean>;
-	
+
 	// Model switching and management
 	switchModel(modelId: string): Promise<void>;
 	getCurrentModel(): ModelMetadata | null;
 	deleteModel(modelId: string): Promise<void>;
-	
+
 	// Cache management
 	clearCache(options?: any): Promise<void>;
 	getCacheStats(): any;
-	
+
 	// Privacy and compliance
 	performDataCleanup(options?: any): Promise<void>;
 	getPrivacySettings(): any;
 	updatePrivacySettings(settings: any): Promise<void>;
-	exportPrivacyData(): Promise<any>;
+	exportPrivacyData(): Promise<unknown>;
 }

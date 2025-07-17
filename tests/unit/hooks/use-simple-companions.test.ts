@@ -5,7 +5,8 @@ import { CompanionFactory } from '@/tests/fixtures/mock-factories';
 import type { Companion, CompanionTemplate, PartyConfiguration } from '@/types/companion';
 
 // Mock console methods to avoid noise in tests
-const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+// Using vi.spyOn but not storing the reference since we don't need it
+vi.spyOn(console, 'error').mockImplementation(() => { });
 
 describe('useSimpleCompanions', () => {
 	// Use spyOn for AsyncStorage methods

@@ -10,7 +10,7 @@ import { vi } from 'vitest';
  * Render a hook with optional wrapper component
  */
 export const renderHookWithWrapper = <T extends any[], R>(
-	hook: (...args: T) => R,
+	hook: (props: T) => R,
 	options?: {
 		wrapper?: React.ComponentType<{ children: React.ReactNode }>;
 		initialProps?: T;
@@ -42,7 +42,7 @@ export const createMockProvider = <T>(
 	Context: React.Context<T>,
 	value: T,
 ): React.ComponentType<{ children: React.ReactNode }> => {
-	return function({ children }) {
+	return function ({ children }) {
 		return React.createElement(Context.Provider, { value }, children);
 	};
 };
