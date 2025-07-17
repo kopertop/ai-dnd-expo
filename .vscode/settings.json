@@ -56,7 +56,8 @@
 		"export PAGER=cat && git diff --cached --stat",
 		"npm run test:coverage",
 		"npm run test:services:coverage",
-		"npx vitest *"
+		"npx vitest *",
+		"npm run test -- --config vitest.services.config.ts tests/unit/services/ai/providers/local-dm-provider.test.ts -t \"should build D&D-specific prompts with context\""
 	],
 	"[markdown]": {
 		"editor.defaultFormatter": "yzhang.markdown-all-in-one"

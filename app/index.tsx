@@ -1,14 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 
+import { SettingsModal } from '@/components/settings-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
 const IndexScreen: React.FC = () => {
 	const [hasSavedGame, setHasSavedGame] = useState(false);
 	const [loading, setLoading] = useState(true);
+	const [isSettingsVisible, setSettingsVisible] = useState(false);
 
 	useEffect(() => {
 		const checkSavedGame = async () => {
@@ -28,29 +30,42 @@ const IndexScreen: React.FC = () => {
 			<Stack.Screen options={{ title: 'Home' }} />
 			<ThemedView style={styles.container}>
 				<ThemedText type="title">
-					<Text>Welcome to the AI D&D Platform</Text>
+					Welcome to the AI D&D Platform
 				</ThemedText>
 				<Link href="/new-game" style={styles.link}>
 					<ThemedText type="link">
-						<Text>Start a new game</Text>
+						Start a new game
 					</ThemedText>
 				</Link>
 				{!loading && hasSavedGame && (
 					<TouchableOpacity
 						style={styles.continueBtn}
-						onPress={() => router.push({ pathname: '/game' as any })}
+						onPress={() => router.push('/game')}
 					>
-						<Text style={styles.continueBtnText}>Continue Game</Text>
+						<ThemedText style={styles.continueBtnText}>Continue Game</ThemedText>
 					</TouchableOpacity>
 				)}
+
+				{/* Settings button */}
+				<TouchableOpacity
+					style={styles.settingsBtn}
+					onPress={() => setSettingsVisible(true)}
+				>
+					<ThemedText style={styles.settingsBtnText}>Settings</ThemedText>
+				</TouchableOpacity>
 
 				{/* Licenses & Credits button */}
 				<TouchableOpacity
 					style={styles.licensesBtn}
 					onPress={() => router.push('/licenses')}
 				>
-					<Text style={styles.licensesBtnText}>Licenses & Credits</Text>
+					<ThemedText style={styles.licensesBtnText}>Licenses & Credits</ThemedText>
 				</TouchableOpacity>
+
+				<SettingsModal
+					visible={isSettingsVisible}
+					onClose={() => setSettingsVisible(false)}
+				/>
 			</ThemedView>
 		</>
 	);
@@ -91,6 +106,19 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 	},
 	licensesBtnText: {
+		color: '#3B2F1B',
+		fontWeight: 'bold',
+		fontSize: 16,
+	},
+	settingsBtn: {
+		marginTop: 20,
+		backgroundColor: '#E2D3B3',
+		paddingVertical: 12,
+		paddingHorizontal: 32,
+		borderRadius: 8,
+		alignItems: 'center',
+	},
+	settingsBtnText: {
 		color: '#3B2F1B',
 		fontWeight: 'bold',
 		fontSize: 16,

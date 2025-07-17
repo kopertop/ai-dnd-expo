@@ -134,7 +134,12 @@ export default defineConfig([
 			'@typescript-eslint/explicit-function-return-type': 'off',
 			'@typescript-eslint/no-non-null-assertion': 'warn',
 			'@typescript-eslint/strict-boolean-expressions': 'off',
-			'react-native/no-raw-text': 'error',
+			'react-native/no-raw-text': [
+				'error',
+				{
+					skip: ['ThemedText'],
+				},
+			],
 			'react-native/no-inline-styles': 'off',
 
 			'react/function-component-definition': [

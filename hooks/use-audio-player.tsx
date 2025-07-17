@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
 import audioSource from '../assets/audio/background.mp3';
+import { useSettingsStore } from '../stores/settings-store';
 
 interface AudioContextType {
 	player: ReturnType<typeof useAudioPlayer>;
@@ -17,6 +18,7 @@ const AudioContext = createContext<AudioContextType | null>(null);
 export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	const [isPlaying, setIsPlaying] = useState(false);
 	const player = useAudioPlayer(audioSource);
+	const { isMusicMuted, musicVolume } = useSettingsStore();
 
 	useEffect(() => {
 		if (player.playing) {
@@ -26,13 +28,23 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 		}
 	}, [player.playing]);
 
+	useEffect(() => {
+		if (player) {
+			console.log('Setting Music Player Settings', isMusicMuted);
+			if (isMusicMuted) {
+				player.pause();
+			} else {
+				player.play();
+			}
+		}
+	}, [isMusicMuted, player]);
+
 	// Set up the player once
 	useEffect(() => {
 		if (!player) return;
 
 		try {
 			player.loop = true;
-			player.volume = 0.5;
 
 			// Auto-play on mobile (non-web)
 			if (Platform.OS !== 'web') {
@@ -54,6 +66,19 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 			}
 		};
 	}, [player]);
+
+	useEffect(() => {
+		if (player) {
+			if (isMusicMuted) {
+				player.pause();
+			} else {
+				player.volume = musicVolume;
+				if (!player.playing) {
+					player.play();
+				}
+			}
+		}
+	}, [isMusicMuted, musicVolume, player]);
 
 	const togglePlayPause = async () => {
 		try {
