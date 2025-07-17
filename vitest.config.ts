@@ -5,6 +5,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	plugins: [react()],
+	esbuild: {
+		target: 'es2020',
+	},
 	test: {
 		// Use jsdom environment for component tests (React Native components can be tested in jsdom)
 		environment: 'jsdom',

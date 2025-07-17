@@ -1,6 +1,5 @@
 {
 	"name": "ai-dnd-expo",
-	"type": "module",
 	"expo": {
 		"doctor": {
 			"reactNativeDirectoryCheck": {
