@@ -5,406 +5,189 @@ fileMatchPattern: ['**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/*.spec.t
 
 # Testing Guidelines
 
-**IMPORTANT** To run the tests, use `npm run test`. To run an *individual test suite* use `npm run test <filename>`
+**IMPORTANT** To run the tests, use `npm run test:all`. For individual test suites use `npm run test <filename>`
 
-## Testing Philosophy
-- Use Playwright for comprehensive end-to-end testing of user journeys and cross-platform compatibility
-- Use Vitest for fast unit tests with mocking capabilities for isolated component and service testing
-- Prioritize E2E tests for critical user flows and AI integration points
-- Mock AI services consistently to ensure predictable test outcomes
-- Avoice using `vi.mock`, and instead use `vi.spyOn` within individual `beforeEach` hooks
-- Keep all imports at the top level, and all mocks within `beforeEach` or `it` handlers
+## Mobile D&D Game Testing Philosophy
+- **Vitest**: Primary testing framework with 100% coverage requirement
+- **Mobile-First**: Test touch interactions and mobile-specific D&D gameplay
+- **AI Integration**: Mock Cactus Compute services for predictable D&D scenarios
+- **Fallback Testing**: Test offline AI fallbacks and rule-based responses
+- **D&D Mechanics**: Test dice rolling, character creation, and game state
 
 ## Testing Stack
-- **Playwright**: End-to-end testing framework with cross-browser and mobile device support
-- **Playwright MCP**: Enhanced browser automation with snapshot capabilities and debugging tools
-- **Vitest**: Fast unit testing framework with TypeScript support and mocking utilities
-- **MSW (Mock Service Worker)**: API mocking for AI services in both E2E and unit tests
+- **Vitest**: Fast unit testing with TypeScript support (dual config setup)
+- **@testing-library/react-native**: Mobile component testing
+- **MSW**: Mock Cactus Compute AI services for D&D scenarios
 
 ## Test Organization
 
-### File Structure
+### File Structure (Mobile-First)
 ```
 tests/
-├── e2e/                          # Playwright E2E tests
-│   ├── character-creation.spec.ts
-│   ├── game-continuation.spec.ts
-│   ├── dm-interaction.spec.ts
-│   ├── character-sheet.spec.ts
-│   ├── dice-rolling.spec.ts
-│   ├── voice-features.spec.ts
-│   ├── error-handling.spec.ts
-│   └── performance.spec.ts
 ├── unit/                         # Vitest unit tests
-│   ├── components/               # Component unit tests
-│   ├── hooks/                    # Hook unit tests
-│   ├── services/                 # Service unit tests
-│   └── utils/                    # Utility function tests
-├── fixtures/                     # Test data and fixtures
+│   ├── components/               # D&D UI component tests
+│   ├── hooks/                    # AI integration hook tests
+│   ├── services/                 # Cactus Compute service tests
+│   └── utils/                    # D&D utility function tests
+├── fixtures/                     # D&D test data
 │   ├── characters.json
 │   ├── game-states.json
-│   └── mock-responses.json
-├── page-objects/                 # Page Object Model classes
-│   ├── HomePage.ts
-│   ├── NewGamePage.ts
-│   ├── GamePage.ts
-│   └── CharacterSheetModal.ts
-├── utils/                        # Test utilities and helpers
+│   └── mock-ai-responses.json
+├── utils/                        # Test utilities
 │   ├── test-helpers.ts
-│   ├── mock-services.ts
-│   ├── data-generators.ts
-│   └── assertions.ts
+│   ├── mock-cactus-services.ts
+│   └── d&d-data-generators.ts
 └── config/                       # Test configuration
-    ├── playwright.config.ts
     ├── vitest.config.ts
-    └── test-environments.ts
+    └── vitest.services.config.ts
 ```
 
-### Naming Conventions
-- E2E test files: `feature-name.spec.ts`
-- Unit test files: `component-name.test.ts`
-- Page objects: `PageName.ts` (PascalCase)
-- Mock files: `service-name.mock.ts`
-- Test utilities: `test-helpers.ts`
-
-## End-to-End Testing with Playwright
-
-### Page Object Model Pattern
-```typescript
-// page-objects/GamePage.ts
-export class GamePage {
-  constructor(private page: Page) {}
-
-  async sendMessageToDM(message: string): Promise<void> {
-    await this.page.fill('[data-testid="chat-input"]', message);
-    await this.page.click('[data-testid="send-button"]');
-  }
-
-  async waitForDMResponse(): Promise<string> {
-    const response = await this.page.waitForSelector('[data-testid="dm-response"]');
-    return await response.textContent() || '';
-  }
-
-  async openCharacterSheet(): Promise<void> {
-    await this.page.click('[data-testid="character-sheet-button"]');
-    await this.page.waitForSelector('[data-testid="character-sheet-modal"]');
-  }
-}
+### Key Test Commands
+```bash
+npm run test:all                  # All tests with coverage
+npm run test:services             # AI service tests
+npm run test:watch                # Watch mode for development
 ```
 
-### E2E Test Example
-```typescript
-// e2e/character-creation.spec.ts
-import { test, expect } from '@playwright/test';
-import { NewGamePage } from '../page-objects/NewGamePage';
-import { testCharacter } from '../fixtures/characters.json';
+## D&D Mobile Game Testing Patterns
 
-test.describe('Character Creation Flow', () => {
-  test('should create a new character successfully', async ({ page }) => {
-    const newGamePage = new NewGamePage(page);
-    
-    await newGamePage.navigate();
-    await newGamePage.selectWorld('Forgotten Realms');
-    await newGamePage.selectRace('Human');
-    await newGamePage.selectClass('Fighter');
-    await newGamePage.enterCharacterDetails(testCharacter.name, testCharacter.background);
-    
-    await newGamePage.startGame();
-    
-    // Verify character was created and game started
-    await expect(page.locator('[data-testid="game-canvas"]')).toBeVisible();
-    await expect(page.locator('[data-testid="character-name"]')).toHaveText(testCharacter.name);
-  });
-});
-```
-
-### Cross-Platform Testing
-```typescript
-// playwright.config.ts
-export default defineConfig({
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-    {
-      name: 'mobile-chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'mobile-safari',
-      use: { ...devices['iPhone 12'] },
-    },
-  ],
-});
-```
-
-## Unit Testing with Vitest
-
-### Component Testing
+### Component Testing Example
 ```typescript
 // unit/components/character-sheet-modal.test.tsx
-import { render, screen } from '@testing-library/react';
-import { vi } from 'vitest';
+import { render, screen } from '@testing-library/react-native';
 import { CharacterSheetModal } from '@/components/character-sheet-modal';
 import { testCharacter } from '../../fixtures/characters.json';
 
 describe('CharacterSheetModal', () => {
-  it('should display character information correctly', () => {
-    const mockOnClose = vi.fn();
-    
+  it('should display D&D character information', () => {
     render(
       <CharacterSheetModal 
         character={testCharacter} 
         visible={true} 
-        onClose={mockOnClose} 
+        onClose={vi.fn()} 
       />
     );
     
-    expect(screen.getByText(testCharacter.name)).toBeInTheDocument();
-    expect(screen.getByText(testCharacter.class)).toBeInTheDocument();
-    expect(screen.getByText(testCharacter.race)).toBeInTheDocument();
+    expect(screen.getByText(testCharacter.name)).toBeOnTheScreen();
+    expect(screen.getByText(testCharacter.class)).toBeOnTheScreen();
+    expect(screen.getByText(testCharacter.race)).toBeOnTheScreen();
   });
 });
 ```
 
-### Hook Testing
+### AI Service Testing
 ```typescript
-// unit/hooks/use-game-state.test.ts
-import { renderHook, act } from '@testing-library/react';
+// unit/services/cactus-provider.test.ts
 import { vi } from 'vitest';
-import { useGameState } from '@/hooks/use-game-state';
-import { testCharacter } from '../../fixtures/characters.json';
+import { CactusProvider } from '@/services/ai/providers/cactus-provider';
 
-describe('useGameState', () => {
-  it('should update character state correctly', () => {
-    const { result } = renderHook(() => useGameState());
+describe('CactusProvider', () => {
+  it('should handle AI failures with D&D fallbacks', async () => {
+    const provider = new CactusProvider();
     
-    act(() => {
-      result.current.updateCharacter(testCharacter);
-    });
+    // Mock Cactus service failure
+    vi.spyOn(provider, 'sendMessage').mockRejectedValue(new Error('Network error'));
     
-    expect(result.current.character).toEqual(testCharacter);
-    expect(result.current.isLoading).toBe(false);
-  });
-});
-```
-
-### Service Testing
-```typescript
-// unit/services/ai-service-manager.test.ts
-import { vi } from 'vitest';
-import { AIServiceManager } from '@/services/ai/ai-service-manager';
-import { mockDungeonMasterResponse } from '../utils/mock-services';
-
-describe('AIServiceManager', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('should handle AI service failures gracefully', async () => {
-    const aiService = new AIServiceManager();
-    
-    // Mock AI service failure
-    vi.spyOn(aiService, 'sendMessage').mockRejectedValue(new Error('Service unavailable'));
-    
-    const response = await aiService.getDMResponse('Hello');
+    const response = await provider.getDMResponse('Hello DM');
     
     expect(response.fallback).toBe(true);
-    expect(response.message).toContain('temporarily unavailable');
+    expect(response.message).toContain('DM is thinking');
   });
 });
 ```
 
-## AI Service Testing
+## Critical D&D Game Testing Areas
 
-### Mock AI Responses
+### D&D Mechanics Testing
 ```typescript
-// utils/mock-services.ts
-export const mockAIResponses = {
+// unit/hooks/use-dice-roller.test.ts
+import { renderHook, act } from '@testing-library/react';
+import { useDiceRoller } from '@/hooks/use-dice-roller';
+
+describe('useDiceRoller', () => {
+  it('should roll valid D20 results', () => {
+    const { result } = renderHook(() => useDiceRoller());
+    
+    act(() => {
+      const roll = result.current.rollD20();
+      expect(roll).toBeGreaterThanOrEqual(1);
+      expect(roll).toBeLessThanOrEqual(20);
+    });
+  });
+});
+```
+
+### Character Creation Testing
+```typescript
+// unit/components/character-creation.test.tsx
+import { render, fireEvent, screen } from '@testing-library/react-native';
+import { CharacterCreationFlow } from '@/components/character-creation-flow';
+
+describe('CharacterCreationFlow', () => {
+  it('should create valid D&D character', () => {
+    render(<CharacterCreationFlow />);
+    
+    fireEvent.press(screen.getByText('Human'));
+    fireEvent.press(screen.getByText('Fighter'));
+    fireEvent.changeText(screen.getByPlaceholderText('Character Name'), 'TestHero');
+    
+    fireEvent.press(screen.getByText('Create Character'));
+    
+    expect(screen.getByText('TestHero')).toBeOnTheScreen();
+  });
+});
+```
+
+## AI Service Testing Requirements
+
+### Mock Cactus Compute Responses
+```typescript
+// utils/mock-cactus-services.ts
+export const mockCactusResponses = {
   dungeonMaster: {
     greeting: "Welcome to the tavern, adventurer!",
     combat: "Roll for initiative!",
     exploration: "You see a mysterious door ahead.",
     fallback: "The DM is thinking... (AI service temporarily unavailable)"
   },
-  npc: {
-    shopkeeper: "What can I help you find today?",
-    guard: "Halt! State your business.",
-    fallback: "The character seems distracted."
+  companion: {
+    recruitment: "I'd be honored to join your party!",
+    dialogue: "What's our next move?",
+    fallback: "Your companion seems distracted."
   }
 };
 
-export class MockAIService {
-  static setup(): void {
-    // Setup MSW handlers for AI endpoints
+export class MockCactusService {
+  static setupMSW(): void {
+    // Setup MSW handlers for Cactus endpoints
   }
   
-  static simulateFailure(): void {
-    // Configure MSW to return error responses
+  static simulateOffline(): void {
+    // Test offline fallback scenarios
   }
 }
 ```
 
-### AI Integration Testing
-```typescript
-// e2e/dm-interaction.spec.ts
-test('should handle AI service failures gracefully', async ({ page }) => {
-  // Setup mock to simulate AI service failure
-  await page.route('**/api/ai/dm', route => {
-    route.fulfill({ status: 500, body: 'Service unavailable' });
-  });
-  
-  const gamePage = new GamePage(page);
-  await gamePage.sendMessageToDM('Hello DM');
-  
-  // Verify fallback response is shown
-  const response = await gamePage.waitForDMResponse();
-  expect(response).toContain('temporarily unavailable');
-});
-```
+## Mobile D&D Testing Best Practices
 
-## Performance Testing
+### Required Testing Areas
+1. **AI Integration**: Test Cactus Compute + local fallbacks
+2. **D&D Mechanics**: Dice rolling, character creation, combat
+3. **Mobile UI**: Touch interactions, responsive design
+4. **Offline Mode**: Local AI and rule-based fallbacks
+5. **Performance**: Battery usage, network efficiency
 
-### Performance Monitoring
-```typescript
-// utils/performance-monitor.ts
-export class PerformanceMonitor {
-  static async measurePageLoad(page: Page): Promise<number> {
-    const startTime = Date.now();
-    await page.waitForLoadState('networkidle');
-    return Date.now() - startTime;
-  }
-  
-  static async measureAIResponseTime(page: Page): Promise<number> {
-    const startTime = Date.now();
-    await page.waitForSelector('[data-testid="dm-response"]');
-    return Date.now() - startTime;
-  }
-}
-```
-
-### Performance Tests
-```typescript
-// e2e/performance.spec.ts
-test('should load initial page within 3 seconds', async ({ page }) => {
-  const loadTime = await PerformanceMonitor.measurePageLoad(page);
-  expect(loadTime).toBeLessThan(3000);
-});
-```
-
-## Test Data Management
-
-### Test Fixtures
-```typescript
-// fixtures/test-data-generator.ts
-export class TestDataGenerator {
-  static generateCharacter(overrides?: Partial<Character>): Character {
-    return {
-      id: `test-${Date.now()}`,
-      name: 'Test Hero',
-      race: 'human',
-      class: 'fighter',
-      level: 1,
-      stats: { strength: 16, dexterity: 14, constitution: 15, intelligence: 10, wisdom: 12, charisma: 8 },
-      skills: ['athletics', 'intimidation'],
-      background: 'A brave test character',
-      ...overrides
-    };
-  }
-  
-  static generateGameState(): GameState {
-    return {
-      characters: [this.generateCharacter()],
-      playerCharacterId: 'test-character-1',
-      gameWorld: 'test-world',
-      startingArea: 'test-tavern',
-      sessionId: `session-${Date.now()}`
-    };
-  }
-}
-```
-
-## Continuous Integration
-
-### Test Commands
+### Testing Commands
 ```bash
-# E2E Tests
-npm run test:e2e              # Run all Playwright tests
-npm run test:e2e:headed       # Run with browser UI visible
-npm run test:e2e:debug        # Run in debug mode
-npm run test:e2e:report       # Generate and open HTML report
-
-# Unit Tests  
-npm run test:unit             # Run all Vitest tests
-npm run test:unit:watch       # Watch mode for development
-npm run test:unit:coverage    # Generate coverage report
-npm run test:unit:ui          # Run with Vitest UI
-
-# Combined
-npm run test                  # Run all tests (unit + e2e)
-npm run test:ci               # CI-optimized test run
+npm run test:all              # All tests with 100% coverage
+npm run test:services         # AI service tests
+npm run test:watch            # Development watch mode
+npm run typecheck             # TypeScript validation
+npm run lint                  # Code quality checks
 ```
 
-### CI/CD Integration
-```yaml
-# .github/workflows/tests.yml
-name: Tests
-on: [push, pull_request]
-jobs:
-  unit-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-      - run: npm ci
-      - run: npm run test:unit
-      
-  e2e-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-      - run: npm ci
-      - run: npx playwright install
-      - run: npm run test:e2e
-      - uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: playwright-report
-          path: playwright-report/
-```
-
-## Testing Best Practices
-
-### E2E Testing Best Practices
-- Use data-testid attributes for reliable element selection
-- Implement Page Object Model for maintainable test code
-- Test complete user journeys, not individual components
-- Use Playwright MCP snapshots for dynamic element identification
-- Mock external services but test real user interactions
-- Capture screenshots and videos for failed tests
-
-### Unit Testing Best Practices
-- Test behavior, not implementation details
-- Use descriptive test names that explain the scenario
-- Mock external dependencies and focus on the unit under test
-- Test edge cases and error conditions
-- Keep tests fast and isolated
-- Use factories for generating test data
-
-### AI-Specific Testing Considerations
-- Always test fallback behavior when AI services fail
-- Mock AI responses to be deterministic and fast
-- Test rate limiting and retry logic
-- Verify proper error messaging to users
-- Test AI response parsing and validation
-- Monitor AI service performance and response times
+### AI Testing Requirements
+- Mock Cactus Compute services consistently
+- Test all fallback scenarios (local AI, rule-based)
+- Verify offline D&D gameplay functionality
+- Test mobile-specific AI performance optimizations

@@ -1,34 +1,26 @@
 # Product Overview
 
-## AI D&D Platform 🎲🤖
+## AI D&D Mobile Game 🎲🤖
 
-An open-source cross-platform application for playing Dungeons and Dragons with AI assistance. The platform enables both solo and multiplayer D&D experiences enhanced by intelligent AI agents.
+A mobile-first AI-powered Dungeons & Dragons game built on the [Callstack Incubator AI](https://github.com/callstackincubator/ai) template. Delivers immersive D&D experiences through intelligent AI agents powered by Cactus Compute.
 
 ### Core Features
 
-- **AI Dungeon Master**: Intelligent DM powered by Cactus + Gemma3 that creates dynamic stories and manages gameplay
-- **AI NPCs**: Fully voiced non-player characters with unique personalities  
-- **AI Players**: Optional AI companions for solo adventures or to fill party roles
-- **Voice Integration**: Text-to-speech and speech recognition for immersive gameplay
-- **Dynamic Content**: AI-generated images for characters, scenes, and items
-- **Cross-Platform**: Native iOS/Android apps plus web browser support
+- **AI Dungeon Master**: Intelligent DM using Cactus + Gemma3 for dynamic storytelling
+- **AI NPCs**: Voiced characters with unique personalities and conversation
+- **AI Companions**: Optional party members for solo adventures
+- **Voice Integration**: Speech recognition and text-to-speech for immersive gameplay
+- **Mobile-First Design**: Optimized touch interface for D&D gameplay
 
-### Play Modes
+### Primary Platform
 
-- **Solo Mode**: Play alone with AI companions and DM
-- **Multiplayer Mode**: Play with friends, optionally with AI assistance  
-- **Hybrid Mode**: Mix human and AI players seamlessly
+- ✅ **Mobile** (iOS & Android) - Primary focus
+- ✅ **Web** - Development and backup platform
+- 🔄 **Desktop** - Future consideration
 
-### Target Platforms
+### Technical Foundation
 
-- ✅ iOS (iPhone & iPad)
-- ✅ Android  
-- ✅ Web (Progressive Web App)
-- 🔄 Desktop (future: Electron)
-
-### Key Differentiators
-
-- Intelligent fallback strategies when AI services are unavailable
-- Rich media integration with voice synthesis and image generation
-- Modern, responsive interface optimized for mobile and desktop
-- Open-source with AI-assisted development workflow
+- **Base**: Callstack Incubator AI template
+- **AI Provider**: Cactus Compute with Gemma3
+- **Framework**: React Native + Expo
+- **Fallbacks**: Local AI models + rule-based responses

@@ -4,7 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an AI-powered Dungeons & Dragons platform built with React Native/Expo. The project enables players to experience D&D with AI-powered Dungeon Masters, NPCs, and companion characters. It features voice synthesis via Resemble.ai and dynamic image generation through Flux.dev, supporting both solo and multiplayer gameplay across mobile, web, and future desktop platforms.
+This is an AI-powered Dungeons & Dragons platform built with React Native/Expo, based on the [Callstack Incubator AI template](https://github.com/callstackincubator/ai). The project enables players to experience D&D with AI-powered Dungeon Masters, NPCs, and companion characters. It features voice synthesis and dynamic content generation, supporting both solo and multiplayer gameplay across mobile, web, and future desktop platforms.
+
+### Key Technologies
+
+- **Cactus Compute**: Distributed compute network for AI model inference
+- **Gemma3**: Google's instruction-tuned language model for D&D gameplay
+- **React Native + Expo**: Cross-platform development framework
+- **Local AI Fallbacks**: On-device AI processing for offline functionality
 
 ## Development Commands
 
@@ -14,22 +21,33 @@ This is an AI-powered Dungeons & Dragons platform built with React Native/Expo. 
 - `npm run android` - Start with Android emulator
 - `npm run ios` - Start with iOS simulator
 - `npm run web` - Start web version
-- `npm run lint` - Run ESLint
+- `npm run lint` - Run ESLint with auto-fix
+- `npm run format` - Format code with Prettier
+- `npm run typecheck` - Run TypeScript type checking
+- `npm run check` - Run format, lint, typecheck, and expo-doctor
 
-### Native Build Commands
+### Testing Commands
 
-- `npx expo run:android` - Build and run locally on Android
-- `npx expo run:ios` - Build and run locally on iOS
-- `npx expo prebuild` - Generate native code (for ejected projects)
-- `npx testflight` - Build and deploy to testflight
+- `npm run test` - Run main test suite (Vitest)
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Run tests with coverage report
+- `npm run test:services` - Run AI services tests separately
+- `npm run test:services:watch` - Run services tests in watch mode
+- `npm run test:all` - Run all test suites
+- `npm run test:all:coverage` - Run all tests with coverage
 
-### Project Reset
+### Build Commands
+
+- `npm run build:development` - Build development version with EAS
+- `npm run build:staging` - Build staging version
+- `npm run build:production` - Build production version
+- `npm run deploy:development` - Deploy to development environment
+- `npm run deploy:staging` - Deploy to staging environment
+- `npm run deploy:production` - Deploy to production environment
+
+### Project Management
 
 - `npm run reset-project` - Moves current app to app-example and creates blank app directory
-
-### Type Checking
-
-- `npx tsc` - Run TypeScript type checking without compilation
 
 ## Architecture
 
@@ -37,121 +55,196 @@ This is an AI-powered Dungeons & Dragons platform built with React Native/Expo. 
 
 - Uses Expo Router for navigation with automatic deep linking
 - Route files are in `/app` directory - adding a file automatically creates a route
-- `(tabs)` directory creates a tab navigator
 - `_layout.tsx` files define nested layouts
 - Supports lazy-evaluation and deferred bundling
 - Universal navigation across Android, iOS, and web platforms
 
 ### Key Directories
 
-- `/app` - Route components and layouts
+- `/app` - Route components and layouts (file-based routing)
 - `/components` - Reusable UI components
 - `/hooks` - Custom React hooks
-- `/constants` - App constants (Colors, etc.)
-- `/assets` - Static assets (images, fonts)
-- `/services` - API services and AI integrations (to be created)
-- `/types` - TypeScript type definitions (to be created)
-- `/utils` - Utility functions (to be created)
+- `/constants` - App constants (Colors, classes, races, etc.)
+- `/assets` - Static assets (images, fonts, audio)
+- `/services` - API services and AI integrations
+- `/types` - TypeScript type definitions
+- `/styles` - Shared styling and theme definitions
+- `/stores` - Zustand state management
+- `/tests` - Test files organized by type (unit, integration, fixtures)
+
+### AI Services Architecture
+
+The project has a sophisticated AI services layer:
+
+```
+services/
+├── ai/
+│   ├── agents/          # AI agent implementations (DM, Local DM)
+│   ├── models/          # Device-specific AI models and optimization
+│   ├── providers/       # AI service providers (OpenAI, Anthropic, Local)
+│   └── tools/           # AI tools (dice roller, character updater, etc.)
+├── character-voice-*    # Voice synthesis and character voice management
+└── world-generator.ts   # Dynamic world generation
+```
+
+### Testing Architecture
+
+The project uses a dual-config testing approach:
+
+- **Main tests** (`vitest.config.ts`): Components, hooks, UI logic
+- **Services tests** (`vitest.services.config.ts`): AI services, complex business logic
+- **100% coverage requirement** for all code
+- Comprehensive test setup with mocks and fixtures
 
 ### Theming System
 
 - Light/dark mode support via `useColorScheme` hook
 - Colors defined in `/constants/colors.ts`
 - `ThemedText` and `ThemedView` components for theme-aware UI
-- `useThemeColor` hook for accessing theme colors
+- DnD-specific theme system in `/styles/dnd-theme.ts`
 
-### Component Patterns
+## Key Features
+
+### AI Integration
+
+- **Dungeon Master AI**: Comprehensive AI DM powered by Cactus Compute + Gemma3
+- **Companion System**: Tavern-based companion recruitment and management
+- **Voice Chat**: Real-time speech recognition and text-to-speech
+- **Local AI Models**: On-device AI processing with Gemma3 and ONNX for offline scenarios
+- **Device Optimization**: Battery-aware AI model management
+- **Intelligent Fallbacks**: Rule-based responses when AI services are unavailable
+
+### Game Features
+
+- **Character Creation**: Full D&D 5e character creation with races, classes, skills
+- **Dynamic UI**: Location-aware quick actions and context-sensitive interfaces
+- **Game Canvas**: Multiple rendering options (SVG, Skia, standard Canvas)
+- **State Management**: Persistent game state with Zustand
+- **Audio System**: Background music with user controls
+
+### Cross-Platform Support
+
+- **Mobile**: iOS and Android with native optimizations
+- **Web**: Progressive Web App capabilities
+- **Universal**: Shared codebase with platform-specific optimizations
+
+## Development Patterns
+
+### Component Architecture
 
 - Themed components extend base React Native components with light/dark color props
 - Uses `@/` path alias for absolute imports
 - Platform-specific styling with `Platform.select()`
+- Comprehensive prop interfaces and TypeScript strict mode
 
-## Key Files
+### State Management
 
-- `app/_layout.tsx` - Root layout with theme provider
-- `app/(tabs)/_layout.tsx` - Tab navigation layout
-- `components/themed-text.tsx` & `components/themed-view.tsx` - Core themed components
-- `hooks/use-theme-colors.ts` - Theme color resolution
-- `constants/colors.ts` - Color definitions
-- `tsconfig.json` - TypeScript config with path aliases
+- **Zustand** for global state (settings, game state)
+- **React Context** for provider-based state (audio, input mode)
+- **Local Storage** integration for persistence
+- **Async Storage** for mobile-specific data
+
+### AI Service Integration
+
+- Service layer abstracts AI providers (Cactus Compute, Local AI models)
+- Tool calling system for AI agent capabilities
+- Context management for conversation history
+- Response quality filtering and optimization
+- Intelligent fallback mechanisms with rule-based responses
+
+## Important Files
+
+- `app/_layout.tsx` - Root layout with theme provider and global components
+- `constants/` - All game data (classes, races, skills, locations, etc.)
+- `hooks/use-enhanced-dungeon-master.ts` - Main DM AI integration
+- `hooks/use-simple-companions.ts` - Companion management system
+- `components/turn-based-chat.tsx` - Main chat interface
+- `components/tavern-companion-recruitment.tsx` - Companion recruitment system
+- `services/ai/` - Core AI service implementations
+- `AI-INSTRUCTIONS.md` - Comprehensive AI development guidelines
+- `TODO.md` - Detailed development roadmap
 
 ## Development Notes
 
-- Uses Expo SDK ~53.0.17 with React Native 0.79.5
+### Environment Setup
+
+- Uses Expo SDK ~53.0.19 with React Native 0.79.5
 - TypeScript strict mode enabled
-- ESLint configured with Expo config
-- Font loading handled in root layout
-- Platform-specific code supported via file extensions (.ios.tsx, .web.ts)
+- ESLint configured with Expo config and Prettier
+- Vitest for testing with jsdom environment
+- EAS Build for cloud builds and deployments
 
-## Expo Workflow Considerations
+### AI Development Context
 
-### Development Approaches
+- **Cactus Compute**: Primary AI inference provider for distributed AI processing
+- **Gemma3**: Google's instruction-tuned language model optimized for D&D
+- **@cactus-compute/client**: Official client library for Cactus integration
+- **Local AI Models**: On-device AI processing with Gemma3 and ONNX for fallback scenarios
+- **Intelligent Fallbacks**: Rule-based responses when AI services are unavailable
 
-- **Expo Go**: Good for quick prototyping and testing simple features
-- **Development Builds**: Required for native libraries, custom configurations, or production-ready testing
-- **Local Development**: Use `npx expo run:[android|ios]` for local compilation
-- **Cloud-Based**: Use EAS Build for cloud compilation without local native tooling
+### TypeScript Configuration
 
-### When to Use Development Builds
+- Strict mode enabled with comprehensive path aliases
+- Extends `expo/tsconfig.base` configuration
+- Path aliases for all major directories (`@/components/*`, `@/hooks/*`, etc.)
+- Type definitions in `/types` directory
 
-- Need native libraries not included in Expo Go
-- Testing app-specific configurations (icons, splash screens)
-- Implementing push notifications or universal links
-- Production-ready development environment
+### Key Conventions
 
-### TypeScript Best Practices
+- Use `@/` imports for all internal modules
+- Components use themed props for dark/light mode
+- AI services follow provider pattern with common interfaces
+- Test files use `.test.tsx` extension and are co-located or in `/tests`
+- Comprehensive error handling for AI service failures
+- Always implement intelligent fallbacks for AI service unavailability
 
-- Use `.tsx` for React components, `.ts` for non-JSX files
-- Leverage path aliases (`@/*`) for cleaner imports
-- Run `npx tsc` for type checking
-- Extend `expo/tsconfig.base` configuration
+### Performance Considerations
 
-### ESLint Configuration
+- AI response caching and optimization
+- Battery-aware model management for mobile
+- Lazy loading for large components
+- Optimized bundle splitting for web
 
-- Uses Flat config format (SDK 53+)
-- Extends `eslint-config-expo`
-- Add `.eslintignore` for performance optimization
-- Consider adding Prettier integration for consistent formatting
+## Working Features
 
-## AI D&D Platform Context
+The following features are fully implemented and working:
 
-### Core AI Services Integration
+- **Tavern Companion Recruitment**: Complete companion system with AI-generated characters
+- **Enhanced Dungeon Master**: AI DM with tool calling and context awareness
+- **Voice Chat Integration**: Real-time speech recognition and synthesis
+- **Location-aware UI**: Context-sensitive quick actions based on current location
+- **Character Management**: Full character creation and progression system
+- **Game State Persistence**: Saves and loads game state across sessions
 
-- **Resemble.ai**: Voice synthesis for character dialogue and narration
-- **Flux.dev**: Dynamic image generation for characters, scenes, and items
-- **OpenAI/Anthropic**: Conversation AI for DM, NPCs, and player companions
-- **Custom AI**: D&D rule enforcement and game mechanics
+## Development Workflow
 
-### Key AI Agent Types
+1. **Type Checking**: Always run `npm run typecheck` before committing
+2. **Linting**: Use `npm run lint` to fix code style issues
+3. **Testing**: Run `npm run test:all` to ensure all tests pass
+4. **Coverage**: Maintain 100% test coverage as configured
+5. **AI Services**: Test AI integrations with `npm run test:services`
 
-1. **Dungeon Master AI**: Story generation, world management, rule enforcement
-2. **NPC AI**: Character dialogue, personality simulation, voice synthesis
-3. **Player Character AI**: Companion characters for solo play
-4. **Rule Advisor AI**: D&D 5e rule lookup and mechanics assistance
+When implementing new features:
+1. Add TypeScript interfaces in `/types`
+2. Create tests first (TDD approach)
+3. Implement feature with proper error handling
+4. Add AI integration with Cactus Compute + intelligent fallbacks
+5. Update documentation as needed
 
-### Development Priorities
+### Environment Configuration
 
-- Implement AI service integrations in `/services/ai/`
-- Create D&D 5e rule engine in `/services/game/`
-- Build character management system
-- Develop real-time multiplayer infrastructure
-- Integrate voice and image generation APIs
+Required environment variables:
+```bash
+EXPO_PUBLIC_CACTUS_API_KEY=your_api_key_here
+EXPO_PUBLIC_CACTUS_ENDPOINT=https://api.cactus-compute.com
+EXPO_PUBLIC_CACTUS_MODEL=gemma-3-2b-instruct
+```
 
-### Important Files for AI Development
+### AI Service Implementation Pattern
 
-- `AI-INSTRUCTIONS.md` - Comprehensive AI development guidelines
-- `TODO.md` - Detailed development roadmap and feature planning
-- `OVERNIGHT-PROGRESS.md` - Status of overnight development work (cleaned up)
-- `COMPANION-DEMO.md` - Working tavern companion recruitment system
-- `/components/tavern-companion-recruitment.tsx` - Functional companion system
-- `/hooks/use-simple-companions.ts` - Companion management logic
-- Future: `/services/ai/agents/` - AI agent implementations
-- Future: `/services/ai/prompts/` - Prompt templates and management
-
-### Current Working Features
-
-- **Tavern Companion Recruitment** - Fully integrated with DM chat interface
-- **Location-aware Quick Actions** - Context-sensitive DM chat buttons
-- **Companion Management** - Party system with persistence
-- **Voice Chat** - Real-time speech recognition and TTS
-- **DM Agent** - AI-powered dungeon master with tool calling
+When adding AI features:
+1. Use Cactus Compute as primary AI provider
+2. Implement local AI models as fallback
+3. Add rule-based responses for complete offline support
+4. Include proper error handling and retry logic
+5. Test all fallback scenarios thoroughly
