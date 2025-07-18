@@ -13,7 +13,7 @@ export const CharacterSchema = z.object({
 	stats: StatBlockSchema,
 	skills: z.array(z.string()),
 	inventory: z.array(z.any()), // TODO: Define proper inventory schema
-	equipped: z.record(GearSlotSchema, z.string().nullable()),
+	equipped: z.object({}).catchall(z.string().nullable()).optional(),
 	health: z.number().int(),
 	maxHealth: z.number().int(),
 	actionPoints: z.number().int(),

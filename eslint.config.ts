@@ -202,7 +202,7 @@ export default defineConfig([
 	},
 	{
 		files: ['tests/**/*.{ts,tsx}', '**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
-		ignores: ['**/vitest.setup.ts'],
+		ignores: ['**/vitest.setup.ts', '**/vitest.services.setup.ts', '**/tests/setup/*.ts'],
 		rules: {
 			'no-restricted-syntax': [
 				'error',

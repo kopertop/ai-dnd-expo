@@ -4,6 +4,35 @@ import { vi } from 'vitest';
 // Note: Individual test files should use vi.mock() calls in beforeEach hooks
 // This file provides global setup for service tests
 
+// Define React Native globals
+global.__DEV__ = true;
+
+// Mock Expo modules
+vi.mock('expo-modules-core', () => {
+	return {
+		default: {},
+		NativeModulesProxy: {},
+		EventEmitter: {
+			addListener: vi.fn(),
+			removeAllListeners: vi.fn(),
+		},
+		Platform: {
+			OS: 'ios',
+		},
+	};
+});
+
+// Mock expo-file-system
+vi.mock('expo-file-system', () => ({
+	documentDirectory: '/mock/document/directory/',
+	cacheDirectory: '/mock/cache/directory/',
+	readAsStringAsync: vi.fn().mockResolvedValue(''),
+	writeAsStringAsync: vi.fn().mockResolvedValue(undefined),
+	deleteAsync: vi.fn().mockResolvedValue(undefined),
+	getInfoAsync: vi.fn().mockResolvedValue({ exists: true, isDirectory: false }),
+	makeDirectoryAsync: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Mock React Native
 vi.mock('react-native', () => ({
 	Platform: {

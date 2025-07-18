@@ -10,7 +10,7 @@ import { generateWorldForGameState } from '../services/world-generator';
 import { GameStatusBar } from '@/components/game-status-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { TurnBasedChat } from '@/components/turn-based-chat';
+import { DMTranscriptChat } from '@/components/dm-transcript-chat';
 import { useDungeonMaster } from '@/hooks/use-dungeon-master';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { GameWorldState, Position } from '@/types/world-map';
@@ -315,25 +315,16 @@ const GameScreen: React.FC = () => {
 			{/* Character sheet modal */}
 			<CharacterSheetModal visible={showSheet} onClose={() => setShowSheet(false)} />
 
-			{/* Turn-Based Chat */}
-			<TurnBasedChat
+			{/* DM Transcript Chat */}
+			<DMTranscriptChat
 				playerCharacter={playerCharacter || null}
 				dmMessages={dmAgent.messages}
 				onSendMessage={handleChatMessage}
+				onVoiceMessage={dmAgent.sendVoiceMessage}
 				activeCharacter={activeCharacter}
 				onTurnChange={handleTurnChange}
 				isLoading={dmAgent.isLoading}
 			/>
-
-			{/* Voice Chat Button */}
-			{/*
-			<VoiceChatButton
-				onVoiceInput={dmAgent.sendVoiceMessage}
-				isDisabled={dmAgent.isLoading}
-				position={isMobile ? 'bottom-right' : 'top-right'}
-				onTranscriptChange={handleTranscriptChange}
-			/>
-			*/}
 
 			{/* Save error feedback */}
 			{saveError && (
