@@ -5,7 +5,6 @@
  * Integrates Cactus + Gemma3 as primary, with local fallbacks
  */
 
-import { CactusAIProvider, DnDSystemPrompts } from './providers/cactus-provider';
 import {
 	DefaultLocalDMConfig,
 	LocalDMModelConfigs,
@@ -73,7 +72,7 @@ export interface GameContextState {
 }
 
 export class AIServiceManager {
-	private cactusProvider: CactusAIProvider | null = null;
+	private appleAIProvider: any | null = null;
 	private localDMProvider: LocalDMProvider | null = null;
 	private config: AIServiceConfig;
 	private responseCache = new Map<string, AIResponse>();
@@ -105,21 +104,15 @@ export class AIServiceManager {
 		}
 
 		try {
-			this.cactusProvider = new CactusAIProvider({
-				modelPath: this.config.cactus.modelPath,
-				contextSize: this.config.cactus.contextSize || 2048,
-				maxTokens: 150,
-				temperature: 0.7,
-				timeout: this.config.performance.timeout,
-			});
+			this.appleAIProvider = new AppleAIProvider();
 
-			// Initialize the model
-			this.isHealthy = await this.cactusProvider.initialize();
+			// Check if Apple Intelligence is available
+			this.isHealthy = this.appleAIProvider.isReady();
 			if (!this.isHealthy) {
-				console.warn('🌵 Cactus provider failed to initialize');
+				console.warn('🍎 Apple Intelligence not available on this device');
 			}
 		} catch (error) {
-			console.error('Failed to initialize Cactus provider:', error);
+			console.error('Failed to initialize Apple AI provider:', error);
 			this.isHealthy = false;
 		}
 	}
@@ -224,14 +217,14 @@ export class AIServiceManager {
 		startTime: number,
 	): Promise<AIResponse | null> {
 		switch (providerType) {
-		case 'local':
-			return await this.tryLocalProvider(prompt, context, startTime);
-		case 'cactus':
-			return await this.tryCactusProvider(prompt, context, startTime);
-		case 'rule-based':
-			return await this.tryRuleBasedProvider(prompt, context, startTime);
-		default:
-			throw new Error(`Unknown provider type: ${providerType}`);
+			case 'local':
+				return await this.tryLocalProvider(prompt, context, startTime);
+			case 'cactus':
+				return await this.tryCactusProvider(prompt, context, startTime);
+			case 'rule-based':
+				return await this.tryRuleBasedProvider(prompt, context, startTime);
+			default:
+				throw new Error(`Unknown provider type: ${providerType}`);
 		}
 	}
 
@@ -277,7 +270,7 @@ export class AIServiceManager {
 	}
 
 	/**
-	 * Try Cactus Provider
+	 * Try Apple AI Provider
 	 */
 	private async tryCactusProvider(
 		prompt: string,
@@ -290,18 +283,22 @@ export class AIServiceManager {
 		},
 		startTime: number,
 	): Promise<AIResponse | null> {
-		if (!this.cactusProvider || !this.isHealthy || !this.config.cactus.enabled) {
+		if (!this.appleAIProvider || !this.isHealthy || !this.config.cactus.enabled) {
 			return null;
 		}
 
 		const response = await this.tryWithRetry(async () => {
-			if (!this.cactusProvider) {
-				throw new Error('Cactus provider not available');
+			if (!this.appleAIProvider) {
+				throw new Error('Apple AI provider not available');
 			}
-			return await this.cactusProvider.generateDnDResponse({
-				prompt,
-				context,
-				systemPrompt: DnDSystemPrompts.DUNGEON_MASTER,
+			return await this.appleAIProvider.generateDnDResponse(prompt, {
+				playerName: context.playerName,
+				playerClass: context.playerClass,
+				playerRace: context.playerRace,
+				currentScene: context.currentScene,
+				gameHistory: context.gameHistory,
+				playerHealth: 100,
+				playerLevel: 1,
 			});
 		});
 
@@ -309,8 +306,8 @@ export class AIServiceManager {
 			text: response.text,
 			confidence: 0.9,
 			source: 'cactus',
-			toolCommands: response.metadata?.toolCommands || [],
-			processingTime: Date.now() - startTime,
+			toolCommands: response.diceRoll ? [{ type: 'roll', params: response.diceRoll }] : [],
+			processingTime: response.processingTime,
 		};
 	}
 
@@ -473,11 +470,11 @@ export class AIServiceManager {
 		let localAvailable = false;
 		let localResourceUsage: ResourceUsage | undefined;
 
-		// Check Cactus provider
-		if (this.cactusProvider) {
+		// Check Apple AI provider
+		if (this.appleAIProvider) {
 			const start = Date.now();
 			try {
-				cactusAvailable = await this.cactusProvider.healthCheck();
+				cactusAvailable = await this.appleAIProvider.healthCheck();
 				cactusLatency = Date.now() - start;
 			} catch {
 				cactusAvailable = false;
@@ -543,10 +540,10 @@ export class AIServiceManager {
 			status?: import('./providers/local-dm-provider').ProviderStatus;
 		};
 		fallback: { enabled: boolean };
-		} {
+	} {
 		return {
 			cactus: {
-				initialized: !!this.cactusProvider,
+				initialized: !!this.appleAIProvider,
 				healthy: this.isHealthy,
 			},
 			local: {
@@ -583,10 +580,10 @@ export class AIServiceManager {
 	private async performHealthChecks(): Promise<void> {
 		const now = Date.now();
 
-		// Check Cactus provider health
-		if (this.cactusProvider && this.config.cactus.enabled) {
+		// Check Apple AI provider health
+		if (this.appleAIProvider && this.config.cactus.enabled) {
 			try {
-				const isHealthy = await this.cactusProvider.healthCheck();
+				const isHealthy = await this.appleAIProvider.healthCheck();
 				this.providerHealthStatus.cactus.healthy = isHealthy;
 				this.providerHealthStatus.cactus.lastCheck = now;
 
@@ -672,10 +669,10 @@ export class AIServiceManager {
 
 			// Reinitialize providers if needed
 			if (newConfig.cactus?.enabled !== undefined) {
-				if (newConfig.cactus.enabled && !this.cactusProvider) {
+				if (newConfig.cactus.enabled && !this.appleAIProvider) {
 					await this.initializeCactusProvider();
-				} else if (!newConfig.cactus.enabled && this.cactusProvider) {
-					this.cactusProvider = null;
+				} else if (!newConfig.cactus.enabled && this.appleAIProvider) {
+					this.appleAIProvider = null;
 					this.isHealthy = false;
 				}
 			}
@@ -710,7 +707,7 @@ export class AIServiceManager {
 		cactus: { healthy: boolean; lastCheck: number; consecutiveFailures: number };
 		local: { healthy: boolean; lastCheck: number; consecutiveFailures: number };
 		optimal: 'local' | 'cactus' | 'fallback';
-		} {
+	} {
 		return {
 			...this.providerHealthStatus,
 			optimal: this.getOptimalProvider(),
@@ -997,7 +994,7 @@ export class AIServiceManager {
 			this.localDMProvider = null;
 		}
 
-		this.cactusProvider = null;
+		this.appleAIProvider = null;
 		this.isHealthy = false;
 		this.isLocalReady = false;
 	}

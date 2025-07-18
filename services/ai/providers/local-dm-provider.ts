@@ -220,7 +220,7 @@ export class LocalDMProvider implements ILocalDMProvider {
 				message: 'Initializing model session...',
 			});
 
-			// TODO: Initialize Cactus LM in task 2.1
+			// Initialize local AI model
 			// For now, simulate initialization
 			await this.simulateModelLoading(progressCallback);
 

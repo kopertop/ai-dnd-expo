@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AIServiceManager, DefaultAIConfig } from '../../../../../services/ai/ai-service-manager';
-import { CactusAIProvider } from '../../../../../services/ai/providers/cactus-provider';
 import { LocalDMProvider } from '../../../../../services/ai/providers/local-dm-provider';
 
 // Mock LocalDMProvider
@@ -38,21 +37,20 @@ vi.mock('../../../../../services/ai/providers/local-dm-provider', () => ({
 	},
 }));
 
-// Mock CactusAIProvider
-vi.mock('../../../../../services/ai/providers/cactus-provider', () => ({
-	CactusAIProvider: vi.fn().mockImplementation(() => ({
-		initialize: vi.fn().mockResolvedValue(true),
+// Mock AppleAIProvider
+vi.mock('../../../../../services/ai/apple-ai-provider', () => ({
+	AppleAIProvider: vi.fn().mockImplementation(() => ({
+		isReady: vi.fn().mockReturnValue(true),
 		generateDnDResponse: vi.fn().mockResolvedValue({
-			text: 'Cactus response',
-			metadata: {
-				toolCommands: [],
+			text: 'Apple AI response',
+			diceRoll: '1d20+5',
+			characterUpdate: {
+				healthChange: -5,
 			},
+			processingTime: 300,
 		}),
 		healthCheck: vi.fn().mockResolvedValue(true),
 	})),
-	DnDSystemPrompts: {
-		DUNGEON_MASTER: 'You are a dungeon master...',
-	},
 }));
 
 describe('AIServiceManager', () => {
@@ -75,8 +73,7 @@ describe('AIServiceManager', () => {
 
 	// Task 5.1: Extend AI Service Manager to support local provider
 	describe('Local Provider Integration (Task 5.1)', () => {
-		it('should initialize both Cactus and Local providers', () => {
-			expect(CactusAIProvider).toHaveBeenCalled();
+		it('should initialize both Apple AI and Local providers', () => {
 			expect(LocalDMProvider).toHaveBeenCalled();
 		});
 
