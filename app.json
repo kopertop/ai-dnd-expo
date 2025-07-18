@@ -32,7 +32,9 @@
 			"output": "static",
 			"favicon": "./assets/images/favicon.png"
 		},
-		"plugins": [],
+		"plugins": [
+			"expo-speech-recognition"
+		],
 		"experiments": {
 			"typedRoutes": true
 		},

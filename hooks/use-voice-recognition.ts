@@ -39,9 +39,23 @@ export const useVoiceRecognition = (
 
 	// Check if speech recognition is supported
 	useEffect(() => {
-		// For now, assume iOS has speech recognition support
-		setIsSupported(Platform.OS === 'ios');
-		console.log('🎤 Speech recognition support (iOS):', Platform.OS === 'ios');
+		const checkSpeechRecognitionSupport = async () => {
+			try {
+				// Check if we're on iOS and if the module is available
+				if (Platform.OS === 'ios') {
+					// Try to check if the module is available
+					const moduleAvailable = ExpoSpeechRecognitionModule !== undefined;
+					console.log('🎤 Speech recognition module available:', moduleAvailable);
+					setIsSupported(moduleAvailable);
+				} else {
+					setIsSupported(false);
+				}
+			} catch (err) {
+				console.log('🎤 Speech recognition not available:', err);
+				setIsSupported(false);
+			}
+		};
+		checkSpeechRecognitionSupport();
 	}, []);
 
 	/**
@@ -103,18 +117,25 @@ export const useVoiceRecognition = (
 				if (!granted) return;
 			}
 
+			// Try speech recognition first if supported
 			if (isSupported) {
-				// Use real iOS speech recognition
-				console.log('🎯 Using iOS speech recognition');
-				await startIOSSpeechRecognition();
+				try {
+					console.log('🎯 Attempting iOS speech recognition');
+					await startIOSSpeechRecognition();
+					console.log('📡 Setting isListening to true');
+					setIsListening(true);
+				} catch (speechErr) {
+					console.warn('Speech recognition failed, falling back to audio recording:', speechErr);
+					// Fall back to audio recording
+					await startAudioRecording();
+					setIsListening(true);
+				}
 			} else {
 				// Fallback to audio recording for unsupported platforms
 				console.log('🤖 Using fallback audio recording');
 				await startAudioRecording();
+				setIsListening(true);
 			}
-
-			console.log('📡 Setting isListening to true');
-			setIsListening(true);
 
 			// Set maximum duration timeout
 			const maxDuration = options.maxDuration || 60000; // 60 seconds default for better UX
@@ -125,27 +146,10 @@ export const useVoiceRecognition = (
 			const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
 			console.error('Voice recognition error:', errorMessage);
 			
-			// For simulator, don't treat initialization errors as failures
-			if (__DEV__ && errorMessage.includes('Failed to initialize recognizer')) {
-				console.warn('Voice recognition not available on simulator - using fallback');
-				setError(null); // Clear error state
-				// Use fallback audio recording instead
-				try {
-					await startAudioRecording();
-					setIsListening(true);
-					
-					// Set timeout for fallback
-					const maxDuration = options.maxDuration || 60000;
-					timeoutRef.current = setTimeout(() => {
-						stopListening();
-					}, maxDuration);
-				} catch (fallbackErr) {
-					setError('Voice input not available');
-					options.onError?.('Voice input not available');
-				}
-			} else {
-				setError(errorMessage);
-				options.onError?.(errorMessage);
+			// Only show error if we can't even do fallback recording
+			setError('Voice input not available');
+			if (options.onError) {
+				options.onError('Voice input not available');
 			}
 		}
 	}, [hasPermission, isListening, options, requestPermission]);
@@ -182,6 +186,11 @@ export const useVoiceRecognition = (
 		console.log('🎯 Starting iOS speech recognition...');
 
 		try {
+			// Check if module is available
+			if (!ExpoSpeechRecognitionModule) {
+				throw new Error('Speech recognition module not available');
+			}
+
 			// Request speech recognition permissions
 			const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
 			if (!granted) {
@@ -201,7 +210,8 @@ export const useVoiceRecognition = (
 			console.log('🎤 Speech recognition start() called');
 		} catch (err) {
 			console.error('❌ Failed to start speech recognition:', err);
-			setError('Failed to start speech recognition');
+			// Don't set error state - let it fall back to audio recording
+			throw err;
 		}
 	}, [options]);
 
