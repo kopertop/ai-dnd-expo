@@ -10,7 +10,7 @@ import { generateWorldForGameState } from '../services/world-generator';
 import { GameStatusBar } from '@/components/game-status-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { DMTranscriptChat } from '@/components/dm-transcript-chat';
+import { EnhancedChatUI } from '@/components/enhanced-chat-ui';
 import { useDungeonMaster } from '@/hooks/use-dungeon-master';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { GameWorldState, Position } from '@/types/world-map';
@@ -315,8 +315,8 @@ const GameScreen: React.FC = () => {
 			{/* Character sheet modal */}
 			<CharacterSheetModal visible={showSheet} onClose={() => setShowSheet(false)} />
 
-			{/* DM Transcript Chat */}
-			<DMTranscriptChat
+			{/* Enhanced Chat UI */}
+			<EnhancedChatUI
 				playerCharacter={playerCharacter || null}
 				dmMessages={dmAgent.messages}
 				onSendMessage={handleChatMessage}
