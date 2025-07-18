@@ -15,52 +15,29 @@
 			"bundleIdentifier": "org.coredumped.ai-dnd",
 			"infoPlist": {
 				"ITSAppUsesNonExemptEncryption": false,
-				"NSPhotoLibraryUsageDescription": "This app may request access to your photo library due to third-party libraries, but does not use your photos unless you explicitly choose to upload one."
+				"NSMicrophoneUsageDescription": "This app uses the microphone for voice-powered D&D gameplay",
+				"NSSpeechRecognitionUsageDescription": "This app uses speech recognition for voice commands in D&D gameplay"
 			}
 		},
 		"android": {
 			"adaptiveIcon": {
 				"foregroundImage": "./assets/images/adaptive-icon.png",
 				"backgroundColor": "#ffffff"
-			},
-			"edgeToEdgeEnabled": true,
-			"permissions": [
-				"android.permission.RECORD_AUDIO",
-				"android.permission.MODIFY_AUDIO_SETTINGS",
-				"android.permission.RECORD_AUDIO",
-				"android.permission.MODIFY_AUDIO_SETTINGS"
-			]
+			}
 		},
 		"web": {
 			"bundler": "metro",
 			"output": "static",
 			"favicon": "./assets/images/favicon.png"
 		},
-		"plugins": [
-			"expo-router",
-			[
-				"expo-splash-screen",
-				{
-					"image": "./assets/images/splash-icon.png",
-					"imageWidth": 200,
-					"resizeMode": "contain",
-					"backgroundColor": "#ffffff"
-				}
-			],
-			"expo-audio",
-			"expo-speech-recognition"
-		],
+		"plugins": [],
 		"experiments": {
 			"typedRoutes": true
 		},
 		"extra": {
-			"router": {},
 			"eas": {
 				"projectId": "f082f538-7adb-4504-a251-729b293f0cf6"
 			}
-		},
-		"updates": {
-			"url": "https://u.expo.dev/f082f538-7adb-4504-a251-729b293f0cf6"
 		}
 	}
 }

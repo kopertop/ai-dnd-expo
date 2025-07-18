@@ -54,6 +54,14 @@ const IndexScreen: React.FC = () => {
 					<ThemedText style={styles.settingsBtnText}>Settings</ThemedText>
 				</TouchableOpacity>
 
+				{/* Apple AI Demo button */}
+				<TouchableOpacity
+					style={styles.demoBtn}
+					onPress={() => router.push('/apple-ai-demo')}
+				>
+					<ThemedText style={styles.demoBtnText}>Apple AI Demo</ThemedText>
+				</TouchableOpacity>
+
 				{/* Licenses & Credits button */}
 				<TouchableOpacity
 					style={styles.licensesBtn}
@@ -120,6 +128,19 @@ const styles = StyleSheet.create({
 	},
 	settingsBtnText: {
 		color: '#3B2F1B',
+		fontWeight: 'bold',
+		fontSize: 16,
+	},
+	demoBtn: {
+		marginTop: 20,
+		backgroundColor: '#007AFF',
+		paddingVertical: 12,
+		paddingHorizontal: 32,
+		borderRadius: 8,
+		alignItems: 'center',
+	},
+	demoBtnText: {
+		color: '#fff',
 		fontWeight: 'bold',
 		fontSize: 16,
 	},
