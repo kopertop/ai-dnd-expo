@@ -10,7 +10,8 @@ import { generateWorldForGameState } from '../services/world-generator';
 import { GameStatusBar } from '@/components/game-status-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { EnhancedChatUI } from '@/components/enhanced-chat-ui';
+import { TranscriptOverlay } from '@/components/transcript-overlay';
+import { FloatingVoiceButton } from '@/components/floating-voice-button';
 import { useDungeonMaster } from '@/hooks/use-dungeon-master';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { GameWorldState, Position } from '@/types/world-map';
@@ -315,15 +316,19 @@ const GameScreen: React.FC = () => {
 			{/* Character sheet modal */}
 			<CharacterSheetModal visible={showSheet} onClose={() => setShowSheet(false)} />
 
-			{/* Enhanced Chat UI */}
-			<EnhancedChatUI
+			{/* Transcript Overlay */}
+			<TranscriptOverlay
 				playerCharacter={playerCharacter || null}
 				dmMessages={dmAgent.messages}
-				onSendMessage={handleChatMessage}
-				onVoiceMessage={dmAgent.sendVoiceMessage}
-				activeCharacter={activeCharacter}
-				onTurnChange={handleTurnChange}
 				isLoading={dmAgent.isLoading}
+				maxMessages={3}
+			/>
+
+			{/* Floating Voice Button */}
+			<FloatingVoiceButton
+				onVoiceInput={dmAgent.sendVoiceMessage}
+				isDisabled={dmAgent.isLoading}
+				activeCharacter={activeCharacter}
 			/>
 
 			{/* Save error feedback */}
