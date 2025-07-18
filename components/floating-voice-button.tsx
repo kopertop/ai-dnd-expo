@@ -48,7 +48,12 @@ export const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({
 		},
 		onError: error => {
 			console.error('Voice recognition error:', error);
-			Alert.alert('Voice Recognition Error', error);
+			// Don't show alerts for simulator errors - just log them
+			if (__DEV__ && error.includes('Failed to initialize recognizer')) {
+				console.warn('Voice recognition not available on simulator - this is expected');
+			} else {
+				Alert.alert('Voice Recognition Error', error);
+			}
 		},
 	});
 

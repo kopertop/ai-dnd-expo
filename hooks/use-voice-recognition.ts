@@ -123,8 +123,30 @@ export const useVoiceRecognition = (
 			}, maxDuration);
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-			setError(errorMessage);
-			options.onError?.(errorMessage);
+			console.error('Voice recognition error:', errorMessage);
+			
+			// For simulator, don't treat initialization errors as failures
+			if (__DEV__ && errorMessage.includes('Failed to initialize recognizer')) {
+				console.warn('Voice recognition not available on simulator - using fallback');
+				setError(null); // Clear error state
+				// Use fallback audio recording instead
+				try {
+					await startAudioRecording();
+					setIsListening(true);
+					
+					// Set timeout for fallback
+					const maxDuration = options.maxDuration || 60000;
+					timeoutRef.current = setTimeout(() => {
+						stopListening();
+					}, maxDuration);
+				} catch (fallbackErr) {
+					setError('Voice input not available');
+					options.onError?.('Voice input not available');
+				}
+			} else {
+				setError(errorMessage);
+				options.onError?.(errorMessage);
+			}
 		}
 	}, [hasPermission, isListening, options, requestPermission]);
 
