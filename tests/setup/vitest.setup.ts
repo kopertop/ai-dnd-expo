@@ -144,17 +144,6 @@ vi.mock('react-native-svg', () => ({
 	G: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-// Mock Skia
-vi.mock('@shopify/react-native-skia', () => ({
-	Canvas: ({ children }: { children: React.ReactNode }) => children,
-	useCanvasRef: vi.fn(() => ({ current: null })),
-	Circle: () => null,
-	Path: () => null,
-	Group: ({ children }: { children: React.ReactNode }) => children,
-}));
-
-// Note: Hook mocks removed - we test actual behavior instead of mocking our own code
-
 // Import and setup enhanced external dependency mocks
 import { MockManager } from '../unit/__mocks__/external-dependencies';
 

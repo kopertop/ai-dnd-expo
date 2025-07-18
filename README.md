@@ -33,10 +33,13 @@ A mobile-first AI-powered Dungeons & Dragons game built on the [Callstack Incuba
 - **Expo CLI**: `npm install -g @expo/cli`
 - **Mobile Development**: 
   - **iOS (macOS only)**: 
-    - Install Xcode from Mac App Store
+    - **⚠️ REQUIRES iOS 26+ (Currently Beta)**
+    - Install Xcode 16+ Beta from Apple Developer Portal
     - Install Xcode Command Line Tools: `xcode-select --install`
     - Open Xcode and accept license agreements
     - Install iOS Simulator (included with Xcode)
+    - **Apple Intelligence**: Requires Apple Intelligence-capable device for full functionality
+    - **New Architecture**: Required for Apple Intelligence features
   - **Android**: 
     - Install Android Studio
     - Set up Android emulator through Android Studio
@@ -80,6 +83,12 @@ npm run web          # Web browser (easiest for testing)
 
 **iOS Testing (macOS only)**
 ```bash
+# ⚠️ BETA REQUIREMENTS:
+# - Xcode 16+ Beta installed
+# - iOS 26+ Beta Simulator
+# - Apple Intelligence features require compatible device
+# - New Architecture enabled (required for Apple Intelligence)
+
 # Ensure iOS Simulator is available
 xcrun simctl list devices
 
@@ -248,7 +257,11 @@ ai-dnd-expo/
 
 ## 📱 Platform Support
 
-- ✅ **iOS** (iPhone & iPad) - Primary platform
+- ⚠️ **iOS** (iPhone & iPad) - Primary platform
+  - **BETA REQUIREMENT**: iOS 26+ (Currently in Beta)
+  - **Apple Intelligence**: Requires compatible device (iPhone 15 Pro/Max, iPad Pro M4, Mac M1+)
+  - **Xcode 16+ Beta**: Required for development
+  - **New Architecture**: Required for Apple Intelligence features
 - ✅ **Android** - Primary platform  
 - ✅ **Web** - Development and fallback platform
 - 🔄 **Desktop** - Future consideration

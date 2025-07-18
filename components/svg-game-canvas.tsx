@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useWindowDimensions, View } from 'react-native';
+import { useWindowDimensions, View, Text } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Svg, { Circle, G, Rect } from 'react-native-svg';
 
 import { GameWorldState, Position } from '@/types/world-map';
 
@@ -143,12 +142,9 @@ export const SvgGameCanvas: React.FC<SvgGameCanvasProps> = ({ worldState, onPlay
 		[movePlayer, cameraPosition],
 	);
 
-	// Gesture handler for tap-to-move
+	// Gesture handler for tap-to-move (simplified without Reanimated)
 	const tapGesture = Gesture.Tap().onEnd(event => {
-		'worklet';
-		// Use runOnJS to call our handler from the UI thread
-		const runOnJS = require('react-native-reanimated').runOnJS;
-		runOnJS(handleTap)(event.x, event.y);
+		handleTap(event.x, event.y);
 	});
 
 	// Calculate player screen position
@@ -156,51 +152,16 @@ export const SvgGameCanvas: React.FC<SvgGameCanvasProps> = ({ worldState, onPlay
 	const playerScreenY = playerPosition.y * TILE_SIZE + TILE_SIZE / 2;
 
 	return (
-		<View style={{ flex: 1 }}>
-			<GestureDetector gesture={tapGesture}>
-				<Svg width={screenWidth} height={screenHeight} style={{ flex: 1 }}>
-					<G transform={`translate(${cameraPosition.x}, ${cameraPosition.y})`}>
-						{/* Render tiles - only visible ones for performance */}
-						{visibleTiles.map((tile, index) => (
-							<Rect
-								key={`${tile.x}-${tile.y}-${index}`}
-								x={tile.x * TILE_SIZE}
-								y={tile.y * TILE_SIZE}
-								width={TILE_SIZE}
-								height={TILE_SIZE}
-								fill={tile.color}
-							/>
-						))}
-
-						{/* Render tile borders - only visible ones for performance */}
-						{visibleTiles.map((tile, index) => (
-							<Rect
-								key={`border-${tile.x}-${tile.y}-${index}`}
-								x={tile.x * TILE_SIZE}
-								y={tile.y * TILE_SIZE}
-								width={TILE_SIZE}
-								height={TILE_SIZE}
-								fill="none"
-								stroke={tile.walkable ? 'rgba(0,0,0,0.1)' : 'rgba(255,0,0,0.5)'}
-								strokeWidth={1}
-							/>
-						))}
-
-						{/* Render player */}
-						<Circle cx={playerScreenX} cy={playerScreenY} r={12} fill="#4169E1" />
-
-						{/* Player border */}
-						<Circle
-							cx={playerScreenX}
-							cy={playerScreenY}
-							r={12}
-							fill="none"
-							stroke="#FFFFFF"
-							strokeWidth={2}
-						/>
-					</G>
-				</Svg>
-			</GestureDetector>
+		<View style={{ flex: 1, backgroundColor: '#4a7c59', justifyContent: 'center', alignItems: 'center' }}>
+			<Text style={{ color: '#FFFFFF', fontSize: 18, textAlign: 'center' }}>
+				SVG Game Canvas Temporarily Disabled
+				{'\n'}
+				(react-native-svg removed for iOS 26 compatibility)
+				{'\n\n'}
+				Player Position: {playerPosition.x}, {playerPosition.y}
+				{'\n'}
+				Tiles Loaded: {tiles.length}
+			</Text>
 		</View>
 	);
 };

@@ -13,10 +13,12 @@
 			"buildNumber": "6",
 			"supportsTablet": true,
 			"bundleIdentifier": "org.coredumped.ai-dnd",
+			"deploymentTarget": "26.0",
 			"infoPlist": {
 				"ITSAppUsesNonExemptEncryption": false,
 				"NSMicrophoneUsageDescription": "This app uses the microphone for voice-powered D&D gameplay",
-				"NSSpeechRecognitionUsageDescription": "This app uses speech recognition for voice commands in D&D gameplay"
+				"NSSpeechRecognitionUsageDescription": "This app uses speech recognition for voice commands in D&D gameplay",
+				"LSMinimumSystemVersion": "26.0"
 			}
 		},
 		"android": {

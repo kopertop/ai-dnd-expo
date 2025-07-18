@@ -24,14 +24,33 @@ const dndDemos: Record<string, DnDDemo> = {
 		name: 'Check Apple Intelligence',
 		func: async () => {
 			const isAvailable = foundationModels.isAvailable();
-			return { available: isAvailable };
+			// Mock availability in simulator for development
+			const isMockMode = __DEV__ && !isAvailable;
+			return { 
+				available: isAvailable, 
+				mockMode: isMockMode,
+				message: isMockMode ? 'Running in mock mode (simulator)' : 'Native Apple Intelligence'
+			};
 		},
 	},
 	generateDMResponse: {
 		name: 'Generate DM Response',
 		func: async () => {
 			const aiManager = new SimpleAIManager();
-			if (!aiManager.isAvailable()) {
+			const isAvailable = aiManager.isAvailable();
+			
+			// Mock Apple Intelligence response in simulator
+			if (__DEV__ && !isAvailable) {
+				// Simulate processing delay
+				await new Promise(resolve => setTimeout(resolve, 1000));
+				return {
+					response: "🎲 MOCK APPLE INTELLIGENCE RESPONSE:\n\nYou swing your sword at the goblin! Roll for attack... *rolls d20* You rolled a 15! Your blade finds its mark, dealing 8 damage to the snarling creature. The goblin staggers back, wounded but still fighting!",
+					mockMode: true,
+					fallback: "Cactus Compute not configured - using mock response"
+				};
+			}
+
+			if (!isAvailable) {
 				throw new Error('Apple Intelligence not available');
 			}
 
@@ -68,7 +87,20 @@ const dndDemos: Record<string, DnDDemo> = {
 		name: 'Generate NPC Dialogue',
 		func: async () => {
 			const aiManager = new SimpleAIManager();
-			if (!aiManager.isAvailable()) {
+			const isAvailable = aiManager.isAvailable();
+			
+			// Mock Apple Intelligence NPC response in simulator
+			if (__DEV__ && !isAvailable) {
+				// Simulate processing delay
+				await new Promise(resolve => setTimeout(resolve, 800));
+				return {
+					dialogue: "🎭 MOCK APPLE INTELLIGENCE NPC:\n\n*Elara wipes down a mug with a worn cloth, her eyes darting nervously*\n\n\"Aye, I heard whispers about old Merchant Grimbold. Haven't seen him pass through in nigh on a week now. That's... unusual for him. He always stops here on his way to market.\"\n\n*She leans in closer, lowering her voice*\n\n\"Some say they heard strange howls from the Darkwood path he usually takes. But that's just tavern talk, mind you...\"",
+					mockMode: true,
+					npcName: "Elara the Innkeeper (Mock)"
+				};
+			}
+
+			if (!isAvailable) {
 				throw new Error('Apple Intelligence not available');
 			}
 
@@ -95,6 +127,7 @@ const dndDemos: Record<string, DnDDemo> = {
 export default function AppleAIDemo() {
 	const [loading, setLoading] = useState<string | null>(null);
 	const isAvailable = foundationModels.isAvailable();
+	const isMockMode = __DEV__ && !isAvailable;
 
 	const runDemo = async (key: string) => {
 		if (loading) return;
@@ -118,6 +151,7 @@ export default function AppleAIDemo() {
 			<Text style={styles.title}>AI D&D Demo</Text>
 			<Text style={styles.status}>
 				Apple Intelligence: {isAvailable ? '✅ Available' : '❌ Not Available'}
+				{isMockMode && '\n🎭 Mock Mode Enabled (Simulator)'}
 			</Text>
 
 			<ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
