@@ -1,223 +1,288 @@
-/**
- * Cactus Compute Provider for AI D&D Platform
- *
- * Integrates with Cactus React Native for local model inference
- * https://github.com/cactus-compute/cactus
- */
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CactusLM } from 'cactus-react-native';
+import * as FileSystem from 'expo-file-system';
 
-export interface CactusConfig {
-	modelPath: string;
+// Types
+export interface CactusProviderConfig {
+	modelPath?: string;
+	modelUrl?: string;
 	contextSize?: number;
-	maxTokens?: number;
+	apiKey?: string;
+	fallbackMode?: 'local' | 'localfirst' | 'remotefirst' | 'remote';
+}
+
+export interface CactusMessage {
+	role: 'system' | 'user' | 'assistant';
+	content: string;
+}
+
+export interface CactusCompletionParams {
 	temperature?: number;
-	timeout?: number;
+	top_p?: number;
+	n_predict?: number;
+	stop?: string[];
 }
 
-export interface DnDInferenceRequest {
-	prompt: string;
-	context: {
-		playerName: string;
-		playerClass: string;
-		playerRace: string;
-		currentScene: string;
-		gameHistory: string[];
-	};
-	systemPrompt: string;
+export interface CactusProviderInterface {
+	isInitialized: boolean;
+	initialize: (onProgress?: (progress: number) => void) => Promise<void>;
+	completion: (
+		messages: CactusMessage[],
+		params?: CactusCompletionParams
+	) => Promise<string>;
+	streamingCompletion: (
+		messages: CactusMessage[],
+		params?: CactusCompletionParams,
+		onToken?: (token: string) => void
+	) => Promise<string>;
+	rewind: () => void;
 }
 
-export interface CactusResponse {
-	text: string;
-	metadata?: {
-		toolCommands?: Array<{ type: string; params: string }>;
-		processingTime?: number;
-	};
-}
+// Constants
+const DEFAULT_MODEL_URL = 'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf';
+const DEFAULT_CONTEXT_SIZE = 2048;
+const MODELS_DIRECTORY = 'cactus-models';
+const MODEL_CACHE_KEY = 'cactus-model-cache';
 
-export class CactusAIProvider {
-	private lm: any = null; // TODO: Add proper CactusLM type when available
-	private config: CactusConfig;
-	private isInitialized = false;
+export class CactusProvider implements CactusProviderInterface {
+	private lm: any = null;
+	private config: CactusProviderConfig;
+	private modelName: string = 'Gemma3-1B-Instruct-Q4_0.gguf';
 
-	constructor(config: CactusConfig) {
-		this.config = config;
+	isInitialized: boolean = false;
+
+	constructor(config: CactusProviderConfig = {}) {
+		this.config = {
+			contextSize: DEFAULT_CONTEXT_SIZE,
+			fallbackMode: 'localfirst',
+			...config,
+		};
+
+		// Extract model name from URL if provided
+		if (this.config.modelUrl) {
+			const urlParts = this.config.modelUrl.split('/');
+			this.modelName = urlParts[urlParts.length - 1];
+		}
 	}
 
 	/**
-	 * Initialize the Cactus LM model
+	 * Initialize the Cactus LLM
 	 */
-	async initialize(): Promise<boolean> {
+	async initialize(onProgress?: (progress: number) => void): Promise<void> {
+		if (this.isInitialized) return;
+
 		try {
-			const { lm, error } = await CactusLM.init({
-				model: this.config.modelPath,
-				n_ctx: this.config.contextSize || 2048,
-			});
+			// Get or download the model
+			const modelPath = await this.getModelPath(onProgress);
+
+			// Initialize the LLM
+			const { lm, error } = await CactusLM.init(
+				{
+					model: modelPath,
+					n_ctx: this.config.contextSize,
+					n_batch: 32,
+					n_gpu_layers: 99, // Use all available GPU layers
+					n_threads: 4,
+				},
+				onProgress,
+				this.config.apiKey, // Optional enterprise token
+			);
 
 			if (error) {
-				console.error('Failed to initialize Cactus LM:', error);
-				return false;
+				throw new Error(`Failed to initialize Cactus LLM: ${error}`);
 			}
 
 			this.lm = lm;
 			this.isInitialized = true;
-			return true;
+			console.log('Cactus LLM initialized successfully');
 		} catch (error) {
-			console.error('Failed to initialize Cactus LM:', error);
+			console.error('Error initializing Cactus LLM:', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Get the model path, downloading if necessary
+	 */
+	private async getModelPath(onProgress?: (progress: number) => void): Promise<string> {
+		// If model path is directly provided, use it
+		if (this.config.modelPath) {
+			return this.config.modelPath;
+		}
+
+		// Check if we have a cached model path
+		const cachedPath = await this.getCachedModelPath();
+		if (cachedPath) {
+			return cachedPath;
+		}
+
+		// Download the model
+		const modelUrl = this.config.modelUrl || DEFAULT_MODEL_URL;
+		return this.downloadModel(modelUrl, onProgress);
+	}
+
+	/**
+	 * Get cached model path if available
+	 */
+	private async getCachedModelPath(): Promise<string | null> {
+		try {
+			const cachedInfo = await AsyncStorage.getItem(MODEL_CACHE_KEY);
+			if (cachedInfo) {
+				const { path, name } = JSON.parse(cachedInfo);
+
+				// Verify the model name matches and file exists
+				if (name === this.modelName && await this.fileExists(path)) {
+					return path;
+				}
+			}
+			return null;
+		} catch (error) {
+			console.warn('Error checking cached model:', error);
+			return null;
+		}
+	}
+
+	/**
+	 * Check if a file exists
+	 */
+	private async fileExists(path: string): Promise<boolean> {
+		try {
+			const info = await FileSystem.getInfoAsync(path);
+			return info.exists;
+		} catch {
 			return false;
 		}
 	}
 
 	/**
-	 * Generate D&D response using local model via Cactus LM
+	 * Download the model from the provided URL
 	 */
-	async generateDnDResponse(request: DnDInferenceRequest): Promise<CactusResponse> {
-		if (!this.isInitialized || !this.lm) {
-			throw new Error('Cactus LM not initialized. Call initialize() first.');
+	private async downloadModel(url: string, onProgress?: (progress: number) => void): Promise<string> {
+		// Ensure models directory exists
+		const modelsDir = `${FileSystem.documentDirectory}${MODELS_DIRECTORY}`;
+		const dirInfo = await FileSystem.getInfoAsync(modelsDir);
+
+		if (!dirInfo.exists) {
+			await FileSystem.makeDirectoryAsync(modelsDir, { intermediates: true });
 		}
 
-		const prompt = this.buildDnDPrompt(request);
-		const startTime = Date.now();
+		// Set up the download path
+		const downloadPath = `${modelsDir}/${this.modelName}`;
+
+		// Start download with progress tracking
+		if (onProgress) onProgress(0);
 
 		try {
-			const messages = [{ role: 'user', content: prompt }];
-			const params = {
-				n_predict: this.config.maxTokens || 150,
-				temperature: this.config.temperature || 0.7,
-			};
+			const downloadResumable = FileSystem.createDownloadResumable(
+				url,
+				downloadPath,
+				{},
+				(downloadProgress) => {
+					const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
+					if (onProgress) onProgress(progress);
+				},
+			);
 
-			const response = await this.lm.completion(messages, params);
-			const processingTime = Date.now() - startTime;
+			const result = await downloadResumable.downloadAsync();
 
-			return await this.processDnDResponse(response, processingTime);
-		} catch (error: any) {
-			console.error('Cactus inference error:', error);
-			throw new Error(`AI generation failed: ${error.message}`);
+			if (!result || result.status !== 200) {
+				throw new Error(`Download failed with status ${result?.status || 'unknown'}`);
+			}
+
+			// Cache the model path
+			await AsyncStorage.setItem(
+				MODEL_CACHE_KEY,
+				JSON.stringify({ path: downloadPath, name: this.modelName }),
+			);
+
+			return downloadPath;
+		} catch (error) {
+			console.error('Error downloading model:', error);
+			throw error;
 		}
 	}
 
 	/**
-	 * Build D&D-specific prompt for Gemma3
+	 * Generate a completion from the provided messages
 	 */
-	private buildDnDPrompt(request: DnDInferenceRequest): string {
-		const { context, systemPrompt } = request;
+	async completion(
+		messages: CactusMessage[],
+		params: CactusCompletionParams = {},
+	): Promise<string> {
+		if (!this.isInitialized || !this.lm) {
+			throw new Error('Cactus LLM not initialized');
+		}
 
-		return `${systemPrompt}
-
-Character: ${context.playerName} (${context.playerRace} ${context.playerClass})
-Scene: ${context.currentScene}
-Recent History: ${context.gameHistory.slice(-3).join(' ')}
-
-Player Action: ${request.prompt}
-
-DM Response:`;
-	}
-
-	/**
-	 * Process and validate D&D response
-	 */
-	private async processDnDResponse(response: string, processingTime: number): Promise<CactusResponse> {
-		let text = response.trim();
-
-		// Clean up common artifacts
-		text = text.replace(/^DM:\s*/i, '');
-		text = text.replace(/^\*.*?\*\s*/, ''); // Remove action descriptions
-
-		// Parse tool commands
-		const toolCommands = await this.extractToolCommands(text);
-		text = await this.removeToolCommands(text);
-
-		return {
-			text,
-			metadata: {
-				toolCommands,
-				processingTime,
-			},
+		const completionParams = {
+			n_predict: params.n_predict || 256,
+			temperature: params.temperature || 0.7,
+			top_p: params.top_p || 0.9,
+			stop: params.stop || [],
+			mode: this.config.fallbackMode,
 		};
-	}
 
-	/**
-	 * Extract D&D tool commands like [ROLL:1d20+3]
-	 * Now uses the centralized tool command parser
-	 */
-	private async extractToolCommands(text: string): Promise<Array<{ type: string; params: string }>> {
-		const { ToolCommandParser } = await import('../tools/tool-command-parser');
-		return ToolCommandParser.extractToolCommands(text).map(
-			(cmd: { type: string; params: string }) => ({
-				type: cmd.type,
-				params: cmd.params,
-			}),
-		);
-	}
-
-	/**
-	 * Remove tool commands from display text
-	 */
-	private async removeToolCommands(text: string): Promise<string> {
-		const { ToolCommandParser } = await import('../tools/tool-command-parser');
-		return ToolCommandParser.removeToolCommands(text);
-	}
-
-	/**
-	 * Check if Cactus LM is available and ready
-	 */
-	async healthCheck(): Promise<boolean> {
-		return this.isInitialized && this.lm !== null;
-	}
-
-	/**
-	 * Get model information (for local models, this returns the configured model path)
-	 */
-	async getAvailableModels(): Promise<string[]> {
-		if (this.isInitialized) {
-			return [this.config.modelPath];
+		try {
+			const result = await this.lm.completion(messages, completionParams);
+			return result.text || '';
+		} catch (error) {
+			console.error('Error generating completion:', error);
+			throw error;
 		}
-		return [];
+	}
+
+	/**
+	 * Generate a streaming completion with token callbacks
+	 */
+	async streamingCompletion(
+		messages: CactusMessage[],
+		params: CactusCompletionParams = {},
+		onToken?: (token: string) => void,
+	): Promise<string> {
+		if (!this.isInitialized || !this.lm) {
+			throw new Error('Cactus LLM not initialized');
+		}
+
+		const completionParams = {
+			n_predict: params.n_predict || 256,
+			temperature: params.temperature || 0.7,
+			top_p: params.top_p || 0.9,
+			stop: params.stop || [],
+			mode: this.config.fallbackMode,
+		};
+
+		let responseText = '';
+
+		try {
+			const result = await this.lm.completion(
+				messages,
+				completionParams,
+				(data: any) => {
+					if (data.token) {
+						responseText += data.token;
+						if (onToken) onToken(data.token);
+					}
+				},
+			);
+
+			// In case the streaming didn't capture everything
+			return responseText || result.text || '';
+		} catch (error) {
+			console.error('Error generating streaming completion:', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Reset the conversation context
+	 */
+	rewind(): void {
+		if (this.lm) {
+			this.lm.rewind();
+		}
 	}
 }
 
-/**
- * D&D-specific system prompts for different scenarios
- */
-export const DnDSystemPrompts = {
-	DUNGEON_MASTER: `You are an experienced Dungeon Master running a D&D 5e campaign.
-Your responses should be:
-- Engaging and immersive
-- Consistent with D&D 5e rules
-- Appropriate for the current scene and character
-- Include dice rolls when needed using [ROLL:XdY+Z] format
-- Keep responses concise (1-3 sentences)
-- Maintain narrative flow
-
-Always respond in character as the DM.`,
-
-	COMBAT_NARRATOR: `You are narrating combat in a D&D game.
-- Describe actions vividly but concisely
-- Include appropriate dice rolls
-- Maintain tension and excitement
-- Follow D&D 5e combat rules`,
-
-	NPC_DIALOGUE: `You are roleplaying as an NPC in a D&D campaign.
-- Stay in character based on the NPC's background
-- Respond naturally to player interactions
-- Provide quest information when appropriate
-- Maintain consistent personality`,
-};
-
-/**
- * Recommended Gemma3 model configurations for D&D
- */
-export const GemmaModelConfigs = {
-	GEMMA_3_2B: {
-		name: 'gemma-3-2b-instruct',
-		maxTokens: 150,
-		temperature: 0.7,
-		description: 'Fast responses, good for real-time gameplay',
-	},
-
-	GEMMA_3_9B: {
-		name: 'gemma-3-9b-instruct',
-		maxTokens: 200,
-		temperature: 0.8,
-		description: 'Higher quality responses, slower inference',
-	},
+// Helper function to create a provider instance
+export const createCactusProvider = (config?: CactusProviderConfig): CactusProviderInterface => {
+	return new CactusProvider(config);
 };

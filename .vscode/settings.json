@@ -22,7 +22,7 @@
 		"editor.defaultFormatter": "vscode.typescript-language-features"
 	},
 	"[json]": {
-		"editor.defaultFormatter": "esbenp.prettier-vscode"
+		"editor.defaultFormatter": "vscode.json-language-features"
 	},
 	"prettier.useTabs": true,
 	"prettier.tabWidth": 4,
@@ -57,7 +57,9 @@
 		"npm run test:coverage",
 		"npm run test:services:coverage",
 		"npx vitest *",
-		"npm run test -- --config vitest.services.config.ts tests/unit/services/ai/providers/local-dm-provider.test.ts -t \"should build D&D-specific prompts with context\""
+		"npm run test -- --config vitest.services.config.ts tests/unit/services/ai/providers/local-dm-provider.test.ts -t \"should build D&D-specific prompts with context\"",
+		"npm run typecheck -- --skipLibCheck",
+		"npm run typecheck -- --skipLibCheck --skipTests"
 	],
 	"[markdown]": {
 		"editor.defaultFormatter": "yzhang.markdown-all-in-one"

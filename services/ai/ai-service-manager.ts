@@ -5,7 +5,7 @@
  * Integrates Cactus + Gemma3 as primary, with local fallbacks
  */
 
-import { CactusAIProvider, DnDSystemPrompts } from './providers/cactus-provider';
+import { CactusAIProvider, DnDSystemPrompts } from './providers/cactus-ai-provider';
 import {
 	DefaultLocalDMConfig,
 	LocalDMModelConfigs,
