@@ -252,309 +252,309 @@ const NewGameScreen: React.FC = () => {
 
 	const renderStepContent = () => {
 		switch (currentStep) {
-		case 'world':
-			return (
-				<View
-					style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}
-				>
-					<WorldChooser onSelect={handleWorldSelect} />
-				</View>
-			);
-		case 'location':
-			return (
-				<View
-					style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}
-				>
-					<LocationChooser onSelect={handleLocationSelect} />
-				</View>
-			);
-		case 'race':
-			return (
-				<View
-					style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}
-				>
-					<RaceChooser onSelect={handleRaceSelect} />
-				</View>
-			);
-		case 'class':
-			return (
-				<View
-					style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}
-				>
-					<ClassChooser onSelect={handleClassSelect} />
-				</View>
-			);
-		case 'attributes':
-			if (!selectedClass) return null;
-			return (
-				<View style={{ flex: 1, position: 'relative' }}>
-					<AttributePicker
-						classOption={selectedClass}
-						onConfirm={handleAttributesConfirm}
-					/>
-				</View>
-			);
-		case 'skills':
-			return (
-				<View style={{ flex: 1, position: 'relative' }}>
-					<SkillChooser
-						onSelect={handleSkillsSelect}
-						initialSkills={selectedSkills}
-						maxSkills={4}
-					/>
-				</View>
-			);
-		case 'character': {
-			if (!selectedRace || !selectedClass || !selectedAttributes) {
+			case 'world':
 				return (
 					<View
-						style={
-							isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox
-						}
+						style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}
 					>
-						<Text>Missing race, class, or attributes selection.</Text>
+						<WorldChooser onSelect={handleWorldSelect} />
 					</View>
 				);
-			}
-			// Handler for generating a random background
-			const handleRandomBackground = (raceName: string, className: string) => {
-				const randomBg = generateRandomBackground(raceName, className);
-				setCustomStory(randomBg);
-			};
-			return (
-				<View style={{ flex: 1, flexDirection: 'column' }}>
-					{/* Header Section */}
+			case 'location':
+				return (
 					<View
-						style={{
-							paddingHorizontal: isMobile ? 16 : 24,
-							paddingTop: isMobile ? 16 : 24,
-							paddingBottom: isMobile ? 8 : 12,
-						}}
+						style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}
 					>
-						<Text
-							style={isMobile ? newGameStyles.titleMobile : newGameStyles.title}
-						>
-								Finalize Your Character
-						</Text>
+						<LocationChooser onSelect={handleLocationSelect} />
 					</View>
-
-					{/* Scrollable Content */}
-					<ScrollView
-						style={{ flex: 1 }}
-						contentContainerStyle={{
-							paddingHorizontal: isMobile ? 16 : 24,
-							paddingBottom: isMobile ? 20 : 24,
-							flexGrow: 1,
-						}}
-						keyboardShouldPersistTaps="handled"
-						showsVerticalScrollIndicator={true}
+				);
+			case 'race':
+				return (
+					<View
+						style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}
 					>
-						{/* Character Name Section */}
-						<View style={{ marginBottom: isMobile ? 16 : 24 }}>
-							<Text style={newGameStyles.label}>Character Name</Text>
-							<TextInput
-								style={[
-									newGameStyles.input,
-									isMobile && { fontSize: 16, paddingVertical: 12 },
-								]}
-								placeholder="Enter character name"
-								value={characterName}
-								onChangeText={setCharacterName}
-								maxLength={32}
-							/>
+						<RaceChooser onSelect={handleRaceSelect} />
+					</View>
+				);
+			case 'class':
+				return (
+					<View
+						style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}
+					>
+						<ClassChooser onSelect={handleClassSelect} />
+					</View>
+				);
+			case 'attributes':
+				if (!selectedClass) return null;
+				return (
+					<View style={{ flex: 1, position: 'relative' }}>
+						<AttributePicker
+							classOption={selectedClass}
+							onConfirm={handleAttributesConfirm}
+						/>
+					</View>
+				);
+			case 'skills':
+				return (
+					<View style={{ flex: 1, position: 'relative' }}>
+						<SkillChooser
+							onSelect={handleSkillsSelect}
+							initialSkills={selectedSkills}
+							maxSkills={4}
+						/>
+					</View>
+				);
+			case 'character': {
+				if (!selectedRace || !selectedClass || !selectedAttributes) {
+					return (
+						<View
+							style={
+								isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox
+							}
+						>
+							<Text>Missing race, class, or attributes selection.</Text>
+						</View>
+					);
+				}
+				// Handler for generating a random background
+				const handleRandomBackground = (raceName: string, className: string) => {
+					const randomBg = generateRandomBackground(raceName, className);
+					setCustomStory(randomBg);
+				};
+				return (
+					<View style={{ flex: 1, flexDirection: 'column' }}>
+						{/* Header Section */}
+						<View
+							style={{
+								paddingHorizontal: isMobile ? 16 : 24,
+								paddingTop: isMobile ? 16 : 24,
+								paddingBottom: isMobile ? 8 : 12,
+							}}
+						>
+							<Text
+								style={isMobile ? newGameStyles.titleMobile : newGameStyles.title}
+							>
+								Finalize Your Character
+							</Text>
 						</View>
 
-						{/* Background Section - Flexible */}
-						<View style={{ flex: 1, flexDirection: 'column' }}>
-							<Text style={newGameStyles.label}>Background / Description</Text>
+						{/* Scrollable Content */}
+						<ScrollView
+							style={{ flex: 1 }}
+							contentContainerStyle={{
+								paddingHorizontal: isMobile ? 16 : 24,
+								paddingBottom: isMobile ? 20 : 24,
+								flexGrow: 1,
+							}}
+							keyboardShouldPersistTaps="handled"
+							showsVerticalScrollIndicator={true}
+						>
+							{/* Character Name Section */}
+							<View style={{ marginBottom: isMobile ? 16 : 24 }}>
+								<Text style={newGameStyles.label}>Character Name</Text>
+								<TextInput
+									style={[
+										newGameStyles.input,
+										isMobile && { fontSize: 16, paddingVertical: 12 },
+									]}
+									placeholder="Enter character name"
+									value={characterName}
+									onChangeText={setCharacterName}
+									maxLength={32}
+								/>
+							</View>
+
+							{/* Background Section - Flexible */}
+							<View style={{ flex: 1, flexDirection: 'column' }}>
+								<Text style={newGameStyles.label}>Background / Description</Text>
+								<TouchableOpacity
+									style={[
+										newGameStyles.submitButton,
+										{
+											marginBottom: 10,
+											width: '100%',
+											paddingVertical: isMobile ? 14 : 10,
+										},
+									]}
+									onPress={() =>
+										handleRandomBackground(
+											selectedRace.name,
+											selectedClass.name,
+										)
+									}
+								>
+									<Text style={newGameStyles.submitButtonText}>
+										Generate Random Background
+									</Text>
+								</TouchableOpacity>
+								<TextInput
+									style={[
+										newGameStyles.input,
+										{
+											flex: 1,
+											minHeight: isMobile ? 200 : 150,
+											fontSize: 18,
+											padding: 16,
+											lineHeight: 26,
+											textAlignVertical: 'top',
+											borderWidth: 2,
+											borderRadius: 8,
+										},
+									]}
+									placeholder="Describe your character's background, goals, or story..."
+									value={customStory}
+									onChangeText={setCustomStory}
+									multiline
+									scrollEnabled={true}
+									maxLength={400}
+								/>
+							</View>
+						</ScrollView>
+						{/* Fixed Bottom Button */}
+						<View
+							style={{
+								backgroundColor: isMobile
+									? 'rgba(249, 246, 239, 0.98)'
+									: 'rgba(255,255,255,0.95)',
+								padding: isMobile ? 16 : 12,
+								borderTopWidth: isMobile ? 2 : 1,
+								borderTopColor: isMobile ? '#C9B037' : '#eee',
+								shadowColor: '#000',
+								shadowOffset: { width: 0, height: -2 },
+								shadowOpacity: 0.1,
+								shadowRadius: 4,
+								elevation: 8,
+							}}
+						>
 							<TouchableOpacity
 								style={[
-									newGameStyles.submitButton,
+									characterName.trim() && customStory.trim()
+										? newGameStyles.submitButton
+										: newGameStyles.submitButtonDisabled,
 									{
-										marginBottom: 10,
 										width: '100%',
-										paddingVertical: isMobile ? 14 : 10,
-									},
-								]}
-								onPress={() =>
-									handleRandomBackground(
-										selectedRace.name,
-										selectedClass.name,
-									)
-								}
-							>
-								<Text style={newGameStyles.submitButtonText}>
-										Generate Random Background
-								</Text>
-							</TouchableOpacity>
-							<TextInput
-								style={[
-									newGameStyles.input,
-									{
-										flex: 1,
-										minHeight: isMobile ? 200 : 150,
-										fontSize: 18,
-										padding: 16,
-										lineHeight: 26,
-										textAlignVertical: 'top',
-										borderWidth: 2,
+										margin: 0,
 										borderRadius: 8,
+										paddingVertical: isMobile ? 16 : 12,
+										minHeight: isMobile ? 54 : 'auto',
 									},
 								]}
-								placeholder="Describe your character's background, goals, or story..."
-								value={customStory}
-								onChangeText={setCustomStory}
-								multiline
-								scrollEnabled={true}
-								maxLength={400}
-							/>
-						</View>
-					</ScrollView>
-					{/* Fixed Bottom Button */}
-					<View
-						style={{
-							backgroundColor: isMobile
-								? 'rgba(249, 246, 239, 0.98)'
-								: 'rgba(255,255,255,0.95)',
-							padding: isMobile ? 16 : 12,
-							borderTopWidth: isMobile ? 2 : 1,
-							borderTopColor: isMobile ? '#C9B037' : '#eee',
-							shadowColor: '#000',
-							shadowOffset: { width: 0, height: -2 },
-							shadowOpacity: 0.1,
-							shadowRadius: 4,
-							elevation: 8,
-						}}
-					>
-						<TouchableOpacity
-							style={[
-								characterName.trim() && customStory.trim()
-									? newGameStyles.submitButton
-									: newGameStyles.submitButtonDisabled,
-								{
-									width: '100%',
-									margin: 0,
-									borderRadius: 8,
-									paddingVertical: isMobile ? 16 : 12,
-									minHeight: isMobile ? 54 : 'auto',
-								},
-							]}
-							disabled={!(characterName.trim() && customStory.trim())}
-							onPress={async () => {
-								const characterData = {
-									name: characterName,
-									description: customStory,
-									stats: selectedAttributes,
-									skills: selectedSkills.map(s => s.id),
-								};
+								disabled={!(characterName.trim() && customStory.trim())}
+								onPress={async () => {
+									const characterData = {
+										name: characterName,
+										description: customStory,
+										stats: selectedAttributes,
+										skills: selectedSkills.map(s => s.id),
+									};
 
-								if (
-									!selectedWorld ||
+									if (
+										!selectedWorld ||
 										!selectedLocation ||
 										!selectedRace ||
 										!selectedClass ||
 										!selectedAttributes
-								) {
-									console.error(
-										'❌ Missing required data for character creation',
-									);
-									Alert.alert(
-										'Error',
-										'Missing required character data. Please go back and complete all steps.',
-									);
-									return;
-								}
+									) {
+										console.error(
+											'❌ Missing required data for character creation',
+										);
+										Alert.alert(
+											'Error',
+											'Missing required character data. Please go back and complete all steps.',
+										);
+										return;
+									}
 
-								try {
+									try {
 									// Generate unique character ID
-									const characterId = `character-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+										const characterId = `character-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-									// Create proper Character object that matches CharacterSchema
-									const character = {
-										id: characterId,
-										level: 1, // Always start at level 1
-										race: selectedRace.name, // Required field from race selection
-										name: characterData.name,
-										class: selectedClass.name, // Required field from class selection
-										description: characterData.description || '',
-										stats: characterData.stats,
-										skills: selectedSkills.map(s => s.id), // Use selectedSkills
-										inventory: [], // Will be populated below
-										equipped: {
-											helmet: null,
-											chest: null,
-											arms: null,
-											legs: null,
-											boots: null,
-											mainHand: null,
-											offHand: null,
-											accessory: null,
-										},
-										health: 10, // Default starting health
-										maxHealth: 10,
-										actionPoints: 3, // Default starting action points
-										maxActionPoints: 3,
-									};
+										// Create proper Character object that matches CharacterSchema
+										const character = {
+											id: characterId,
+											level: 1, // Always start at level 1
+											race: selectedRace.name, // Required field from race selection
+											name: characterData.name,
+											class: selectedClass.name, // Required field from class selection
+											description: characterData.description || '',
+											stats: characterData.stats,
+											skills: selectedSkills.map(s => s.id), // Use selectedSkills
+											inventory: [], // Will be populated below
+											equipped: {
+												helmet: null,
+												chest: null,
+												arms: null,
+												legs: null,
+												boots: null,
+												mainHand: null,
+												offHand: null,
+												accessory: null,
+											},
+											health: 10, // Default starting health
+											maxHealth: 10,
+											actionPoints: 3, // Default starting action points
+											maxActionPoints: 3,
+										};
 
-									// Create proper GameState structure
-									const gameState = {
-										characters: [character],
-										playerCharacterId: characterId,
-										gameWorld: selectedWorld.name,
-										startingArea: selectedLocation.name,
-									};
+										// Create proper GameState structure
+										const gameState = {
+											characters: [character],
+											playerCharacterId: characterId,
+											gameWorld: selectedWorld.name,
+											startingArea: selectedLocation.name,
+										};
 
-									// Save the properly structured game state using the new hook
-									await save(gameState);
+										// Save the properly structured game state using the new hook
+										await save(gameState);
 
-									// Now add items to inventory using the inventory manager
-									// (which can now successfully load the character)
-									await addItem('rations', 2);
-									await addItem('tent', 1);
-									await addItem('healing_potion', 2);
+										// Now add items to inventory using the inventory manager
+										// (which can now successfully load the character)
+										await addItem('rations', 2);
+										await addItem('tent', 1);
+										await addItem('healing_potion', 2);
 
-									// Add class-appropriate gear
-									if (selectedClass.id === 'fighter') {
-										await addItem('sword', 1);
-										await equipItem('sword');
+										// Add class-appropriate gear
+										if (selectedClass.id === 'fighter') {
+											await addItem('sword', 1);
+											await equipItem('sword');
+										}
+										if (selectedClass.id === 'wizard') {
+											await addItem('staff', 1);
+											await equipItem('staff');
+										}
+										if (selectedClass.id === 'rogue') {
+											await addItem('dagger', 1);
+											await equipItem('dagger');
+										}
+										if (selectedClass.id === 'cleric') {
+											await addItem('mace', 1);
+											await equipItem('mace');
+										}
+										router.replace('/game');
+									} catch (error) {
+										console.error('Failed to save game state:', error);
+										Alert.alert(
+											'Error',
+											'Failed to save game state. Please try again.',
+										);
 									}
-									if (selectedClass.id === 'wizard') {
-										await addItem('staff', 1);
-										await equipItem('staff');
-									}
-									if (selectedClass.id === 'rogue') {
-										await addItem('dagger', 1);
-										await equipItem('dagger');
-									}
-									if (selectedClass.id === 'cleric') {
-										await addItem('mace', 1);
-										await equipItem('mace');
-									}
-									router.replace('/game');
-								} catch (error) {
-									console.error('Failed to save game state:', error);
-									Alert.alert(
-										'Error',
-										'Failed to save game state. Please try again.',
-									);
-								}
-							}}
-						>
-							<Text
-								style={[
-									newGameStyles.submitButtonText,
-									isMobile && { fontSize: 18 },
-								]}
+								}}
 							>
+								<Text
+									style={[
+										newGameStyles.submitButtonText,
+										isMobile && { fontSize: 18 },
+									]}
+								>
 									Start Game
-							</Text>
-						</TouchableOpacity>
+								</Text>
+							</TouchableOpacity>
+						</View>
 					</View>
-				</View>
-			);
-		}
-		default:
-			return null;
+				);
+			}
+			default:
+				return null;
 		}
 	};
 

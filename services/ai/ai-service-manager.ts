@@ -224,14 +224,14 @@ export class AIServiceManager {
 		startTime: number,
 	): Promise<AIResponse | null> {
 		switch (providerType) {
-		case 'local':
-			return await this.tryLocalProvider(prompt, context, startTime);
-		case 'cactus':
-			return await this.tryCactusProvider(prompt, context, startTime);
-		case 'rule-based':
-			return await this.tryRuleBasedProvider(prompt, context, startTime);
-		default:
-			throw new Error(`Unknown provider type: ${providerType}`);
+			case 'local':
+				return await this.tryLocalProvider(prompt, context, startTime);
+			case 'cactus':
+				return await this.tryCactusProvider(prompt, context, startTime);
+			case 'rule-based':
+				return await this.tryRuleBasedProvider(prompt, context, startTime);
+			default:
+				throw new Error(`Unknown provider type: ${providerType}`);
 		}
 	}
 

@@ -153,62 +153,62 @@ export class DungeonMasterAgent {
 		const type: DMMessage['type'] = 'narration';
 
 		switch (intent.action) {
-		case 'attack': {
-			const attackRoll = this.diceRoller.roll('1d20');
-			const damageRoll = this.diceRoller.roll('1d8');
+			case 'attack': {
+				const attackRoll = this.diceRoller.roll('1d20');
+				const damageRoll = this.diceRoller.roll('1d8');
 
-			toolCalls.push({
-				type: 'dice_roll',
-				parameters: { notation: '1d20', purpose: 'attack' },
-				result: attackRoll,
-			});
-
-			if (attackRoll.total >= 15) {
-				// Hit
 				toolCalls.push({
 					type: 'dice_roll',
-					parameters: { notation: '1d8', purpose: 'damage' },
-					result: damageRoll,
+					parameters: { notation: '1d20', purpose: 'attack' },
+					result: attackRoll,
 				});
-				content = `Your attack hits! You deal ${damageRoll.total} damage to the ${intent.target || 'enemy'}.`;
-			} else {
-				content = `Your attack misses! The ${intent.target || 'enemy'} dodges your strike.`;
+
+				if (attackRoll.total >= 15) {
+				// Hit
+					toolCalls.push({
+						type: 'dice_roll',
+						parameters: { notation: '1d8', purpose: 'damage' },
+						result: damageRoll,
+					});
+					content = `Your attack hits! You deal ${damageRoll.total} damage to the ${intent.target || 'enemy'}.`;
+				} else {
+					content = `Your attack misses! The ${intent.target || 'enemy'} dodges your strike.`;
+				}
+				break;
 			}
-			break;
-		}
 
-		case 'skill_check': {
-			const skillRoll = this.diceRoller.roll('1d20');
-			toolCalls.push({
-				type: 'dice_roll',
-				parameters: { notation: '1d20', purpose: `${intent.parameters.skill} check` },
-				result: skillRoll,
-			});
+			case 'skill_check': {
+				const skillRoll = this.diceRoller.roll('1d20');
+				toolCalls.push({
+					type: 'dice_roll',
+					parameters: { notation: '1d20', purpose: `${intent.parameters.skill} check` },
+					result: skillRoll,
+				});
 
-			const dc = 15; // Dynamic DC based on difficulty
-			if (skillRoll.total >= dc) {
-				content = `Success! Your ${intent.parameters.skill} check (${skillRoll.total}) succeeds.`;
-			} else {
-				content = `Your ${intent.parameters.skill} check (${skillRoll.total}) fails.`;
+				const dc = 15; // Dynamic DC based on difficulty
+				if (skillRoll.total >= dc) {
+					content = `Success! Your ${intent.parameters.skill} check (${skillRoll.total}) succeeds.`;
+				} else {
+					content = `Your ${intent.parameters.skill} check (${skillRoll.total}) fails.`;
+				}
+				break;
 			}
-			break;
-		}
 
-		case 'cast_spell':
+			case 'cast_spell':
 			// Check spell slots, then execute
-			content = `You begin casting ${intent.parameters.spell}...`;
-			// Add spell effect logic here
-			break;
+				content = `You begin casting ${intent.parameters.spell}...`;
+				// Add spell effect logic here
+				break;
 
-		case 'movement':
-			content = `You move ${intent.parameters.direction}.`;
-			// Update world state
-			break;
+			case 'movement':
+				content = `You move ${intent.parameters.direction}.`;
+				// Update world state
+				break;
 
-		default:
+			default:
 			// Use AI/Gemma for general responses (future implementation)
-			content = await this.generateGenericResponse(originalInput);
-			break;
+				content = await this.generateGenericResponse(originalInput);
+				break;
 		}
 
 		return { content, type, toolCalls };
@@ -220,27 +220,27 @@ export class DungeonMasterAgent {
 	private async executeToolCalls(toolCalls: ToolCall[]): Promise<void> {
 		for (const toolCall of toolCalls) {
 			switch (toolCall.type) {
-			case 'character_update': {
-				const updateParams: any = toolCall.parameters;
-				if (
-					updateParams.type &&
+				case 'character_update': {
+					const updateParams: any = toolCall.parameters;
+					if (
+						updateParams.type &&
 						updateParams.operation &&
 						updateParams.target &&
 						updateParams.value !== undefined
-				) {
-					await this.characterUpdater.updateCharacter(
-						this.context.playerCharacter,
-						updateParams,
-					);
+					) {
+						await this.characterUpdater.updateCharacter(
+							this.context.playerCharacter,
+							updateParams,
+						);
+					}
+					break;
 				}
-				break;
-			}
-			case 'rule_lookup':
-				toolCall.result = await this.ruleEngine.lookupRule(toolCall.parameters.rule);
-				break;
-			case 'world_update':
+				case 'rule_lookup':
+					toolCall.result = await this.ruleEngine.lookupRule(toolCall.parameters.rule);
+					break;
+				case 'world_update':
 				// Update world state based on parameters
-				break;
+					break;
 			}
 		}
 	}

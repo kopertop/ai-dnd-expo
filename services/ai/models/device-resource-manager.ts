@@ -833,14 +833,14 @@ export const ResourceUtils = {
 	 */
 	getThermalStateColor(state: 'nominal' | 'fair' | 'serious' | 'critical'): string {
 		switch (state) {
-		case 'nominal':
-			return '#44AA44'; // Green
-		case 'fair':
-			return '#AAAA44'; // Yellow
-		case 'serious':
-			return '#FF8800'; // Orange
-		case 'critical':
-			return '#FF4444'; // Red
+			case 'nominal':
+				return '#44AA44'; // Green
+			case 'fair':
+				return '#AAAA44'; // Yellow
+			case 'serious':
+				return '#FF8800'; // Orange
+			case 'critical':
+				return '#FF4444'; // Red
 		}
 	},
 

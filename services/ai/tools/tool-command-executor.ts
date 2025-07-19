@@ -195,24 +195,24 @@ export class ToolCommandExecutor {
 			try {
 				// Try to parse command parameters to validate format
 				switch (command.type) {
-				case 'roll':
-					this.validateRollCommand(command.params);
-					break;
-				case 'update':
-					this.validateUpdateCommand(command.params);
-					break;
-				case 'damage':
-				case 'heal':
-					this.validateDamageHealCommand(command.params);
-					break;
-				case 'status':
-					this.validateStatusCommand(command.params);
-					break;
-				case 'inventory':
-					this.validateInventoryCommand(command.params);
-					break;
-				default:
-					errors.push(`Unknown command type: ${command.type}`);
+					case 'roll':
+						this.validateRollCommand(command.params);
+						break;
+					case 'update':
+						this.validateUpdateCommand(command.params);
+						break;
+					case 'damage':
+					case 'heal':
+						this.validateDamageHealCommand(command.params);
+						break;
+					case 'status':
+						this.validateStatusCommand(command.params);
+						break;
+					case 'inventory':
+						this.validateInventoryCommand(command.params);
+						break;
+					default:
+						errors.push(`Unknown command type: ${command.type}`);
 				}
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : 'Unknown error';

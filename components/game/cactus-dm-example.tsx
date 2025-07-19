@@ -14,17 +14,17 @@ export const CactusDMExample: React.FC = () => {
 	// Handle tool commands from the DM
 	const handleToolCommand = (type: string, params: string) => {
 		switch (type) {
-		case 'roll':
-			handleDiceRoll(params);
-			break;
-		case 'damage':
-			handleDamage(params);
-			break;
-		case 'heal':
-			handleHealing(params);
-			break;
-		default:
-			console.log(`Unhandled tool command: ${type} with params: ${params}`);
+			case 'roll':
+				handleDiceRoll(params);
+				break;
+			case 'damage':
+				handleDamage(params);
+				break;
+			case 'heal':
+				handleHealing(params);
+				break;
+			default:
+				console.log(`Unhandled tool command: ${type} with params: ${params}`);
 		}
 	};
 

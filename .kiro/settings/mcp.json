@@ -1,0 +1,35 @@
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch"
+      ],
+      "env": {},
+      "disabled": true,
+      "autoApprove": []
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ],
+      "env": {},
+      "disabled": false,
+      "autoApprove": [
+        "browser_navigate"
+      ]
+    },
+    "web-search": {
+      "command": "node",
+      "args": [
+        "/Users/cmoyer/Projects/personal/web-search/build/index.js"
+      ],
+      "disabled": false,
+      "autoApprove": [
+        "search"
+      ]
+    }
+  }
+}

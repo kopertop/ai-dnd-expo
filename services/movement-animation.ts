@@ -66,15 +66,15 @@ function calculateFacing(from: Position, to: Position): number {
  */
 function applyEasing(progress: number, easing: MovementAnimationOptions['easing']): number {
 	switch (easing) {
-	case 'ease-out':
-		return 1 - Math.pow(1 - progress, 3);
-	case 'ease-in-out':
-		return progress < 0.5
-			? 2 * progress * progress
-			: 1 - Math.pow(-2 * progress + 2, 3) / 2;
-	case 'linear':
-	default:
-		return progress;
+		case 'ease-out':
+			return 1 - Math.pow(1 - progress, 3);
+		case 'ease-in-out':
+			return progress < 0.5
+				? 2 * progress * progress
+				: 1 - Math.pow(-2 * progress + 2, 3) / 2;
+		case 'linear':
+		default:
+			return progress;
 	}
 }
 

@@ -453,48 +453,48 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 
 		// Generate commands based on action type and rules
 		switch (actionAnalysis.type) {
-		case 'combat':
-			if (actionAnalysis.intent === 'attack') {
+			case 'combat':
+				if (actionAnalysis.intent === 'attack') {
 				// Add attack roll
-				const attackBonus = this.calculateAttackBonus(context.playerCharacter);
-				commands.push({ type: 'roll', params: `1d20+${attackBonus} attack` });
+					const attackBonus = this.calculateAttackBonus(context.playerCharacter);
+					commands.push({ type: 'roll', params: `1d20+${attackBonus} attack` });
 
-				// Add damage roll if weapon is specified
-				if (actionAnalysis.weaponType) {
-					const damageRoll = this.getWeaponDamageRoll(
-						actionAnalysis.weaponType,
+					// Add damage roll if weapon is specified
+					if (actionAnalysis.weaponType) {
+						const damageRoll = this.getWeaponDamageRoll(
+							actionAnalysis.weaponType,
+							context.playerCharacter,
+						);
+						commands.push({ type: 'damage', params: damageRoll });
+					}
+				}
+				break;
+
+			case 'skill_check':
+				if (actionAnalysis.skill) {
+					const skillModifier = this.calculateSkillModifier(
+						actionAnalysis.skill,
 						context.playerCharacter,
 					);
-					commands.push({ type: 'damage', params: damageRoll });
+					commands.push({
+						type: 'roll',
+						params: `1d20+${skillModifier} ${actionAnalysis.skill}`,
+					});
 				}
-			}
-			break;
+				break;
 
-		case 'skill_check':
-			if (actionAnalysis.skill) {
-				const skillModifier = this.calculateSkillModifier(
-					actionAnalysis.skill,
+			case 'exploration': {
+			// Add perception check for exploration
+				const perceptionModifier = this.calculateSkillModifier(
+					'perception',
 					context.playerCharacter,
 				);
 				commands.push({
 					type: 'roll',
-					params: `1d20+${skillModifier} ${actionAnalysis.skill}`,
+					params: `1d20+${perceptionModifier} perception`,
 				});
+				break;
 			}
-			break;
-
-		case 'exploration': {
-			// Add perception check for exploration
-			const perceptionModifier = this.calculateSkillModifier(
-				'perception',
-				context.playerCharacter,
-			);
-			commands.push({
-				type: 'roll',
-				params: `1d20+${perceptionModifier} perception`,
-			});
-			break;
-		}
 		}
 
 		// Add commands from rule applications
@@ -774,18 +774,18 @@ class DnDRuleEngine {
 		const applications: RuleApplication[] = [];
 
 		switch (actionAnalysis.type) {
-		case 'combat':
-			applications.push(...this.processCombatAction(actionAnalysis, context));
-			break;
-		case 'skill_check':
-			applications.push(...this.processSkillCheck(actionAnalysis, context));
-			break;
-		case 'exploration':
-			applications.push(...this.processExploration(actionAnalysis, context));
-			break;
-		default:
+			case 'combat':
+				applications.push(...this.processCombatAction(actionAnalysis, context));
+				break;
+			case 'skill_check':
+				applications.push(...this.processSkillCheck(actionAnalysis, context));
+				break;
+			case 'exploration':
+				applications.push(...this.processExploration(actionAnalysis, context));
+				break;
+			default:
 			// No specific rules to apply
-			break;
+				break;
 		}
 
 		return applications;

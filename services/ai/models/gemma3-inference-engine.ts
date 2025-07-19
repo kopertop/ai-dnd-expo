@@ -529,16 +529,16 @@ export class Gemma3InferenceEngine {
 
 		// Adjust based on completion reason
 		switch (generationState.stopReason) {
-		case 'eos':
-		case 'stop_token':
-			confidence += 0.1; // Natural completion
-			break;
-		case 'max_tokens':
-			confidence -= 0.1; // Truncated
-			break;
-		case 'timeout':
-			confidence -= 0.3; // Failed completion
-			break;
+			case 'eos':
+			case 'stop_token':
+				confidence += 0.1; // Natural completion
+				break;
+			case 'max_tokens':
+				confidence -= 0.1; // Truncated
+				break;
+			case 'timeout':
+				confidence -= 0.3; // Failed completion
+				break;
 		}
 
 		// Adjust based on response length
@@ -607,33 +607,33 @@ export const Gemma3InferenceUtils = {
 	 */
 	getRecommendedConfig(devicePerformance: 'high' | 'medium' | 'low'): Partial<InferenceConfig> {
 		switch (devicePerformance) {
-		case 'high':
-			return {
-				maxNewTokens: 200,
-				temperature: 0.8,
-				topP: 0.9,
-				topK: 50,
-				doSample: true,
-				maxInferenceTime: 15000,
-			};
-		case 'medium':
-			return {
-				maxNewTokens: 150,
-				temperature: 0.7,
-				topP: 0.9,
-				topK: 40,
-				doSample: true,
-				maxInferenceTime: 20000,
-			};
-		case 'low':
-			return {
-				maxNewTokens: 100,
-				temperature: 0.6,
-				topP: 0.8,
-				topK: 30,
-				doSample: false, // Greedy for speed
-				maxInferenceTime: 30000,
-			};
+			case 'high':
+				return {
+					maxNewTokens: 200,
+					temperature: 0.8,
+					topP: 0.9,
+					topK: 50,
+					doSample: true,
+					maxInferenceTime: 15000,
+				};
+			case 'medium':
+				return {
+					maxNewTokens: 150,
+					temperature: 0.7,
+					topP: 0.9,
+					topK: 40,
+					doSample: true,
+					maxInferenceTime: 20000,
+				};
+			case 'low':
+				return {
+					maxNewTokens: 100,
+					temperature: 0.6,
+					topP: 0.8,
+					topK: 30,
+					doSample: false, // Greedy for speed
+					maxInferenceTime: 30000,
+				};
 		}
 	},
 

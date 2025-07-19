@@ -94,7 +94,7 @@ export default defineConfig([
 		},
 
 		rules: {
-			indent: ['error', 'tab'],
+			indent: ['error', 'tab', { SwitchCase: 1 }],
 
 			'unicorn/filename-case': [
 				'error',
@@ -183,6 +183,7 @@ export default defineConfig([
 	},
 	{
 		files: ['**/*.ts', '**/*.tsx'],
+		ignores: ['tests/**/*'],
 		languageOptions: {
 			parserOptions: {
 				project: './tsconfig.json',

@@ -420,18 +420,18 @@ export class ModelCacheManager {
 		let entryToEvict: string | null = null;
 
 		switch (strategy) {
-		case 'lru':
-			entryToEvict = this.findLRUEntry();
-			break;
-		case 'lfu':
-			entryToEvict = this.findLFUEntry();
-			break;
-		case 'fifo':
-			entryToEvict = this.findFIFOEntry();
-			break;
-		case 'adaptive':
-			entryToEvict = this.findAdaptiveEntry();
-			break;
+			case 'lru':
+				entryToEvict = this.findLRUEntry();
+				break;
+			case 'lfu':
+				entryToEvict = this.findLFUEntry();
+				break;
+			case 'fifo':
+				entryToEvict = this.findFIFOEntry();
+				break;
+			case 'adaptive':
+				entryToEvict = this.findAdaptiveEntry();
+				break;
 		}
 
 		if (entryToEvict) {

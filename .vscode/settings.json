@@ -59,7 +59,10 @@
 		"npx vitest *",
 		"npm run test -- --config vitest.services.config.ts tests/unit/services/ai/providers/local-dm-provider.test.ts -t \"should build D&D-specific prompts with context\"",
 		"npm run typecheck -- --skipLibCheck",
-		"npm run typecheck -- --skipLibCheck --skipTests"
+		"npm run typecheck -- --skipLibCheck --skipTests",
+		"grep *",
+		"ls *",
+		"npm list *"
 	],
 	"[markdown]": {
 		"editor.defaultFormatter": "yzhang.markdown-all-in-one"

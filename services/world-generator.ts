@@ -273,32 +273,32 @@ export class WorldGenerator {
 		const noise = this.noise.noise(x * 0.05, y * 0.05);
 
 		switch (biome) {
-		case 'temperate_forest':
-			if (elevation > 7) return 'mountain';
-			if (elevation < 2) return 'water';
-			if (noise > 0.3) return 'forest';
-			return 'grass';
+			case 'temperate_forest':
+				if (elevation > 7) return 'mountain';
+				if (elevation < 2) return 'water';
+				if (noise > 0.3) return 'forest';
+				return 'grass';
 
-		case 'desert':
-			if (elevation > 8) return 'mountain';
-			if (elevation < 1) return 'water';
-			if (noise > 0.2) return 'sand';
-			return 'desert';
+			case 'desert':
+				if (elevation > 8) return 'mountain';
+				if (elevation < 1) return 'water';
+				if (noise > 0.2) return 'sand';
+				return 'desert';
 
-		case 'mountain':
-			if (elevation < 3) return 'grass';
-			if (elevation > 8) return 'snow';
-			if (noise > 0.4) return 'stone';
-			return 'mountain';
+			case 'mountain':
+				if (elevation < 3) return 'grass';
+				if (elevation > 8) return 'snow';
+				if (noise > 0.4) return 'stone';
+				return 'mountain';
 
-		case 'coastal':
-			if (elevation < 3) return 'water';
-			if (elevation > 6) return 'mountain';
-			if (noise > 0.2) return 'sand';
-			return 'grass';
+			case 'coastal':
+				if (elevation < 3) return 'water';
+				if (elevation > 6) return 'mountain';
+				if (noise > 0.2) return 'sand';
+				return 'grass';
 
-		default:
-			return 'grass';
+			default:
+				return 'grass';
 		}
 	}
 

@@ -4,16 +4,15 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { CharacterSheetModal } from '../components/character-sheet-modal';
 import { GameCanvas } from '../components/game-canvas';
+import { GameStatusBar } from '../components/game-status-bar';
+import { ThemedText } from '../components/themed-text';
+import { ThemedView } from '../components/themed-view';
+import { TurnBasedChat } from '../components/turn-based-chat';
+import { useCactusDungeonMaster } from '../hooks/use-cactus-dungeon-master';
 import { useGameState } from '../hooks/use-game-state';
+import { useScreenSize } from '../hooks/use-screen-size';
 import { generateWorldForGameState } from '../services/world-generator';
-
-import { GameStatusBar } from '@/components/game-status-bar';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { TurnBasedChat } from '@/components/turn-based-chat';
-import { useDungeonMaster } from '@/hooks/use-dungeon-master';
-import { useScreenSize } from '@/hooks/use-screen-size';
-import { GameWorldState, Position } from '@/types/world-map';
+import { GameWorldState, Position } from '../types/world-map';
 
 const GameScreen: React.FC = () => {
 	const [showSheet, setShowSheet] = useState(false);
@@ -28,10 +27,11 @@ const GameScreen: React.FC = () => {
 	const playerCharacter = gameState
 		? gameState.characters.find(c => c.id === gameState.playerCharacterId)
 		: null;
-	const dmAgent = useDungeonMaster({
+	const dmAgent = useCactusDungeonMaster({
 		worldState,
 		playerCharacter: playerCharacter || null,
-		autoSave: true,
+		autoInitialize: true,
+		modelUrl: 'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf',
 	});
 
 	// Debounced save to prevent excessive saves on frequent player moves
@@ -102,7 +102,6 @@ const GameScreen: React.FC = () => {
 		if (
 			gameState &&
 			playerCharacter &&
-			dmAgent.agent &&
 			!hasInitialized &&
 			dmAgent.messages.length === 1 &&
 			!dmAgent.isLoading
@@ -166,7 +165,6 @@ const GameScreen: React.FC = () => {
 	}, [
 		gameState,
 		playerCharacter,
-		dmAgent.agent,
 		dmAgent.messages.length,
 		hasInitialized,
 		dmAgent.isLoading,
@@ -204,10 +202,8 @@ const GameScreen: React.FC = () => {
 		setWorldState(updatedWorldState);
 
 		// Notify DM agent of player movement
-		if (dmAgent.agent) {
-			const movementDescription = `Player moves ${facing} to position (${newPosition.x}, ${newPosition.y})`;
-			dmAgent.sendMessage(movementDescription).catch(console.error);
-		}
+		const movementDescription = `Player moves ${facing} to position (${newPosition.x}, ${newPosition.y})`;
+		dmAgent.sendMessage(movementDescription).catch(console.error);
 
 		// Save updated world state with debouncing
 		if (gameState) {
@@ -318,7 +314,13 @@ const GameScreen: React.FC = () => {
 			{/* Turn-Based Chat */}
 			<TurnBasedChat
 				playerCharacter={playerCharacter || null}
-				dmMessages={dmAgent.messages}
+				dmMessages={dmAgent.messages.map((msg, index) => ({
+					id: `msg-${index}`,
+					content: msg.content,
+					timestamp: Date.now() - (dmAgent.messages.length - index) * 1000,
+					speaker: msg.role === 'user' ? 'Player' : 'Dungeon Master',
+					type: 'dialogue',
+				}))}
 				onSendMessage={handleChatMessage}
 				activeCharacter={activeCharacter}
 				onTurnChange={handleTurnChange}

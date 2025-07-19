@@ -1,15 +1,15 @@
 /**
- * Cactus DM Chat Component
+ * DM Chat Component
  *
- * A component for interacting with the Cactus DM agent
+ * A component for interacting with the DM agent
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { useCactusDungeonMaster } from '../../hooks/use-cactus-dungeon-master';
-import { useColorScheme } from '../../hooks/use-color-scheme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useDungeonMaster } from '@/hooks/use-dungeon-master';
 
-interface CactusDMChatProps {
+interface DMChatProps {
 	playerName: string;
 	playerClass: string;
 	playerRace: string;
@@ -24,7 +24,7 @@ interface ChatMessage {
 	content: string;
 }
 
-export const CactusDMChat: React.FC<CactusDMChatProps> = ({
+export const DMChat: React.FC<DMChatProps> = ({
 	playerName,
 	playerClass,
 	playerRace,
@@ -45,8 +45,9 @@ export const CactusDMChat: React.FC<CactusDMChatProps> = ({
 		initialize,
 		processPlayerAction,
 		generateNarration,
-	} = useCactusDungeonMaster({
+	} = useDungeonMaster({
 		autoInitialize: true,
+		fallbackMode: 'localfirst',
 	});
 
 	// Generate initial narration when component mounts
@@ -58,7 +59,7 @@ export const CactusDMChat: React.FC<CactusDMChatProps> = ({
 						playerName,
 						playerClass,
 						playerRace,
-						currentScene,
+						currentLocation: currentScene,
 					});
 
 					setMessages([{ role: 'assistant', content: narration }]);
@@ -132,7 +133,7 @@ export const CactusDMChat: React.FC<CactusDMChatProps> = ({
 						<View style={styles.loadingContainer}>
 							<ActivityIndicator size="large" color={buttonColor} />
 							<Text style={[styles.loadingText, { color: textColor }]}>
-								Initializing Cactus DM ({Math.round(initProgress * 100)}%)
+								Initializing DM ({Math.round(initProgress * 100)}%)
 							</Text>
 						</View>
 					) : error ? (

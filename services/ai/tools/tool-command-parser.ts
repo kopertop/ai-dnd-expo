@@ -130,20 +130,20 @@ export class ToolCommandParser {
 	 */
 	private static parseCommandParams(command: ToolCommand): any {
 		switch (command.type) {
-		case 'roll':
-			return this.parseRollCommand(command.params);
-		case 'update':
-			return this.parseUpdateCommand(command.params);
-		case 'damage':
-			return this.parseDamageCommand(command.params);
-		case 'heal':
-			return this.parseHealCommand(command.params);
-		case 'status':
-			return this.parseStatusCommand(command.params);
-		case 'inventory':
-			return this.parseInventoryCommand(command.params);
-		default:
-			throw new Error(`Unknown command type: ${command.type}`);
+			case 'roll':
+				return this.parseRollCommand(command.params);
+			case 'update':
+				return this.parseUpdateCommand(command.params);
+			case 'damage':
+				return this.parseDamageCommand(command.params);
+			case 'heal':
+				return this.parseHealCommand(command.params);
+			case 'status':
+				return this.parseStatusCommand(command.params);
+			case 'inventory':
+				return this.parseInventoryCommand(command.params);
+			default:
+				throw new Error(`Unknown command type: ${command.type}`);
 		}
 	}
 
@@ -156,20 +156,20 @@ export class ToolCommandParser {
 		gameState: GameState,
 	): Promise<ToolCommandResult> {
 		switch (command.type) {
-		case 'roll':
-			return this.executeRollCommand(command.parsed);
-		case 'update':
-			return this.executeUpdateCommand(command.parsed, character);
-		case 'damage':
-			return this.executeDamageCommand(command.parsed, character);
-		case 'heal':
-			return this.executeHealCommand(command.parsed, character);
-		case 'status':
-			return this.executeStatusCommand(command.parsed, character);
-		case 'inventory':
-			return this.executeInventoryCommand(command.parsed, character);
-		default:
-			throw new Error(`Cannot execute unknown command type: ${command.type}`);
+			case 'roll':
+				return this.executeRollCommand(command.parsed);
+			case 'update':
+				return this.executeUpdateCommand(command.parsed, character);
+			case 'damage':
+				return this.executeDamageCommand(command.parsed, character);
+			case 'heal':
+				return this.executeHealCommand(command.parsed, character);
+			case 'status':
+				return this.executeStatusCommand(command.parsed, character);
+			case 'inventory':
+				return this.executeInventoryCommand(command.parsed, character);
+			default:
+				throw new Error(`Cannot execute unknown command type: ${command.type}`);
 		}
 	}
 
@@ -224,17 +224,17 @@ export class ToolCommandParser {
 
 		let operation: ParsedUpdateCommand['operation'];
 		switch (operator) {
-		case '+':
-			operation = 'add';
-			break;
-		case '-':
-			operation = 'subtract';
-			break;
-		case '=':
-			operation = 'set';
-			break;
-		default:
-			throw new Error(`Invalid operator: ${operator}`);
+			case '+':
+				operation = 'add';
+				break;
+			case '-':
+				operation = 'subtract';
+				break;
+			case '=':
+				operation = 'set';
+				break;
+			default:
+				throw new Error(`Invalid operator: ${operator}`);
 		}
 
 		const parsed: ParsedUpdateCommand = {
@@ -385,44 +385,44 @@ export class ToolCommandParser {
 		let fieldName: string;
 
 		switch (parsed.target) {
-		case 'hp':
-			currentValue = character.health;
-			fieldName = 'health';
-			break;
-		case 'maxhp':
-			currentValue = character.maxHealth;
-			fieldName = 'maxHealth';
-			break;
-		case 'ap':
-			currentValue = character.actionPoints;
-			fieldName = 'actionPoints';
-			break;
-		case 'maxap':
-			currentValue = character.maxActionPoints;
-			fieldName = 'maxActionPoints';
-			break;
-		case 'stat':
-			if (!parsed.stat) {
-				throw new Error('Stat name required for stat updates');
-			}
-			currentValue = character.stats[parsed.stat as keyof typeof character.stats] || 10;
-			fieldName = `stats.${parsed.stat}`;
-			break;
-		default:
-			throw new Error(`Unknown update target: ${parsed.target}`);
+			case 'hp':
+				currentValue = character.health;
+				fieldName = 'health';
+				break;
+			case 'maxhp':
+				currentValue = character.maxHealth;
+				fieldName = 'maxHealth';
+				break;
+			case 'ap':
+				currentValue = character.actionPoints;
+				fieldName = 'actionPoints';
+				break;
+			case 'maxap':
+				currentValue = character.maxActionPoints;
+				fieldName = 'maxActionPoints';
+				break;
+			case 'stat':
+				if (!parsed.stat) {
+					throw new Error('Stat name required for stat updates');
+				}
+				currentValue = character.stats[parsed.stat as keyof typeof character.stats] || 10;
+				fieldName = `stats.${parsed.stat}`;
+				break;
+			default:
+				throw new Error(`Unknown update target: ${parsed.target}`);
 		}
 
 		// Calculate new value
 		switch (parsed.operation) {
-		case 'add':
-			newValue = currentValue + parsed.value;
-			break;
-		case 'subtract':
-			newValue = currentValue - parsed.value;
-			break;
-		case 'set':
-			newValue = parsed.value;
-			break;
+			case 'add':
+				newValue = currentValue + parsed.value;
+				break;
+			case 'subtract':
+				newValue = currentValue - parsed.value;
+				break;
+			case 'set':
+				newValue = parsed.value;
+				break;
 		}
 
 		// Apply constraints

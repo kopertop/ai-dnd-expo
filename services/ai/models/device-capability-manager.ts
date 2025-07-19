@@ -675,12 +675,12 @@ export const DeviceCapabilityUtils = {
 	 */
 	getPerformanceTierDescription(capabilities: DeviceCapabilities): string {
 		switch (capabilities.performanceClass) {
-		case 'high':
-			return 'Excellent performance with fast inference and high-quality responses';
-		case 'medium':
-			return 'Good performance with balanced speed and quality';
-		case 'low':
-			return 'Basic performance with slower inference but functional responses';
+			case 'high':
+				return 'Excellent performance with fast inference and high-quality responses';
+			case 'medium':
+				return 'Good performance with balanced speed and quality';
+			case 'low':
+				return 'Basic performance with slower inference but functional responses';
 		}
 	},
 };

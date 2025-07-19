@@ -584,53 +584,53 @@ export class BatteryOptimizer {
 		const optimizations: BatteryOptimization[] = [];
 
 		switch (this.powerSavingState.mode) {
-		case 'emergency':
-			optimizations.push(
-				{
-					type: 'emergency_suspend',
-					description: 'Emergency suspension of non-critical processes',
-					batteryImpact: 60,
-					performanceImpact: 'high',
-					reversible: true,
-				},
-				{
-					type: 'reduce_complexity',
-					description: 'Minimize model complexity',
-					batteryImpact: 30,
-					performanceImpact: 'high',
-					reversible: true,
-				},
-			);
-			break;
+			case 'emergency':
+				optimizations.push(
+					{
+						type: 'emergency_suspend',
+						description: 'Emergency suspension of non-critical processes',
+						batteryImpact: 60,
+						performanceImpact: 'high',
+						reversible: true,
+					},
+					{
+						type: 'reduce_complexity',
+						description: 'Minimize model complexity',
+						batteryImpact: 30,
+						performanceImpact: 'high',
+						reversible: true,
+					},
+				);
+				break;
 
-		case 'aggressive':
-			optimizations.push(
-				{
+			case 'aggressive':
+				optimizations.push(
+					{
+						type: 'reduce_frequency',
+						description: 'Reduce inference frequency',
+						batteryImpact: 40,
+						performanceImpact: 'medium',
+						reversible: true,
+					},
+					{
+						type: 'disable_features',
+						description: 'Disable non-essential features',
+						batteryImpact: 25,
+						performanceImpact: 'medium',
+						reversible: true,
+					},
+				);
+				break;
+
+			case 'power_saving':
+				optimizations.push({
 					type: 'reduce_frequency',
-					description: 'Reduce inference frequency',
-					batteryImpact: 40,
-					performanceImpact: 'medium',
+					description: 'Slightly reduce inference frequency',
+					batteryImpact: 20,
+					performanceImpact: 'low',
 					reversible: true,
-				},
-				{
-					type: 'disable_features',
-					description: 'Disable non-essential features',
-					batteryImpact: 25,
-					performanceImpact: 'medium',
-					reversible: true,
-				},
-			);
-			break;
-
-		case 'power_saving':
-			optimizations.push({
-				type: 'reduce_frequency',
-				description: 'Slightly reduce inference frequency',
-				batteryImpact: 20,
-				performanceImpact: 'low',
-				reversible: true,
-			});
-			break;
+				});
+				break;
 		}
 
 		// Add charging optimizations if applicable
@@ -671,14 +671,14 @@ export class BatteryOptimizer {
 	 */
 	private calculatePowerReduction(mode: PowerSavingState['mode']): number {
 		switch (mode) {
-		case 'emergency':
-			return 80;
-		case 'aggressive':
-			return 60;
-		case 'power_saving':
-			return 30;
-		case 'normal':
-			return 0;
+			case 'emergency':
+				return 80;
+			case 'aggressive':
+				return 60;
+			case 'power_saving':
+				return 30;
+			case 'normal':
+				return 0;
 		}
 	}
 
@@ -844,14 +844,14 @@ export const BatteryUtils = {
 	 */
 	formatPowerSavingMode(mode: PowerSavingState['mode']): string {
 		switch (mode) {
-		case 'normal':
-			return 'Normal';
-		case 'power_saving':
-			return 'Power Saving';
-		case 'aggressive':
-			return 'Aggressive Saving';
-		case 'emergency':
-			return 'Emergency Mode';
+			case 'normal':
+				return 'Normal';
+			case 'power_saving':
+				return 'Power Saving';
+			case 'aggressive':
+				return 'Aggressive Saving';
+			case 'emergency':
+				return 'Emergency Mode';
 		}
 	},
 

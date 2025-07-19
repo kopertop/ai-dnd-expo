@@ -10,11 +10,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useDMVoice } from '@/hooks/use-text-to-speech';
-import { DMMessage } from '@/services/ai/agents/dungeon-master-agent';
-import { AIServiceManager, DefaultAIConfig } from '@/services/ai/ai-service-manager';
-import { Character } from '@/types/character';
-import { GameWorldState } from '@/types/world-map';
+import { useDMVoice } from '../hooks/use-text-to-speech';
+import { DMMessage } from '../services/ai/agents/dungeon-master-agent';
+import { AIServiceManager, DefaultAIConfig } from '../services/ai/ai-service-manager';
+import { Character } from '../types/character';
+import { GameWorldState } from '../types/world-map';
 
 export interface UseEnhancedDungeonMasterReturn {
 	messages: DMMessage[];
@@ -325,25 +325,25 @@ export const useEnhancedDungeonMaster = (
 
 			try {
 				switch (dmMessage.type) {
-				case 'narration':
-					await dmVoice.speakAsNarrator(dmMessage.content);
-					break;
-				case 'dialogue':
-					await dmVoice.speakAsCharacter(dmMessage.content, dmMessage.speaker);
-					break;
-				case 'action_result':
-					if (
-						dmMessage.content.includes('attack') ||
-							dmMessage.content.includes('damage')
-					) {
-						await dmVoice.speakCombatAction(dmMessage.content);
-					} else {
+					case 'narration':
 						await dmVoice.speakAsNarrator(dmMessage.content);
-					}
-					break;
-				default:
-					await dmVoice.speakAsNarrator(dmMessage.content);
-					break;
+						break;
+					case 'dialogue':
+						await dmVoice.speakAsCharacter(dmMessage.content, dmMessage.speaker);
+						break;
+					case 'action_result':
+						if (
+							dmMessage.content.includes('attack') ||
+							dmMessage.content.includes('damage')
+						) {
+							await dmVoice.speakCombatAction(dmMessage.content);
+						} else {
+							await dmVoice.speakAsNarrator(dmMessage.content);
+						}
+						break;
+					default:
+						await dmVoice.speakAsNarrator(dmMessage.content);
+						break;
 				}
 			} catch (error) {
 				console.error('Error speaking DM response:', error);

@@ -660,54 +660,54 @@ export class PerformanceOptimizer {
 	 */
 	private async applyOptimizationAction(action: OptimizationAction): Promise<void> {
 		switch (action.type) {
-		case 'reduce_threads':
-			this.currentProfile.numThreads = Math.max(
-				1,
-				Math.floor(this.currentProfile.numThreads * 0.7),
-			);
-			break;
+			case 'reduce_threads':
+				this.currentProfile.numThreads = Math.max(
+					1,
+					Math.floor(this.currentProfile.numThreads * 0.7),
+				);
+				break;
 
-		case 'reduce_batch_size':
-			this.currentProfile.batchSize = Math.max(
-				1,
-				Math.floor(this.currentProfile.batchSize * 0.7),
-			);
-			break;
+			case 'reduce_batch_size':
+				this.currentProfile.batchSize = Math.max(
+					1,
+					Math.floor(this.currentProfile.batchSize * 0.7),
+				);
+				break;
 
-		case 'reduce_cache':
-			this.currentProfile.cacheSize = Math.max(
-				64,
-				Math.floor(this.currentProfile.cacheSize * 0.6),
-			);
-			break;
+			case 'reduce_cache':
+				this.currentProfile.cacheSize = Math.max(
+					64,
+					Math.floor(this.currentProfile.cacheSize * 0.6),
+				);
+				break;
 
-		case 'disable_gpu':
-			this.currentProfile.enableGPU = false;
-			break;
+			case 'disable_gpu':
+				this.currentProfile.enableGPU = false;
+				break;
 
-		case 'reduce_tokens':
-			this.currentProfile.maxTokens = Math.max(
-				256,
-				Math.floor(this.currentProfile.maxTokens * 0.7),
-			);
-			break;
+			case 'reduce_tokens':
+				this.currentProfile.maxTokens = Math.max(
+					256,
+					Math.floor(this.currentProfile.maxTokens * 0.7),
+				);
+				break;
 
-		case 'increase_timeout':
-			this.currentProfile.inferenceTimeout = Math.min(
-				30000,
-				this.currentProfile.inferenceTimeout * 1.5,
-			);
-			break;
+			case 'increase_timeout':
+				this.currentProfile.inferenceTimeout = Math.min(
+					30000,
+					this.currentProfile.inferenceTimeout * 1.5,
+				);
+				break;
 
-		case 'pause_inference':
+			case 'pause_inference':
 			// This would be handled by the calling code
-			console.log('⏸️ Inference pausing recommended');
-			break;
+				console.log('⏸️ Inference pausing recommended');
+				break;
 
-		case 'emergency_stop':
+			case 'emergency_stop':
 			// This would be handled by the calling code
 
-			break;
+				break;
 		}
 	}
 
@@ -894,14 +894,14 @@ export const PerformanceUtils = {
 	 */
 	formatThrottlingLevel(level: 'none' | 'light' | 'moderate' | 'aggressive'): string {
 		switch (level) {
-		case 'none':
-			return 'No Throttling';
-		case 'light':
-			return 'Light Optimization';
-		case 'moderate':
-			return 'Moderate Throttling';
-		case 'aggressive':
-			return 'Aggressive Throttling';
+			case 'none':
+				return 'No Throttling';
+			case 'light':
+				return 'Light Optimization';
+			case 'moderate':
+				return 'Moderate Throttling';
+			case 'aggressive':
+				return 'Aggressive Throttling';
 		}
 	},
 
@@ -910,14 +910,14 @@ export const PerformanceUtils = {
 	 */
 	getThrottlingColor(level: 'none' | 'light' | 'moderate' | 'aggressive'): string {
 		switch (level) {
-		case 'none':
-			return '#44AA44'; // Green
-		case 'light':
-			return '#AAAA44'; // Yellow
-		case 'moderate':
-			return '#FF8800'; // Orange
-		case 'aggressive':
-			return '#FF4444'; // Red
+			case 'none':
+				return '#44AA44'; // Green
+			case 'light':
+				return '#AAAA44'; // Yellow
+			case 'moderate':
+				return '#FF8800'; // Orange
+			case 'aggressive':
+				return '#FF4444'; // Red
 		}
 	},
 };

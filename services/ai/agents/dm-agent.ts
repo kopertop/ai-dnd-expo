@@ -1,5 +1,5 @@
 /**
- * Cactus DM Agent for AI D&D Platform
+ * DM Agent for AI D&D Platform
  *
  * Provides intelligent D&D gameplay assistance using Cactus Compute's LLM
  * Handles player actions, rule integration, and narrative generation
@@ -9,14 +9,14 @@ import { CactusMessage, CactusProvider, CactusProviderInterface } from '../provi
 import { Character } from '@/types/character';
 import { GameState } from '@/types/game';
 
-// Core interfaces for CactusDMAgent
-export interface CactusDMAgent {
+// Core interfaces for DMAgent
+export interface DMAgent {
 	// Core functionality
 	processPlayerAction(action: string, context: GameContext): Promise<DMResponse>;
 	generateNarration(scene: string, context: GameContext): Promise<string>;
 
 	// Model lifecycle
-	initialize(config: CactusDMConfig): Promise<boolean>;
+	initialize(config: DMConfig): Promise<boolean>;
 	unloadModel(): Promise<void>;
 
 	// Performance optimization
@@ -83,7 +83,7 @@ export interface RuleApplication {
 	result?: number;
 }
 
-export interface CactusDMConfig {
+export interface DMConfig {
 	modelUrl?: string;
 	contextSize?: number;
 	temperature?: number;
@@ -92,9 +92,9 @@ export interface CactusDMConfig {
 }
 
 /**
- * CactusDMAgent implementation with D&D-specific processing
+ * DMAgent implementation with D&D-specific processing
  */
-export class CactusDMAgentImpl implements CactusDMAgent {
+export class DMAgentImpl implements DMAgent {
 	private cactusProvider: CactusProviderInterface;
 	private isInitialized = false;
 	private performanceMode: 'performance' | 'balanced' | 'quality' = 'balanced';
@@ -111,20 +111,20 @@ export class CactusDMAgentImpl implements CactusDMAgent {
 	}
 
 	/**
-	 * Initialize the Cactus DM Agent
+	 * Initialize the DM Agent
 	 */
-	async initialize(config: CactusDMConfig): Promise<boolean> {
+	async initialize(config: DMConfig): Promise<boolean> {
 		try {
 			// Initialize the Cactus provider
 			await this.cactusProvider.initialize((progress) => {
-				console.log(`Cactus DM Agent initialization progress: ${Math.round(progress * 100)}%`);
+				console.log(`DM Agent initialization progress: ${Math.round(progress * 100)}%`);
 			});
 
 			this.isInitialized = true;
-			console.log('✅ CactusDMAgent: Initialized successfully');
+			console.log('✅ DMAgent: Initialized successfully');
 			return true;
 		} catch (error) {
-			console.error('❌ CactusDMAgent: Failed to initialize:', error);
+			console.error('❌ DMAgent: Failed to initialize:', error);
 			this.isInitialized = false;
 			return false;
 		}
@@ -138,13 +138,13 @@ export class CactusDMAgentImpl implements CactusDMAgent {
 
 		try {
 			if (!this.isInitialized) {
-				throw new Error('CactusDMAgent not initialized');
+				throw new Error('DMAgent not initialized');
 			}
 
 			// Check cache for similar actions
 			const cacheKey = this.generateCacheKey(action, context);
 			if (this.responseCache.has(cacheKey) && !this.batteryOptimizationEnabled) {
-				console.log('🔄 CactusDMAgent: Using cached response');
+				console.log('🔄 DMAgent: Using cached response');
 				return this.responseCache.get(cacheKey)!;
 			}
 
@@ -180,7 +180,7 @@ export class CactusDMAgentImpl implements CactusDMAgent {
 
 			return dmResponse;
 		} catch (error) {
-			console.error('❌ CactusDMAgent: Failed to process player action:', error);
+			console.error('❌ DMAgent: Failed to process player action:', error);
 			const processingTime = Date.now() - startTime;
 			this.updatePerformanceMetrics(processingTime, false);
 
@@ -195,7 +195,7 @@ export class CactusDMAgentImpl implements CactusDMAgent {
 	async generateNarration(scene: string, context: GameContext): Promise<string> {
 		try {
 			if (!this.isInitialized) {
-				throw new Error('CactusDMAgent not initialized');
+				throw new Error('DMAgent not initialized');
 			}
 
 			// Prepare context for the LLM
@@ -209,7 +209,7 @@ export class CactusDMAgentImpl implements CactusDMAgent {
 
 			return narration;
 		} catch (error) {
-			console.error('❌ CactusDMAgent: Failed to generate narration:', error);
+			console.error('❌ DMAgent: Failed to generate narration:', error);
 			return this.generateFallbackNarration(scene, context);
 		}
 	}
@@ -222,9 +222,9 @@ export class CactusDMAgentImpl implements CactusDMAgent {
 			this.cactusProvider.rewind();
 			this.isInitialized = false;
 			this.responseCache.clear();
-			console.log('✅ CactusDMAgent: Model unloaded successfully');
+			console.log('✅ DMAgent: Model unloaded successfully');
 		} catch (error) {
-			console.error('❌ CactusDMAgent: Failed to unload model:', error);
+			console.error('❌ DMAgent: Failed to unload model:', error);
 			throw error;
 		}
 	}
@@ -234,7 +234,7 @@ export class CactusDMAgentImpl implements CactusDMAgent {
 	 */
 	setPerformanceMode(mode: 'performance' | 'balanced' | 'quality'): void {
 		this.performanceMode = mode;
-		console.log(`🎛️ CactusDMAgent: Performance mode set to ${mode}`);
+		console.log(`🎛️ DMAgent: Performance mode set to ${mode}`);
 	}
 
 	/**
@@ -245,7 +245,7 @@ export class CactusDMAgentImpl implements CactusDMAgent {
 		if (enabled) {
 			this.responseCache.clear(); // Clear cache to save memory
 		}
-		console.log(`🔋 CactusDMAgent: Battery optimization ${enabled ? 'enabled' : 'disabled'}`);
+		console.log(`🔋 DMAgent: Battery optimization ${enabled ? 'enabled' : 'disabled'}`);
 	}
 
 	/**
@@ -254,9 +254,9 @@ export class CactusDMAgentImpl implements CactusDMAgent {
 	async clearModelCache(): Promise<void> {
 		try {
 			this.responseCache.clear();
-			console.log('🗑️ CactusDMAgent: Model cache cleared');
+			console.log('🗑️ DMAgent: Model cache cleared');
 		} catch (error) {
-			console.error('❌ CactusDMAgent: Failed to clear cache:', error);
+			console.error('❌ DMAgent: Failed to clear cache:', error);
 			throw error;
 		}
 	}
@@ -620,7 +620,7 @@ Keep your description concise (3-5 sentences) but rich in sensory details.`;
 	}
 }
 
-// Helper function to create a Cactus DM Agent instance
-export const createCactusDMAgent = (): CactusDMAgent => {
-	return new CactusDMAgentImpl();
+// Helper function to create a DM Agent instance
+export const createDMAgent = (): DMAgent => {
+	return new DMAgentImpl();
 };

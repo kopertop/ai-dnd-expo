@@ -22,20 +22,20 @@ export class CharacterUpdater {
 	async updateCharacter(character: Character, update: CharacterUpdate): Promise<UpdateResult> {
 		try {
 			switch (update.type) {
-			case 'hp':
-				return this.updateHP(character, update);
-			case 'stat':
-				return this.updateStat(character, update);
-			case 'skill':
-				return this.updateSkill(character, update);
-			case 'inventory':
-				return this.updateInventory(character, update);
-			case 'experience':
-				return this.updateExperience(character, update);
-			case 'condition':
-				return this.updateCondition(character, update);
-			default:
-				throw new Error(`Unknown update type: ${update.type}`);
+				case 'hp':
+					return this.updateHP(character, update);
+				case 'stat':
+					return this.updateStat(character, update);
+				case 'skill':
+					return this.updateSkill(character, update);
+				case 'inventory':
+					return this.updateInventory(character, update);
+				case 'experience':
+					return this.updateExperience(character, update);
+				case 'condition':
+					return this.updateCondition(character, update);
+				default:
+					throw new Error(`Unknown update type: ${update.type}`);
 			}
 		} catch (error) {
 			return {
@@ -55,15 +55,15 @@ export class CharacterUpdater {
 		let newHP = oldHP;
 
 		switch (update.operation) {
-		case 'set':
-			newHP = Math.max(0, Math.min(character.maxHealth, Number(update.value)));
-			break;
-		case 'add':
-			newHP = Math.min(character.maxHealth, oldHP + Number(update.value));
-			break;
-		case 'subtract':
-			newHP = Math.max(0, oldHP - Number(update.value));
-			break;
+			case 'set':
+				newHP = Math.max(0, Math.min(character.maxHealth, Number(update.value)));
+				break;
+			case 'add':
+				newHP = Math.min(character.maxHealth, oldHP + Number(update.value));
+				break;
+			case 'subtract':
+				newHP = Math.max(0, oldHP - Number(update.value));
+				break;
 		}
 
 		character.health = newHP;
@@ -103,15 +103,15 @@ export class CharacterUpdater {
 		let newValue = oldValue;
 
 		switch (update.operation) {
-		case 'set':
-			newValue = Math.max(1, Math.min(30, Number(update.value)));
-			break;
-		case 'add':
-			newValue = Math.min(30, oldValue + Number(update.value));
-			break;
-		case 'subtract':
-			newValue = Math.max(1, oldValue - Number(update.value));
-			break;
+			case 'set':
+				newValue = Math.max(1, Math.min(30, Number(update.value)));
+				break;
+			case 'add':
+				newValue = Math.min(30, oldValue + Number(update.value));
+				break;
+			case 'subtract':
+				newValue = Math.max(1, oldValue - Number(update.value));
+				break;
 		}
 
 		(stats as any)[statName] = newValue;
@@ -155,18 +155,18 @@ export class CharacterUpdater {
 		let hasSkill = hadSkill;
 
 		switch (update.operation) {
-		case 'toggle':
-			if (hadSkill) {
-				skills.splice(skillIndex, 1);
-				hasSkill = false;
-			}
-			break;
-		case 'set':
-			if (!update.value && hadSkill) {
-				skills.splice(skillIndex, 1);
-				hasSkill = false;
-			}
-			break;
+			case 'toggle':
+				if (hadSkill) {
+					skills.splice(skillIndex, 1);
+					hasSkill = false;
+				}
+				break;
+			case 'set':
+				if (!update.value && hadSkill) {
+					skills.splice(skillIndex, 1);
+					hasSkill = false;
+				}
+				break;
 		}
 
 		return {
@@ -199,12 +199,12 @@ export class CharacterUpdater {
 		let newLevel = oldLevel;
 
 		switch (update.operation) {
-		case 'add':
-			newLevel = oldLevel + Number(update.value);
-			break;
-		case 'set':
-			newLevel = Number(update.value);
-			break;
+			case 'add':
+				newLevel = oldLevel + Number(update.value);
+				break;
+			case 'set':
+				newLevel = Number(update.value);
+				break;
 		}
 
 		// Ensure level is within reasonable bounds
@@ -235,24 +235,24 @@ export class CharacterUpdater {
 		const hasCondition = conditions.includes(conditionName);
 
 		switch (update.operation) {
-		case 'toggle':
-			if (hasCondition) {
-				(character as any).conditions = conditions.filter(
-					(c: string) => c !== conditionName,
-				);
-			} else {
-				(character as any).conditions = [...conditions, conditionName];
-			}
-			break;
-		case 'set':
-			if (update.value && !hasCondition) {
-				(character as any).conditions = [...conditions, conditionName];
-			} else if (!update.value && hasCondition) {
-				(character as any).conditions = conditions.filter(
-					(c: string) => c !== conditionName,
-				);
-			}
-			break;
+			case 'toggle':
+				if (hasCondition) {
+					(character as any).conditions = conditions.filter(
+						(c: string) => c !== conditionName,
+					);
+				} else {
+					(character as any).conditions = [...conditions, conditionName];
+				}
+				break;
+			case 'set':
+				if (update.value && !hasCondition) {
+					(character as any).conditions = [...conditions, conditionName];
+				} else if (!update.value && hasCondition) {
+					(character as any).conditions = conditions.filter(
+						(c: string) => c !== conditionName,
+					);
+				}
+				break;
 		}
 
 		const newConditions = (character as any).conditions || [];
@@ -308,14 +308,14 @@ export class CharacterUpdater {
 
 		// Type-specific validation
 		switch (update.type) {
-		case 'hp':
-			return typeof update.value === 'number' && update.value >= 0;
-		case 'stat':
-			return typeof update.value === 'number' && update.value >= 1 && update.value <= 30;
-		case 'experience':
-			return typeof update.value === 'number' && update.value >= 0;
-		default:
-			return true;
+			case 'hp':
+				return typeof update.value === 'number' && update.value >= 0;
+			case 'stat':
+				return typeof update.value === 'number' && update.value >= 1 && update.value <= 30;
+			case 'experience':
+				return typeof update.value === 'number' && update.value >= 0;
+			default:
+				return true;
 		}
 	}
 }
