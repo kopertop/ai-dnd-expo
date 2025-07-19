@@ -2,32 +2,32 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LocalDMAgent } from '../../../../../services/ai/agents/local-dm-agent';
 
-// Mock dependencies
-vi.mock('../../../../../services/ai/providers/local-dm-provider', () => ({
-	LocalDMProvider: vi.fn().mockImplementation(() => ({
-		initialize: vi.fn().mockResolvedValue(true),
-		generateDnDResponse: vi.fn().mockResolvedValue({
-			text: 'You attack the goblin! [ROLL:1d20+5] Roll for attack.',
-			confidence: 0.9,
-			toolCommands: [{ type: 'roll', params: '1d20+5' }],
-			processingTime: 500,
-		}),
-		healthCheck: vi.fn().mockResolvedValue(true),
-		isReady: vi.fn().mockReturnValue(true),
-		getStatus: vi.fn().mockReturnValue({
-			isLoaded: true,
-			isReady: true,
-			error: null,
-		}),
-		cleanup: vi.fn().mockResolvedValue(undefined),
-	})),
-}));
-
 describe('LocalDMAgent', () => {
 	let dmAgent: LocalDMAgent;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+
+		// Mock dependencies
+		vi.mock('../../../../../services/ai/providers/local-dm-provider', () => ({
+			LocalDMProvider: vi.fn().mockImplementation(() => ({
+				initialize: vi.fn().mockResolvedValue(true),
+				generateDnDResponse: vi.fn().mockResolvedValue({
+					text: 'You attack the goblin! [ROLL:1d20+5] Roll for attack.',
+					confidence: 0.9,
+					toolCommands: [{ type: 'roll', params: '1d20+5' }],
+					processingTime: 500,
+				}),
+				healthCheck: vi.fn().mockResolvedValue(true),
+				isReady: vi.fn().mockReturnValue(true),
+				getStatus: vi.fn().mockReturnValue({
+					isLoaded: true,
+					isReady: true,
+					error: null,
+				}),
+				cleanup: vi.fn().mockResolvedValue(undefined),
+			})),
+		}));
 		dmAgent = new LocalDMAgent({
 			modelPath: '/test/path/model.onnx',
 			maxTokens: 100,

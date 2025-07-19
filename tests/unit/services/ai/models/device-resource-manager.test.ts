@@ -2,22 +2,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DeviceResourceManager, ResourceUtils } from '../../../../../services/ai/models/device-resource-manager';
 
-// Mock AppState
-vi.mock('react-native', () => ({
-	AppState: {
-		addEventListener: vi.fn().mockImplementation((event, callback) => {
-			return {
-				remove: vi.fn(),
-			};
-		}),
-	},
-	Platform: {
-		OS: 'ios',
-	},
-}));
-
 describe('DeviceResourceManager', () => {
 	let resourceManager: DeviceResourceManager;
+
+	beforeEach(() => {
+		// Mock AppState
+		vi.mock('react-native', () => ({
+			AppState: {
+				addEventListener: vi.fn().mockImplementation((event: any, callback: any) => {
+					return {
+						remove: vi.fn(),
+					};
+				}),
+			},
+			Platform: {
+				OS: 'ios',
+			},
+		}));
+	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();

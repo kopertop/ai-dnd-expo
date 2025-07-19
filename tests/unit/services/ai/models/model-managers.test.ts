@@ -2,7 +2,7 @@
  * Basic tests for Task 6 model management system
  */
 
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Test imports to ensure our new classes can be imported
 import { ModelCacheManager } from '@/services/ai/models/model-cache-manager';
@@ -12,39 +12,40 @@ import { ModelPrivacyManager } from '@/services/ai/models/model-privacy-manager'
 import { ModelStorageManager } from '@/services/ai/models/model-storage-manager';
 import { LocalDMProvider } from '@/services/ai/providers/local-dm-provider';
 
-// Mock the React Native dependencies
-vi.mock('@react-native-async-storage/async-storage', () => ({
-	default: {
-		getItem: vi.fn(() => Promise.resolve(null)),
-		setItem: vi.fn(() => Promise.resolve()),
-		removeItem: vi.fn(() => Promise.resolve()),
-		getAllKeys: vi.fn(() => Promise.resolve([])),
-		multiRemove: vi.fn(() => Promise.resolve()),
-	},
-}));
-
-vi.mock('expo-file-system', () => ({
-	documentDirectory: '/mock/documents/',
-	cacheDirectory: '/mock/cache/',
-	getInfoAsync: vi.fn(() => Promise.resolve({ exists: true, size: 1024 })),
-	makeDirectoryAsync: vi.fn(() => Promise.resolve()),
-	readDirectoryAsync: vi.fn(() => Promise.resolve([])),
-	downloadAsync: vi.fn(() => Promise.resolve({ uri: '/mock/download.onnx' })),
-	deleteAsync: vi.fn(() => Promise.resolve()),
-	writeAsStringAsync: vi.fn(() => Promise.resolve()),
-	getFreeDiskStorageAsync: vi.fn(() => Promise.resolve(1024 * 1024 * 1024)),
-	FileSystemSessionType: { BACKGROUND: 'background' },
-	EncodingType: { UTF8: 'utf8' },
-}));
-
-vi.mock('react-native', () => ({
-	Platform: {
-		OS: 'ios',
-		select: vi.fn((obj) => obj.ios),
-	},
-}));
-
 describe('Task 6 Model Management System', () => {
+	beforeEach(() => {
+		// Mock the React Native dependencies
+		vi.mock('@react-native-async-storage/async-storage', () => ({
+			default: {
+				getItem: vi.fn(() => Promise.resolve(null)),
+				setItem: vi.fn(() => Promise.resolve()),
+				removeItem: vi.fn(() => Promise.resolve()),
+				getAllKeys: vi.fn(() => Promise.resolve([])),
+				multiRemove: vi.fn(() => Promise.resolve()),
+			},
+		}));
+
+		vi.mock('expo-file-system', () => ({
+			documentDirectory: '/mock/documents/',
+			cacheDirectory: '/mock/cache/',
+			getInfoAsync: vi.fn(() => Promise.resolve({ exists: true, size: 1024 })),
+			makeDirectoryAsync: vi.fn(() => Promise.resolve()),
+			readDirectoryAsync: vi.fn(() => Promise.resolve([])),
+			downloadAsync: vi.fn(() => Promise.resolve({ uri: '/mock/download.onnx' })),
+			deleteAsync: vi.fn(() => Promise.resolve()),
+			writeAsStringAsync: vi.fn(() => Promise.resolve()),
+			getFreeDiskStorageAsync: vi.fn(() => Promise.resolve(1024 * 1024 * 1024)),
+			FileSystemSessionType: { BACKGROUND: 'background' },
+			EncodingType: { UTF8: 'utf8' },
+		}));
+
+		vi.mock('react-native', () => ({
+			Platform: {
+				OS: 'ios',
+				select: vi.fn((obj: any) => obj.ios),
+			},
+		}));
+	});
 	describe('ModelDownloadManager', () => {
 		it('should be able to create an instance', () => {
 			const manager = new ModelDownloadManager();

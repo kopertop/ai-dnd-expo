@@ -4,62 +4,66 @@ import { AIServiceManager, DefaultAIConfig } from '../../../../../services/ai/ai
 import { CactusAIProvider } from '../../../../../services/ai/providers/cactus-provider';
 import { LocalDMProvider } from '../../../../../services/ai/providers/local-dm-provider';
 
-// Mock LocalDMProvider
-vi.mock('../../../../../services/ai/providers/local-dm-provider', () => ({
-	LocalDMProvider: vi.fn().mockImplementation(() => ({
-		initialize: vi.fn().mockResolvedValue(true),
-		generateDnDResponse: vi.fn().mockResolvedValue({
-			text: 'Local DM response',
-			confidence: 0.9,
-			toolCommands: [],
-			processingTime: 500,
-		}),
-		healthCheck: vi.fn().mockResolvedValue(true),
-		isReady: vi.fn().mockReturnValue(true),
-		getStatus: vi.fn().mockReturnValue({
-			isLoaded: true,
-			isReady: true,
-			error: null,
-			modelInfo: {
-				name: 'test-model',
-				quantization: 'int8',
-			},
-		}),
-		setPowerSavingMode: vi.fn(),
-		cleanup: vi.fn().mockResolvedValue(undefined),
-	})),
-	DefaultLocalDMConfig: {
-		modelPath: '/test/path/model.onnx',
-		contextSize: 2048,
-		maxTokens: 150,
-		temperature: 0.7,
-		enableResourceMonitoring: true,
-		powerSavingMode: false,
-	},
-}));
-
-// Mock CactusAIProvider
-vi.mock('../../../../../services/ai/providers/cactus-provider', () => ({
-	CactusAIProvider: vi.fn().mockImplementation(() => ({
-		initialize: vi.fn().mockResolvedValue(true),
-		generateDnDResponse: vi.fn().mockResolvedValue({
-			text: 'Cactus response',
-			metadata: {
-				toolCommands: [],
-			},
-		}),
-		healthCheck: vi.fn().mockResolvedValue(true),
-	})),
-	DnDSystemPrompts: {
-		DUNGEON_MASTER: 'You are a dungeon master...',
-	},
-}));
-
 describe('AIServiceManager', () => {
 	let serviceManager: AIServiceManager;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+
+		// Mock LocalDMProvider
+		vi.mock('../../../../../services/ai/providers/local-dm-provider', () => ({
+			LocalDMProvider: vi.fn().mockImplementation(() => ({
+				initialize: vi.fn().mockResolvedValue(true),
+				generateDnDResponse: vi.fn().mockResolvedValue({
+					text: 'Local DM response',
+					confidence: 0.9,
+					toolCommands: [],
+					processingTime: 500,
+				}),
+				healthCheck: vi.fn().mockResolvedValue(true),
+				isReady: vi.fn().mockReturnValue(true),
+				getStatus: vi.fn().mockReturnValue({
+					isLoaded: true,
+					isReady: true,
+					error: null,
+					modelInfo: {
+						name: 'test-model',
+						quantization: 'int8',
+					},
+				}),
+				setPowerSavingMode: vi.fn(),
+				cleanup: vi.fn().mockResolvedValue(undefined),
+			})),
+			DefaultLocalDMConfig: {
+				modelPath: '/test/path/model.onnx',
+				contextSize: 2048,
+				maxTokens: 150,
+				temperature: 0.7,
+				enableResourceMonitoring: true,
+				powerSavingMode: false,
+			},
+		}));
+
+		// Mock CactusAIProvider
+		vi.mock('../../../../../services/ai/providers/cactus-provider', () => ({
+			CactusAIProvider: vi.fn().mockImplementation(() => ({
+				initialize: vi.fn().mockResolvedValue(true),
+				generateDnDResponse: vi.fn().mockResolvedValue({
+					text: 'Cactus response',
+					metadata: {
+						toolCommands: [],
+					},
+				}),
+				healthCheck: vi.fn().mockResolvedValue(true),
+				isReady: vi.fn().mockReturnValue(true),
+				getStatus: vi.fn().mockReturnValue({
+					isReady: true,
+					error: null,
+				}),
+				cleanup: vi.fn().mockResolvedValue(undefined),
+			})),
+		}));
+
 		serviceManager = new AIServiceManager({
 			...DefaultAIConfig,
 			cactus: {

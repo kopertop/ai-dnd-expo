@@ -2,32 +2,32 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Gemma3InferenceEngine } from '../../../../../services/ai/models/gemma3-inference-engine';
 
-// Mock dependencies
-vi.mock('../../../../../services/ai/models/gemma3-tokenizer', () => ({
-	Gemma3Tokenizer: vi.fn().mockImplementation(() => ({
-		encode: vi.fn().mockReturnValue([1, 2, 3, 4, 5]),
-		decode: vi.fn().mockReturnValue('Decoded text'),
-		loadVocab: vi.fn().mockResolvedValue(true),
-		getVocabSize: vi.fn().mockReturnValue(32000),
-	})),
-}));
-
-vi.mock('../../../../../services/ai/models/onnx-model-manager', () => ({
-	ONNXModelManager: vi.fn().mockImplementation(() => ({
-		loadGemma3Model: vi.fn().mockResolvedValue({}),
-		validateModel: vi.fn().mockResolvedValue(true),
-		runInference: vi.fn().mockResolvedValue({
-			logits: new Float32Array([0.1, 0.2, 0.7]),
-		}),
-		cleanupSession: vi.fn().mockResolvedValue(undefined),
-	})),
-}));
-
 describe('Gemma3InferenceEngine', () => {
 	let inferenceEngine: Gemma3InferenceEngine;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+
+		// Mock dependencies
+		vi.mock('../../../../../services/ai/models/gemma3-tokenizer', () => ({
+			Gemma3Tokenizer: vi.fn().mockImplementation(() => ({
+				encode: vi.fn().mockReturnValue([1, 2, 3, 4, 5]),
+				decode: vi.fn().mockReturnValue('Decoded text'),
+				loadVocab: vi.fn().mockResolvedValue(true),
+				getVocabSize: vi.fn().mockReturnValue(32000),
+			})),
+		}));
+
+		vi.mock('../../../../../services/ai/models/onnx-model-manager', () => ({
+			ONNXModelManager: vi.fn().mockImplementation(() => ({
+				loadGemma3Model: vi.fn().mockResolvedValue({}),
+				validateModel: vi.fn().mockResolvedValue(true),
+				runInference: vi.fn().mockResolvedValue({
+					logits: new Float32Array([0.1, 0.2, 0.7]),
+				}),
+				cleanupSession: vi.fn().mockResolvedValue(undefined),
+			})),
+		}));
 		inferenceEngine = new Gemma3InferenceEngine({
 			modelPath: '/test/path/model.onnx',
 			vocabPath: '/test/path/vocab.json',

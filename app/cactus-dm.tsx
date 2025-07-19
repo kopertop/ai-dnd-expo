@@ -9,7 +9,7 @@ import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { CactusDMExample } from '@/components/game/cactus-dm-example';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export default function CactusDMScreen() {
+const CactusDMScreen: React.FC = () => {
 	const colorScheme = useColorScheme();
 	const backgroundColor = colorScheme === 'dark' ? '#121212' : '#F5F5F5';
 	const textColor = colorScheme === 'dark' ? '#FFFFFF' : '#000000';
@@ -30,7 +30,9 @@ export default function CactusDMScreen() {
 			</View>
 		</SafeAreaView>
 	);
-}
+};
+
+export default CactusDMScreen;
 
 const styles = StyleSheet.create({
 	container: {

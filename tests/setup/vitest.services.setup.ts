@@ -8,10 +8,10 @@ import { vi } from 'vitest';
 vi.mock('react-native', () => ({
 	Platform: {
 		OS: 'ios',
-		select: (obj) => obj.ios || obj.default,
+		select: (obj: any) => obj.ios || obj.default,
 	},
 	AppState: {
-		addEventListener: vi.fn().mockImplementation((event, callback) => {
+		addEventListener: vi.fn().mockImplementation((event: any, callback: any) => {
 			return {
 				remove: vi.fn(),
 			};
@@ -32,7 +32,7 @@ vi.mock('onnxruntime-react-native', () => ({
 			}),
 		}),
 	},
-	Tensor: vi.fn().mockImplementation((type, data, dims) => ({
+	Tensor: vi.fn().mockImplementation((type: any, data: any, dims: any) => ({
 		type,
 		data,
 		dims,
@@ -40,7 +40,7 @@ vi.mock('onnxruntime-react-native', () => ({
 }));
 
 // Mock fetch for API calls
-global.fetch = vi.fn().mockImplementation((url) => {
+global.fetch = vi.fn().mockImplementation((url: any) => {
 	return Promise.resolve({
 		ok: true,
 		arrayBuffer: () => Promise.resolve(new ArrayBuffer(1024)),
