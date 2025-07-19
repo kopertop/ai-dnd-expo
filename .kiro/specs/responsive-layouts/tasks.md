@@ -21,20 +21,20 @@
     - Set up androidSpeechServicePackages for package visibility
     - _Requirements: 6.8, 6.9_
 
-- [ ] 3. Create Zustand stores for state management
-  - [ ] 3.1 Implement chat store with message persistence
+- [x] 3. Create Zustand stores for state management
+  - [x] 3.1 Implement chat store with message persistence
     - Create `stores/useChatStore.ts` with message history and current input state
     - Add persistence middleware for chat messages
     - Include voice mode toggle state
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-  - [ ] 3.2 Implement settings store for voice and app preferences
+  - [x] 3.2 Implement settings store for voice and app preferences
     - Create `stores/useSettingsStore.ts` with voice settings
     - Include TTS/STT enabled flags, volume, speech rate, and language settings
     - Add theme preference storage
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-  - [ ] 3.3 Implement layout store for UI state management
+  - [x] 3.3 Implement layout store for UI state management
     - Create `stores/useLayoutStore.ts` for layout-specific state
     - Track current layout type, active tab, and modal visibility states
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
