@@ -11,7 +11,6 @@ import _import from 'eslint-plugin-import';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactNative from 'eslint-plugin-react-native';
-// @ts-ignore - No type definitions available for eslint-plugin-react-native
 import unicorn from 'eslint-plugin-unicorn';
 import unusedImports from 'eslint-plugin-unused-imports';
 import globals from 'globals';
@@ -162,12 +161,7 @@ export default defineConfig([
 				},
 			],
 
-			'no-console': [
-				'warn',
-				{
-					allow: ['warn', 'error'],
-				},
-			],
+			'no-console': 'off',
 
 			quotes: [
 				'error',

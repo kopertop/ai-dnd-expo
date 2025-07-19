@@ -39,22 +39,22 @@
     - Track current layout type, active tab, and modal visibility states
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 4. Create voice interaction hooks and components
-  - [ ] 4.1 Implement speech recognition hook
+- [x] 4. Create voice interaction hooks and components
+  - [x] 4.1 Implement speech recognition hook
     - Create `hooks/useSpeechRecognition.ts` using expo-speech-recognition
     - Handle permission requests and error states
     - Implement start/stop listening functionality with event handlers
     - Add configurable continuous recognition flag (continuous: true/false) based on platform support
     - _Requirements: 6.3, 6.4, 6.5, 6.10, 6.11_
 
-  - [ ] 4.2 Implement text-to-speech hook
+  - [x] 4.2 Implement text-to-speech hook
     - Create `hooks/useTextToSpeech.ts` using expo-speech
     - Load available voices using `Speech.getAvailableVoicesAsync()` for user selection
     - Implement speak/stop functionality with voice selection
     - Populate settings UI with voice options (gender/pitch preferences)
     - _Requirements: 6.1, 6.2, 6.13, 6.14_
 
-  - [ ] 4.3 Create voice chat input component
+  - [x] 4.3 Create voice chat input component
     - Build `components/VoiceChatInput.tsx` with microphone button
     - Integrate speech recognition and text input
     - Add visual feedback for listening state
