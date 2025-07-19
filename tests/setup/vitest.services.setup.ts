@@ -1,43 +1,45 @@
-import { vi } from 'vitest';
+import { beforeEach, vi } from 'vitest';
 
 // Mock external dependencies for service tests
-// Note: Individual test files should use vi.mock() calls in beforeEach hooks
+// Note: Individual test files should use vi.spyOn() calls in beforeEach hooks
 // This file provides global setup for service tests
 
-// Mock React Native
-vi.mock('react-native', () => ({
-	Platform: {
-		OS: 'ios',
-		select: (obj: any) => obj.ios || obj.default,
-	},
-	AppState: {
-		addEventListener: vi.fn().mockImplementation((event: any, callback: any) => {
-			return {
-				remove: vi.fn(),
-			};
-		}),
-	},
-}));
-
-// Mock ONNX Runtime
-vi.mock('onnxruntime-react-native', () => ({
-	InferenceSession: {
-		create: vi.fn().mockResolvedValue({
-			inputNames: ['input_ids', 'attention_mask'],
-			outputNames: ['logits'],
-			run: vi.fn().mockResolvedValue({
-				logits: {
-					data: new Float32Array([0.1, 0.2, 0.7]),
-				},
+beforeEach(() => {
+	// Mock React Native
+	vi.doMock('react-native', () => ({
+		Platform: {
+			OS: 'ios',
+			select: (obj: any) => obj.ios || obj.default,
+		},
+		AppState: {
+			addEventListener: vi.fn().mockImplementation((event: any, callback: any) => {
+				return {
+					remove: vi.fn(),
+				};
 			}),
-		}),
-	},
-	Tensor: vi.fn().mockImplementation((type: any, data: any, dims: any) => ({
-		type,
-		data,
-		dims,
-	})),
-}));
+		},
+	}));
+
+	// Mock ONNX Runtime
+	vi.doMock('onnxruntime-react-native', () => ({
+		InferenceSession: {
+			create: vi.fn().mockResolvedValue({
+				inputNames: ['input_ids', 'attention_mask'],
+				outputNames: ['logits'],
+				run: vi.fn().mockResolvedValue({
+					logits: {
+						data: new Float32Array([0.1, 0.2, 0.7]),
+					},
+				}),
+			}),
+		},
+		Tensor: vi.fn().mockImplementation((type: any, data: any, dims: any) => ({
+			type,
+			data,
+			dims,
+		})),
+	}));
+});
 
 // Mock fetch for API calls
 global.fetch = vi.fn().mockImplementation((url: any) => {

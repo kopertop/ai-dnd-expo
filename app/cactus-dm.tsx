@@ -17,9 +17,7 @@ const CactusDMScreen: React.FC = () => {
 	return (
 		<SafeAreaView style={[styles.container, { backgroundColor }]}>
 			<View style={styles.header}>
-				<Text style={[styles.title, { color: textColor }]}>
-					AI Dungeon Master
-				</Text>
+				<Text style={[styles.title, { color: textColor }]}>AI Dungeon Master</Text>
 				<Text style={[styles.subtitle, { color: textColor }]}>
 					Powered by Cactus Compute
 				</Text>

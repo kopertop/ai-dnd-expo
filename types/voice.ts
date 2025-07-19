@@ -66,11 +66,14 @@ export const VoiceAssignmentDataSchema = z.object({
 	version: z.string().default('1.0.0'),
 	lastUpdated: z.number(),
 	assignments: z.record(z.string(), VoiceAssignmentSchema),
-	voiceUsage: z.record(z.string(), z.object({
-		assignedCount: z.number().default(0),
-		lastUsed: z.number(),
-		totalUsageTime: z.number().default(0),
-	})),
+	voiceUsage: z.record(
+		z.string(),
+		z.object({
+			assignedCount: z.number().default(0),
+			lastUsed: z.number(),
+			totalUsageTime: z.number().default(0),
+		}),
+	),
 });
 export type VoiceAssignmentData = z.infer<typeof VoiceAssignmentDataSchema>;
 

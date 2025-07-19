@@ -208,7 +208,8 @@ export default defineConfig([
 			'no-restricted-syntax': [
 				'error',
 				{
-					selector: 'CallExpression[callee.object.name="vi"][callee.property.name="mock"]',
+					selector:
+						'CallExpression[callee.object.name="vi"][callee.property.name="mock"]',
 					message: 'Use vi.spyOn within beforeEach hooks instead',
 				},
 			],

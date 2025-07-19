@@ -1,7 +1,7 @@
 import * as Audio from 'expo-audio';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 
 export interface VoiceRecognitionOptions {
 	language?: string;
@@ -31,11 +31,40 @@ export const useVoiceRecognition = (
 	const [isListening, setIsListening] = useState(false);
 	const [transcript, setTranscript] = useState('');
 	const [error, setError] = useState<string | null>(null);
-	const [hasPermission, setHasPermission] = useState(false);
 	const [isSupported, setIsSupported] = useState(false);
 
 	const recordingRef = useRef<any>(null);
 	const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	// Voice permissions state
+	const [hasPermissions, setHasPermissions] = useState(false);
+
+	// Check permissions on mount
+	useEffect(() => {
+		checkPermissions();
+	}, []);
+
+	const checkPermissions = useCallback(async () => {
+		try {
+			const { granted } = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+			setHasPermissions(granted);
+		} catch (err) {
+			console.error('Error checking permissions:', err);
+			setHasPermissions(false);
+		}
+	}, []);
+
+	const requestPermissions = useCallback(async (): Promise<boolean> => {
+		try {
+			const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+			setHasPermissions(granted);
+			return granted;
+		} catch (err) {
+			console.error('Error requesting permissions:', err);
+			setHasPermissions(false);
+			return false;
+		}
+	}, []);
 
 	// Check if speech recognition is supported
 	useEffect(() => {
@@ -45,46 +74,11 @@ export const useVoiceRecognition = (
 	}, []);
 
 	/**
-	 * Request microphone permissions (using audio for now)
+	 * Request permissions using the new voice permissions hook
 	 */
 	const requestPermission = useCallback(async (): Promise<boolean> => {
-		try {
-			const { granted } = await Audio.requestRecordingPermissionsAsync();
-			setHasPermission(granted);
-			console.log('🔐 Audio permission:', granted);
-
-			if (!granted) {
-				Alert.alert(
-					'Microphone Permission Required',
-					'Please enable microphone access in Settings to use voice commands with the Dungeon Master.',
-					[{ text: 'OK' }],
-				);
-			}
-
-			return granted;
-		} catch (err) {
-			console.error('❌ Permission request failed:', err);
-			setError('Failed to request microphone permission');
-			return false;
-		}
-	}, []);
-
-	/**
-	 * Check permissions on mount
-	 */
-	useEffect(() => {
-		const checkPermissions = async () => {
-			try {
-				const { granted } = await Audio.getRecordingPermissionsAsync();
-				setHasPermission(granted);
-				console.log('🔍 Current audio permission:', granted);
-			} catch (err) {
-				console.log('❌ Could not check permissions:', err);
-				setHasPermission(false);
-			}
-		};
-		checkPermissions();
-	}, []);
+		return await requestPermissions();
+	}, [requestPermissions]);
 
 	/**
 	 * Start listening for voice input
@@ -98,7 +92,7 @@ export const useVoiceRecognition = (
 
 		try {
 			// Request permission if not granted
-			if (!hasPermission) {
+			if (!hasPermissions) {
 				const granted = await requestPermission();
 				if (!granted) return;
 			}
@@ -126,7 +120,7 @@ export const useVoiceRecognition = (
 			setError(errorMessage);
 			options.onError?.(errorMessage);
 		}
-	}, [hasPermission, isListening, options, requestPermission]);
+	}, [hasPermissions, isListening, options, requestPermission]);
 
 	/**
 	 * Stop listening
@@ -316,7 +310,7 @@ export const useVoiceRecognition = (
 		error,
 		startListening,
 		stopListening,
-		hasPermission,
+		hasPermission: hasPermissions,
 		requestPermission,
 	};
 };

@@ -29,13 +29,9 @@ const IndexScreen: React.FC = () => {
 		<>
 			<Stack.Screen options={{ title: 'Home' }} />
 			<ThemedView style={styles.container}>
-				<ThemedText type="title">
-					Welcome to the AI D&D Platform
-				</ThemedText>
+				<ThemedText type="title">Welcome to the AI D&D Platform</ThemedText>
 				<Link href="/new-game" style={styles.link}>
-					<ThemedText type="link">
-						Start a new game
-					</ThemedText>
+					<ThemedText type="link">Start a new game</ThemedText>
 				</Link>
 				{!loading && hasSavedGame && (
 					<TouchableOpacity

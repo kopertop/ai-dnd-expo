@@ -96,7 +96,7 @@ export class ModelStorageManager {
 	 */
 	private async createDirectories(): Promise<void> {
 		const directories = [this.modelsDirectory, this.cacheDirectory, this.tempDirectory];
-		
+
 		for (const directory of directories) {
 			const info = await FileSystem.getInfoAsync(directory);
 			if (!info.exists) {
@@ -157,9 +157,13 @@ export class ModelStorageManager {
 	): Promise<string> {
 		try {
 			// Determine final storage path
-			const targetDirectory = cacheLevel === 'permanent' ? this.modelsDirectory :
-				cacheLevel === 'temporary' ? this.tempDirectory : this.cacheDirectory;
-			
+			const targetDirectory =
+				cacheLevel === 'permanent'
+					? this.modelsDirectory
+					: cacheLevel === 'temporary'
+						? this.tempDirectory
+						: this.cacheDirectory;
+
 			const targetPath = `${targetDirectory}${modelId}.onnx`;
 
 			// Move or copy file to target location
@@ -199,7 +203,6 @@ export class ModelStorageManager {
 			await this.performMaintenanceIfNeeded();
 
 			return targetPath;
-
 		} catch (error) {
 			console.error('Failed to store model:', error);
 			throw new Error(`Model storage failed: ${error}`);
@@ -271,7 +274,6 @@ export class ModelStorageManager {
 			// Remove from tracking
 			this.storageEntries.delete(modelId);
 			await this.saveStorageEntries();
-
 		} catch (error) {
 			console.error('Failed to delete model:', error);
 			throw new Error(`Model deletion failed: ${error}`);
@@ -284,9 +286,10 @@ export class ModelStorageManager {
 	async getStorageStats(): Promise<StorageStats> {
 		try {
 			// Calculate free space
-			const freeSpace = Platform.OS === 'ios' 
-				? await FileSystem.getFreeDiskStorageAsync()
-				: 1024 * 1024 * 1024; // 1GB fallback
+			const freeSpace =
+				Platform.OS === 'ios'
+					? await FileSystem.getFreeDiskStorageAsync()
+					: 1024 * 1024 * 1024; // 1GB fallback
 
 			// Calculate used space by models
 			let usedSpace = 0;
@@ -297,7 +300,7 @@ export class ModelStorageManager {
 
 			for (const entry of this.storageEntries.values()) {
 				usedSpace += entry.size;
-				
+
 				if (entry.cacheLevel === 'temporary') {
 					cacheSize += entry.size;
 					tempFiles++;
@@ -317,7 +320,6 @@ export class ModelStorageManager {
 				largestModel,
 				oldestAccess,
 			};
-
 		} catch (error) {
 			console.error('Failed to get storage stats:', error);
 			throw new Error(`Storage stats retrieval failed: ${error}`);
@@ -338,8 +340,9 @@ export class ModelStorageManager {
 
 		try {
 			const stats = await this.getStorageStats();
-			const needsCleanup = force || 
-				(stats.usedSpace / stats.totalSpace) > this.cacheConfig.cleanupThreshold ||
+			const needsCleanup =
+				force ||
+				stats.usedSpace / stats.totalSpace > this.cacheConfig.cleanupThreshold ||
 				(targetFreeSpace && stats.freeSpace < targetFreeSpace) ||
 				(maxFiles && stats.tempFiles > maxFiles);
 
@@ -363,14 +366,16 @@ export class ModelStorageManager {
 
 					return true;
 				})
-				.sort((a, b) => this.calculateCleanupPriority(a) - this.calculateCleanupPriority(b));
+				.sort(
+					(a, b) => this.calculateCleanupPriority(a) - this.calculateCleanupPriority(b),
+				);
 
 			// Clean up candidates until targets are met
 			let freedSpace = 0;
 			let filesRemoved = 0;
 
 			for (const candidate of candidates) {
-				if (targetFreeSpace && (stats.freeSpace + freedSpace) >= targetFreeSpace) {
+				if (targetFreeSpace && stats.freeSpace + freedSpace >= targetFreeSpace) {
 					break;
 				}
 				if (maxFiles && stats.tempFiles - filesRemoved <= maxFiles) {
@@ -381,7 +386,6 @@ export class ModelStorageManager {
 				freedSpace += candidate.size;
 				filesRemoved++;
 			}
-
 		} catch (error) {
 			console.error('Storage cleanup failed:', error);
 			throw new Error(`Storage cleanup failed: ${error}`);
@@ -395,35 +399,38 @@ export class ModelStorageManager {
 		const now = Date.now();
 		const daysSinceAccess = (now - entry.lastAccessed) / (1000 * 60 * 60 * 24);
 		const sizeWeight = entry.size / (1024 * 1024); // MB
-		
+
 		// Priority factors:
 		// - Older files have lower priority (cleaned first)
 		// - Larger files have lower priority for space savings
 		// - Less accessed files have lower priority
 		// - Temporary cache has lower priority than permanent
-		
+
 		let priority = 100;
-		
+
 		// Age factor (older = lower priority)
 		priority -= daysSinceAccess * 2;
-		
+
 		// Size factor (larger = slightly lower priority for space)
 		priority -= Math.log(sizeWeight + 1) * 5;
-		
+
 		// Access frequency factor
 		priority += Math.log(entry.accessCount + 1) * 10;
-		
+
 		// Cache level factor
 		if (entry.cacheLevel === 'temporary') priority -= 20;
 		else if (entry.cacheLevel === 'system') priority += 10;
-		
+
 		return priority;
 	}
 
 	/**
 	 * Move model between cache levels
 	 */
-	async moveModel(modelId: string, newCacheLevel: 'permanent' | 'temporary' | 'system'): Promise<void> {
+	async moveModel(
+		modelId: string,
+		newCacheLevel: 'permanent' | 'temporary' | 'system',
+	): Promise<void> {
 		const entry = this.storageEntries.get(modelId);
 		if (!entry) {
 			throw new Error('Model not found in storage');
@@ -434,9 +441,13 @@ export class ModelStorageManager {
 		}
 
 		// Determine new directory
-		const targetDirectory = newCacheLevel === 'permanent' ? this.modelsDirectory :
-			newCacheLevel === 'temporary' ? this.tempDirectory : this.cacheDirectory;
-		
+		const targetDirectory =
+			newCacheLevel === 'permanent'
+				? this.modelsDirectory
+				: newCacheLevel === 'temporary'
+					? this.tempDirectory
+					: this.cacheDirectory;
+
 		const newPath = `${targetDirectory}${modelId}.onnx`;
 
 		try {
@@ -451,7 +462,6 @@ export class ModelStorageManager {
 			entry.cacheLevel = newCacheLevel;
 
 			await this.saveStorageEntries();
-
 		} catch (error) {
 			console.error('Failed to move model:', error);
 			throw new Error(`Model move failed: ${error}`);
@@ -462,8 +472,9 @@ export class ModelStorageManager {
 	 * Get models by cache level
 	 */
 	getModelsByLevel(cacheLevel: 'permanent' | 'temporary' | 'system'): StorageEntry[] {
-		return Array.from(this.storageEntries.values())
-			.filter(entry => entry.cacheLevel === cacheLevel);
+		return Array.from(this.storageEntries.values()).filter(
+			entry => entry.cacheLevel === cacheLevel,
+		);
 	}
 
 	/**
@@ -479,17 +490,17 @@ export class ModelStorageManager {
 	 */
 	private async performMaintenanceIfNeeded(): Promise<void> {
 		const stats = await this.getStorageStats();
-		
+
 		// Auto-cleanup if threshold exceeded
-		if ((stats.usedSpace / stats.totalSpace) > this.cacheConfig.cleanupThreshold) {
+		if (stats.usedSpace / stats.totalSpace > this.cacheConfig.cleanupThreshold) {
 			await this.cleanupStorage({ preservePermanent: true });
 		}
 
 		// Clean up temp files if too many
 		if (stats.tempFiles > this.cacheConfig.maxTempFiles) {
-			await this.cleanupStorage({ 
+			await this.cleanupStorage({
 				preservePermanent: true,
-				maxFiles: this.cacheConfig.maxTempFiles, 
+				maxFiles: this.cacheConfig.maxTempFiles,
 			});
 		}
 	}
@@ -500,12 +511,13 @@ export class ModelStorageManager {
 	private async generateEncryptionKey(modelId: string): Promise<string> {
 		// In production, use proper cryptographic key generation
 		// This is a simplified version
-		const key = Math.random().toString(36).substring(2, 15) + 
-				  Math.random().toString(36).substring(2, 15);
-		
+		const key =
+			Math.random().toString(36).substring(2, 15) +
+			Math.random().toString(36).substring(2, 15);
+
 		// Store key securely
 		try {
-			const keys = await AsyncStorage.getItem(STORAGE_KEYS.ENCRYPTION_KEYS) || '{}';
+			const keys = (await AsyncStorage.getItem(STORAGE_KEYS.ENCRYPTION_KEYS)) || '{}';
 			const keyStore = JSON.parse(keys);
 			keyStore[modelId] = key;
 			await AsyncStorage.setItem(STORAGE_KEYS.ENCRYPTION_KEYS, JSON.stringify(keyStore));
@@ -521,7 +533,7 @@ export class ModelStorageManager {
 	 */
 	private async deleteEncryptionKey(modelId: string): Promise<void> {
 		try {
-			const keys = await AsyncStorage.getItem(STORAGE_KEYS.ENCRYPTION_KEYS) || '{}';
+			const keys = (await AsyncStorage.getItem(STORAGE_KEYS.ENCRYPTION_KEYS)) || '{}';
 			const keyStore = JSON.parse(keys);
 			delete keyStore[modelId];
 			await AsyncStorage.setItem(STORAGE_KEYS.ENCRYPTION_KEYS, JSON.stringify(keyStore));
@@ -542,7 +554,8 @@ export class ModelStorageManager {
 			}
 
 			// Overwrite with random data (simplified - in production use proper secure deletion)
-			const randomData = Array(Math.min(fileInfo.size, 1024)).fill(0)
+			const randomData = Array(Math.min(fileInfo.size, 1024))
+				.fill(0)
 				.map(() => Math.floor(Math.random() * 256))
 				.map(byte => String.fromCharCode(byte))
 				.join('');
@@ -553,7 +566,6 @@ export class ModelStorageManager {
 
 			// Delete file
 			await FileSystem.deleteAsync(filePath);
-
 		} catch (error) {
 			console.error('Secure delete failed, falling back to normal delete:', error);
 			await FileSystem.deleteAsync(filePath, { idempotent: true });
@@ -572,7 +584,7 @@ export class ModelStorageManager {
 	 */
 	async validateStorage(): Promise<{ valid: boolean; issues: string[] }> {
 		const issues: string[] = [];
-		
+
 		for (const [modelId, entry] of this.storageEntries) {
 			// Check if file exists
 			const fileInfo = await FileSystem.getInfoAsync(entry.filePath);
@@ -583,7 +595,9 @@ export class ModelStorageManager {
 
 			// Check file size
 			if (fileInfo.size !== entry.size) {
-				issues.push(`Size mismatch for model ${modelId}: expected ${entry.size}, got ${fileInfo.size}`);
+				issues.push(
+					`Size mismatch for model ${modelId}: expected ${entry.size}, got ${fileInfo.size}`,
+				);
 			}
 
 			// TODO: Validate checksum in production

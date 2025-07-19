@@ -3,7 +3,11 @@ import { Text } from 'react-native';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ThemedText } from '@/components/themed-text';
-import { assertNoConsoleErrors, renderWithProviders, waitForAsyncUpdates } from '@/tests/utils/render-helpers';
+import {
+	assertNoConsoleErrors,
+	renderWithProviders,
+	waitForAsyncUpdates,
+} from '@/tests/utils/render-helpers';
 
 describe('ThemedText', () => {
 	beforeEach(() => {
@@ -17,7 +21,9 @@ describe('ThemedText', () => {
 	describe('Component rendering', () => {
 		it('should render without crashing', async () => {
 			const { container } = renderWithProviders(
-				<ThemedText><Text>Test Text</Text></ThemedText>,
+				<ThemedText>
+					<Text>Test Text</Text>
+				</ThemedText>,
 			);
 
 			await waitForAsyncUpdates();
@@ -27,7 +33,9 @@ describe('ThemedText', () => {
 
 		it('should display text content', async () => {
 			const { getByText } = renderWithProviders(
-				<ThemedText><Text>Hello World</Text></ThemedText>,
+				<ThemedText>
+					<Text>Hello World</Text>
+				</ThemedText>,
 			);
 
 			await waitForAsyncUpdates();
@@ -37,7 +45,9 @@ describe('ThemedText', () => {
 
 		it('should render with default type', async () => {
 			const { getByText } = renderWithProviders(
-				<ThemedText><Text>Default Text</Text></ThemedText>,
+				<ThemedText>
+					<Text>Default Text</Text>
+				</ThemedText>,
 			);
 
 			await waitForAsyncUpdates();
@@ -49,7 +59,9 @@ describe('ThemedText', () => {
 	describe('Text types', () => {
 		it('should render title type', async () => {
 			const { getByText } = renderWithProviders(
-				<ThemedText type="title"><Text>Title Text</Text></ThemedText>,
+				<ThemedText type="title">
+					<Text>Title Text</Text>
+				</ThemedText>,
 			);
 
 			await waitForAsyncUpdates();
@@ -59,7 +71,9 @@ describe('ThemedText', () => {
 
 		it('should render subtitle type', async () => {
 			const { getByText } = renderWithProviders(
-				<ThemedText type="subtitle"><Text>Subtitle Text</Text></ThemedText>,
+				<ThemedText type="subtitle">
+					<Text>Subtitle Text</Text>
+				</ThemedText>,
 			);
 
 			await waitForAsyncUpdates();
@@ -69,7 +83,9 @@ describe('ThemedText', () => {
 
 		it('should render defaultSemiBold type', async () => {
 			const { getByText } = renderWithProviders(
-				<ThemedText type="defaultSemiBold"><Text>SemiBold Text</Text></ThemedText>,
+				<ThemedText type="defaultSemiBold">
+					<Text>SemiBold Text</Text>
+				</ThemedText>,
 			);
 
 			await waitForAsyncUpdates();
@@ -79,7 +95,9 @@ describe('ThemedText', () => {
 
 		it('should render link type', async () => {
 			const { getByText } = renderWithProviders(
-				<ThemedText type="link"><Text>Link Text</Text></ThemedText>,
+				<ThemedText type="link">
+					<Text>Link Text</Text>
+				</ThemedText>,
 			);
 
 			await waitForAsyncUpdates();
@@ -91,7 +109,9 @@ describe('ThemedText', () => {
 	describe('Theme colors', () => {
 		it('should render with light color props', async () => {
 			const { getByText } = renderWithProviders(
-				<ThemedText lightColor="#00FF00"><Text>Light Text</Text></ThemedText>,
+				<ThemedText lightColor="#00FF00">
+					<Text>Light Text</Text>
+				</ThemedText>,
 			);
 
 			await waitForAsyncUpdates();
@@ -102,7 +122,9 @@ describe('ThemedText', () => {
 
 		it('should render with dark color props', async () => {
 			const { getByText } = renderWithProviders(
-				<ThemedText darkColor="#0000FF"><Text>Dark Text</Text></ThemedText>,
+				<ThemedText darkColor="#0000FF">
+					<Text>Dark Text</Text>
+				</ThemedText>,
 			);
 
 			await waitForAsyncUpdates();
@@ -113,7 +135,9 @@ describe('ThemedText', () => {
 
 		it('should render with both light and dark colors', async () => {
 			const { getByText } = renderWithProviders(
-				<ThemedText lightColor="#FFFFFF" darkColor="#000000"><Text>Themed Text</Text></ThemedText>,
+				<ThemedText lightColor="#FFFFFF" darkColor="#000000">
+					<Text>Themed Text</Text>
+				</ThemedText>,
 			);
 
 			await waitForAsyncUpdates();
@@ -128,7 +152,9 @@ describe('ThemedText', () => {
 			const customStyle = { fontSize: 20, fontWeight: '600' as const };
 
 			const { container } = renderWithProviders(
-				<ThemedText style={customStyle}><Text>Styled Text</Text></ThemedText>,
+				<ThemedText style={customStyle}>
+					<Text>Styled Text</Text>
+				</ThemedText>,
 			);
 
 			await waitForAsyncUpdates();
@@ -140,7 +166,9 @@ describe('ThemedText', () => {
 			const customStyle = { color: 'red' };
 
 			const { container } = renderWithProviders(
-				<ThemedText type="title" style={customStyle}><Text>Title with Custom Style</Text></ThemedText>,
+				<ThemedText type="title" style={customStyle}>
+					<Text>Title with Custom Style</Text>
+				</ThemedText>,
 			);
 
 			await waitForAsyncUpdates();
@@ -177,9 +205,7 @@ describe('ThemedText', () => {
 
 	describe('Edge cases', () => {
 		it('should handle empty text', async () => {
-			const { container } = renderWithProviders(
-				<ThemedText></ThemedText>,
-			);
+			const { container } = renderWithProviders(<ThemedText></ThemedText>);
 
 			await waitForAsyncUpdates();
 
@@ -187,9 +213,7 @@ describe('ThemedText', () => {
 		});
 
 		it('should handle null children', async () => {
-			const { container } = renderWithProviders(
-				<ThemedText>{null}</ThemedText>,
-			);
+			const { container } = renderWithProviders(<ThemedText>{null}</ThemedText>);
 
 			await waitForAsyncUpdates();
 
@@ -198,7 +222,9 @@ describe('ThemedText', () => {
 
 		it('should handle undefined type', async () => {
 			const { container } = renderWithProviders(
-				<ThemedText type={undefined as any}><Text>Undefined Type</Text></ThemedText>,
+				<ThemedText type={undefined as any}>
+					<Text>Undefined Type</Text>
+				</ThemedText>,
 			);
 
 			await waitForAsyncUpdates();
@@ -208,7 +234,9 @@ describe('ThemedText', () => {
 
 		it('should handle invalid type', async () => {
 			const { container } = renderWithProviders(
-				<ThemedText type={'invalid' as any}><Text>Invalid Type</Text></ThemedText>,
+				<ThemedText type={'invalid' as any}>
+					<Text>Invalid Type</Text>
+				</ThemedText>,
 			);
 
 			await waitForAsyncUpdates();

@@ -14,37 +14,31 @@ import { LocalDMProvider } from '@/services/ai/providers/local-dm-provider';
 
 describe('Task 6 Model Management System', () => {
 	beforeEach(() => {
-		// Mock the React Native dependencies
-		vi.mock('@react-native-async-storage/async-storage', () => ({
-			default: {
-				getItem: vi.fn(() => Promise.resolve(null)),
-				setItem: vi.fn(() => Promise.resolve()),
-				removeItem: vi.fn(() => Promise.resolve()),
-				getAllKeys: vi.fn(() => Promise.resolve([])),
-				multiRemove: vi.fn(() => Promise.resolve()),
-			},
-		}));
+		// Mock the React Native dependencies using vi.spyOn
+		const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+		vi.spyOn(AsyncStorage, 'getItem').mockImplementation(() => Promise.resolve(null));
+		vi.spyOn(AsyncStorage, 'setItem').mockImplementation(() => Promise.resolve());
+		vi.spyOn(AsyncStorage, 'removeItem').mockImplementation(() => Promise.resolve());
+		vi.spyOn(AsyncStorage, 'getAllKeys').mockImplementation(() => Promise.resolve([]));
+		vi.spyOn(AsyncStorage, 'multiRemove').mockImplementation(() => Promise.resolve());
 
-		vi.mock('expo-file-system', () => ({
-			documentDirectory: '/mock/documents/',
-			cacheDirectory: '/mock/cache/',
-			getInfoAsync: vi.fn(() => Promise.resolve({ exists: true, size: 1024 })),
-			makeDirectoryAsync: vi.fn(() => Promise.resolve()),
-			readDirectoryAsync: vi.fn(() => Promise.resolve([])),
-			downloadAsync: vi.fn(() => Promise.resolve({ uri: '/mock/download.onnx' })),
-			deleteAsync: vi.fn(() => Promise.resolve()),
-			writeAsStringAsync: vi.fn(() => Promise.resolve()),
-			getFreeDiskStorageAsync: vi.fn(() => Promise.resolve(1024 * 1024 * 1024)),
-			FileSystemSessionType: { BACKGROUND: 'background' },
-			EncodingType: { UTF8: 'utf8' },
-		}));
+		const FileSystem = require('expo-file-system');
+		vi.spyOn(FileSystem, 'getInfoAsync').mockImplementation(() =>
+			Promise.resolve({ exists: true, size: 1024 }),
+		);
+		vi.spyOn(FileSystem, 'makeDirectoryAsync').mockImplementation(() => Promise.resolve());
+		vi.spyOn(FileSystem, 'readDirectoryAsync').mockImplementation(() => Promise.resolve([]));
+		vi.spyOn(FileSystem, 'downloadAsync').mockImplementation(() =>
+			Promise.resolve({ uri: '/mock/download.onnx' }),
+		);
+		vi.spyOn(FileSystem, 'deleteAsync').mockImplementation(() => Promise.resolve());
+		vi.spyOn(FileSystem, 'writeAsStringAsync').mockImplementation(() => Promise.resolve());
+		vi.spyOn(FileSystem, 'getFreeDiskStorageAsync').mockImplementation(() =>
+			Promise.resolve(1024 * 1024 * 1024),
+		);
 
-		vi.mock('react-native', () => ({
-			Platform: {
-				OS: 'ios',
-				select: vi.fn((obj: any) => obj.ios),
-			},
-		}));
+		const ReactNative = require('react-native');
+		vi.spyOn(ReactNative.Platform, 'select').mockImplementation((obj: any) => obj.ios);
 	});
 	describe('ModelDownloadManager', () => {
 		it('should be able to create an instance', () => {

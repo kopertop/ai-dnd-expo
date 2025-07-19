@@ -1,111 +1,111 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DefaultLocalDMConfig, LocalDMProvider } from '../../../../../services/ai/providers/local-dm-provider';
+import {
+	DefaultLocalDMConfig,
+	LocalDMProvider,
+} from '../../../../../services/ai/providers/local-dm-provider';
 
 describe('LocalDMProvider', () => {
 	beforeEach(() => {
-		// Mock dependencies
-		vi.mock('../../../../../services/ai/models/device-resource-manager', () => ({
-			DeviceResourceManager: vi.fn().mockImplementation(() => ({
-				initialize: vi.fn().mockResolvedValue(undefined),
-				startMonitoring: vi.fn(),
-				stopMonitoring: vi.fn(),
-				getCurrentResourceUsage: vi.fn().mockResolvedValue({
-					memory: {
-						used: 1024,
-						available: 3072,
-						total: 4096,
-						percentage: 25,
-						pressure: 'low',
-					},
-					cpu: {
-						usage: 30,
-						temperature: 40,
-						cores: 6,
-						frequency: 2400,
-						throttled: false,
-					},
-					thermal: {
-						state: 'nominal',
-						temperature: 40,
-						throttlingActive: false,
-						recommendedAction: 'none',
-					},
-					battery: {
-						level: 80,
-						isCharging: true,
-						chargingState: 'charging',
-						estimatedTimeRemaining: -1,
-						powerSavingMode: false,
-						lowPowerModeActive: false,
-					},
-					timestamp: Date.now(),
-				}),
-			})),
-		}));
+		// Mock dependencies using vi.spyOn
+		const {
+			DeviceResourceManager,
+		} = require('../../../../../services/ai/models/device-resource-manager');
+		vi.spyOn(DeviceResourceManager.prototype, 'initialize').mockResolvedValue(undefined);
+		vi.spyOn(DeviceResourceManager.prototype, 'startMonitoring').mockImplementation(() => {});
+		vi.spyOn(DeviceResourceManager.prototype, 'stopMonitoring').mockImplementation(() => {});
+		vi.spyOn(DeviceResourceManager.prototype, 'getCurrentResourceUsage').mockResolvedValue({
+			memory: {
+				used: 1024,
+				available: 3072,
+				total: 4096,
+				percentage: 25,
+				pressure: 'low',
+			},
+			cpu: {
+				usage: 30,
+				temperature: 40,
+				cores: 6,
+				frequency: 2400,
+				throttled: false,
+			},
+			thermal: {
+				state: 'nominal',
+				temperature: 40,
+				throttlingActive: false,
+				recommendedAction: 'none',
+			},
+			battery: {
+				level: 80,
+				isCharging: true,
+				chargingState: 'charging',
+				estimatedTimeRemaining: -1,
+				powerSavingMode: false,
+				lowPowerModeActive: false,
+			},
+			timestamp: Date.now(),
+		});
 
-		vi.mock('../../../../../services/ai/models/model-cache-manager', () => ({
-			ModelCacheManager: vi.fn().mockImplementation(() => ({
-				getCachedResponse: vi.fn().mockResolvedValue(null),
-				cacheResponse: vi.fn().mockResolvedValue(undefined),
-				clearCache: vi.fn().mockResolvedValue(undefined),
-				getCacheStats: vi.fn().mockReturnValue({
-					size: 0,
-					hits: 0,
-					misses: 0,
-					hitRate: 0,
-				}),
-			})),
-		}));
+		const {
+			ModelCacheManager,
+		} = require('../../../../../services/ai/models/model-cache-manager');
+		vi.spyOn(ModelCacheManager.prototype, 'getCachedResponse').mockResolvedValue(null);
+		vi.spyOn(ModelCacheManager.prototype, 'cacheResponse').mockResolvedValue(undefined);
+		vi.spyOn(ModelCacheManager.prototype, 'clearCache').mockResolvedValue(undefined);
+		vi.spyOn(ModelCacheManager.prototype, 'getCacheStats').mockReturnValue({
+			size: 0,
+			hits: 0,
+			misses: 0,
+			hitRate: 0,
+		});
 
-		vi.mock('../../../../../services/ai/models/model-catalog', () => ({
-			ModelCatalog: vi.fn().mockImplementation(() => ({
-				updateCatalog: vi.fn().mockResolvedValue(undefined),
-				getCatalog: vi.fn().mockResolvedValue([]),
-				initialize: vi.fn().mockResolvedValue(undefined),
-				getRecommendations: vi.fn().mockResolvedValue([]),
-				searchModels: vi.fn().mockResolvedValue([]),
-				getModel: vi.fn().mockReturnValue(null),
-			})),
-		}));
+		const { ModelCatalog } = require('../../../../../services/ai/models/model-catalog');
+		vi.spyOn(ModelCatalog.prototype, 'updateCatalog').mockResolvedValue(undefined);
+		vi.spyOn(ModelCatalog.prototype, 'getCatalog').mockResolvedValue([]);
+		vi.spyOn(ModelCatalog.prototype, 'initialize').mockResolvedValue(undefined);
+		vi.spyOn(ModelCatalog.prototype, 'getRecommendations').mockResolvedValue([]);
+		vi.spyOn(ModelCatalog.prototype, 'searchModels').mockResolvedValue([]);
+		vi.spyOn(ModelCatalog.prototype, 'getModel').mockReturnValue(null);
 
-		vi.mock('../../../../../services/ai/models/model-download-manager', () => ({
-			ModelDownloadManager: vi.fn().mockImplementation(() => ({
-				downloadModel: vi.fn().mockResolvedValue('/path/to/downloaded/model.onnx'),
-			})),
-		}));
+		const {
+			ModelDownloadManager,
+		} = require('../../../../../services/ai/models/model-download-manager');
+		vi.spyOn(ModelDownloadManager.prototype, 'downloadModel').mockResolvedValue(
+			'/path/to/downloaded/model.onnx',
+		);
 
-		vi.mock('../../../../../services/ai/models/model-privacy-manager', () => ({
-			ModelPrivacyManager: vi.fn().mockImplementation(() => ({
-				performDataCleanup: vi.fn().mockResolvedValue(undefined),
-				getPrivacySettings: vi.fn().mockReturnValue({
-					secureDeleteEnabled: true,
-					dataRetentionDays: 30,
-					analyticsEnabled: false,
-				}),
-				updatePrivacySettings: vi.fn().mockResolvedValue(undefined),
-				exportPrivacyData: vi.fn().mockResolvedValue({}),
-			})),
-		}));
+		const {
+			ModelPrivacyManager,
+		} = require('../../../../../services/ai/models/model-privacy-manager');
+		vi.spyOn(ModelPrivacyManager.prototype, 'performDataCleanup').mockResolvedValue(undefined);
+		vi.spyOn(ModelPrivacyManager.prototype, 'getPrivacySettings').mockReturnValue({
+			secureDeleteEnabled: true,
+			dataRetentionDays: 30,
+			analyticsEnabled: false,
+		});
+		vi.spyOn(ModelPrivacyManager.prototype, 'updatePrivacySettings').mockResolvedValue(
+			undefined,
+		);
+		vi.spyOn(ModelPrivacyManager.prototype, 'exportPrivacyData').mockResolvedValue({});
 
-		vi.mock('../../../../../services/ai/models/model-storage-manager', () => ({
-			ModelStorageManager: vi.fn().mockImplementation(() => ({
-				getModelPath: vi.fn().mockResolvedValue('/path/to/model.onnx'),
-				isModelStored: vi.fn().mockResolvedValue(true),
-				deleteModel: vi.fn().mockResolvedValue(undefined),
-			})),
-		}));
+		const {
+			ModelStorageManager,
+		} = require('../../../../../services/ai/models/model-storage-manager');
+		vi.spyOn(ModelStorageManager.prototype, 'getModelPath').mockResolvedValue(
+			'/path/to/model.onnx',
+		);
+		vi.spyOn(ModelStorageManager.prototype, 'isModelStored').mockResolvedValue(true);
+		vi.spyOn(ModelStorageManager.prototype, 'deleteModel').mockResolvedValue(undefined);
 
-		vi.mock('../../../../../services/ai/models/onnx-model-manager', () => ({
-			ONNXModelManager: vi.fn().mockImplementation(() => ({
-				loadGemma3Model: vi.fn().mockResolvedValue({}),
-				validateModel: vi.fn().mockResolvedValue(true),
-				runInference: vi.fn().mockResolvedValue({
-					logits: new Float32Array([0.1, 0.2, 0.7]),
-				}),
-				cleanupSession: vi.fn().mockResolvedValue(undefined),
-			})),
-		}));
+		const {
+			ONNXModelManager,
+		} = require('../../../../../services/ai/models/onnx-model-manager');
+		vi.spyOn(ONNXModelManager.prototype, 'loadGemma3Model').mockResolvedValue({});
+		vi.spyOn(ONNXModelManager.prototype, 'validateModel').mockResolvedValue(true);
+		vi.spyOn(ONNXModelManager.prototype, 'runInference').mockResolvedValue({
+			logits: new Float32Array([0.1, 0.2, 0.7]),
+		});
+		vi.spyOn(ONNXModelManager.prototype, 'cleanupSession').mockResolvedValue(undefined);
 
 		describe('LocalDMProvider', () => {
 			let provider: LocalDMProvider;
@@ -137,38 +137,46 @@ describe('LocalDMProvider', () => {
 					expect(result).toBe(true);
 					expect(provider.isReady()).toBe(true);
 					expect(progressCallback).toHaveBeenCalledTimes(6); // Initial + 5 steps
-					expect(progressCallback).toHaveBeenLastCalledWith(expect.objectContaining({
-						status: 'ready',
-						progress: 100,
-					}));
+					expect(progressCallback).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							status: 'ready',
+							progress: 100,
+						}),
+					);
 				});
 
 				it('should provide status information', () => {
 					const status = provider.getStatus();
 
-					expect(status).toEqual(expect.objectContaining({
-						isLoaded: expect.any(Boolean),
-						isReady: expect.any(Boolean),
-						error: null,
-						modelInfo: expect.objectContaining({
-							name: expect.any(String),
-							quantization: expect.any(String),
+					expect(status).toEqual(
+						expect.objectContaining({
+							isLoaded: expect.any(Boolean),
+							isReady: expect.any(Boolean),
+							error: null,
+							modelInfo: expect.objectContaining({
+								name: expect.any(String),
+								quantization: expect.any(String),
+							}),
 						}),
-					}));
+					);
 				});
 
 				it('should handle initialization errors gracefully', async () => {
 					// Mock implementation to throw an error
-					vi.spyOn(provider as any, 'simulateModelLoading').mockRejectedValueOnce(new Error('Test error'));
+					vi.spyOn(provider as any, 'simulateModelLoading').mockRejectedValueOnce(
+						new Error('Test error'),
+					);
 
 					const progressCallback = vi.fn();
 					const result = await provider.initialize(progressCallback);
 
 					expect(result).toBe(false);
 					expect(provider.isReady()).toBe(false);
-					expect(progressCallback).toHaveBeenLastCalledWith(expect.objectContaining({
-						status: 'error',
-					}));
+					expect(progressCallback).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							status: 'error',
+						}),
+					);
 				});
 			});
 
@@ -178,7 +186,12 @@ describe('LocalDMProvider', () => {
 					await provider.initialize();
 
 					// Verify ONNXModelManager was instantiated
-					expect(vi.mocked(require('../../../../../services/ai/models/onnx-model-manager').ONNXModelManager)).toHaveBeenCalled();
+					expect(
+						vi.mocked(
+							require('../../../../../services/ai/models/onnx-model-manager')
+								.ONNXModelManager,
+						),
+					).toHaveBeenCalled();
 				});
 			});
 
@@ -195,12 +208,14 @@ describe('LocalDMProvider', () => {
 						gameHistory: ['Entered the dungeon', 'Found a goblin'],
 					});
 
-					expect(response).toEqual(expect.objectContaining({
-						text: expect.any(String),
-						confidence: expect.any(Number),
-						toolCommands: expect.any(Array),
-						processingTime: expect.any(Number),
-					}));
+					expect(response).toEqual(
+						expect.objectContaining({
+							text: expect.any(String),
+							confidence: expect.any(Number),
+							toolCommands: expect.any(Array),
+							processingTime: expect.any(Number),
+						}),
+					);
 				});
 
 				it('should extract tool commands from responses', async () => {
@@ -242,7 +257,9 @@ describe('LocalDMProvider', () => {
 					await provider.generateDnDResponse('I cast fireball', context);
 
 					expect(buildPrompt).toHaveBeenCalledWith('I cast fireball', context);
-					expect(buildPrompt.mock.results[0].value).toContain('Character: TestPlayer (Elf Wizard)');
+					expect(buildPrompt.mock.results[0].value).toContain(
+						'Character: TestPlayer (Elf Wizard)',
+					);
 					expect(buildPrompt.mock.results[0].value).toContain('Scene: Forest');
 				});
 			});
@@ -273,7 +290,12 @@ describe('LocalDMProvider', () => {
 			// Task 3: Create device resource management system
 			describe('Device Resource Management (Task 3)', () => {
 				it('should initialize DeviceResourceManager', () => {
-					expect(vi.mocked(require('../../../../../services/ai/models/device-resource-manager').DeviceResourceManager)).toHaveBeenCalled();
+					expect(
+						vi.mocked(
+							require('../../../../../services/ai/models/device-resource-manager')
+								.DeviceResourceManager,
+						),
+					).toHaveBeenCalled();
 				});
 
 				it('should handle power saving mode', () => {
@@ -360,7 +382,7 @@ describe('LocalDMProvider', () => {
 					await provider.initialize();
 					await provider.switchModel('test-model');
 
-					expect((provider as any).currentModelId).toBe('test-model');
+					expect((provider as unknown).currentModelId).toBe('test-model');
 				});
 
 				it('should get cache statistics', () => {

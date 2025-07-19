@@ -23,7 +23,10 @@ export const useScreenSize = (): ScreenSize => {
 	const [screenData, setScreenData] = useState(Dimensions.get('window'));
 
 	useEffect(() => {
-		const onChange = (result: { window: { width: number; height: number; scale: number; fontScale: number }; screen: { width: number; height: number; scale: number; fontScale: number } }) => {
+		const onChange = (result: {
+			window: { width: number; height: number; scale: number; fontScale: number };
+			screen: { width: number; height: number; scale: number; fontScale: number };
+		}) => {
 			setScreenData(result.window);
 		};
 

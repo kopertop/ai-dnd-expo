@@ -13,7 +13,8 @@ import { DMProvider } from './providers/dm-provider';
 // Configuration constants
 const CACTUS_API_KEY_STORAGE_KEY = 'cactus_api_key';
 const CACTUS_MODEL_PREFERENCE_KEY = 'cactus_model_preference';
-const DEFAULT_MODEL_URL = 'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf';
+const DEFAULT_MODEL_URL =
+	'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf';
 
 // Event emitter for progress updates
 let progressCallback: ((progress: { status: string; url?: string }) => void) | null = null;
@@ -40,7 +41,8 @@ export async function initializeCactusLLM(
 		const apiKey = await AsyncStorage.getItem(CACTUS_API_KEY_STORAGE_KEY);
 
 		// Get model preference from storage
-		const modelUrl = await AsyncStorage.getItem(CACTUS_MODEL_PREFERENCE_KEY) || DEFAULT_MODEL_URL;
+		const modelUrl =
+			(await AsyncStorage.getItem(CACTUS_MODEL_PREFERENCE_KEY)) || DEFAULT_MODEL_URL;
 
 		// Create provider
 		provider = new DMProvider({
@@ -51,7 +53,7 @@ export async function initializeCactusLLM(
 		});
 
 		// Initialize provider with progress tracking
-		const success = await provider.initialize((progress) => {
+		const success = await provider.initialize(progress => {
 			if (progressCallback) {
 				progressCallback({
 					status: progress < 1 ? 'download' : 'done',

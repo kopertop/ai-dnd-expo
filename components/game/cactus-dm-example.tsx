@@ -71,7 +71,10 @@ export const CactusDMExample: React.FC = () => {
 		setDiceResults(prev => [newRoll, ...prev].slice(0, 5));
 
 		// Show alert for important rolls
-		if (description?.toLowerCase().includes('attack') || description?.toLowerCase().includes('save')) {
+		if (
+			description?.toLowerCase().includes('attack') ||
+			description?.toLowerCase().includes('save')
+		) {
 			Alert.alert('Dice Roll', `${newRoll.roll}: ${newRoll.result}`);
 		}
 	};

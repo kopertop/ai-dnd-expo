@@ -1,7 +1,11 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { assertNoConsoleErrors, renderWithProviders, waitForAsyncUpdates } from '@/tests/utils/render-helpers';
+import {
+	assertNoConsoleErrors,
+	renderWithProviders,
+	waitForAsyncUpdates,
+} from '@/tests/utils/render-helpers';
 
 // Simple test component to verify the testing infrastructure works
 const TestComponent: React.FC<{ message?: string }> = ({ message = 'Hello World' }) => {

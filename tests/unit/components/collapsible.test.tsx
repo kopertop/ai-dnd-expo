@@ -3,7 +3,11 @@ import { Text } from 'react-native';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Collapsible } from '@/components/collapsible';
-import { assertNoConsoleErrors, renderWithProviders, waitForAsyncUpdates } from '@/tests/utils/render-helpers';
+import {
+	assertNoConsoleErrors,
+	renderWithProviders,
+	waitForAsyncUpdates,
+} from '@/tests/utils/render-helpers';
 
 describe('Collapsible', () => {
 	beforeEach(() => {
@@ -125,9 +129,7 @@ describe('Collapsible', () => {
 
 	describe('Edge cases', () => {
 		it('should handle no children', async () => {
-			const { getByText } = renderWithProviders(
-				<Collapsible title="Empty Collapsible" />,
-			);
+			const { getByText } = renderWithProviders(<Collapsible title="Empty Collapsible" />);
 
 			await waitForAsyncUpdates();
 
@@ -136,9 +138,7 @@ describe('Collapsible', () => {
 
 		it('should handle null children', async () => {
 			const { getByText } = renderWithProviders(
-				<Collapsible title="Null Children">
-					{null}
-				</Collapsible>,
+				<Collapsible title="Null Children">{null}</Collapsible>,
 			);
 
 			await waitForAsyncUpdates();

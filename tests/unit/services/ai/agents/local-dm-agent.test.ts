@@ -8,26 +8,25 @@ describe('LocalDMAgent', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
-		// Mock dependencies
-		vi.mock('../../../../../services/ai/providers/local-dm-provider', () => ({
-			LocalDMProvider: vi.fn().mockImplementation(() => ({
-				initialize: vi.fn().mockResolvedValue(true),
-				generateDnDResponse: vi.fn().mockResolvedValue({
-					text: 'You attack the goblin! [ROLL:1d20+5] Roll for attack.',
-					confidence: 0.9,
-					toolCommands: [{ type: 'roll', params: '1d20+5' }],
-					processingTime: 500,
-				}),
-				healthCheck: vi.fn().mockResolvedValue(true),
-				isReady: vi.fn().mockReturnValue(true),
-				getStatus: vi.fn().mockReturnValue({
-					isLoaded: true,
-					isReady: true,
-					error: null,
-				}),
-				cleanup: vi.fn().mockResolvedValue(undefined),
-			})),
-		}));
+		// Mock dependencies using vi.spyOn
+		const {
+			LocalDMProvider,
+		} = require('../../../../../services/ai/providers/local-dm-provider');
+		vi.spyOn(LocalDMProvider.prototype, 'initialize').mockResolvedValue(true);
+		vi.spyOn(LocalDMProvider.prototype, 'generateDnDResponse').mockResolvedValue({
+			text: 'You attack the goblin! [ROLL:1d20+5] Roll for attack.',
+			confidence: 0.9,
+			toolCommands: [{ type: 'roll', params: '1d20+5' }],
+			processingTime: 500,
+		});
+		vi.spyOn(LocalDMProvider.prototype, 'healthCheck').mockResolvedValue(true);
+		vi.spyOn(LocalDMProvider.prototype, 'isReady').mockReturnValue(true);
+		vi.spyOn(LocalDMProvider.prototype, 'getStatus').mockReturnValue({
+			isLoaded: true,
+			isReady: true,
+			error: null,
+		});
+		vi.spyOn(LocalDMProvider.prototype, 'cleanup').mockResolvedValue(undefined);
 		dmAgent = new LocalDMAgent({
 			modelPath: '/test/path/model.onnx',
 			maxTokens: 100,
@@ -54,10 +53,12 @@ describe('LocalDMAgent', () => {
 				gameHistory: ['Entered the dungeon', 'Found a goblin'],
 			});
 
-			expect(response).toEqual(expect.objectContaining({
-				text: expect.any(String),
-				actions: expect.any(Array),
-			}));
+			expect(response).toEqual(
+				expect.objectContaining({
+					text: expect.any(String),
+					actions: expect.any(Array),
+				}),
+			);
 		});
 
 		it('should maintain narrative consistency', async () => {
@@ -115,10 +116,12 @@ describe('LocalDMAgent', () => {
 				gameHistory: ['Entered the dungeon', 'Found an orc'],
 			});
 
-			expect(response.actions).toContainEqual(expect.objectContaining({
-				type: 'roll',
-				params: '1d20+5',
-			}));
+			expect(response.actions).toContainEqual(
+				expect.objectContaining({
+					type: 'roll',
+					params: '1d20+5',
+				}),
+			);
 		});
 
 		it('should extract character stat updates', async () => {
@@ -140,10 +143,12 @@ describe('LocalDMAgent', () => {
 				gameHistory: ['Entered the dungeon', 'Found a trapped chest'],
 			});
 
-			expect(response.actions).toContainEqual(expect.objectContaining({
-				type: 'update',
-				params: 'HP-10',
-			}));
+			expect(response.actions).toContainEqual(
+				expect.objectContaining({
+					type: 'update',
+					params: 'HP-10',
+				}),
+			);
 		});
 
 		it('should execute tool commands with game state integration', async () => {
@@ -243,7 +248,9 @@ describe('LocalDMAgent', () => {
 				gameHistory: ['Entered the library'],
 			});
 
-			expect(response.text).toBe('This is a properly regenerated response with adequate length');
+			expect(response.text).toBe(
+				'This is a properly regenerated response with adequate length',
+			);
 		});
 
 		it('should validate response format', async () => {
@@ -278,10 +285,12 @@ describe('LocalDMAgent', () => {
 			});
 
 			expect(response.text).toBe('This is a properly formatted response');
-			expect(response.actions).toContainEqual(expect.objectContaining({
-				type: 'roll',
-				params: '1d20',
-			}));
+			expect(response.actions).toContainEqual(
+				expect.objectContaining({
+					type: 'roll',
+					params: '1d20',
+				}),
+			);
 		});
 	});
 
@@ -291,11 +300,13 @@ describe('LocalDMAgent', () => {
 			await dmAgent.initialize();
 
 			// Mock combat rules integration
-			const applyCombatRulesSpy = vi.spyOn(dmAgent as any, 'applyCombatRules').mockReturnValue({
-				advantage: true,
-				criticalHit: false,
-				damageModifier: 1.5,
-			});
+			const applyCombatRulesSpy = vi
+				.spyOn(dmAgent as any, 'applyCombatRules')
+				.mockReturnValue({
+					advantage: true,
+					criticalHit: false,
+					damageModifier: 1.5,
+				});
 
 			await dmAgent.processAction('I attack the orc with advantage', {
 				playerName: 'TestPlayer',
@@ -312,11 +323,13 @@ describe('LocalDMAgent', () => {
 			await dmAgent.initialize();
 
 			// Mock skill check rules integration
-			const applySkillCheckRulesSpy = vi.spyOn(dmAgent as any, 'applySkillCheckRules').mockReturnValue({
-				difficulty: 15,
-				proficient: true,
-				modifier: 3,
-			});
+			const applySkillCheckRulesSpy = vi
+				.spyOn(dmAgent as any, 'applySkillCheckRules')
+				.mockReturnValue({
+					difficulty: 15,
+					proficient: true,
+					modifier: 3,
+				});
 
 			await dmAgent.processAction('I search for traps', {
 				playerName: 'TestPlayer',

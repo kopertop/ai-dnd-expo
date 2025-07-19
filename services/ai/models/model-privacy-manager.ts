@@ -104,10 +104,7 @@ export class ModelPrivacyManager {
 	private storageManager?: ModelStorageManager;
 	private cacheManager?: ModelCacheManager;
 
-	constructor(
-		storageManager?: ModelStorageManager,
-		cacheManager?: ModelCacheManager,
-	) {
+	constructor(storageManager?: ModelStorageManager, cacheManager?: ModelCacheManager) {
 		this.storageManager = storageManager;
 		this.cacheManager = cacheManager;
 		this.initialize();
@@ -120,15 +117,14 @@ export class ModelPrivacyManager {
 		try {
 			await this.loadPrivacySettings();
 			await this.loadAuditLog();
-			
+
 			// Start periodic cleanup if enabled
 			if (this.privacySettings.autoCleanupEnabled) {
 				this.startPeriodicCleanup();
 			}
-			
+
 			// Schedule compliance audits
 			this.scheduleComplianceAudits();
-			
 		} catch (error) {
 			console.error('Failed to initialize ModelPrivacyManager:', error);
 		}
@@ -153,8 +149,15 @@ export class ModelPrivacyManager {
 	 */
 	private async savePrivacySettings(): Promise<void> {
 		try {
-			await AsyncStorage.setItem(STORAGE_KEYS.PRIVACY_SETTINGS, JSON.stringify(this.privacySettings));
-			await this.logAuditEntry('settings_updated', 'privacy_settings', 'Privacy settings were updated');
+			await AsyncStorage.setItem(
+				STORAGE_KEYS.PRIVACY_SETTINGS,
+				JSON.stringify(this.privacySettings),
+			);
+			await this.logAuditEntry(
+				'settings_updated',
+				'privacy_settings',
+				'Privacy settings were updated',
+			);
 		} catch (error) {
 			console.error('Failed to save privacy settings:', error);
 		}
@@ -168,7 +171,7 @@ export class ModelPrivacyManager {
 			const logData = await AsyncStorage.getItem(STORAGE_KEYS.AUDIT_LOG);
 			if (logData) {
 				this.auditLog = JSON.parse(logData);
-				
+
 				// Trim log if it exceeds max entries
 				if (this.auditLog.length > this.privacySettings.maxLogEntries) {
 					this.auditLog = this.auditLog.slice(-this.privacySettings.maxLogEntries);
@@ -232,7 +235,7 @@ export class ModelPrivacyManager {
 	async updatePrivacySettings(newSettings: Partial<PrivacySettings>): Promise<void> {
 		const oldSettings = { ...this.privacySettings };
 		this.privacySettings = { ...this.privacySettings, ...newSettings };
-		
+
 		await this.savePrivacySettings();
 
 		// Handle setting changes
@@ -245,7 +248,9 @@ export class ModelPrivacyManager {
 		if (oldSettings.dataRetentionDays !== this.privacySettings.dataRetentionDays) {
 			// Trigger immediate cleanup if retention period was reduced
 			if (this.privacySettings.dataRetentionDays < oldSettings.dataRetentionDays) {
-				await this.performDataCleanup({ olderThanDays: this.privacySettings.dataRetentionDays });
+				await this.performDataCleanup({
+					olderThanDays: this.privacySettings.dataRetentionDays,
+				});
 			}
 		}
 	}
@@ -272,7 +277,7 @@ export class ModelPrivacyManager {
 			specificModelId,
 		} = options;
 
-		const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
+		const cutoffTime = Date.now() - olderThanDays * 24 * 60 * 60 * 1000;
 		let itemsDeleted = 0;
 		const errors: string[] = [];
 
@@ -285,7 +290,7 @@ export class ModelPrivacyManager {
 						if (specificModelId && model.modelId !== specificModelId) {
 							continue;
 						}
-						
+
 						if (model.lastAccessed < cutoffTime || specificModelId) {
 							await this.storageManager.deleteModel(model.modelId, secureDelete);
 							itemsDeleted++;
@@ -311,7 +316,11 @@ export class ModelPrivacyManager {
 						modelId: specificModelId,
 						olderThan: cutoffTime,
 					});
-					await this.logAuditEntry('cache_cleared', 'cache_data', 'Cache data cleared during cleanup');
+					await this.logAuditEntry(
+						'cache_cleared',
+						'cache_data',
+						'Cache data cleared during cleanup',
+					);
 				} catch (error) {
 					errors.push(`Cache cleanup failed: ${error}`);
 				}
@@ -324,10 +333,14 @@ export class ModelPrivacyManager {
 					this.auditLog = this.auditLog.filter(entry => entry.timestamp >= cutoffTime);
 					const deletedLogs = originalLogLength - this.auditLog.length;
 					itemsDeleted += deletedLogs;
-					
+
 					if (deletedLogs > 0) {
 						await this.saveAuditLog();
-						await this.logAuditEntry('logs_cleaned', 'audit_logs', `${deletedLogs} old log entries removed`);
+						await this.logAuditEntry(
+							'logs_cleaned',
+							'audit_logs',
+							`${deletedLogs} old log entries removed`,
+						);
 					}
 				} catch (error) {
 					errors.push(`Log cleanup failed: ${error}`);
@@ -338,7 +351,11 @@ export class ModelPrivacyManager {
 			if (includeAnalytics) {
 				try {
 					await this.cleanupAnalyticsData(cutoffTime);
-					await this.logAuditEntry('analytics_cleaned', 'usage_analytics', 'Old analytics data removed');
+					await this.logAuditEntry(
+						'analytics_cleaned',
+						'usage_analytics',
+						'Old analytics data removed',
+					);
 				} catch (error) {
 					errors.push(`Analytics cleanup failed: ${error}`);
 				}
@@ -349,7 +366,11 @@ export class ModelPrivacyManager {
 				try {
 					await AsyncStorage.removeItem(STORAGE_KEYS.PRIVACY_SETTINGS);
 					this.privacySettings = DEFAULT_PRIVACY_SETTINGS;
-					await this.logAuditEntry('settings_reset', 'privacy_settings', 'Privacy settings reset to defaults');
+					await this.logAuditEntry(
+						'settings_reset',
+						'privacy_settings',
+						'Privacy settings reset to defaults',
+					);
 				} catch (error) {
 					errors.push(`Settings cleanup failed: ${error}`);
 				}
@@ -362,7 +383,6 @@ export class ModelPrivacyManager {
 				`Cleanup completed: ${itemsDeleted} items deleted, ${errors.length} errors`,
 				outcome,
 			);
-
 		} catch (error) {
 			await this.logAuditEntry(
 				'data_cleanup',
@@ -381,10 +401,9 @@ export class ModelPrivacyManager {
 		try {
 			// Get all storage keys related to models
 			const allKeys = await AsyncStorage.getAllKeys();
-			const modelKeys = allKeys.filter(key => 
-				key.startsWith('model_') || 
-				key.startsWith('cache_') ||
-				key.startsWith('ai_'),
+			const modelKeys = allKeys.filter(
+				key =>
+					key.startsWith('model_') || key.startsWith('cache_') || key.startsWith('ai_'),
 			);
 
 			// Remove all model-related data from AsyncStorage
@@ -392,9 +411,15 @@ export class ModelPrivacyManager {
 
 			// Delete all model files
 			try {
-				await FileSystem.deleteAsync(`${FileSystem.documentDirectory}models/`, { idempotent: true });
-				await FileSystem.deleteAsync(`${FileSystem.cacheDirectory}models/`, { idempotent: true });
-				await FileSystem.deleteAsync(`${FileSystem.cacheDirectory}temp-models/`, { idempotent: true });
+				await FileSystem.deleteAsync(`${FileSystem.documentDirectory}models/`, {
+					idempotent: true,
+				});
+				await FileSystem.deleteAsync(`${FileSystem.cacheDirectory}models/`, {
+					idempotent: true,
+				});
+				await FileSystem.deleteAsync(`${FileSystem.cacheDirectory}temp-models/`, {
+					idempotent: true,
+				});
 			} catch (fileError) {
 				console.error('File deletion error during wipe:', fileError);
 			}
@@ -410,7 +435,6 @@ export class ModelPrivacyManager {
 				'Complete data wipe performed - all AI model data removed',
 				'success',
 			);
-
 		} catch (error) {
 			await this.logAuditEntry(
 				'complete_wipe',
@@ -432,8 +456,8 @@ export class ModelPrivacyManager {
 
 		// Check data retention compliance
 		let dataRetentionCompliance = true;
-		const cutoffTime = now - (this.privacySettings.dataRetentionDays * 24 * 60 * 60 * 1000);
-		
+		const cutoffTime = now - this.privacySettings.dataRetentionDays * 24 * 60 * 60 * 1000;
+
 		// Check for old audit logs
 		const oldLogs = this.auditLog.filter(entry => entry.timestamp < cutoffTime);
 		if (oldLogs.length > 0) {
@@ -487,17 +511,20 @@ export class ModelPrivacyManager {
 			deletionCompliance,
 			issues,
 			recommendations,
-			nextReviewDate: now + (30 * 24 * 60 * 60 * 1000), // 30 days from now
+			nextReviewDate: now + 30 * 24 * 60 * 60 * 1000, // 30 days from now
 		};
 
 		// Store compliance report
 		try {
 			const reports = await this.getStoredComplianceReports();
 			reports.push(report);
-			
+
 			// Keep only last 12 reports (1 year if monthly)
 			const recentReports = reports.slice(-12);
-			await AsyncStorage.setItem(STORAGE_KEYS.COMPLIANCE_REPORTS, JSON.stringify(recentReports));
+			await AsyncStorage.setItem(
+				STORAGE_KEYS.COMPLIANCE_REPORTS,
+				JSON.stringify(recentReports),
+			);
 		} catch (error) {
 			console.error('Failed to store compliance report:', error);
 		}
@@ -576,7 +603,6 @@ export class ModelPrivacyManager {
 			);
 
 			return analytics;
-
 		} catch (error) {
 			await this.logAuditEntry(
 				'analytics_generated',
@@ -594,15 +620,13 @@ export class ModelPrivacyManager {
 	private anonymizeAnalytics(analytics: UsageAnalytics): UsageAnalytics {
 		// Remove or hash any potentially identifying information
 		const anonymized = { ...analytics };
-		
+
 		// Round numbers to reduce precision
-		anonymized.performanceMetrics.averageResponseTime = Math.round(
-			anonymized.performanceMetrics.averageResponseTime / 100,
-		) * 100;
-		
-		anonymized.performanceMetrics.totalInferences = Math.round(
-			anonymized.performanceMetrics.totalInferences / 10,
-		) * 10;
+		anonymized.performanceMetrics.averageResponseTime =
+			Math.round(anonymized.performanceMetrics.averageResponseTime / 100) * 100;
+
+		anonymized.performanceMetrics.totalInferences =
+			Math.round(anonymized.performanceMetrics.totalInferences / 10) * 10;
 
 		// Mark as anonymized
 		anonymized.anonymized = true;
@@ -623,19 +647,22 @@ export class ModelPrivacyManager {
 	 */
 	private startPeriodicCleanup(): void {
 		// Run cleanup daily
-		setInterval(async () => {
-			if (this.privacySettings.autoCleanupEnabled) {
-				try {
-					await this.performDataCleanup({
-						includeCache: true,
-						includeLogs: true,
-						includeAnalytics: true,
-					});
-				} catch (error) {
-					console.error('Periodic cleanup failed:', error);
+		setInterval(
+			async () => {
+				if (this.privacySettings.autoCleanupEnabled) {
+					try {
+						await this.performDataCleanup({
+							includeCache: true,
+							includeLogs: true,
+							includeAnalytics: true,
+						});
+					} catch (error) {
+						console.error('Periodic cleanup failed:', error);
+					}
 				}
-			}
-		}, 24 * 60 * 60 * 1000); // 24 hours
+			},
+			24 * 60 * 60 * 1000,
+		); // 24 hours
 	}
 
 	/**
@@ -643,13 +670,16 @@ export class ModelPrivacyManager {
 	 */
 	private scheduleComplianceAudits(): void {
 		// Run compliance audit weekly
-		setInterval(async () => {
-			try {
-				await this.generateComplianceReport();
-			} catch (error) {
-				console.error('Compliance audit failed:', error);
-			}
-		}, 7 * 24 * 60 * 60 * 1000); // 7 days
+		setInterval(
+			async () => {
+				try {
+					await this.generateComplianceReport();
+				} catch (error) {
+					console.error('Compliance audit failed:', error);
+				}
+			},
+			7 * 24 * 60 * 60 * 1000,
+		); // 7 days
 	}
 
 	/**
@@ -683,7 +713,8 @@ export class ModelPrivacyManager {
 			};
 		}
 
-		const compliant = latestReport.dataRetentionCompliance &&
+		const compliant =
+			latestReport.dataRetentionCompliance &&
 			latestReport.encryptionCompliance &&
 			latestReport.accessLogCompliance &&
 			latestReport.deletionCompliance;
@@ -706,7 +737,7 @@ export class ModelPrivacyManager {
 		exportTimestamp: number;
 	}> {
 		const complianceReports = await this.getStoredComplianceReports();
-		
+
 		await this.logAuditEntry(
 			'data_export',
 			'privacy_data',

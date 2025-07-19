@@ -3,7 +3,11 @@ import { Text } from 'react-native';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ThemedView } from '@/components/themed-view';
-import { assertNoConsoleErrors, renderWithProviders, waitForAsyncUpdates } from '@/tests/utils/render-helpers';
+import {
+	assertNoConsoleErrors,
+	renderWithProviders,
+	waitForAsyncUpdates,
+} from '@/tests/utils/render-helpers';
 
 describe('ThemedView', () => {
 	beforeEach(() => {
@@ -16,9 +20,7 @@ describe('ThemedView', () => {
 
 	describe('Component rendering', () => {
 		it('should render without crashing', async () => {
-			const { container } = renderWithProviders(
-				<ThemedView />,
-			);
+			const { container } = renderWithProviders(<ThemedView />);
 
 			await waitForAsyncUpdates();
 
@@ -95,7 +97,9 @@ describe('ThemedView', () => {
 			const customStyle = { padding: 20, margin: 10 };
 
 			const { container } = renderWithProviders(
-				<ThemedView style={customStyle}><Text>Styled View</Text></ThemedView>,
+				<ThemedView style={customStyle}>
+					<Text>Styled View</Text>
+				</ThemedView>,
 			);
 
 			await waitForAsyncUpdates();
@@ -122,7 +126,9 @@ describe('ThemedView', () => {
 			const style2 = { margin: 5 };
 
 			const { container } = renderWithProviders(
-				<ThemedView style={[style1, style2]}><Text>Multiple Styles</Text></ThemedView>,
+				<ThemedView style={[style1, style2]}>
+					<Text>Multiple Styles</Text>
+				</ThemedView>,
 			);
 
 			await waitForAsyncUpdates();
@@ -146,10 +152,7 @@ describe('ThemedView', () => {
 
 		it('should handle layout props', async () => {
 			const { container } = renderWithProviders(
-				<ThemedView
-					onLayout={() => { }}
-					pointerEvents="none"
-				>
+				<ThemedView onLayout={() => {}} pointerEvents="none">
 					<Text>Layout View</Text>
 				</ThemedView>,
 			);
@@ -163,10 +166,7 @@ describe('ThemedView', () => {
 			const mockOnPress = vi.fn();
 
 			const { container } = renderWithProviders(
-				<ThemedView
-					onTouchStart={mockOnPress}
-					onTouchEnd={mockOnPress}
-				>
+				<ThemedView onTouchStart={mockOnPress} onTouchEnd={mockOnPress}>
 					<Text>Touch View</Text>
 				</ThemedView>,
 			);
@@ -179,9 +179,7 @@ describe('ThemedView', () => {
 
 	describe('Edge cases', () => {
 		it('should handle no children', async () => {
-			const { container } = renderWithProviders(
-				<ThemedView />,
-			);
+			const { container } = renderWithProviders(<ThemedView />);
 
 			await waitForAsyncUpdates();
 
@@ -189,9 +187,7 @@ describe('ThemedView', () => {
 		});
 
 		it('should handle null children', async () => {
-			const { container } = renderWithProviders(
-				<ThemedView>{null}</ThemedView>,
-			);
+			const { container } = renderWithProviders(<ThemedView>{null}</ThemedView>);
 
 			await waitForAsyncUpdates();
 
@@ -200,7 +196,9 @@ describe('ThemedView', () => {
 
 		it('should handle undefined style', async () => {
 			const { container } = renderWithProviders(
-				<ThemedView style={undefined}><Text>Undefined Style</Text></ThemedView>,
+				<ThemedView style={undefined}>
+					<Text>Undefined Style</Text>
+				</ThemedView>,
 			);
 
 			await waitForAsyncUpdates();
@@ -210,7 +208,9 @@ describe('ThemedView', () => {
 
 		it('should handle empty style object', async () => {
 			const { container } = renderWithProviders(
-				<ThemedView style={{}}><Text>Empty Style</Text></ThemedView>,
+				<ThemedView style={{}}>
+					<Text>Empty Style</Text>
+				</ThemedView>,
 			);
 
 			await waitForAsyncUpdates();

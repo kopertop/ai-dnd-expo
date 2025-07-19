@@ -700,12 +700,12 @@ export class PerformanceOptimizer {
 				break;
 
 			case 'pause_inference':
-			// This would be handled by the calling code
+				// This would be handled by the calling code
 				console.log('⏸️ Inference pausing recommended');
 				break;
 
 			case 'emergency_stop':
-			// This would be handled by the calling code
+				// This would be handled by the calling code
 
 				break;
 		}

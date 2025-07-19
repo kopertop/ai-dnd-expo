@@ -4,7 +4,15 @@
  * A component for interacting with the DM agent
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+	ActivityIndicator,
+	ScrollView,
+	StyleSheet,
+	Text,
+	TextInput,
+	TouchableOpacity,
+	View,
+} from 'react-native';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useDungeonMaster } from '@/hooks/use-dungeon-master';
@@ -74,7 +82,15 @@ export const DMChat: React.FC<DMChatProps> = ({
 		if (isInitialized && isInitializing) {
 			generateInitialNarration();
 		}
-	}, [isInitialized, isInitializing, currentScene, playerName, playerClass, playerRace, generateNarration]);
+	}, [
+		isInitialized,
+		isInitializing,
+		currentScene,
+		playerName,
+		playerClass,
+		playerRace,
+		generateNarration,
+	]);
 
 	// Handle sending a message
 	const handleSend = async () => {
@@ -84,7 +100,10 @@ export const DMChat: React.FC<DMChatProps> = ({
 		setInput('');
 
 		// Add user message to chat
-		const updatedMessages: ChatMessage[] = [...messages, { role: 'user', content: userMessage }];
+		const updatedMessages: ChatMessage[] = [
+			...messages,
+			{ role: 'user', content: userMessage },
+		];
 		setMessages(updatedMessages);
 
 		// Process player action
@@ -138,10 +157,11 @@ export const DMChat: React.FC<DMChatProps> = ({
 						</View>
 					) : error ? (
 						<View style={styles.errorContainer}>
-							<Text style={[styles.errorText, { color: textColor }]}>
-								{error}
-							</Text>
-							<TouchableOpacity style={[styles.retryButton, { backgroundColor: buttonColor }]} onPress={handleRetryInit}>
+							<Text style={[styles.errorText, { color: textColor }]}>{error}</Text>
+							<TouchableOpacity
+								style={[styles.retryButton, { backgroundColor: buttonColor }]}
+								onPress={handleRetryInit}
+							>
 								<Text style={styles.retryButtonText}>Retry</Text>
 							</TouchableOpacity>
 						</View>
@@ -162,7 +182,9 @@ export const DMChat: React.FC<DMChatProps> = ({
 								key={index}
 								style={[
 									styles.messageContainer,
-									message.role === 'user' ? styles.userMessage : styles.assistantMessage,
+									message.role === 'user'
+										? styles.userMessage
+										: styles.assistantMessage,
 									message.role === 'user'
 										? { backgroundColor: buttonColor }
 										: { backgroundColor: inputBackgroundColor },
@@ -181,7 +203,12 @@ export const DMChat: React.FC<DMChatProps> = ({
 							</View>
 						))}
 						{isLoading && (
-							<View style={[styles.loadingMessage, { backgroundColor: inputBackgroundColor }]}>
+							<View
+								style={[
+									styles.loadingMessage,
+									{ backgroundColor: inputBackgroundColor },
+								]}
+							>
 								<ActivityIndicator size="small" color={buttonColor} />
 								<Text style={[styles.loadingMessageText, { color: textColor }]}>
 									Thinking...

@@ -6,13 +6,7 @@ import { VoiceProfileService } from './voice-profiles';
 
 import { cleanTextForTTS } from '@/hooks/use-text-to-speech';
 import { Character } from '@/types/character';
-import {
-	CharacterTTSOptions,
-	CharacterTraits,
-	CharacterType,
-	VoiceProfile,
-} from '@/types/voice';
-
+import { CharacterTTSOptions, CharacterTraits, CharacterType, VoiceProfile } from '@/types/voice';
 
 /**
  * Character Voice Manager
@@ -27,8 +21,8 @@ export class CharacterVoiceManager {
 	private currentSpeakerId: string | null = null;
 
 	/**
-	* Get singleton instance
-	*/
+	 * Get singleton instance
+	 */
 	public static getInstance(): CharacterVoiceManager {
 		if (!CharacterVoiceManager.instance) {
 			CharacterVoiceManager.instance = new CharacterVoiceManager();
@@ -37,13 +31,13 @@ export class CharacterVoiceManager {
 	}
 
 	/**
-	* Private constructor for singleton pattern
-	*/
-	private constructor() { }
+	 * Private constructor for singleton pattern
+	 */
+	private constructor() {}
 
 	/**
-	* Initialize the voice manager
-	*/
+	 * Initialize the voice manager
+	 */
 	public async initialize(): Promise<boolean> {
 		if (this.isInitialized) return true;
 
@@ -59,8 +53,8 @@ export class CharacterVoiceManager {
 	}
 
 	/**
-	* Ensure manager is initialized before operations
-	*/
+	 * Ensure manager is initialized before operations
+	 */
 	private async ensureInitialized(): Promise<void> {
 		if (!this.isInitialized) {
 			await this.initialize();
@@ -68,8 +62,8 @@ export class CharacterVoiceManager {
 	}
 
 	/**
-	* Get character traits from a character object
-	*/
+	 * Get character traits from a character object
+	 */
 	private getCharacterTraits(
 		character: Character,
 		characterType: CharacterType = 'npc',
@@ -82,11 +76,20 @@ export class CharacterVoiceManager {
 			const desc = character.description.toLowerCase();
 
 			// Simple gender detection from description
-			if (desc.includes('he ') || desc.includes('his ') || desc.includes('him ') ||
-				desc.includes('male') || desc.includes('man')) {
+			if (
+				desc.includes('he ') ||
+				desc.includes('his ') ||
+				desc.includes('him ') ||
+				desc.includes('male') ||
+				desc.includes('man')
+			) {
 				gender = 'male';
-			} else if (desc.includes('she ') || desc.includes('her ') ||
-				desc.includes('female') || desc.includes('woman')) {
+			} else if (
+				desc.includes('she ') ||
+				desc.includes('her ') ||
+				desc.includes('female') ||
+				desc.includes('woman')
+			) {
 				gender = 'female';
 			}
 
@@ -104,8 +107,8 @@ export class CharacterVoiceManager {
 	}
 
 	/**
-	* Find the best voice profile for a character
-	*/
+	 * Find the best voice profile for a character
+	 */
 	public async findVoiceForCharacter(
 		character: Character,
 		characterType: CharacterType = 'npc',
@@ -125,15 +128,12 @@ export class CharacterVoiceManager {
 		const traits = this.getCharacterTraits(character, characterType);
 
 		// Find matching profiles
-		const matchingProfiles = VoiceProfileService.findMatchingProfiles(
-			characterType,
-			{
-				race: traits.race,
-				class: traits.class,
-				gender: traits.gender,
-				personality: traits.personality ? [traits.personality] : undefined,
-			},
-		);
+		const matchingProfiles = VoiceProfileService.findMatchingProfiles(characterType, {
+			race: traits.race,
+			class: traits.class,
+			gender: traits.gender,
+			personality: traits.personality ? [traits.personality] : undefined,
+		});
 
 		// Filter to available (unassigned) profiles
 		const availableProfiles = matchingProfiles.filter(async profile => {
@@ -143,12 +143,14 @@ export class CharacterVoiceManager {
 		// Return best match or any available profile
 		return availableProfiles.length > 0
 			? availableProfiles[0]
-			: (matchingProfiles.length > 0 ? matchingProfiles[0] : null);
+			: matchingProfiles.length > 0
+				? matchingProfiles[0]
+				: null;
 	}
 
 	/**
-	* Assign a voice to a character
-	*/
+	 * Assign a voice to a character
+	 */
 	public async assignVoiceToCharacter(
 		character: Character,
 		characterType: CharacterType = 'npc',
@@ -189,8 +191,8 @@ export class CharacterVoiceManager {
 	}
 
 	/**
-	* Remove voice assignment from a character
-	*/
+	 * Remove voice assignment from a character
+	 */
 	public async removeVoiceAssignment(characterId: string): Promise<void> {
 		await this.ensureInitialized();
 
@@ -202,8 +204,8 @@ export class CharacterVoiceManager {
 	}
 
 	/**
-	* Get voice profile for a character
-	*/
+	 * Get voice profile for a character
+	 */
 	public async getVoiceProfile(characterId: string): Promise<VoiceProfile | null> {
 		await this.ensureInitialized();
 
@@ -214,8 +216,8 @@ export class CharacterVoiceManager {
 	}
 
 	/**
-	* Speak text using a character's voice
-	*/
+	 * Speak text using a character's voice
+	 */
 	public async speakAsCharacter(
 		characterId: string,
 		text: string,
@@ -297,8 +299,8 @@ export class CharacterVoiceManager {
 	}
 
 	/**
-	* Stop current speech
-	*/
+	 * Stop current speech
+	 */
 	public stopSpeaking(): void {
 		if (this.isSpeaking) {
 			Speech.stop();
@@ -308,8 +310,8 @@ export class CharacterVoiceManager {
 	}
 
 	/**
-	* Pause current speech (iOS only)
-	*/
+	 * Pause current speech (iOS only)
+	 */
 	public pauseSpeaking(): void {
 		if (this.isSpeaking && Platform.OS === 'ios') {
 			Speech.pause();
@@ -317,8 +319,8 @@ export class CharacterVoiceManager {
 	}
 
 	/**
-	* Resume paused speech (iOS only)
-	*/
+	 * Resume paused speech (iOS only)
+	 */
 	public resumeSpeaking(): void {
 		if (this.isSpeaking && Platform.OS === 'ios') {
 			Speech.resume();
@@ -326,36 +328,36 @@ export class CharacterVoiceManager {
 	}
 
 	/**
-	* Check if currently speaking
-	*/
+	 * Check if currently speaking
+	 */
 	public isSpeakingNow(): boolean {
 		return this.isSpeaking;
 	}
 
 	/**
-	* Get ID of character currently speaking
-	*/
+	 * Get ID of character currently speaking
+	 */
 	public getCurrentSpeakerId(): string | null {
 		return this.currentSpeakerId;
 	}
 
 	/**
-	* Get all available voice profiles
-	*/
+	 * Get all available voice profiles
+	 */
 	public getAllVoiceProfiles(): VoiceProfile[] {
 		return VoiceProfileService.getAllProfiles();
 	}
 
 	/**
-	* Get voice profiles for a specific character type
-	*/
+	 * Get voice profiles for a specific character type
+	 */
 	public getVoiceProfilesForType(characterType: CharacterType): VoiceProfile[] {
 		return VoiceProfileService.getProfilesForType(characterType);
 	}
 
 	/**
-	* Create a custom hook for character voice
-	*/
+	 * Create a custom hook for character voice
+	 */
 	public createCharacterVoiceHook(characterId: string) {
 		const manager = this;
 
@@ -366,7 +368,8 @@ export class CharacterVoiceManager {
 			stop: () => manager.stopSpeaking(),
 			pause: () => manager.pauseSpeaking(),
 			resume: () => manager.resumeSpeaking(),
-			isSpeaking: () => manager.isSpeakingNow() && manager.getCurrentSpeakerId() === characterId,
+			isSpeaking: () =>
+				manager.isSpeakingNow() && manager.getCurrentSpeakerId() === characterId,
 			getVoiceProfile: async () => manager.getVoiceProfile(characterId),
 		};
 	}

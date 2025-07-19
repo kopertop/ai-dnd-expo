@@ -35,7 +35,6 @@ const mockAIServiceManager: any = {
 	})),
 };
 
-
 describe('useEnhancedDungeonMaster', () => {
 	const mockCharacter = CharacterFactory.createBasic();
 	const mockWorldState = {
@@ -48,7 +47,9 @@ describe('useEnhancedDungeonMaster', () => {
 
 		// Setup spies instead of mocks
 		vi.spyOn(textToSpeechModule, 'useDMVoice').mockReturnValue(mockDMVoice);
-		vi.spyOn(aiServiceManagerModule, 'AIServiceManager').mockImplementation(() => mockAIServiceManager);
+		vi.spyOn(aiServiceManagerModule, 'AIServiceManager').mockImplementation(
+			() => mockAIServiceManager,
+		);
 
 		// Ensure the mock provider is returned
 		mockAIServiceManager.getProvider.mockReturnValue(mockCactusProvider);
@@ -182,9 +183,7 @@ describe('useEnhancedDungeonMaster', () => {
 
 	describe('message context building', () => {
 		it('should include character context in AI requests', async () => {
-			const messages = [
-				{ role: 'user' as const, content: 'Hello DM' },
-			];
+			const messages = [{ role: 'user' as const, content: 'Hello DM' }];
 
 			await mockCactusProvider.generateText({
 				messages,
@@ -227,14 +226,18 @@ describe('useEnhancedDungeonMaster', () => {
 			const initError = new Error('Initialization failed');
 			mockAIServiceManager.initialize.mockRejectedValueOnce(initError);
 
-			await expect(mockAIServiceManager.initialize()).rejects.toThrow('Initialization failed');
+			await expect(mockAIServiceManager.initialize()).rejects.toThrow(
+				'Initialization failed',
+			);
 		});
 
 		it('should handle provider switch failures', async () => {
 			const switchError = new Error('Provider switch failed');
 			mockAIServiceManager.switchProvider.mockRejectedValueOnce(switchError);
 
-			await expect(mockAIServiceManager.switchProvider('local')).rejects.toThrow('Provider switch failed');
+			await expect(mockAIServiceManager.switchProvider('local')).rejects.toThrow(
+				'Provider switch failed',
+			);
 		});
 
 		it('should handle empty messages gracefully', async () => {
@@ -401,7 +404,7 @@ describe('useEnhancedDungeonMaster', () => {
 
 		it('should handle conversation context limits', () => {
 			const longConversation = Array.from({ length: 50 }, (_, i) => ({
-				role: i % 2 === 0 ? 'user' as const : 'assistant' as const,
+				role: i % 2 === 0 ? ('user' as const) : ('assistant' as const),
 				content: `Message ${i + 1}`,
 			}));
 

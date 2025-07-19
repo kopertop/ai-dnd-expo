@@ -26,20 +26,18 @@ export interface CactusCompletionParams {
 export interface CactusProviderInterface {
 	isInitialized: boolean;
 	initialize: (onProgress?: (progress: number) => void) => Promise<void>;
-	completion: (
-		messages: CactusMessage[],
-		params?: CactusCompletionParams
-	) => Promise<string>;
+	completion: (messages: CactusMessage[], params?: CactusCompletionParams) => Promise<string>;
 	streamingCompletion: (
 		messages: CactusMessage[],
 		params?: CactusCompletionParams,
-		onToken?: (token: string) => void
+		onToken?: (token: string) => void,
 	) => Promise<string>;
 	rewind: () => void;
 }
 
 // Constants
-const DEFAULT_MODEL_URL = 'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf';
+const DEFAULT_MODEL_URL =
+	'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf';
 const DEFAULT_CONTEXT_SIZE = 2048;
 const MODELS_DIRECTORY = 'cactus-models';
 const MODEL_CACHE_KEY = 'cactus-model-cache';
@@ -131,7 +129,7 @@ export class CactusProvider implements CactusProviderInterface {
 				const { path, name } = JSON.parse(cachedInfo);
 
 				// Verify the model name matches and file exists
-				if (name === this.modelName && await this.fileExists(path)) {
+				if (name === this.modelName && (await this.fileExists(path))) {
 					return path;
 				}
 			}
@@ -157,7 +155,10 @@ export class CactusProvider implements CactusProviderInterface {
 	/**
 	 * Download the model from the provided URL
 	 */
-	private async downloadModel(url: string, onProgress?: (progress: number) => void): Promise<string> {
+	private async downloadModel(
+		url: string,
+		onProgress?: (progress: number) => void,
+	): Promise<string> {
 		// Ensure models directory exists
 		const modelsDir = `${FileSystem.documentDirectory}${MODELS_DIRECTORY}`;
 		const dirInfo = await FileSystem.getInfoAsync(modelsDir);
@@ -177,8 +178,10 @@ export class CactusProvider implements CactusProviderInterface {
 				url,
 				downloadPath,
 				{},
-				(downloadProgress) => {
-					const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
+				downloadProgress => {
+					const progress =
+						downloadProgress.totalBytesWritten /
+						downloadProgress.totalBytesExpectedToWrite;
 					if (onProgress) onProgress(progress);
 				},
 			);
@@ -253,16 +256,12 @@ export class CactusProvider implements CactusProviderInterface {
 		let responseText = '';
 
 		try {
-			const result = await this.lm.completion(
-				messages,
-				completionParams,
-				(data: any) => {
-					if (data.token) {
-						responseText += data.token;
-						if (onToken) onToken(data.token);
-					}
-				},
-			);
+			const result = await this.lm.completion(messages, completionParams, (data: any) => {
+				if (data.token) {
+					responseText += data.token;
+					if (onToken) onToken(data.token);
+				}
+			});
 
 			// In case the streaming didn't capture everything
 			return responseText || result.text || '';

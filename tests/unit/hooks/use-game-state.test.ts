@@ -10,7 +10,6 @@ import { getCharacterImage, useGameState } from '@/hooks/use-game-state';
 import { CharacterFactory, GameStateFactory } from '@/tests/fixtures/mock-factories';
 import { mockAsyncStorage } from '@/tests/unit/__mocks__/external-dependencies';
 
-
 describe('useGameState', () => {
 	beforeEach(() => {
 		vi.spyOn(asyncStorage, 'getItem').mockImplementation(mockAsyncStorage.getItem);
@@ -271,7 +270,10 @@ describe('useGameState', () => {
 
 		it('should return race image when character has race', async () => {
 			const character = CharacterFactory.createWithRace('elf');
-			const gameState = GameStateFactory.createNew({ characters: [character], playerCharacterId: character.id });
+			const gameState = GameStateFactory.createNew({
+				characters: [character],
+				playerCharacterId: character.id,
+			});
 			mockAsyncStorage.getItem.mockResolvedValueOnce(JSON.stringify(gameState));
 
 			const { result } = renderHook(() => useGameState());
@@ -286,7 +288,10 @@ describe('useGameState', () => {
 
 		it('should return custom image for unknown race', async () => {
 			const character = CharacterFactory.createWithRace('unknown-race');
-			const gameState = GameStateFactory.createNew({ characters: [character], playerCharacterId: character.id });
+			const gameState = GameStateFactory.createNew({
+				characters: [character],
+				playerCharacterId: character.id,
+			});
 			mockAsyncStorage.getItem.mockResolvedValueOnce(JSON.stringify(gameState));
 
 			const { result } = renderHook(() => useGameState());

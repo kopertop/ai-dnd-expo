@@ -4,28 +4,27 @@ import { ModelQuantizationManager } from '../../../../../services/ai/models/mode
 
 describe('ModelQuantizationManager', () => {
 	beforeEach(() => {
-		// Mock dependencies
-		vi.mock('../../../../../services/ai/models/device-capability-manager', () => ({
-			DeviceCapabilityManager: vi.fn().mockImplementation(() => ({
-				getDeviceCapabilities: vi.fn().mockReturnValue({
-					memory: {
-						total: 4096,
-						available: 2048,
-					},
-					cpu: {
-						cores: 6,
-						architecture: 'arm64',
-					},
-					gpu: {
-						available: true,
-						type: 'integrated',
-					},
-					platform: 'ios',
-				}),
-				hasNeuralEngine: vi.fn().mockReturnValue(true),
-				getMemoryClass: vi.fn().mockReturnValue('high'),
-			})),
-		}));
+		// Mock dependencies using vi.spyOn
+		const {
+			DeviceCapabilityManager,
+		} = require('../../../../../services/ai/models/device-capability-manager');
+		vi.spyOn(DeviceCapabilityManager.prototype, 'getDeviceCapabilities').mockReturnValue({
+			memory: {
+				total: 4096,
+				available: 2048,
+			},
+			cpu: {
+				cores: 6,
+				architecture: 'arm64',
+			},
+			gpu: {
+				available: true,
+				type: 'integrated',
+			},
+			platform: 'ios',
+		});
+		vi.spyOn(DeviceCapabilityManager.prototype, 'hasNeuralEngine').mockReturnValue(true);
+		vi.spyOn(DeviceCapabilityManager.prototype, 'getMemoryClass').mockReturnValue('high');
 
 		describe('ModelQuantizationManager', () => {
 			let quantizationManager: ModelQuantizationManager;
@@ -45,7 +44,10 @@ describe('ModelQuantizationManager', () => {
 
 				it('should recommend different quantization levels based on device capabilities', () => {
 					// Mock high-end device
-					vi.spyOn(quantizationManager['deviceCapabilityManager'], 'getDeviceCapabilities').mockReturnValue({
+					vi.spyOn(
+						quantizationManager['deviceCapabilityManager'],
+						'getDeviceCapabilities',
+					).mockReturnValue({
 						memory: {
 							total: 8192,
 							available: 4096,
@@ -64,7 +66,10 @@ describe('ModelQuantizationManager', () => {
 					const highEndRecommendation = quantizationManager.getRecommendedQuantization();
 
 					// Mock low-end device
-					vi.spyOn(quantizationManager['deviceCapabilityManager'], 'getDeviceCapabilities').mockReturnValue({
+					vi.spyOn(
+						quantizationManager['deviceCapabilityManager'],
+						'getDeviceCapabilities',
+					).mockReturnValue({
 						memory: {
 							total: 2048,
 							available: 512,
@@ -84,30 +89,48 @@ describe('ModelQuantizationManager', () => {
 
 					// High-end device should get higher precision (fp16 or fp32)
 					// Low-end device should get lower precision (int4 or int8)
-					expect(highEndRecommendation === 'fp16' || highEndRecommendation === 'fp32').toBe(true);
-					expect(lowEndRecommendation === 'int4' || lowEndRecommendation === 'int8').toBe(true);
+					expect(
+						highEndRecommendation === 'fp16' || highEndRecommendation === 'fp32',
+					).toBe(true);
+					expect(lowEndRecommendation === 'int4' || lowEndRecommendation === 'int8').toBe(
+						true,
+					);
 				});
 
 				it('should get quantization options for model', () => {
 					const options = quantizationManager.getQuantizationOptions('gemma-3-2b');
 
-					expect(options).toEqual(expect.arrayContaining([
-						expect.objectContaining({
-							type: expect.any(String),
-							sizeReduction: expect.any(Number),
-							speedImpact: expect.any(String),
-							qualityImpact: expect.any(String),
-						}),
-					]));
+					expect(options).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({
+								type: expect.any(String),
+								sizeReduction: expect.any(Number),
+								speedImpact: expect.any(String),
+								qualityImpact: expect.any(String),
+							}),
+						]),
+					);
 				});
 
 				it('should estimate model size after quantization', () => {
 					const originalSize = 1024 * 1024 * 1024; // 1GB
 
-					const int8Size = quantizationManager.estimateQuantizedSize(originalSize, 'int8');
-					const int4Size = quantizationManager.estimateQuantizedSize(originalSize, 'int4');
-					const fp16Size = quantizationManager.estimateQuantizedSize(originalSize, 'fp16');
-					const fp32Size = quantizationManager.estimateQuantizedSize(originalSize, 'fp32');
+					const int8Size = quantizationManager.estimateQuantizedSize(
+						originalSize,
+						'int8',
+					);
+					const int4Size = quantizationManager.estimateQuantizedSize(
+						originalSize,
+						'int4',
+					);
+					const fp16Size = quantizationManager.estimateQuantizedSize(
+						originalSize,
+						'fp16',
+					);
+					const fp32Size = quantizationManager.estimateQuantizedSize(
+						originalSize,
+						'fp32',
+					);
 
 					// Check relative sizes
 					expect(int4Size).toBeLessThan(int8Size);
@@ -121,7 +144,10 @@ describe('ModelQuantizationManager', () => {
 			describe('Device-Specific Recommendations', () => {
 				it('should recommend quantization based on memory constraints', () => {
 					// Mock memory-constrained device
-					vi.spyOn(quantizationManager['deviceCapabilityManager'], 'getDeviceCapabilities').mockReturnValue({
+					vi.spyOn(
+						quantizationManager['deviceCapabilityManager'],
+						'getDeviceCapabilities',
+					).mockReturnValue({
 						memory: {
 							total: 2048,
 							available: 512,
@@ -145,12 +171,18 @@ describe('ModelQuantizationManager', () => {
 
 				it('should recommend quantization based on neural engine availability', () => {
 					// Mock device with neural engine
-					vi.spyOn(quantizationManager['deviceCapabilityManager'], 'hasNeuralEngine').mockReturnValue(true);
+					vi.spyOn(
+						quantizationManager['deviceCapabilityManager'],
+						'hasNeuralEngine',
+					).mockReturnValue(true);
 
 					const withNeuralEngine = quantizationManager.getRecommendedQuantization();
 
 					// Mock device without neural engine
-					vi.spyOn(quantizationManager['deviceCapabilityManager'], 'hasNeuralEngine').mockReturnValue(false);
+					vi.spyOn(
+						quantizationManager['deviceCapabilityManager'],
+						'hasNeuralEngine',
+					).mockReturnValue(false);
 
 					const withoutNeuralEngine = quantizationManager.getRecommendedQuantization();
 
@@ -171,7 +203,10 @@ describe('ModelQuantizationManager', () => {
 					];
 
 					// Mock high-memory device
-					vi.spyOn(quantizationManager['deviceCapabilityManager'], 'getDeviceCapabilities').mockReturnValue({
+					vi.spyOn(
+						quantizationManager['deviceCapabilityManager'],
+						'getDeviceCapabilities',
+					).mockReturnValue({
 						memory: {
 							total: 8192,
 							available: 4096,
@@ -190,7 +225,10 @@ describe('ModelQuantizationManager', () => {
 					const highMemoryVariant = quantizationManager.selectBestModelVariant(variants);
 
 					// Mock low-memory device
-					vi.spyOn(quantizationManager['deviceCapabilityManager'], 'getDeviceCapabilities').mockReturnValue({
+					vi.spyOn(
+						quantizationManager['deviceCapabilityManager'],
+						'getDeviceCapabilities',
+					).mockReturnValue({
 						memory: {
 							total: 2048,
 							available: 512,
@@ -209,14 +247,22 @@ describe('ModelQuantizationManager', () => {
 					const lowMemoryVariant = quantizationManager.selectBestModelVariant(variants);
 
 					// High-memory device should get higher precision variant
-					expect(highMemoryVariant.quantization === 'fp16' || highMemoryVariant.quantization === 'fp32').toBe(true);
+					expect(
+						highMemoryVariant.quantization === 'fp16' ||
+							highMemoryVariant.quantization === 'fp32',
+					).toBe(true);
 
 					// Low-memory device should get lower precision variant
-					expect(lowMemoryVariant.quantization === 'int4' || lowMemoryVariant.quantization === 'int8').toBe(true);
+					expect(
+						lowMemoryVariant.quantization === 'int4' ||
+							lowMemoryVariant.quantization === 'int8',
+					).toBe(true);
 				});
 
 				it('should handle empty variant list', () => {
-					expect(() => quantizationManager.selectBestModelVariant([])).toThrow('No model variants available');
+					expect(() => quantizationManager.selectBestModelVariant([])).toThrow(
+						'No model variants available',
+					);
 				});
 			});
 

@@ -112,7 +112,7 @@ export class ModelDownloadManager {
 			if (queueData) {
 				const queue = JSON.parse(queueData);
 				this.downloadQueue = new Map(Object.entries(queue));
-				
+
 				// Resume any interrupted downloads
 				for (const [modelId, progress] of this.downloadQueue) {
 					if (progress.status === 'downloading') {
@@ -140,10 +140,7 @@ export class ModelDownloadManager {
 	/**
 	 * Download a model with progress tracking
 	 */
-	async downloadModel(
-		metadata: ModelMetadata,
-		options: DownloadOptions = {},
-	): Promise<string> {
+	async downloadModel(metadata: ModelMetadata, options: DownloadOptions = {}): Promise<string> {
 		const {
 			resumable = true,
 			maxRetries = 3,
@@ -154,7 +151,7 @@ export class ModelDownloadManager {
 		} = options;
 
 		const modelPath = `${this.modelsDirectory}${metadata.id}.onnx`;
-		
+
 		// Check if model already exists and is valid
 		const existingModel = await this.validateExistingModel(metadata.id, metadata.checksum);
 		if (existingModel) {
@@ -163,8 +160,11 @@ export class ModelDownloadManager {
 
 		// Check available space
 		const storageInfo = await this.getStorageInfo();
-		if (storageInfo.freeSpace < metadata.size * 1.2) { // 20% buffer
-			throw new Error(`Insufficient storage space. Need ${Math.round(metadata.size / 1024 / 1024)}MB, have ${Math.round(storageInfo.freeSpace / 1024 / 1024)}MB`);
+		if (storageInfo.freeSpace < metadata.size * 1.2) {
+			// 20% buffer
+			throw new Error(
+				`Insufficient storage space. Need ${Math.round(metadata.size / 1024 / 1024)}MB, have ${Math.round(storageInfo.freeSpace / 1024 / 1024)}MB`,
+			);
 		}
 
 		// Initialize download progress
@@ -207,7 +207,7 @@ export class ModelDownloadManager {
 					if (checksumValidation) {
 						progress.status = 'pending'; // Use pending for validation
 						progressCallback?.(progress);
-						
+
 						const isValid = await this.validateChecksum(filePath, metadata.checksum);
 						if (!isValid) {
 							await FileSystem.deleteAsync(filePath, { idempotent: true });
@@ -227,20 +227,18 @@ export class ModelDownloadManager {
 					await this.saveDownloadQueue();
 
 					return filePath;
-
 				} catch (error) {
 					attempt++;
 					if (attempt >= maxRetries || abortController.signal.aborted) {
 						throw error;
 					}
-					
+
 					// Wait before retry
 					await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
 				}
 			}
 
 			throw new Error(`Download failed after ${maxRetries} attempts`);
-
 		} catch (error) {
 			progress.status = 'failed';
 			progress.error = error instanceof Error ? error.message : 'Unknown error';
@@ -291,31 +289,27 @@ export class ModelDownloadManager {
 			headers.Range = `bytes=${startByte}-`;
 		}
 
-		const downloadResult = await FileSystem.downloadAsync(
-			url,
-			filePath,
-			{
-				headers,
-				sessionType: FileSystem.FileSystemSessionType.BACKGROUND,
-			},
-		);
+		const downloadResult = await FileSystem.downloadAsync(url, filePath, {
+			headers,
+			sessionType: FileSystem.FileSystemSessionType.BACKGROUND,
+		});
 
 		// Simple progress simulation for FileSystem.downloadAsync
 		// In a real implementation, you'd use createDownloadResumable for actual progress
 		const updateProgress = () => {
 			const now = Date.now();
 			const elapsed = (now - lastProgressTime) / 1000;
-			
-			if (elapsed > 0.5) { // Update every 500ms
+
+			if (elapsed > 0.5) {
+				// Update every 500ms
 				const currentBytes = progress.downloadedBytes;
 				const bytesThisInterval = currentBytes - lastDownloadedBytes;
 				const speed = bytesThisInterval / elapsed;
-				
+
 				progress.speed = speed;
 				progress.progress = Math.min(currentBytes / progress.totalBytes, 1);
-				progress.estimatedTimeRemaining = speed > 0 
-					? (progress.totalBytes - currentBytes) / speed 
-					: 0;
+				progress.estimatedTimeRemaining =
+					speed > 0 ? (progress.totalBytes - currentBytes) / speed : 0;
 
 				progressCallback?.(progress);
 
@@ -353,7 +347,6 @@ export class ModelDownloadManager {
 
 			clearInterval(progressInterval);
 			return downloadResult.uri;
-
 		} catch (error) {
 			clearInterval(progressInterval);
 			throw error;
@@ -363,11 +356,14 @@ export class ModelDownloadManager {
 	/**
 	 * Validate existing model file
 	 */
-	private async validateExistingModel(modelId: string, expectedChecksum: string): Promise<string | null> {
+	private async validateExistingModel(
+		modelId: string,
+		expectedChecksum: string,
+	): Promise<string | null> {
 		try {
 			const modelPath = `${this.modelsDirectory}${modelId}.onnx`;
 			const fileInfo = await FileSystem.getInfoAsync(modelPath);
-			
+
 			if (!fileInfo.exists) {
 				return null;
 			}
@@ -375,7 +371,6 @@ export class ModelDownloadManager {
 			// Validate checksum
 			const isValid = await this.validateChecksum(modelPath, expectedChecksum);
 			return isValid ? modelPath : null;
-
 		} catch (error) {
 			console.error('Error validating existing model:', error);
 			return null;
@@ -398,7 +393,6 @@ export class ModelDownloadManager {
 			// For now, just check file exists and has reasonable size
 			const fileSize = fileInfo.size || 0;
 			return fileSize > 1000; // Basic size check
-
 		} catch (error) {
 			console.error('Checksum validation error:', error);
 			return false;
@@ -425,14 +419,15 @@ export class ModelDownloadManager {
 	async getStorageInfo(): Promise<StorageInfo> {
 		try {
 			// Get free space (simplified - actual implementation would vary by platform)
-			const freeSpace = Platform.OS === 'ios' 
-				? await FileSystem.getFreeDiskStorageAsync()
-				: 1024 * 1024 * 1024; // 1GB fallback
+			const freeSpace =
+				Platform.OS === 'ios'
+					? await FileSystem.getFreeDiskStorageAsync()
+					: 1024 * 1024 * 1024; // 1GB fallback
 
 			// Calculate used space by models
 			let usedByModels = 0;
 			const modelsDir = await FileSystem.readDirectoryAsync(this.modelsDirectory);
-			
+
 			for (const fileName of modelsDir) {
 				const filePath = `${this.modelsDirectory}${fileName}`;
 				const fileInfo = await FileSystem.getInfoAsync(filePath);
@@ -448,7 +443,6 @@ export class ModelDownloadManager {
 				modelsDirectory: this.modelsDirectory,
 				cacheDirectory: this.cacheDirectory,
 			};
-
 		} catch (error) {
 			console.error('Failed to get storage info:', error);
 			throw new Error(`Storage info retrieval failed: ${error}`);
@@ -505,7 +499,7 @@ export class ModelDownloadManager {
 		}
 
 		const metadata: ModelMetadata = JSON.parse(metadataJson);
-		
+
 		// Resume download
 		await this.downloadModel(metadata, { resumable: true });
 	}
@@ -529,7 +523,7 @@ export class ModelDownloadManager {
 	 */
 	async cleanupDownloadQueue(): Promise<void> {
 		const toRemove: string[] = [];
-		
+
 		for (const [modelId, progress] of this.downloadQueue) {
 			if (progress.status === 'completed' || progress.status === 'failed') {
 				toRemove.push(modelId);
@@ -547,7 +541,7 @@ export class ModelDownloadManager {
 		try {
 			const keys = await AsyncStorage.getAllKeys();
 			const metadataKeys = keys.filter(key => key.startsWith(STORAGE_KEYS.MODEL_METADATA));
-			
+
 			const metadataPromises = metadataKeys.map(async key => {
 				const metadataJson = await AsyncStorage.getItem(key);
 				return metadataJson ? JSON.parse(metadataJson) : null;
@@ -555,7 +549,6 @@ export class ModelDownloadManager {
 
 			const metadataArray = await Promise.all(metadataPromises);
 			return metadataArray.filter(metadata => metadata !== null);
-
 		} catch (error) {
 			console.error('Failed to get installed models:', error);
 			return [];
@@ -577,7 +570,6 @@ export class ModelDownloadManager {
 			// Remove from download queue if exists
 			this.downloadQueue.delete(modelId);
 			await this.saveDownloadQueue();
-
 		} catch (error) {
 			console.error('Failed to delete model:', error);
 			throw new Error(`Model deletion failed: ${error}`);

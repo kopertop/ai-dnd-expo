@@ -197,7 +197,9 @@ export class CharacterVoiceRegistry {
 	/**
 	 * Get assignments by character type
 	 */
-	public static async getAssignmentsByType(characterType: CharacterType): Promise<VoiceAssignment[]> {
+	public static async getAssignmentsByType(
+		characterType: CharacterType,
+	): Promise<VoiceAssignment[]> {
 		await this.ensureLoaded();
 
 		if (!this.cache) return [];

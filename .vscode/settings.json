@@ -62,7 +62,8 @@
 		"npm run typecheck -- --skipLibCheck --skipTests",
 		"grep *",
 		"ls *",
-		"npm list *"
+		"npm list *",
+		"npm run check"
 	],
 	"[markdown]": {
 		"editor.defaultFormatter": "yzhang.markdown-all-in-one"

@@ -145,7 +145,9 @@ describe('useTextToSpeech hook', () => {
 			const voiceError = new Error('Voice loading failed');
 			mockSpeech.getAvailableVoicesAsync.mockRejectedValueOnce(voiceError);
 
-			await expect(mockSpeech.getAvailableVoicesAsync()).rejects.toThrow('Voice loading failed');
+			await expect(mockSpeech.getAvailableVoicesAsync()).rejects.toThrow(
+				'Voice loading failed',
+			);
 		});
 
 		it('should handle isSpeaking errors gracefully', async () => {

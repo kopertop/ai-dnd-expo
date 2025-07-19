@@ -4,7 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GameCanvas } from '@/components/game-canvas';
 import { WorldMapFactory } from '@/tests/fixtures/mock-factories';
-import { assertNoConsoleErrors, renderWithProviders, waitForAsyncUpdates } from '@/tests/utils/render-helpers';
+import {
+	assertNoConsoleErrors,
+	renderWithProviders,
+	waitForAsyncUpdates,
+} from '@/tests/utils/render-helpers';
 
 // Mock the child components before importing the main component
 interface MockCanvasProps {
@@ -25,31 +29,35 @@ describe('GameCanvas', () => {
 		const SkiaGameCanvas = await import('@/components/skia-game-canvas');
 		const SvgGameCanvas = await import('@/components/svg-game-canvas');
 
-		vi.spyOn(SkiaGameCanvas, 'SkiaGameCanvas').mockImplementation(({ worldState, onPlayerMove, onTileClick }: MockCanvasProps) => (
-			<div
-				data-testid="skia-game-canvas"
-				data-world-state={worldState ? 'present' : 'null'}
-				onClick={() => {
-					onPlayerMove?.({ x: 1, y: 1 });
-					onTileClick?.({ x: 1, y: 1 });
-				}}
-			>
-				<Text>Skia Game Canvas</Text>
-			</div>
-		));
+		vi.spyOn(SkiaGameCanvas, 'SkiaGameCanvas').mockImplementation(
+			({ worldState, onPlayerMove, onTileClick }: MockCanvasProps) => (
+				<div
+					data-testid="skia-game-canvas"
+					data-world-state={worldState ? 'present' : 'null'}
+					onClick={() => {
+						onPlayerMove?.({ x: 1, y: 1 });
+						onTileClick?.({ x: 1, y: 1 });
+					}}
+				>
+					<Text>Skia Game Canvas</Text>
+				</div>
+			),
+		);
 
-		vi.spyOn(SvgGameCanvas, 'SvgGameCanvas').mockImplementation(({ worldState, onPlayerMove, onTileClick }: MockCanvasProps) => (
-			<div
-				data-testid="svg-game-canvas"
-				data-world-state={worldState ? 'present' : 'null'}
-				onClick={() => {
-					onPlayerMove?.({ x: 2, y: 2 });
-					onTileClick?.({ x: 2, y: 2 });
-				}}
-			>
-				<Text>SVG Game Canvas</Text>
-			</div>
-		));
+		vi.spyOn(SvgGameCanvas, 'SvgGameCanvas').mockImplementation(
+			({ worldState, onPlayerMove, onTileClick }: MockCanvasProps) => (
+				<div
+					data-testid="svg-game-canvas"
+					data-world-state={worldState ? 'present' : 'null'}
+					onClick={() => {
+						onPlayerMove?.({ x: 2, y: 2 });
+						onTileClick?.({ x: 2, y: 2 });
+					}}
+				>
+					<Text>SVG Game Canvas</Text>
+				</div>
+			),
+		);
 	});
 
 	afterEach(() => {
@@ -97,9 +105,7 @@ describe('GameCanvas', () => {
 
 	describe('Props passing', () => {
 		it('should pass worldState prop to child component', async () => {
-			const { container } = renderWithProviders(
-				<GameCanvas worldState={mockWorldState} />,
-			);
+			const { container } = renderWithProviders(<GameCanvas worldState={mockWorldState} />);
 
 			await waitForAsyncUpdates();
 
@@ -108,9 +114,7 @@ describe('GameCanvas', () => {
 		});
 
 		it('should handle null worldState', async () => {
-			const { container } = renderWithProviders(
-				<GameCanvas worldState={undefined} />,
-			);
+			const { container } = renderWithProviders(<GameCanvas worldState={undefined} />);
 
 			await waitForAsyncUpdates();
 
@@ -129,14 +133,18 @@ describe('GameCanvas', () => {
 
 			await waitForAsyncUpdates();
 
-			const canvas = container?.querySelector('[data-testid="skia-game-canvas"], [data-testid="svg-game-canvas"]');
+			const canvas = container?.querySelector(
+				'[data-testid="skia-game-canvas"], [data-testid="svg-game-canvas"]',
+			);
 
 			if (canvas) {
 				// Simulate interaction
 				(canvas as HTMLElement).click();
 
 				// Should call one of the callback sets
-				expect(mockOnPlayerMove.mock.calls.length + mockOnTileClick.mock.calls.length).toBeGreaterThan(0);
+				expect(
+					mockOnPlayerMove.mock.calls.length + mockOnTileClick.mock.calls.length,
+				).toBeGreaterThan(0);
 			}
 		});
 	});
@@ -144,15 +152,14 @@ describe('GameCanvas', () => {
 	describe('Callback handling', () => {
 		it('should handle missing onPlayerMove callback gracefully', async () => {
 			const { container } = renderWithProviders(
-				<GameCanvas
-					worldState={mockWorldState}
-					onTileClick={mockOnTileClick}
-				/>,
+				<GameCanvas worldState={mockWorldState} onTileClick={mockOnTileClick} />,
 			);
 
 			await waitForAsyncUpdates();
 
-			const canvas = container?.querySelector('[data-testid="skia-game-canvas"], [data-testid="svg-game-canvas"]');
+			const canvas = container?.querySelector(
+				'[data-testid="skia-game-canvas"], [data-testid="svg-game-canvas"]',
+			);
 
 			// Should not throw when onPlayerMove is undefined
 			expect(() => {
@@ -164,15 +171,14 @@ describe('GameCanvas', () => {
 
 		it('should handle missing onTileClick callback gracefully', async () => {
 			const { container } = renderWithProviders(
-				<GameCanvas
-					worldState={mockWorldState}
-					onPlayerMove={mockOnPlayerMove}
-				/>,
+				<GameCanvas worldState={mockWorldState} onPlayerMove={mockOnPlayerMove} />,
 			);
 
 			await waitForAsyncUpdates();
 
-			const canvas = container?.querySelector('[data-testid="skia-game-canvas"], [data-testid="svg-game-canvas"]');
+			const canvas = container?.querySelector(
+				'[data-testid="skia-game-canvas"], [data-testid="svg-game-canvas"]',
+			);
 
 			// Should not throw when onTileClick is undefined
 			expect(() => {
@@ -183,13 +189,13 @@ describe('GameCanvas', () => {
 		});
 
 		it('should handle missing callbacks gracefully', async () => {
-			const { container } = renderWithProviders(
-				<GameCanvas worldState={mockWorldState} />,
-			);
+			const { container } = renderWithProviders(<GameCanvas worldState={mockWorldState} />);
 
 			await waitForAsyncUpdates();
 
-			const canvas = container?.querySelector('[data-testid="skia-game-canvas"], [data-testid="svg-game-canvas"]');
+			const canvas = container?.querySelector(
+				'[data-testid="skia-game-canvas"], [data-testid="svg-game-canvas"]',
+			);
 
 			// Should not throw when both callbacks are undefined
 			expect(() => {
@@ -202,9 +208,7 @@ describe('GameCanvas', () => {
 
 	describe('Edge cases', () => {
 		it('should handle undefined worldState', async () => {
-			const { container } = renderWithProviders(
-				<GameCanvas worldState={undefined} />,
-			);
+			const { container } = renderWithProviders(<GameCanvas worldState={undefined} />);
 
 			await waitForAsyncUpdates();
 
@@ -216,9 +220,7 @@ describe('GameCanvas', () => {
 			// Test with a partial world state to verify component handles incomplete data
 			const emptyWorldState = WorldMapFactory.createGameWorldState();
 
-			const { container } = renderWithProviders(
-				<GameCanvas worldState={emptyWorldState} />,
-			);
+			const { container } = renderWithProviders(<GameCanvas worldState={emptyWorldState} />);
 
 			await waitForAsyncUpdates();
 
@@ -229,9 +231,7 @@ describe('GameCanvas', () => {
 
 	describe('Canvas selection logic', () => {
 		it('should render a canvas component', async () => {
-			const { container } = renderWithProviders(
-				<GameCanvas worldState={mockWorldState} />,
-			);
+			const { container } = renderWithProviders(<GameCanvas worldState={mockWorldState} />);
 
 			await waitForAsyncUpdates();
 
@@ -255,7 +255,9 @@ describe('GameCanvas', () => {
 
 			await waitForAsyncUpdates();
 
-			const canvas = container?.querySelector('[data-testid="skia-game-canvas"], [data-testid="svg-game-canvas"]');
+			const canvas = container?.querySelector(
+				'[data-testid="skia-game-canvas"], [data-testid="svg-game-canvas"]',
+			);
 			expect(canvas).toBeTruthy();
 			expect(canvas?.getAttribute('data-world-state')).toBe('present');
 		});

@@ -14,9 +14,10 @@ export class VoiceProfileService {
 			name: 'warrior-deep',
 			displayName: 'Deep Warrior',
 			engine: 'platform',
-			engineVoiceId: Platform.OS === 'ios'
-				? 'com.apple.ttsbundle.Daniel-compact'
-				: 'en-us-x-sfg#male_2-local',
+			engineVoiceId:
+				Platform.OS === 'ios'
+					? 'com.apple.ttsbundle.Daniel-compact'
+					: 'en-us-x-sfg#male_2-local',
 			language: 'en-US',
 			characteristics: {
 				gender: 'male',
@@ -34,9 +35,8 @@ export class VoiceProfileService {
 			name: 'scholar-wise',
 			displayName: 'Wise Scholar',
 			engine: 'platform',
-			engineVoiceId: Platform.OS === 'ios'
-				? 'com.apple.ttsbundle.Alex'
-				: 'en-us-x-iog#male_1-local',
+			engineVoiceId:
+				Platform.OS === 'ios' ? 'com.apple.ttsbundle.Alex' : 'en-us-x-iog#male_1-local',
 			language: 'en-US',
 			characteristics: {
 				gender: 'male',
@@ -54,9 +54,8 @@ export class VoiceProfileService {
 			name: 'rogue-quick',
 			displayName: 'Quick Rogue',
 			engine: 'platform',
-			engineVoiceId: Platform.OS === 'ios'
-				? 'com.apple.ttsbundle.Tom'
-				: 'en-us-x-tpd#male_1-local',
+			engineVoiceId:
+				Platform.OS === 'ios' ? 'com.apple.ttsbundle.Tom' : 'en-us-x-tpd#male_1-local',
 			language: 'en-US',
 			characteristics: {
 				gender: 'male',
@@ -76,9 +75,10 @@ export class VoiceProfileService {
 			name: 'mage-mystical',
 			displayName: 'Mystical Mage',
 			engine: 'platform',
-			engineVoiceId: Platform.OS === 'ios'
-				? 'com.apple.ttsbundle.Samantha'
-				: 'en-us-x-sfg#female_2-local',
+			engineVoiceId:
+				Platform.OS === 'ios'
+					? 'com.apple.ttsbundle.Samantha'
+					: 'en-us-x-sfg#female_2-local',
 			language: 'en-US',
 			characteristics: {
 				gender: 'female',
@@ -96,9 +96,10 @@ export class VoiceProfileService {
 			name: 'ranger-nature',
 			displayName: 'Nature Ranger',
 			engine: 'platform',
-			engineVoiceId: Platform.OS === 'ios'
-				? 'com.apple.ttsbundle.Victoria'
-				: 'en-us-x-iom#female_1-local',
+			engineVoiceId:
+				Platform.OS === 'ios'
+					? 'com.apple.ttsbundle.Victoria'
+					: 'en-us-x-iom#female_1-local',
 			language: 'en-US',
 			characteristics: {
 				gender: 'female',
@@ -116,9 +117,8 @@ export class VoiceProfileService {
 			name: 'noble-elegant',
 			displayName: 'Elegant Noble',
 			engine: 'platform',
-			engineVoiceId: Platform.OS === 'ios'
-				? 'com.apple.ttsbundle.Fiona'
-				: 'en-us-x-iog#female_2-local',
+			engineVoiceId:
+				Platform.OS === 'ios' ? 'com.apple.ttsbundle.Fiona' : 'en-us-x-iog#female_2-local',
 			language: 'en-US',
 			characteristics: {
 				gender: 'female',
@@ -138,9 +138,10 @@ export class VoiceProfileService {
 			name: 'dm-master',
 			displayName: 'Dungeon Master',
 			engine: 'platform',
-			engineVoiceId: Platform.OS === 'ios'
-				? 'com.apple.ttsbundle.Daniel-compact'
-				: 'en-us-x-sfg#male_3-local',
+			engineVoiceId:
+				Platform.OS === 'ios'
+					? 'com.apple.ttsbundle.Daniel-compact'
+					: 'en-us-x-sfg#male_3-local',
 			language: 'en-US',
 			characteristics: {
 				gender: 'male',
@@ -158,9 +159,8 @@ export class VoiceProfileService {
 			name: 'narrator-voice',
 			displayName: 'Story Narrator',
 			engine: 'platform',
-			engineVoiceId: Platform.OS === 'ios'
-				? 'com.apple.ttsbundle.Alex'
-				: 'en-us-x-iog#male_2-local',
+			engineVoiceId:
+				Platform.OS === 'ios' ? 'com.apple.ttsbundle.Alex' : 'en-us-x-iog#male_2-local',
 			language: 'en-US',
 			characteristics: {
 				gender: 'neutral',
@@ -180,9 +180,8 @@ export class VoiceProfileService {
 			name: 'creature-voice',
 			displayName: 'Creature Voice',
 			engine: 'platform',
-			engineVoiceId: Platform.OS === 'ios'
-				? 'com.apple.ttsbundle.Ralph'
-				: 'en-us-x-tpd#male_2-local',
+			engineVoiceId:
+				Platform.OS === 'ios' ? 'com.apple.ttsbundle.Ralph' : 'en-us-x-tpd#male_2-local',
 			language: 'en-US',
 			characteristics: {
 				gender: 'neutral',
@@ -208,9 +207,7 @@ export class VoiceProfileService {
 	 * Get voice profiles suitable for a specific character type
 	 */
 	public static getProfilesForType(characterType: CharacterType): VoiceProfile[] {
-		return this.profiles.filter(profile =>
-			profile.suitableFor.includes(characterType),
-		);
+		return this.profiles.filter(profile => profile.suitableFor.includes(characterType));
 	}
 
 	/**
@@ -236,9 +233,10 @@ export class VoiceProfileService {
 
 		// Filter by gender if specified
 		if (traits.gender) {
-			candidates = candidates.filter(profile =>
-				profile.characteristics.gender === traits.gender ||
-				profile.characteristics.gender === 'neutral',
+			candidates = candidates.filter(
+				profile =>
+					profile.characteristics.gender === traits.gender ||
+					profile.characteristics.gender === 'neutral',
 			);
 		}
 
@@ -257,9 +255,10 @@ export class VoiceProfileService {
 			// Check personality traits match
 			if (traits.personality) {
 				const personalityMatches = traits.personality.filter(trait =>
-					profile.personality.some(p =>
-						p.toLowerCase().includes(trait.toLowerCase()) ||
-						trait.toLowerCase().includes(p.toLowerCase()),
+					profile.personality.some(
+						p =>
+							p.toLowerCase().includes(trait.toLowerCase()) ||
+							trait.toLowerCase().includes(p.toLowerCase()),
 					),
 				);
 				score += personalityMatches.length * 5;
@@ -277,9 +276,7 @@ export class VoiceProfileService {
 		});
 
 		// Sort by score (highest first) and return profiles
-		return scoredProfiles
-			.sort((a, b) => b.score - a.score)
-			.map(item => item.profile);
+		return scoredProfiles.sort((a, b) => b.score - a.score).map(item => item.profile);
 	}
 
 	/**

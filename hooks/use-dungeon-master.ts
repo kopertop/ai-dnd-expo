@@ -32,7 +32,8 @@ export interface DMContext {
 
 // Constants
 const CACTUS_API_KEY_STORAGE_KEY = 'cactus_api_key';
-const DEFAULT_MODEL_URL = 'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf';
+const DEFAULT_MODEL_URL =
+	'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf';
 
 /**
  * Hook for using Cactus Compute's LLM as a Dungeon Master
@@ -54,7 +55,7 @@ export const useDungeonMaster = (options: UseDungeonMasterOptions = {}) => {
 			// Get API key from storage if not provided
 			let apiKey = options.apiKey;
 			if (!apiKey) {
-				apiKey = await AsyncStorage.getItem(CACTUS_API_KEY_STORAGE_KEY) || undefined;
+				apiKey = (await AsyncStorage.getItem(CACTUS_API_KEY_STORAGE_KEY)) || undefined;
 			}
 
 			// Create provider
@@ -65,7 +66,7 @@ export const useDungeonMaster = (options: UseDungeonMasterOptions = {}) => {
 			});
 
 			// Initialize provider
-			const success = await dmProvider.initialize((progress) => {
+			const success = await dmProvider.initialize(progress => {
 				setInitProgress(progress);
 			});
 
@@ -78,7 +79,9 @@ export const useDungeonMaster = (options: UseDungeonMasterOptions = {}) => {
 			}
 		} catch (err) {
 			console.error('Error initializing DM:', err);
-			setError(`Failed to initialize DM: ${err instanceof Error ? err.message : String(err)}`);
+			setError(
+				`Failed to initialize DM: ${err instanceof Error ? err.message : String(err)}`,
+			);
 		} finally {
 			setIsLoading(false);
 		}

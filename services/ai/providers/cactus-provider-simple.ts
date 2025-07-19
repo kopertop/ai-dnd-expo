@@ -26,7 +26,8 @@ const MODEL_CACHE_KEY = 'cactus-model-cache';
 const STOP_WORDS = ['<|end_of_text|>', '<|endoftext|>', '', ''];
 
 // Gemma 3 1B Instruct model URL from Hugging Face
-const DEFAULT_MODEL_URL = 'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf';
+const DEFAULT_MODEL_URL =
+	'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf';
 
 export class CactusProviderSimple {
 	private lm: any = null;
@@ -76,8 +77,10 @@ export class CactusProviderSimple {
 				this.modelUrl,
 				downloadPath,
 				{},
-				(downloadProgress) => {
-					const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
+				downloadProgress => {
+					const progress =
+						downloadProgress.totalBytesWritten /
+						downloadProgress.totalBytesExpectedToWrite;
 					if (onProgress) onProgress(progress);
 				},
 			);
@@ -163,18 +166,14 @@ export class CactusProviderSimple {
 			let firstTokenTime: number | null = null;
 			let responseText = '';
 
-			const result = await this.lm.completion(
-				messages,
-				completionParams,
-				(data: any) => {
-					if (firstTokenTime === null && data.token) {
-						firstTokenTime = performance.now();
-					}
-					if (data.token) {
-						responseText += data.token;
-					}
-				},
-			);
+			const result = await this.lm.completion(messages, completionParams, (data: any) => {
+				if (firstTokenTime === null && data.token) {
+					firstTokenTime = performance.now();
+				}
+				if (data.token) {
+					responseText += data.token;
+				}
+			});
 
 			responseText = responseText || result.text || '';
 
@@ -182,7 +181,9 @@ export class CactusProviderSimple {
 			const totalTime = endTime - startTime;
 			const timeToFirstToken = firstTokenTime ? firstTokenTime - startTime : totalTime;
 
-			console.warn(`LLM: TTFT ${timeToFirstToken.toFixed(0)}ms | Total time: ${totalTime.toFixed(0)}ms`);
+			console.warn(
+				`LLM: TTFT ${timeToFirstToken.toFixed(0)}ms | Total time: ${totalTime.toFixed(0)}ms`,
+			);
 
 			return responseText;
 		} catch (error) {

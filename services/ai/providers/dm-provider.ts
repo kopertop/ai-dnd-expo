@@ -85,7 +85,10 @@ export class DMProvider {
 
 		// Create a timeout promise
 		const timeoutPromise = new Promise<never>((_, reject) => {
-			setTimeout(() => reject(new Error('DM response timed out')), timeout || this.config.timeout);
+			setTimeout(
+				() => reject(new Error('DM response timed out')),
+				timeout || this.config.timeout,
+			);
 		});
 
 		try {
@@ -132,10 +135,10 @@ export class DMProvider {
 			};
 
 			// Race the agent response against the timeout
-			const response = await Promise.race([
+			const response = (await Promise.race([
 				this.agent.processPlayerAction(prompt, gameContext),
 				timeoutPromise,
-			]) as DMResponse;
+			])) as DMResponse;
 
 			return {
 				text: response.text,

@@ -24,12 +24,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 	};
 
 	return (
-		<Modal
-			animationType="slide"
-			transparent={true}
-			visible={visible}
-			onRequestClose={onClose}
-		>
+		<Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
 			<ThemedView style={styles.centeredView}>
 				<ThemedView style={styles.modalView}>
 					<ThemedText type="subtitle">Settings</ThemedText>
@@ -52,7 +47,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 						<ThemedText>Mute Music</ThemedText>
 						<Switch
 							value={!isMusicMuted}
-							onValueChange={(value) => setMusicMuted(!value)}
+							onValueChange={value => setMusicMuted(!value)}
 							color="#2196F3"
 							label=""
 							variant="switch"

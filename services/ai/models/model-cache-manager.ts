@@ -124,10 +124,10 @@ export class ModelCacheManager {
 			await this.loadWarmupConfig();
 			await this.loadCacheEntries();
 			await this.loadStats();
-			
+
 			// Start background maintenance
 			this.startBackgroundMaintenance();
-			
+
 			// Perform initial warmup if enabled
 			if (this.warmupConfig.enabled && this.warmupConfig.backgroundPreload) {
 				this.scheduleWarmup();
@@ -190,7 +190,7 @@ export class ModelCacheManager {
 			if (entriesData) {
 				const entries = JSON.parse(entriesData);
 				this.cache = new Map(Object.entries(entries));
-				
+
 				// Clean up expired entries
 				await this.cleanupExpiredEntries();
 			}
@@ -241,20 +241,20 @@ export class ModelCacheManager {
 	 */
 	private generateCacheKey(context: InferenceContext): string {
 		const { modelId, input, sessionId, gameContext } = context;
-		
+
 		// Create a normalized input string
 		const inputString = typeof input === 'string' ? input : JSON.stringify(input);
 		const contextString = [sessionId, gameContext].filter(Boolean).join('|');
-		
+
 		// Simple hash function (in production, use a proper hash function)
 		const hashInput = `${modelId}:${inputString}:${contextString}`;
 		let hash = 0;
 		for (let i = 0; i < hashInput.length; i++) {
 			const char = hashInput.charCodeAt(i);
-			hash = ((hash << 5) - hash) + char;
+			hash = (hash << 5) - hash + char;
 			hash = hash & hash; // Convert to 32-bit integer
 		}
-		
+
 		return `cache_${Math.abs(hash)}_${modelId}`;
 	}
 
@@ -264,7 +264,7 @@ export class ModelCacheManager {
 	async getCachedResponse(context: InferenceContext): Promise<any | null> {
 		const cacheKey = this.generateCacheKey(context);
 		const entry = this.cache.get(cacheKey);
-		
+
 		if (!entry) {
 			this.stats.missRate++;
 			return null;
@@ -281,10 +281,10 @@ export class ModelCacheManager {
 		// Update access tracking
 		entry.accessCount++;
 		entry.lastAccessed = Date.now();
-		
+
 		this.stats.hitRate++;
 		this.updateStats();
-		
+
 		// Decompress if needed
 		let response = entry.response;
 		if (this.cacheConfig.compressionEnabled && entry.tags?.includes('compressed')) {
@@ -304,10 +304,10 @@ export class ModelCacheManager {
 
 		const cacheKey = this.generateCacheKey(context);
 		const now = Date.now();
-		
+
 		// Estimate response size
 		const responseSize = this.estimateSize(response);
-		
+
 		// Check if we should cache this response
 		if (!this.shouldCache(context, responseSize)) {
 			return;
@@ -316,7 +316,7 @@ export class ModelCacheManager {
 		// Compress if needed
 		let finalResponse = response;
 		const tags: string[] = context.tags || [];
-		
+
 		if (this.cacheConfig.compressionEnabled && this.shouldCompress(responseSize)) {
 			finalResponse = await this.compressResponse(response);
 			tags.push('compressed');
@@ -344,7 +344,7 @@ export class ModelCacheManager {
 
 		// Ensure cache limits before adding
 		await this.ensureCacheCapacity(responseSize);
-		
+
 		this.cache.set(cacheKey, entry);
 		this.updateStats();
 		await this.saveCacheEntries();
@@ -356,22 +356,22 @@ export class ModelCacheManager {
 	private shouldCache(context: InferenceContext, responseSize: number): boolean {
 		// Don't cache if disabled
 		if (!context.cacheable) return false;
-		
+
 		// Don't cache overly large responses
 		if (responseSize > this.cacheConfig.maxCacheSize * 0.1) return false;
-		
+
 		// Don't cache user-specific content unless in session
 		if (context.userId && !context.sessionId) return false;
-		
+
 		// Always cache high priority responses
 		if (context.priority === 'critical' || context.priority === 'high') return true;
-		
+
 		// Check memory pressure
 		if (this.deviceResourceManager) {
 			const memoryPressure = this.deviceResourceManager.getResourceHealthScore();
 			if (memoryPressure < 0.3) return false; // Low memory
 		}
-		
+
 		return true;
 	}
 
@@ -387,9 +387,13 @@ export class ModelCacheManager {
 	 * Check if context contains sensitive data
 	 */
 	private isSensitive(context: InferenceContext): boolean {
-		return (context.userId !== undefined) || 
-			   (context.tags?.includes('sensitive') || false) ||
-			   (context.tags?.includes('personal') || false);
+		return (
+			context.userId !== undefined ||
+			context.tags?.includes('sensitive') ||
+			false ||
+			context.tags?.includes('personal') ||
+			false
+		);
 	}
 
 	/**
@@ -406,9 +410,9 @@ export class ModelCacheManager {
 	 */
 	private shouldEvict(newEntrySize: number): boolean {
 		const currentSize = this.getCurrentCacheSize();
-		const wouldExceedSize = (currentSize + newEntrySize) > this.cacheConfig.maxCacheSize;
+		const wouldExceedSize = currentSize + newEntrySize > this.cacheConfig.maxCacheSize;
 		const wouldExceedCount = this.cache.size >= this.cacheConfig.maxEntries;
-		
+
 		return wouldExceedSize || wouldExceedCount;
 	}
 
@@ -522,22 +526,22 @@ export class ModelCacheManager {
 		const now = Date.now();
 		const age = now - entry.timestamp;
 		const recency = now - entry.lastAccessed;
-		
+
 		// Higher score = more likely to evict
 		let score = 0;
-		
+
 		// Age factor (older = higher score)
 		score += age / (1000 * 60 * 60); // Hours
-		
+
 		// Recency factor (less recent = higher score)
 		score += recency / (1000 * 60 * 10); // 10-minute intervals
-		
+
 		// Frequency factor (less frequent = higher score)
 		score += Math.max(0, 10 - entry.accessCount);
-		
+
 		// Size factor (larger = slightly higher score)
 		score += Math.log(entry.size + 1) / 10;
-		
+
 		return score;
 	}
 
@@ -558,7 +562,7 @@ export class ModelCacheManager {
 	private updateStats(): void {
 		this.stats.totalEntries = this.cache.size;
 		this.stats.totalSize = this.getCurrentCacheSize();
-		
+
 		// Calculate hit rate
 		const totalRequests = this.stats.hitRate + this.stats.missRate;
 		if (totalRequests > 0) {
@@ -569,12 +573,12 @@ export class ModelCacheManager {
 		// Find oldest and newest entries
 		let oldest = Date.now();
 		let newest = 0;
-		
+
 		for (const entry of this.cache.values()) {
 			oldest = Math.min(oldest, entry.timestamp);
 			newest = Math.max(newest, entry.timestamp);
 		}
-		
+
 		this.stats.oldestEntry = oldest;
 		this.stats.newestEntry = newest;
 	}
@@ -607,9 +611,12 @@ export class ModelCacheManager {
 	 */
 	private startBackgroundMaintenance(): void {
 		// Clean up expired entries every 5 minutes
-		setInterval(() => {
-			this.cleanupExpiredEntries();
-		}, 5 * 60 * 1000);
+		setInterval(
+			() => {
+				this.cleanupExpiredEntries();
+			},
+			5 * 60 * 1000,
+		);
 
 		// Update and save stats every minute
 		setInterval(() => {
@@ -660,7 +667,7 @@ export class ModelCacheManager {
 		let hash = 0;
 		for (let i = 0; i < inputString.length; i++) {
 			const char = inputString.charCodeAt(i);
-			hash = ((hash << 5) - hash) + char;
+			hash = (hash << 5) - hash + char;
 			hash = hash & hash;
 		}
 		return Math.abs(hash).toString(36);
@@ -693,32 +700,36 @@ export class ModelCacheManager {
 	/**
 	 * Clear cache
 	 */
-	async clearCache(options?: { modelId?: string; olderThan?: number; tags?: string[] }): Promise<void> {
+	async clearCache(options?: {
+		modelId?: string;
+		olderThan?: number;
+		tags?: string[];
+	}): Promise<void> {
 		if (!options) {
 			this.cache.clear();
 		} else {
 			const toDelete: string[] = [];
-			
+
 			for (const [key, entry] of this.cache) {
 				let shouldDelete = true;
-				
+
 				if (options.modelId && entry.modelId !== options.modelId) {
 					shouldDelete = false;
 				}
-				
+
 				if (options.olderThan && entry.timestamp > options.olderThan) {
 					shouldDelete = false;
 				}
-				
+
 				if (options.tags && !options.tags.some(tag => entry.tags.includes(tag))) {
 					shouldDelete = false;
 				}
-				
+
 				if (shouldDelete) {
 					toDelete.push(key);
 				}
 			}
-			
+
 			for (const key of toDelete) {
 				this.cache.delete(key);
 			}

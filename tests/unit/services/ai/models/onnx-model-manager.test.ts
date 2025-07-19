@@ -1,31 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ONNXModelManager, ONNXModelUtils } from '../../../../../services/ai/models/onnx-model-manager';
+import {
+	ONNXModelManager,
+	ONNXModelUtils,
+} from '../../../../../services/ai/models/onnx-model-manager';
 
 describe('ONNXModelManager', () => {
 	beforeEach(() => {
-		// Mock ONNX Runtime
-		vi.mock('onnxruntime-react-native', () => ({
-			InferenceSession: {
-				create: vi.fn().mockResolvedValue({
-					inputNames: ['input_ids', 'attention_mask'],
-					outputNames: ['logits'],
-					run: vi.fn().mockResolvedValue({
-						logits: {
-							data: new Float32Array([0.1, 0.2, 0.7]),
-						},
-					}),
-				}),
-			},
-			Tensor: vi.fn().mockImplementation((type: any, data: any, dims: any) => ({
-				type,
-				data,
-				dims,
-			})),
-		}));
+		// Mock ONNX Runtime using vi.spyOn
+		const ONNX = require('onnxruntime-react-native');
+		vi.spyOn(ONNX.InferenceSession, 'create').mockResolvedValue({
+			inputNames: ['input_ids', 'attention_mask'],
+			outputNames: ['logits'],
+			run: vi.fn().mockResolvedValue({
+				logits: {
+					data: new Float32Array([0.1, 0.2, 0.7]),
+				},
+			}),
+		});
 
 		// Mock fetch for model loading
-		global.fetch = vi.fn().mockImplementation((url) => {
+		global.fetch = vi.fn().mockImplementation(url => {
 			return Promise.resolve({
 				ok: true,
 				arrayBuffer: () => Promise.resolve(new ArrayBuffer(1024)),
@@ -48,12 +43,18 @@ describe('ONNXModelManager', () => {
 					const session = await modelManager.loadGemma3Model('/test/path/model.onnx');
 
 					expect(session).toBeDefined();
-					expect(vi.mocked(require('onnxruntime-react-native').InferenceSession.create)).toHaveBeenCalled();
+					expect(
+						vi.mocked(require('onnxruntime-react-native').InferenceSession.create),
+					).toHaveBeenCalled();
 				});
 
 				it('should validate model file path', async () => {
-					await expect(modelManager.loadGemma3Model('')).rejects.toThrow('Model path is empty');
-					await expect(modelManager.loadGemma3Model('/test/path/model.txt')).rejects.toThrow('Model file must have .onnx extension');
+					await expect(modelManager.loadGemma3Model('')).rejects.toThrow(
+						'Model path is empty',
+					);
+					await expect(
+						modelManager.loadGemma3Model('/test/path/model.txt'),
+					).rejects.toThrow('Model file must have .onnx extension');
 				});
 
 				it('should validate model for Gemma3 compatibility', async () => {
@@ -133,14 +134,16 @@ describe('ONNXModelManager', () => {
 						attention_mask: [1, 1, 1],
 					};
 
-					await expect(modelManager.runInference(mockSession, input)).rejects.toThrow('Model not validated');
+					await expect(modelManager.runInference(mockSession, input)).rejects.toThrow(
+						'Model not validated',
+					);
 				});
 
 				it('should prepare input tensors correctly', async () => {
 					const mockSession = {
 						inputNames: ['input_ids', 'attention_mask'],
 						outputNames: ['logits'],
-						run: vi.fn().mockImplementation((tensors) => {
+						run: vi.fn().mockImplementation(tensors => {
 							// Verify tensor structure
 							expect(tensors.input_ids).toBeDefined();
 							expect(tensors.attention_mask).toBeDefined();
@@ -184,7 +187,9 @@ describe('ONNXModelManager', () => {
 
 					// Verify session config was updated
 					expect((modelManager as any).sessionConfig.intraOpNumThreads).toBe(6);
-					expect((modelManager as any).sessionConfig.executionProviders).toContain('coreml');
+					expect((modelManager as any).sessionConfig.executionProviders).toContain(
+						'coreml',
+					);
 				});
 
 				it('should adjust settings for low memory devices', () => {
@@ -201,7 +206,9 @@ describe('ONNXModelManager', () => {
 
 					// Verify memory-saving settings
 					expect((modelManager as any).sessionConfig.enableCpuMemArena).toBe(false);
-					expect((modelManager as any).sessionConfig.graphOptimizationLevel).toBe('basic');
+					expect((modelManager as any).sessionConfig.graphOptimizationLevel).toBe(
+						'basic',
+					);
 				});
 
 				it('should adjust for thermal throttling', () => {
@@ -241,8 +248,14 @@ describe('ONNXModelManager', () => {
 				});
 
 				it('should estimate memory requirements for model', () => {
-					const int8Memory = ONNXModelUtils.estimateMemoryRequirements(100 * 1024 * 1024, 'int8');
-					const fp32Memory = ONNXModelUtils.estimateMemoryRequirements(100 * 1024 * 1024, 'fp32');
+					const int8Memory = ONNXModelUtils.estimateMemoryRequirements(
+						100 * 1024 * 1024,
+						'int8',
+					);
+					const fp32Memory = ONNXModelUtils.estimateMemoryRequirements(
+						100 * 1024 * 1024,
+						'fp32',
+					);
 
 					expect(fp32Memory).toBeGreaterThan(int8Memory);
 				});

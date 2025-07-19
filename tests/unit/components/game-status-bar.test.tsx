@@ -2,10 +2,16 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GameStatusBar } from '@/components/game-status-bar';
-import { CharacterFactory, CompanionFactory, GameStateFactory } from '@/tests/fixtures/mock-factories';
-import { assertNoConsoleErrors, renderWithProviders, waitForAsyncUpdates } from '@/tests/utils/render-helpers';
-
-
+import {
+	CharacterFactory,
+	CompanionFactory,
+	GameStateFactory,
+} from '@/tests/fixtures/mock-factories';
+import {
+	assertNoConsoleErrors,
+	renderWithProviders,
+	waitForAsyncUpdates,
+} from '@/tests/utils/render-helpers';
 
 describe('GameStatusBar', () => {
 	const mockGameState = GameStateFactory.createNew();
@@ -45,7 +51,9 @@ describe('GameStatusBar', () => {
 			loadAll: vi.fn(),
 		});
 
-		vi.spyOn(useGameState, 'getCharacterImage').mockReturnValue(require('@/assets/images/races/human.png'));
+		vi.spyOn(useGameState, 'getCharacterImage').mockReturnValue(
+			require('@/assets/images/races/human.png'),
+		);
 	});
 
 	afterEach(() => {
@@ -54,9 +62,7 @@ describe('GameStatusBar', () => {
 
 	describe('Component rendering', () => {
 		it('should render without crashing', async () => {
-			const { container } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />,
-			);
+			const { container } = renderWithProviders(<GameStatusBar gameState={mockGameState} />);
 
 			await waitForAsyncUpdates();
 
@@ -80,9 +86,7 @@ describe('GameStatusBar', () => {
 				playerCharacterId: character.id,
 			});
 
-			const { getByText } = renderWithProviders(
-				<GameStatusBar gameState={gameState} />,
-			);
+			const { getByText } = renderWithProviders(<GameStatusBar gameState={gameState} />);
 
 			await waitForAsyncUpdates();
 
@@ -99,9 +103,7 @@ describe('GameStatusBar', () => {
 				playerCharacterId: 'non-existent-id',
 			});
 
-			const { container } = renderWithProviders(
-				<GameStatusBar gameState={gameState} />,
-			);
+			const { container } = renderWithProviders(<GameStatusBar gameState={gameState} />);
 
 			await waitForAsyncUpdates();
 
@@ -112,16 +114,14 @@ describe('GameStatusBar', () => {
 	describe('Portrait interaction', () => {
 		it('should call onPortraitPress when portrait is clicked', async () => {
 			const { getByTestId } = renderWithProviders(
-				<GameStatusBar
-					gameState={mockGameState}
-					onPortraitPress={mockOnPortraitPress}
-				/>,
+				<GameStatusBar gameState={mockGameState} onPortraitPress={mockOnPortraitPress} />,
 			);
 
 			await waitForAsyncUpdates();
 
 			// Find and click the portrait
-			const portraitWrapper = getByTestId('portrait-wrapper') ||
+			const portraitWrapper =
+				getByTestId('portrait-wrapper') ||
 				document.querySelector('[style*="position: absolute"]');
 
 			if (portraitWrapper) {
@@ -131,9 +131,7 @@ describe('GameStatusBar', () => {
 		});
 
 		it('should not crash when onPortraitPress is not provided', async () => {
-			const { container } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />,
-			);
+			const { container } = renderWithProviders(<GameStatusBar gameState={mockGameState} />);
 
 			await waitForAsyncUpdates();
 
@@ -144,16 +142,14 @@ describe('GameStatusBar', () => {
 	describe('Active character indication', () => {
 		it('should highlight DM when activeCharacter is "dm"', async () => {
 			const { container } = renderWithProviders(
-				<GameStatusBar
-					gameState={mockGameState}
-					activeCharacter="dm"
-				/>,
+				<GameStatusBar gameState={mockGameState} activeCharacter="dm" />,
 			);
 
 			await waitForAsyncUpdates();
 
 			// Check for DM portrait with active styling
-			const dmPortrait = container?.querySelector('[style*="border-color: #FFD700"]') ||
+			const dmPortrait =
+				container?.querySelector('[style*="border-color: #FFD700"]') ||
 				container?.querySelector('[data-active="true"]');
 
 			expect(dmPortrait).toBeTruthy();
@@ -161,10 +157,7 @@ describe('GameStatusBar', () => {
 
 		it('should highlight player when activeCharacter is "player"', async () => {
 			const { container } = renderWithProviders(
-				<GameStatusBar
-					gameState={mockGameState}
-					activeCharacter="player"
-				/>,
+				<GameStatusBar gameState={mockGameState} activeCharacter="player" />,
 			);
 
 			await waitForAsyncUpdates();
@@ -180,7 +173,11 @@ describe('GameStatusBar', () => {
 			vi.mocked(useSimpleCompanions).mockReturnValue({
 				activeCompanions: [companion],
 				companions: [companion],
-				partyConfig: { maxSize: 4, activeCompanions: [companion.id], leadershipStyle: 'democratic' },
+				partyConfig: {
+					maxSize: 4,
+					activeCompanions: [companion.id],
+					leadershipStyle: 'democratic',
+				},
 				isLoading: false,
 				error: null,
 				createCompanion: vi.fn(),
@@ -196,10 +193,7 @@ describe('GameStatusBar', () => {
 			});
 
 			const { container } = renderWithProviders(
-				<GameStatusBar
-					gameState={mockGameState}
-					activeCharacter="companion-1"
-				/>,
+				<GameStatusBar gameState={mockGameState} activeCharacter="companion-1" />,
 			);
 
 			await waitForAsyncUpdates();
@@ -208,9 +202,7 @@ describe('GameStatusBar', () => {
 		});
 
 		it('should default to player when no activeCharacter is specified', async () => {
-			const { container } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />,
-			);
+			const { container } = renderWithProviders(<GameStatusBar gameState={mockGameState} />);
 
 			await waitForAsyncUpdates();
 
@@ -229,9 +221,7 @@ describe('GameStatusBar', () => {
 				isDesktop: false,
 			});
 
-			const { container } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />,
-			);
+			const { container } = renderWithProviders(<GameStatusBar gameState={mockGameState} />);
 
 			await waitForAsyncUpdates();
 
@@ -249,9 +239,7 @@ describe('GameStatusBar', () => {
 				isDesktop: true,
 			});
 
-			const { container } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />,
-			);
+			const { container } = renderWithProviders(<GameStatusBar gameState={mockGameState} />);
 
 			await waitForAsyncUpdates();
 
@@ -286,9 +274,7 @@ describe('GameStatusBar', () => {
 				loadAll: vi.fn(),
 			});
 
-			const { container } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />,
-			);
+			const { container } = renderWithProviders(<GameStatusBar gameState={mockGameState} />);
 
 			await waitForAsyncUpdates();
 
@@ -321,9 +307,7 @@ describe('GameStatusBar', () => {
 				loadAll: vi.fn(),
 			});
 
-			const { container } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />,
-			);
+			const { container } = renderWithProviders(<GameStatusBar gameState={mockGameState} />);
 
 			await waitForAsyncUpdates();
 
@@ -359,9 +343,7 @@ describe('GameStatusBar', () => {
 				loadAll: vi.fn(),
 			});
 
-			const { getByText } = renderWithProviders(
-				<GameStatusBar gameState={mockGameState} />,
-			);
+			const { getByText } = renderWithProviders(<GameStatusBar gameState={mockGameState} />);
 
 			await waitForAsyncUpdates();
 
@@ -374,10 +356,7 @@ describe('GameStatusBar', () => {
 			const customStyle = { backgroundColor: 'red' };
 
 			const { container } = renderWithProviders(
-				<GameStatusBar
-					gameState={mockGameState}
-					style={customStyle}
-				/>,
+				<GameStatusBar gameState={mockGameState} style={customStyle} />,
 			);
 
 			await waitForAsyncUpdates();
@@ -398,9 +377,7 @@ describe('GameStatusBar', () => {
 				playerCharacterId: character.id,
 			});
 
-			const { getByText } = renderWithProviders(
-				<GameStatusBar gameState={gameState} />,
-			);
+			const { getByText } = renderWithProviders(<GameStatusBar gameState={gameState} />);
 
 			await waitForAsyncUpdates();
 
@@ -418,9 +395,7 @@ describe('GameStatusBar', () => {
 				playerCharacterId: character.id,
 			});
 
-			const { getByText } = renderWithProviders(
-				<GameStatusBar gameState={gameState} />,
-			);
+			const { getByText } = renderWithProviders(<GameStatusBar gameState={gameState} />);
 
 			await waitForAsyncUpdates();
 
@@ -435,9 +410,7 @@ describe('GameStatusBar', () => {
 				playerCharacterId: character.id,
 			});
 
-			const { getByText } = renderWithProviders(
-				<GameStatusBar gameState={gameState} />,
-			);
+			const { getByText } = renderWithProviders(<GameStatusBar gameState={gameState} />);
 
 			await waitForAsyncUpdates();
 

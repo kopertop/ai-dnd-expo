@@ -2,7 +2,11 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RaceChooser } from '@/components/race-chooser';
-import { assertNoConsoleErrors, renderWithProviders, waitForAsyncUpdates } from '@/tests/utils/render-helpers';
+import {
+	assertNoConsoleErrors,
+	renderWithProviders,
+	waitForAsyncUpdates,
+} from '@/tests/utils/render-helpers';
 
 describe('RaceChooser', () => {
 	let mockOnSelect: any;
@@ -18,9 +22,7 @@ describe('RaceChooser', () => {
 
 	describe('Component rendering', () => {
 		it('should render without crashing', async () => {
-			const { container } = renderWithProviders(
-				<RaceChooser onSelect={mockOnSelect} />,
-			);
+			const { container } = renderWithProviders(<RaceChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -28,9 +30,7 @@ describe('RaceChooser', () => {
 		});
 
 		it('should display the title', async () => {
-			const { getByText } = renderWithProviders(
-				<RaceChooser onSelect={mockOnSelect} />,
-			);
+			const { getByText } = renderWithProviders(<RaceChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -38,9 +38,7 @@ describe('RaceChooser', () => {
 		});
 
 		it('should display race options', async () => {
-			const { getByText } = renderWithProviders(
-				<RaceChooser onSelect={mockOnSelect} />,
-			);
+			const { getByText } = renderWithProviders(<RaceChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -52,9 +50,7 @@ describe('RaceChooser', () => {
 
 	describe('Layout and styling', () => {
 		it('should render scroll view', async () => {
-			const { getByTestId } = renderWithProviders(
-				<RaceChooser onSelect={mockOnSelect} />,
-			);
+			const { getByTestId } = renderWithProviders(<RaceChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -62,9 +58,7 @@ describe('RaceChooser', () => {
 		});
 
 		it('should render race cards with proper structure', async () => {
-			const { container } = renderWithProviders(
-				<RaceChooser onSelect={mockOnSelect} />,
-			);
+			const { container } = renderWithProviders(<RaceChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -76,9 +70,7 @@ describe('RaceChooser', () => {
 
 	describe('Props handling', () => {
 		it('should handle missing onSelect prop gracefully', async () => {
-			const { container } = renderWithProviders(
-				<RaceChooser onSelect={undefined as any} />,
-			);
+			const { container } = renderWithProviders(<RaceChooser onSelect={undefined as any} />);
 
 			await waitForAsyncUpdates();
 
@@ -86,9 +78,7 @@ describe('RaceChooser', () => {
 		});
 
 		it('should accept onSelect callback', async () => {
-			const { container } = renderWithProviders(
-				<RaceChooser onSelect={mockOnSelect} />,
-			);
+			const { container } = renderWithProviders(<RaceChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 

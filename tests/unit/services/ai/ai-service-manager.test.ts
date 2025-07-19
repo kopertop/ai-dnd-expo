@@ -10,59 +10,49 @@ describe('AIServiceManager', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
-		// Mock LocalDMProvider
-		vi.mock('../../../../../services/ai/providers/local-dm-provider', () => ({
-			LocalDMProvider: vi.fn().mockImplementation(() => ({
-				initialize: vi.fn().mockResolvedValue(true),
-				generateDnDResponse: vi.fn().mockResolvedValue({
-					text: 'Local DM response',
-					confidence: 0.9,
-					toolCommands: [],
-					processingTime: 500,
-				}),
-				healthCheck: vi.fn().mockResolvedValue(true),
-				isReady: vi.fn().mockReturnValue(true),
-				getStatus: vi.fn().mockReturnValue({
-					isLoaded: true,
-					isReady: true,
-					error: null,
-					modelInfo: {
-						name: 'test-model',
-						quantization: 'int8',
-					},
-				}),
-				setPowerSavingMode: vi.fn(),
-				cleanup: vi.fn().mockResolvedValue(undefined),
-			})),
-			DefaultLocalDMConfig: {
-				modelPath: '/test/path/model.onnx',
-				contextSize: 2048,
-				maxTokens: 150,
-				temperature: 0.7,
-				enableResourceMonitoring: true,
-				powerSavingMode: false,
+		// Mock LocalDMProvider using vi.spyOn
+		const {
+			LocalDMProvider,
+		} = require('../../../../../services/ai/providers/local-dm-provider');
+		vi.spyOn(LocalDMProvider.prototype, 'initialize').mockResolvedValue(true);
+		vi.spyOn(LocalDMProvider.prototype, 'generateDnDResponse').mockResolvedValue({
+			text: 'Local DM response',
+			confidence: 0.9,
+			toolCommands: [],
+			processingTime: 500,
+		});
+		vi.spyOn(LocalDMProvider.prototype, 'healthCheck').mockResolvedValue(true);
+		vi.spyOn(LocalDMProvider.prototype, 'isReady').mockReturnValue(true);
+		vi.spyOn(LocalDMProvider.prototype, 'getStatus').mockReturnValue({
+			isLoaded: true,
+			isReady: true,
+			error: null,
+			modelInfo: {
+				name: 'test-model',
+				quantization: 'int8',
 			},
-		}));
+		});
+		vi.spyOn(LocalDMProvider.prototype, 'setPowerSavingMode').mockImplementation(() => {});
+		vi.spyOn(LocalDMProvider.prototype, 'cleanup').mockResolvedValue(undefined);
 
-		// Mock CactusAIProvider
-		vi.mock('../../../../../services/ai/providers/cactus-provider', () => ({
-			CactusAIProvider: vi.fn().mockImplementation(() => ({
-				initialize: vi.fn().mockResolvedValue(true),
-				generateDnDResponse: vi.fn().mockResolvedValue({
-					text: 'Cactus response',
-					metadata: {
-						toolCommands: [],
-					},
-				}),
-				healthCheck: vi.fn().mockResolvedValue(true),
-				isReady: vi.fn().mockReturnValue(true),
-				getStatus: vi.fn().mockReturnValue({
-					isReady: true,
-					error: null,
-				}),
-				cleanup: vi.fn().mockResolvedValue(undefined),
-			})),
-		}));
+		// Mock CactusAIProvider using vi.spyOn
+		const {
+			CactusAIProvider,
+		} = require('../../../../../services/ai/providers/cactus-provider');
+		vi.spyOn(CactusAIProvider.prototype, 'initialize').mockResolvedValue(true);
+		vi.spyOn(CactusAIProvider.prototype, 'generateDnDResponse').mockResolvedValue({
+			text: 'Cactus response',
+			metadata: {
+				toolCommands: [],
+			},
+		});
+		vi.spyOn(CactusAIProvider.prototype, 'healthCheck').mockResolvedValue(true);
+		vi.spyOn(CactusAIProvider.prototype, 'isReady').mockReturnValue(true);
+		vi.spyOn(CactusAIProvider.prototype, 'getStatus').mockReturnValue({
+			isReady: true,
+			error: null,
+		});
+		vi.spyOn(CactusAIProvider.prototype, 'cleanup').mockResolvedValue(undefined);
 
 		serviceManager = new AIServiceManager({
 			...DefaultAIConfig,
@@ -206,11 +196,13 @@ describe('AIServiceManager', () => {
 
 			const recommendation = serviceManager.getProviderRecommendation('test-context');
 
-			expect(recommendation).toEqual(expect.objectContaining({
-				recommended: expect.any(String),
-				reason: expect.any(String),
-				confidence: expect.any(Number),
-			}));
+			expect(recommendation).toEqual(
+				expect.objectContaining({
+					recommended: expect.any(String),
+					reason: expect.any(String),
+					confidence: expect.any(Number),
+				}),
+			);
 		});
 	});
 
@@ -243,9 +235,11 @@ describe('AIServiceManager', () => {
 
 			// Mock local provider to fail
 			vi.spyOn(localFailManager as any, 'tryLocalProvider').mockResolvedValue(null);
-			vi.spyOn(localFailManager as any, 'tryCactusProvider').mockImplementation(async (...args) => {
-				return await serviceManager['tryCactusProvider'](...args);
-			});
+			vi.spyOn(localFailManager as any, 'tryCactusProvider').mockImplementation(
+				async (...args) => {
+					return await serviceManager['tryCactusProvider'](...args);
+				},
+			);
 
 			await localFailManager.generateDnDResponse('Hello', {
 				playerName: 'TestPlayer',
@@ -300,7 +294,9 @@ describe('AIServiceManager', () => {
 
 		it('should handle provider failures', async () => {
 			// Mock Cactus provider to fail health check
-			vi.spyOn(serviceManager['cactusProvider'] as any, 'healthCheck').mockResolvedValue(false);
+			vi.spyOn(serviceManager['cactusProvider'] as any, 'healthCheck').mockResolvedValue(
+				false,
+			);
 
 			await (serviceManager as any).performHealthChecks();
 
@@ -311,11 +307,13 @@ describe('AIServiceManager', () => {
 		it('should get provider health status', () => {
 			const status = serviceManager.getProviderHealthStatus();
 
-			expect(status).toEqual(expect.objectContaining({
-				cactus: expect.any(Object),
-				local: expect.any(Object),
-				optimal: expect.any(String),
-			}));
+			expect(status).toEqual(
+				expect.objectContaining({
+					cactus: expect.any(Object),
+					local: expect.any(Object),
+					optimal: expect.any(String),
+				}),
+			);
 		});
 	});
 
@@ -324,7 +322,9 @@ describe('AIServiceManager', () => {
 		it('should set power saving mode', () => {
 			serviceManager.setPowerSavingMode(true);
 
-			expect(serviceManager['localDMProvider']?.setPowerSavingMode).toHaveBeenCalledWith(true);
+			expect(serviceManager['localDMProvider']?.setPowerSavingMode).toHaveBeenCalledWith(
+				true,
+			);
 			expect(serviceManager['config'].local.powerSavingMode).toBe(true);
 		});
 
@@ -364,7 +364,10 @@ describe('AIServiceManager', () => {
 			expect(serviceManager['responseCache'].has(cacheKey)).toBe(true);
 
 			// Mock the providers to track if they're called
-			const localProviderSpy = vi.spyOn(serviceManager['localDMProvider'] as any, 'generateDnDResponse');
+			const localProviderSpy = vi.spyOn(
+				serviceManager['localDMProvider'] as any,
+				'generateDnDResponse',
+			);
 
 			// Second call with same input should use cache
 			await serviceManager.generateDnDResponse('Hello', context);

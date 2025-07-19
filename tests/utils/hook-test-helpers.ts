@@ -61,7 +61,11 @@ export const simulateAsyncOperation = async (operation: () => Promise<void>) => 
  */
 export const createHookSpy = <T extends (...args: any[]) => any>(
 	implementation?: T,
-): T & { mockImplementation: (impl: T) => void; mockResolvedValue: (value: any) => void; mockRejectedValue: (error: any) => void } => {
+): T & {
+	mockImplementation: (impl: T) => void;
+	mockResolvedValue: (value: any) => void;
+	mockRejectedValue: (error: any) => void;
+} => {
 	const spy = vi.fn(implementation) as any;
 	spy.mockImplementation = (impl: T) => spy.mockImplementation(impl);
 	spy.mockResolvedValue = (value: any) => spy.mockResolvedValue(value);

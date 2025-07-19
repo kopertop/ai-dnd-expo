@@ -4,9 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TurnBasedChat } from '@/components/turn-based-chat';
 import { DMMessage } from '@/services/ai/agents/dungeon-master-agent';
 import { CharacterFactory, CompanionFactory } from '@/tests/fixtures/mock-factories';
-import { assertNoConsoleErrors, renderWithProviders, waitForAsyncUpdates } from '@/tests/utils/render-helpers';
-
-
+import {
+	assertNoConsoleErrors,
+	renderWithProviders,
+	waitForAsyncUpdates,
+} from '@/tests/utils/render-helpers';
 
 describe('TurnBasedChat', () => {
 	const mockPlayerCharacter = CharacterFactory.createBasic({
@@ -155,7 +157,11 @@ describe('TurnBasedChat', () => {
 
 			expect(getByText('Welcome to the tavern, adventurer!')).toBeTruthy();
 			expect(getByText('I look around the room.')).toBeTruthy();
-			expect(getByText('You see several patrons drinking and a mysterious figure in the corner.')).toBeTruthy();
+			expect(
+				getByText(
+					'You see several patrons drinking and a mysterious figure in the corner.',
+				),
+			).toBeTruthy();
 		});
 
 		it('should correctly identify player messages', async () => {

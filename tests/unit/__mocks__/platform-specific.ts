@@ -38,9 +38,7 @@ export const mockDimensions = {
 		mockDimensions.get.mockReturnValue({ width, height });
 	},
 	simulateOrientationChange: (landscape: boolean = false) => {
-		const dimensions = landscape
-			? { width: 812, height: 375 }
-			: { width: 375, height: 812 };
+		const dimensions = landscape ? { width: 812, height: 375 } : { width: 375, height: 812 };
 		mockDimensions.get.mockReturnValue(dimensions);
 
 		// Simulate event callback
@@ -79,8 +77,8 @@ export const mockAlert = {
  * Mock React Native StyleSheet API
  */
 export const mockStyleSheet = {
-	create: vi.fn((styles) => styles),
-	flatten: vi.fn((style) => style),
+	create: vi.fn(styles => styles),
+	flatten: vi.fn(style => style),
 	compose: vi.fn((style1, style2) => ({ ...style1, ...style2 })),
 	hairlineWidth: 1,
 	absoluteFill: {
@@ -175,13 +173,13 @@ export const mockExpoImage = {
  */
 export const mockReactNativeSVG = {
 	Svg: vi.fn(({ children, ...props }) => ({ type: 'Svg', props, children })),
-	Circle: vi.fn((props) => ({ type: 'Circle', props })),
-	Path: vi.fn((props) => ({ type: 'Path', props })),
+	Circle: vi.fn(props => ({ type: 'Circle', props })),
+	Path: vi.fn(props => ({ type: 'Path', props })),
 	G: vi.fn(({ children, ...props }) => ({ type: 'G', props, children })),
-	Rect: vi.fn((props) => ({ type: 'Rect', props })),
+	Rect: vi.fn(props => ({ type: 'Rect', props })),
 	Text: vi.fn(({ children, ...props }) => ({ type: 'SvgText', props, children })),
-	Line: vi.fn((props) => ({ type: 'Line', props })),
-	Polygon: vi.fn((props) => ({ type: 'Polygon', props })),
+	Line: vi.fn(props => ({ type: 'Line', props })),
+	Polygon: vi.fn(props => ({ type: 'Polygon', props })),
 	reset: () => {
 		vi.clearAllMocks();
 	},
@@ -224,8 +222,13 @@ export class PlatformMockManager {
 
 // Export individual mocks
 export {
-	mockAlert as AlertMock, mockDimensions as DimensionsMock, mockExpoConstants as ExpoConstantsMock,
+	mockAlert as AlertMock,
+	mockDimensions as DimensionsMock,
+	mockExpoConstants as ExpoConstantsMock,
 	mockExpoFont as ExpoFontMock,
-	mockExpoImage as ExpoImageMock, mockLinking as LinkingMock, mockPlatform as PlatformMock, mockReactNativeSVG as SVGMock, mockStyleSheet as StyleSheetMock,
+	mockExpoImage as ExpoImageMock,
+	mockLinking as LinkingMock,
+	mockPlatform as PlatformMock,
+	mockReactNativeSVG as SVGMock,
+	mockStyleSheet as StyleSheetMock,
 };
-

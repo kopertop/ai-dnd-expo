@@ -455,7 +455,7 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 		switch (actionAnalysis.type) {
 			case 'combat':
 				if (actionAnalysis.intent === 'attack') {
-				// Add attack roll
+					// Add attack roll
 					const attackBonus = this.calculateAttackBonus(context.playerCharacter);
 					commands.push({ type: 'roll', params: `1d20+${attackBonus} attack` });
 
@@ -484,7 +484,7 @@ export class LocalDMAgentImpl implements LocalDMAgent {
 				break;
 
 			case 'exploration': {
-			// Add perception check for exploration
+				// Add perception check for exploration
 				const perceptionModifier = this.calculateSkillModifier(
 					'perception',
 					context.playerCharacter,
@@ -784,7 +784,7 @@ class DnDRuleEngine {
 				applications.push(...this.processExploration(actionAnalysis, context));
 				break;
 			default:
-			// No specific rules to apply
+				// No specific rules to apply
 				break;
 		}
 

@@ -278,7 +278,7 @@ export class CompanionFactory {
 			voice: {
 				personality: 'helpful',
 				speakingStyle: 'friendly',
-				catchphrases: ['Ready to help!', 'Let\'s go!'],
+				catchphrases: ['Ready to help!', "Let's go!"],
 			},
 			recruitedAt: Date.now(),
 			cost: {
@@ -337,9 +337,13 @@ export class EnhancedAIResponseFactory extends AIResponseFactory {
 			default: `The DM considers your action: "${userMessage}" and responds accordingly.`,
 		};
 
-		const responseType = context.includes('combat') ? 'combat' :
-			context.includes('explore') ? 'exploration' :
-				context.includes('talk') ? 'social' : 'default';
+		const responseType = context.includes('combat')
+			? 'combat'
+			: context.includes('explore')
+				? 'exploration'
+				: context.includes('talk')
+					? 'social'
+					: 'default';
 
 		return this.createSuccess(contextualResponses[responseType]);
 	}

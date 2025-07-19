@@ -2,7 +2,11 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SkillChooser } from '@/components/skill-chooser';
-import { assertNoConsoleErrors, renderWithProviders, waitForAsyncUpdates } from '@/tests/utils/render-helpers';
+import {
+	assertNoConsoleErrors,
+	renderWithProviders,
+	waitForAsyncUpdates,
+} from '@/tests/utils/render-helpers';
 
 describe('SkillChooser', () => {
 	let mockOnSelect: any;
@@ -18,9 +22,7 @@ describe('SkillChooser', () => {
 
 	describe('Component rendering', () => {
 		it('should render without crashing', async () => {
-			const { container } = renderWithProviders(
-				<SkillChooser onSelect={mockOnSelect} />,
-			);
+			const { container } = renderWithProviders(<SkillChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -28,9 +30,7 @@ describe('SkillChooser', () => {
 		});
 
 		it('should display the title with default max skills', async () => {
-			const { getByText } = renderWithProviders(
-				<SkillChooser onSelect={mockOnSelect} />,
-			);
+			const { getByText } = renderWithProviders(<SkillChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -48,9 +48,7 @@ describe('SkillChooser', () => {
 		});
 
 		it('should display skill options', async () => {
-			const { getByText } = renderWithProviders(
-				<SkillChooser onSelect={mockOnSelect} />,
-			);
+			const { getByText } = renderWithProviders(<SkillChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -60,9 +58,7 @@ describe('SkillChooser', () => {
 		});
 
 		it('should display confirm button', async () => {
-			const { getByText } = renderWithProviders(
-				<SkillChooser onSelect={mockOnSelect} />,
-			);
+			const { getByText } = renderWithProviders(<SkillChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -72,9 +68,7 @@ describe('SkillChooser', () => {
 
 	describe('Layout and styling', () => {
 		it('should render safe area view', async () => {
-			const { getByTestId } = renderWithProviders(
-				<SkillChooser onSelect={mockOnSelect} />,
-			);
+			const { getByTestId } = renderWithProviders(<SkillChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -82,9 +76,7 @@ describe('SkillChooser', () => {
 		});
 
 		it('should render scroll view', async () => {
-			const { getByTestId } = renderWithProviders(
-				<SkillChooser onSelect={mockOnSelect} />,
-			);
+			const { getByTestId } = renderWithProviders(<SkillChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -92,9 +84,7 @@ describe('SkillChooser', () => {
 		});
 
 		it('should render skill images', async () => {
-			const { container } = renderWithProviders(
-				<SkillChooser onSelect={mockOnSelect} />,
-			);
+			const { container } = renderWithProviders(<SkillChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -106,9 +96,7 @@ describe('SkillChooser', () => {
 
 	describe('Props handling', () => {
 		it('should handle missing onSelect prop gracefully', async () => {
-			const { container } = renderWithProviders(
-				<SkillChooser onSelect={undefined as any} />,
-			);
+			const { container } = renderWithProviders(<SkillChooser onSelect={undefined as any} />);
 
 			await waitForAsyncUpdates();
 

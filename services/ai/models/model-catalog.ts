@@ -114,8 +114,8 @@ export class ModelCatalog {
 	 */
 	async updateCatalog(force: boolean = false): Promise<void> {
 		const now = Date.now();
-		
-		if (!force && (now - this.lastUpdate) < CATALOG_UPDATE_INTERVAL) {
+
+		if (!force && now - this.lastUpdate < CATALOG_UPDATE_INTERVAL) {
 			return; // Cache is still fresh
 		}
 
@@ -130,7 +130,6 @@ export class ModelCatalog {
 				AsyncStorage.setItem(STORAGE_KEYS.CATALOG_CACHE, JSON.stringify(this.catalog)),
 				AsyncStorage.setItem(STORAGE_KEYS.CATALOG_LAST_UPDATE, now.toString()),
 			]);
-
 		} catch (error) {
 			console.error('Failed to update catalog:', error);
 			throw new Error(`Catalog update failed: ${error}`);
@@ -146,7 +145,8 @@ export class ModelCatalog {
 				id: 'gemma3-2b-dnd',
 				name: 'Gemma3 2B D&D Edition',
 				version: '1.0.0',
-				description: 'Lightweight D&D model optimized for mobile devices. Great for character interactions and basic storytelling.',
+				description:
+					'Lightweight D&D model optimized for mobile devices. Great for character interactions and basic storytelling.',
 				size: 1.8 * 1024 * 1024 * 1024, // 1.8GB
 				checksum: 'abc123def456...',
 				downloadUrl: 'https://models.example.com/gemma3-2b-dnd.onnx',
@@ -184,7 +184,8 @@ export class ModelCatalog {
 				id: 'gemma3-7b-dnd-pro',
 				name: 'Gemma3 7B D&D Professional',
 				version: '1.2.0',
-				description: 'Advanced D&D model with superior storytelling, complex character personalities, and detailed world-building capabilities.',
+				description:
+					'Advanced D&D model with superior storytelling, complex character personalities, and detailed world-building capabilities.',
 				size: 6.2 * 1024 * 1024 * 1024, // 6.2GB
 				checksum: 'def456ghi789...',
 				downloadUrl: 'https://models.example.com/gemma3-7b-dnd-pro.onnx',
@@ -204,7 +205,12 @@ export class ModelCatalog {
 				rating: 4.7,
 				category: 'narrative',
 				difficulty: 'advanced',
-				features: ['advanced-storytelling', 'complex-npcs', 'world-building', 'multiple-voices'],
+				features: [
+					'advanced-storytelling',
+					'complex-npcs',
+					'world-building',
+					'multiple-voices',
+				],
 				requirements: {
 					minMemoryMB: 6144,
 					minStorageMB: 7168,
@@ -223,7 +229,8 @@ export class ModelCatalog {
 				id: 'gemma3-combat-specialist',
 				name: 'Gemma3 Combat Specialist',
 				version: '1.1.0',
-				description: 'Specialized model for tactical combat encounters, optimized for quick rule lookups and strategic decision making.',
+				description:
+					'Specialized model for tactical combat encounters, optimized for quick rule lookups and strategic decision making.',
 				size: 3.1 * 1024 * 1024 * 1024, // 3.1GB
 				checksum: 'ghi789jkl012...',
 				downloadUrl: 'https://models.example.com/gemma3-combat.onnx',
@@ -242,7 +249,12 @@ export class ModelCatalog {
 				rating: 4.4,
 				category: 'combat',
 				difficulty: 'intermediate',
-				features: ['combat-tactics', 'rule-assistance', 'quick-decisions', 'initiative-tracking'],
+				features: [
+					'combat-tactics',
+					'rule-assistance',
+					'quick-decisions',
+					'initiative-tracking',
+				],
 				requirements: {
 					minMemoryMB: 3584,
 					minStorageMB: 3584,
@@ -260,7 +272,8 @@ export class ModelCatalog {
 				id: 'gemma3-roleplay-master',
 				name: 'Gemma3 Roleplay Master',
 				version: '1.0.1',
-				description: 'Character-focused model excelling at NPC personalities, dialogue, and immersive character interactions.',
+				description:
+					'Character-focused model excelling at NPC personalities, dialogue, and immersive character interactions.',
 				size: 4.5 * 1024 * 1024 * 1024, // 4.5GB
 				checksum: 'jkl012mno345...',
 				downloadUrl: 'https://models.example.com/gemma3-roleplay.onnx',
@@ -280,7 +293,12 @@ export class ModelCatalog {
 				rating: 4.6,
 				category: 'roleplay',
 				difficulty: 'intermediate',
-				features: ['character-voices', 'personality-simulation', 'emotion-modeling', 'dialogue-trees'],
+				features: [
+					'character-voices',
+					'personality-simulation',
+					'emotion-modeling',
+					'dialogue-trees',
+				],
 				requirements: {
 					minMemoryMB: 4608,
 					minStorageMB: 5120,
@@ -324,7 +342,7 @@ export class ModelCatalog {
 		}
 
 		if (filters.features?.length) {
-			filtered = filtered.filter(model => 
+			filtered = filtered.filter(model =>
 				filters.features!.some(feature => model.features.includes(feature)),
 			);
 		}
@@ -378,17 +396,23 @@ export class ModelCatalog {
 		// Check memory requirements
 		if (this.deviceInfo.totalMemory < model.requirements.minMemoryMB) {
 			compatible = false;
-			warnings.push(`Requires ${model.requirements.minMemoryMB}MB RAM, device has ${this.deviceInfo.totalMemory}MB`);
+			warnings.push(
+				`Requires ${model.requirements.minMemoryMB}MB RAM, device has ${this.deviceInfo.totalMemory}MB`,
+			);
 		} else if (this.deviceInfo.totalMemory < model.requirements.recommendedMemoryMB) {
 			confidence = 'medium';
-			warnings.push(`May run slowly - recommended ${model.requirements.recommendedMemoryMB}MB RAM`);
+			warnings.push(
+				`May run slowly - recommended ${model.requirements.recommendedMemoryMB}MB RAM`,
+			);
 			recommendations.push('Consider closing other apps to free memory');
 		}
 
 		// Check CPU cores
 		if (model.requirements.cpuCores && this.deviceInfo.cpuCores < model.requirements.cpuCores) {
 			confidence = 'low';
-			warnings.push(`Optimized for ${model.requirements.cpuCores}+ CPU cores, device has ${this.deviceInfo.cpuCores}`);
+			warnings.push(
+				`Optimized for ${model.requirements.cpuCores}+ CPU cores, device has ${this.deviceInfo.cpuCores}`,
+			);
 			recommendations.push('Performance may be reduced on this device');
 		}
 
@@ -399,7 +423,10 @@ export class ModelCatalog {
 		}
 
 		// Check thermal state
-		if (this.deviceInfo.thermalState === 'serious' || this.deviceInfo.thermalState === 'critical') {
+		if (
+			this.deviceInfo.thermalState === 'serious' ||
+			this.deviceInfo.thermalState === 'critical'
+		) {
 			if (model.performance.thermalImpact === 'high') {
 				compatible = false;
 				warnings.push('Device is overheating - this model may worsen thermal conditions');
@@ -410,9 +437,13 @@ export class ModelCatalog {
 		}
 
 		// Generate performance estimates
-		const memoryEfficiency = Math.min(this.deviceInfo.totalMemory / model.requirements.recommendedMemoryMB, 1);
-		const cpuEfficiency = model.requirements.cpuCores ? 
-			Math.min(this.deviceInfo.cpuCores / model.requirements.cpuCores, 1) : 1;
+		const memoryEfficiency = Math.min(
+			this.deviceInfo.totalMemory / model.requirements.recommendedMemoryMB,
+			1,
+		);
+		const cpuEfficiency = model.requirements.cpuCores
+			? Math.min(this.deviceInfo.cpuCores / model.requirements.cpuCores, 1)
+			: 1;
 
 		const performanceMultiplier = (memoryEfficiency + cpuEfficiency) / 2;
 
@@ -467,15 +498,16 @@ export class ModelCatalog {
 		}
 
 		// Sort by score and return top results
-		return recommendations
-			.sort((a, b) => b.score - a.score)
-			.slice(0, limit);
+		return recommendations.sort((a, b) => b.score - a.score).slice(0, limit);
 	}
 
 	/**
 	 * Calculate recommendation score (0-100)
 	 */
-	private calculateRecommendationScore(model: ModelCatalogEntry, compatibility: DeviceCompatibility): number {
+	private calculateRecommendationScore(
+		model: ModelCatalogEntry,
+		compatibility: DeviceCompatibility,
+	): number {
 		let score = 0;
 
 		// Base compatibility score (40 points)
@@ -496,7 +528,8 @@ export class ModelCatalog {
 		// Performance score (15 points)
 		if (this.deviceInfo) {
 			const memoryRatio = model.requirements.minMemoryMB / this.deviceInfo.totalMemory;
-			if (memoryRatio < 0.5) score += 15; // Uses less than half memory
+			if (memoryRatio < 0.5)
+				score += 15; // Uses less than half memory
 			else if (memoryRatio < 0.7) score += 10;
 			else if (memoryRatio < 0.9) score += 5;
 		}
@@ -553,7 +586,8 @@ export class ModelCatalog {
 		}
 
 		// Size reasoning
-		if (model.size < 2 * 1024 * 1024 * 1024) { // < 2GB
+		if (model.size < 2 * 1024 * 1024 * 1024) {
+			// < 2GB
 			reasoning.push('Compact size saves storage space');
 		}
 
@@ -567,7 +601,7 @@ export class ModelCatalog {
 		// Simplified battery estimation (hours)
 		// In production, this would be based on actual device testing
 		const baseHours = 8; // Assume 8 hour base battery life
-		
+
 		const impactMultiplier = {
 			low: 0.9,
 			medium: 0.7,
@@ -582,7 +616,7 @@ export class ModelCatalog {
 	 */
 	searchModels(query: string): ModelCatalogEntry[] {
 		const lowercaseQuery = query.toLowerCase();
-		
+
 		return this.catalog.filter(model => {
 			return (
 				model.name.toLowerCase().includes(lowercaseQuery) ||
@@ -615,11 +649,13 @@ export class ModelCatalog {
 	getStatistics() {
 		return {
 			totalModels: this.catalog.length,
-			averageRating: this.catalog.reduce((sum, model) => sum + model.rating, 0) / this.catalog.length,
+			averageRating:
+				this.catalog.reduce((sum, model) => sum + model.rating, 0) / this.catalog.length,
 			totalDownloads: this.catalog.reduce((sum, model) => sum + model.downloadCount, 0),
 			categories: this.getCategories().length,
 			features: this.getFeatures().length,
-			averageSize: this.catalog.reduce((sum, model) => sum + model.size, 0) / this.catalog.length,
+			averageSize:
+				this.catalog.reduce((sum, model) => sum + model.size, 0) / this.catalog.length,
 			lastUpdate: new Date(this.lastUpdate).toISOString(),
 		};
 	}

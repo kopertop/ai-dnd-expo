@@ -1,24 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DeviceResourceManager, ResourceUtils } from '../../../../../services/ai/models/device-resource-manager';
+import {
+	DeviceResourceManager,
+	ResourceUtils,
+} from '../../../../../services/ai/models/device-resource-manager';
 
 describe('DeviceResourceManager', () => {
 	let resourceManager: DeviceResourceManager;
 
 	beforeEach(() => {
-		// Mock AppState
-		vi.mock('react-native', () => ({
-			AppState: {
-				addEventListener: vi.fn().mockImplementation((event: any, callback: any) => {
-					return {
-						remove: vi.fn(),
-					};
-				}),
+		// Mock AppState using vi.spyOn
+		const ReactNative = require('react-native');
+		vi.spyOn(ReactNative.AppState, 'addEventListener').mockImplementation(
+			(event: any, callback: any) => {
+				return {
+					remove: vi.fn(),
+				};
 			},
-			Platform: {
-				OS: 'ios',
-			},
-		}));
+		);
 	});
 
 	beforeEach(() => {
@@ -35,37 +34,39 @@ describe('DeviceResourceManager', () => {
 		it('should get current resource usage', async () => {
 			const usage = await resourceManager.getCurrentResourceUsage();
 
-			expect(usage).toEqual(expect.objectContaining({
-				memory: expect.objectContaining({
-					used: expect.any(Number),
-					available: expect.any(Number),
-					total: expect.any(Number),
-					percentage: expect.any(Number),
-					pressure: expect.any(String),
+			expect(usage).toEqual(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						used: expect.any(Number),
+						available: expect.any(Number),
+						total: expect.any(Number),
+						percentage: expect.any(Number),
+						pressure: expect.any(String),
+					}),
+					cpu: expect.objectContaining({
+						usage: expect.any(Number),
+						temperature: expect.any(Number),
+						cores: expect.any(Number),
+						frequency: expect.any(Number),
+						throttled: expect.any(Boolean),
+					}),
+					thermal: expect.objectContaining({
+						state: expect.any(String),
+						temperature: expect.any(Number),
+						throttlingActive: expect.any(Boolean),
+						recommendedAction: expect.any(String),
+					}),
+					battery: expect.objectContaining({
+						level: expect.any(Number),
+						isCharging: expect.any(Boolean),
+						chargingState: expect.any(String),
+						estimatedTimeRemaining: expect.any(Number),
+						powerSavingMode: expect.any(Boolean),
+						lowPowerModeActive: expect.any(Boolean),
+					}),
+					timestamp: expect.any(Number),
 				}),
-				cpu: expect.objectContaining({
-					usage: expect.any(Number),
-					temperature: expect.any(Number),
-					cores: expect.any(Number),
-					frequency: expect.any(Number),
-					throttled: expect.any(Boolean),
-				}),
-				thermal: expect.objectContaining({
-					state: expect.any(String),
-					temperature: expect.any(Number),
-					throttlingActive: expect.any(Boolean),
-					recommendedAction: expect.any(String),
-				}),
-				battery: expect.objectContaining({
-					level: expect.any(Number),
-					isCharging: expect.any(Boolean),
-					chargingState: expect.any(String),
-					estimatedTimeRemaining: expect.any(Number),
-					powerSavingMode: expect.any(Boolean),
-					lowPowerModeActive: expect.any(Boolean),
-				}),
-				timestamp: expect.any(Number),
-			}));
+			);
 		});
 
 		it('should start and stop monitoring', () => {
@@ -172,10 +173,12 @@ describe('DeviceResourceManager', () => {
 			await resourceManager.initialize();
 			(resourceManager as any).checkThresholds(null, criticalMemory);
 
-			expect(emitEventSpy).toHaveBeenCalledWith(expect.objectContaining({
-				type: 'memory_critical',
-				severity: 'critical',
-			}));
+			expect(emitEventSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'memory_critical',
+					severity: 'critical',
+				}),
+			);
 		});
 	});
 
@@ -184,14 +187,16 @@ describe('DeviceResourceManager', () => {
 		it('should detect battery status', async () => {
 			const batteryStatus = await (resourceManager as any).getBatteryStatus();
 
-			expect(batteryStatus).toEqual(expect.objectContaining({
-				level: expect.any(Number),
-				isCharging: expect.any(Boolean),
-				chargingState: expect.any(String),
-				estimatedTimeRemaining: expect.any(Number),
-				powerSavingMode: expect.any(Boolean),
-				lowPowerModeActive: expect.any(Boolean),
-			}));
+			expect(batteryStatus).toEqual(
+				expect.objectContaining({
+					level: expect.any(Number),
+					isCharging: expect.any(Boolean),
+					chargingState: expect.any(String),
+					estimatedTimeRemaining: expect.any(Number),
+					powerSavingMode: expect.any(Boolean),
+					lowPowerModeActive: expect.any(Boolean),
+				}),
+			);
 		});
 
 		it('should emit battery events when thresholds are crossed', async () => {
@@ -209,10 +214,12 @@ describe('DeviceResourceManager', () => {
 			await resourceManager.initialize();
 			(resourceManager as any).checkThresholds(null, criticalBattery);
 
-			expect(emitEventSpy).toHaveBeenCalledWith(expect.objectContaining({
-				type: 'battery_critical',
-				severity: 'critical',
-			}));
+			expect(emitEventSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'battery_critical',
+					severity: 'critical',
+				}),
+			);
 		});
 
 		it('should detect power saving mode changes', async () => {
@@ -238,31 +245,38 @@ describe('DeviceResourceManager', () => {
 			await resourceManager.initialize();
 			(resourceManager as any).checkThresholds(previousState, newState);
 
-			expect(emitEventSpy).toHaveBeenCalledWith(expect.objectContaining({
-				type: 'power_saving_enabled',
-				severity: 'info',
-			}));
+			expect(emitEventSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'power_saving_enabled',
+					severity: 'info',
+				}),
+			);
 		});
 
 		it('should handle app state changes for background/foreground detection', () => {
-			const appStateCallback = vi.mocked(require('react-native').AppState.addEventListener).mock.calls[0][1];
+			const appStateCallback = vi.mocked(require('react-native').AppState.addEventListener)
+				.mock.calls[0][1];
 			const emitEventSpy = vi.spyOn(resourceManager as any, 'emitEvent');
 
 			// Simulate app going to background
 			appStateCallback('background');
 
 			expect(resourceManager['isInBackground']).toBe(true);
-			expect(emitEventSpy).toHaveBeenCalledWith(expect.objectContaining({
-				type: 'background_mode',
-			}));
+			expect(emitEventSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'background_mode',
+				}),
+			);
 
 			// Simulate app coming to foreground
 			appStateCallback('active');
 
 			expect(resourceManager['isInBackground']).toBe(false);
-			expect(emitEventSpy).toHaveBeenCalledWith(expect.objectContaining({
-				type: 'foreground_mode',
-			}));
+			expect(emitEventSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'foreground_mode',
+				}),
+			);
 		});
 	});
 
@@ -363,7 +377,7 @@ describe('DeviceResourceManager', () => {
 				throw new Error('Test error');
 			});
 
-			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 			resourceManager.addEventListener(errorCallback);
 

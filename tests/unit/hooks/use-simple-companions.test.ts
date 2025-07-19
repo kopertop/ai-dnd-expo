@@ -6,7 +6,7 @@ import { useSimpleCompanions } from '@/hooks/use-simple-companions';
 import type { Companion, CompanionTemplate, PartyConfiguration } from '@/types/companion';
 
 // Mock console methods to avoid noise in tests
-vi.spyOn(console, 'error').mockImplementation(() => { });
+vi.spyOn(console, 'error').mockImplementation(() => {});
 
 describe('useSimpleCompanions', () => {
 	// Use spyOn for AsyncStorage methods

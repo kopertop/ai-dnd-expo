@@ -1,4 +1,3 @@
-
 // Import all class images
 import { ClassOption } from '../types/class-option';
 

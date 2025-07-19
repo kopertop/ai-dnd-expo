@@ -46,7 +46,7 @@ const MyComponent = () => {
 
   const handlePlayerAction = async () => {
     if (!isInitialized || isLoading) return;
-    
+
     const response = await processPlayerAction('I search the room', {
       playerName: 'Elric',
       playerClass: 'Wizard',
@@ -54,15 +54,15 @@ const MyComponent = () => {
       currentScene: 'The Misty Tavern',
       gameHistory: ['You enter the tavern.'],
     });
-    
+
     console.log(response.text);
-    
+
     // Handle tool commands
     response.toolCommands.forEach(command => {
       console.log(`Command: ${command.type}, Params: ${command.params}`);
     });
   };
-  
+
   return (
     // Your component JSX
   );
@@ -79,7 +79,7 @@ const GameScreen = () => {
     // Handle tool commands (dice rolls, etc.)
     console.log(`Command: ${type}, Params: ${params}`);
   };
-  
+
   return (
     <DMChat
       playerName="Elric"
@@ -103,7 +103,7 @@ import {
 } from '@/services/ai/cactus-integration-bridge';
 
 // Initialize the LLM
-await initializeCactusLLM((progress) => {
+await initializeCactusLLM(progress => {
   console.log(`Initialization progress: ${progress.status}`);
 });
 

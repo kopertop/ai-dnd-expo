@@ -4,7 +4,11 @@
  * Provides intelligent D&D gameplay assistance using Cactus Compute's LLM
  * Handles player actions, rule integration, and narrative generation
  */
-import { CactusMessage, CactusProvider, CactusProviderInterface } from '../providers/cactus-provider';
+import {
+	CactusMessage,
+	CactusProvider,
+	CactusProviderInterface,
+} from '../providers/cactus-provider';
 
 import { Character } from '@/types/character';
 import { GameState } from '@/types/game';
@@ -116,8 +120,10 @@ export class CactusDMAgentImpl implements CactusDMAgent {
 	async initialize(config: CactusDMConfig): Promise<boolean> {
 		try {
 			// Initialize the Cactus provider
-			await this.cactusProvider.initialize((progress) => {
-				console.log(`Cactus DM Agent initialization progress: ${Math.round(progress * 100)}%`);
+			await this.cactusProvider.initialize(progress => {
+				console.log(
+					`Cactus DM Agent initialization progress: ${Math.round(progress * 100)}%`,
+				);
 			});
 
 			this.isInitialized = true;
@@ -158,7 +164,10 @@ export class CactusDMAgentImpl implements CactusDMAgent {
 			});
 
 			// Process the response
-			const { text, toolCommands, ruleApplications, responseType } = this.processResponse(response, context);
+			const { text, toolCommands, ruleApplications, responseType } = this.processResponse(
+				response,
+				context,
+			);
 
 			// Build the DM response
 			const dmResponse: DMResponse = {
@@ -290,9 +299,7 @@ When appropriate, include tool commands in your response using the following for
 Keep your responses concise, engaging, and true to D&D 5e rules.`;
 
 		// Create conversation history
-		const messages: CactusMessage[] = [
-			{ role: 'system', content: systemPrompt },
-		];
+		const messages: CactusMessage[] = [{ role: 'system', content: systemPrompt }];
 
 		// Add recent conversation history if available
 		if (context.conversationHistory && context.conversationHistory.length > 0) {
@@ -345,7 +352,10 @@ Keep your description concise (3-5 sentences) but rich in sensory details.`;
 	/**
 	 * Process the LLM response
 	 */
-	private processResponse(response: string, context: GameContext): {
+	private processResponse(
+		response: string,
+		context: GameContext,
+	): {
 		text: string;
 		toolCommands: Array<{ type: string; params: string }>;
 		ruleApplications: RuleApplication[];
@@ -406,12 +416,18 @@ Keep your description concise (3-5 sentences) but rich in sensory details.`;
 	/**
 	 * Determine response type based on content
 	 */
-	private determineResponseType(text: string, toolCommands: Array<{ type: string; params: string }>): DMResponse['responseType'] {
+	private determineResponseType(
+		text: string,
+		toolCommands: Array<{ type: string; params: string }>,
+	): DMResponse['responseType'] {
 		const lowerText = text.toLowerCase();
 
 		// Check tool commands first
 		for (const command of toolCommands) {
-			if (command.type === 'damage' || command.type === 'roll' && command.params.includes('attack')) {
+			if (
+				command.type === 'damage' ||
+				(command.type === 'roll' && command.params.includes('attack'))
+			) {
 				return 'combat';
 			}
 			if (command.type === 'skill_check') {
@@ -420,16 +436,33 @@ Keep your description concise (3-5 sentences) but rich in sensory details.`;
 		}
 
 		// Check text content
-		if (lowerText.includes('attack') || lowerText.includes('combat') || lowerText.includes('fight') || lowerText.includes('battle')) {
+		if (
+			lowerText.includes('attack') ||
+			lowerText.includes('combat') ||
+			lowerText.includes('fight') ||
+			lowerText.includes('battle')
+		) {
 			return 'combat';
 		}
-		if (lowerText.includes('check') || lowerText.includes('skill') || lowerText.includes('ability')) {
+		if (
+			lowerText.includes('check') ||
+			lowerText.includes('skill') ||
+			lowerText.includes('ability')
+		) {
 			return 'skill_check';
 		}
-		if (lowerText.includes('talk') || lowerText.includes('speak') || lowerText.includes('conversation')) {
+		if (
+			lowerText.includes('talk') ||
+			lowerText.includes('speak') ||
+			lowerText.includes('conversation')
+		) {
 			return 'dialogue';
 		}
-		if (lowerText.includes('explore') || lowerText.includes('move') || lowerText.includes('travel')) {
+		if (
+			lowerText.includes('explore') ||
+			lowerText.includes('move') ||
+			lowerText.includes('travel')
+		) {
 			return 'exploration';
 		}
 
@@ -477,7 +510,10 @@ Keep your description concise (3-5 sentences) but rich in sensory details.`;
 
 				case 'skill_check':
 					const skillName = command.params.split(' ')[0];
-					const modifier = this.calculateSkillModifier(skillName, context.playerCharacter);
+					const modifier = this.calculateSkillModifier(
+						skillName,
+						context.playerCharacter,
+					);
 
 					ruleApplications.push({
 						rule: 'Skill Check',

@@ -2,7 +2,11 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ClassChooser } from '@/components/class-chooser';
-import { assertNoConsoleErrors, renderWithProviders, waitForAsyncUpdates } from '@/tests/utils/render-helpers';
+import {
+	assertNoConsoleErrors,
+	renderWithProviders,
+	waitForAsyncUpdates,
+} from '@/tests/utils/render-helpers';
 
 describe('ClassChooser', () => {
 	let mockOnSelect: any;
@@ -18,9 +22,7 @@ describe('ClassChooser', () => {
 
 	describe('Component rendering', () => {
 		it('should render without crashing', async () => {
-			const { container } = renderWithProviders(
-				<ClassChooser onSelect={mockOnSelect} />,
-			);
+			const { container } = renderWithProviders(<ClassChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -28,9 +30,7 @@ describe('ClassChooser', () => {
 		});
 
 		it('should display the title', async () => {
-			const { getByText } = renderWithProviders(
-				<ClassChooser onSelect={mockOnSelect} />,
-			);
+			const { getByText } = renderWithProviders(<ClassChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -38,9 +38,7 @@ describe('ClassChooser', () => {
 		});
 
 		it('should display class options', async () => {
-			const { getByText } = renderWithProviders(
-				<ClassChooser onSelect={mockOnSelect} />,
-			);
+			const { getByText } = renderWithProviders(<ClassChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -52,9 +50,7 @@ describe('ClassChooser', () => {
 
 	describe('Layout and styling', () => {
 		it('should render scroll view', async () => {
-			const { getByTestId } = renderWithProviders(
-				<ClassChooser onSelect={mockOnSelect} />,
-			);
+			const { getByTestId } = renderWithProviders(<ClassChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -62,9 +58,7 @@ describe('ClassChooser', () => {
 		});
 
 		it('should render class cards with proper structure', async () => {
-			const { container } = renderWithProviders(
-				<ClassChooser onSelect={mockOnSelect} />,
-			);
+			const { container } = renderWithProviders(<ClassChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 
@@ -76,9 +70,7 @@ describe('ClassChooser', () => {
 
 	describe('Props handling', () => {
 		it('should handle missing onSelect prop gracefully', async () => {
-			const { container } = renderWithProviders(
-				<ClassChooser onSelect={undefined as any} />,
-			);
+			const { container } = renderWithProviders(<ClassChooser onSelect={undefined as any} />);
 
 			await waitForAsyncUpdates();
 
@@ -86,9 +78,7 @@ describe('ClassChooser', () => {
 		});
 
 		it('should accept onSelect callback', async () => {
-			const { container } = renderWithProviders(
-				<ClassChooser onSelect={mockOnSelect} />,
-			);
+			const { container } = renderWithProviders(<ClassChooser onSelect={mockOnSelect} />);
 
 			await waitForAsyncUpdates();
 

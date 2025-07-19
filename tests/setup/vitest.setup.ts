@@ -6,11 +6,14 @@ vi.mock('react-native', () => ({
 	// Core components
 	View: ({ children, ...props }: any) => React.createElement('div', props, children),
 	Text: ({ children, ...props }: any) => React.createElement('span', props, children),
-	ScrollView: ({ children, ...props }: any) => React.createElement('div', { ...props, 'data-testid': 'scroll-view' }, children),
-	TouchableOpacity: ({ children, onPress, ...props }: any) => React.createElement('button', { ...props, onClick: onPress }, children),
+	ScrollView: ({ children, ...props }: any) =>
+		React.createElement('div', { ...props, 'data-testid': 'scroll-view' }, children),
+	TouchableOpacity: ({ children, onPress, ...props }: any) =>
+		React.createElement('button', { ...props, onClick: onPress }, children),
 	TextInput: (props: any) => React.createElement('input', props),
 	Image: (props: any) => React.createElement('img', { ...props, alt: props.alt || 'image' }),
-	SafeAreaView: ({ children, ...props }: any) => React.createElement('div', { ...props, 'data-testid': 'safe-area-view' }, children),
+	SafeAreaView: ({ children, ...props }: any) =>
+		React.createElement('div', { ...props, 'data-testid': 'safe-area-view' }, children),
 
 	// Platform
 	Platform: {

@@ -4,7 +4,15 @@
  * A component for interacting with the Cactus DM agent
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+	ActivityIndicator,
+	ScrollView,
+	StyleSheet,
+	Text,
+	TextInput,
+	TouchableOpacity,
+	View,
+} from 'react-native';
 
 import { useCactusDungeonMaster } from '../../hooks/use-cactus-dungeon-master';
 import { useColorScheme } from '../../hooks/use-color-scheme';
@@ -73,7 +81,15 @@ export const CactusDMChat: React.FC<CactusDMChatProps> = ({
 		if (isInitialized && isInitializing) {
 			generateInitialNarration();
 		}
-	}, [isInitialized, isInitializing, currentScene, playerName, playerClass, playerRace, generateNarration]);
+	}, [
+		isInitialized,
+		isInitializing,
+		currentScene,
+		playerName,
+		playerClass,
+		playerRace,
+		generateNarration,
+	]);
 
 	// Handle sending a message
 	const handleSend = async () => {
@@ -83,7 +99,10 @@ export const CactusDMChat: React.FC<CactusDMChatProps> = ({
 		setInput('');
 
 		// Add user message to chat
-		const updatedMessages: ChatMessage[] = [...messages, { role: 'user', content: userMessage }];
+		const updatedMessages: ChatMessage[] = [
+			...messages,
+			{ role: 'user', content: userMessage },
+		];
 		setMessages(updatedMessages);
 
 		// Process player action
@@ -137,10 +156,11 @@ export const CactusDMChat: React.FC<CactusDMChatProps> = ({
 						</View>
 					) : error ? (
 						<View style={styles.errorContainer}>
-							<Text style={[styles.errorText, { color: textColor }]}>
-								{error}
-							</Text>
-							<TouchableOpacity style={[styles.retryButton, { backgroundColor: buttonColor }]} onPress={handleRetryInit}>
+							<Text style={[styles.errorText, { color: textColor }]}>{error}</Text>
+							<TouchableOpacity
+								style={[styles.retryButton, { backgroundColor: buttonColor }]}
+								onPress={handleRetryInit}
+							>
 								<Text style={styles.retryButtonText}>Retry</Text>
 							</TouchableOpacity>
 						</View>
@@ -161,7 +181,9 @@ export const CactusDMChat: React.FC<CactusDMChatProps> = ({
 								key={index}
 								style={[
 									styles.messageContainer,
-									message.role === 'user' ? styles.userMessage : styles.assistantMessage,
+									message.role === 'user'
+										? styles.userMessage
+										: styles.assistantMessage,
 									message.role === 'user'
 										? { backgroundColor: buttonColor }
 										: { backgroundColor: inputBackgroundColor },
@@ -180,7 +202,12 @@ export const CactusDMChat: React.FC<CactusDMChatProps> = ({
 							</View>
 						))}
 						{isLoading && (
-							<View style={[styles.loadingMessage, { backgroundColor: inputBackgroundColor }]}>
+							<View
+								style={[
+									styles.loadingMessage,
+									{ backgroundColor: inputBackgroundColor },
+								]}
+							>
 								<ActivityIndicator size="small" color={buttonColor} />
 								<Text style={[styles.loadingMessageText, { color: textColor }]}>
 									Thinking...

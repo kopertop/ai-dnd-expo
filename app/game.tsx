@@ -31,7 +31,8 @@ const GameScreen: React.FC = () => {
 		worldState,
 		playerCharacter: playerCharacter || null,
 		autoInitialize: true,
-		modelUrl: 'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf',
+		modelUrl:
+			'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf',
 	});
 
 	// Debounced save to prevent excessive saves on frequent player moves
@@ -162,13 +163,7 @@ const GameScreen: React.FC = () => {
 			console.log('✅ Custom greeting replaced, switching to player turn');
 			setActiveCharacter('player'); // Switch to player's turn after DM greeting
 		}
-	}, [
-		gameState,
-		playerCharacter,
-		dmAgent.messages.length,
-		hasInitialized,
-		dmAgent.isLoading,
-	]);
+	}, [gameState, playerCharacter, dmAgent.messages.length, hasInitialized, dmAgent.isLoading]);
 
 	const handlePlayerMove = async (newPosition: Position) => {
 		if (!worldState) return;

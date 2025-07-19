@@ -18,7 +18,7 @@ interface SettingsStore extends UserSettings {
 
 export const useSettingsStore = create<SettingsStore>()(
 	persist(
-		(set) => ({
+		set => ({
 			// Initial state
 			musicVolume: 1,
 			isMusicMuted: false,

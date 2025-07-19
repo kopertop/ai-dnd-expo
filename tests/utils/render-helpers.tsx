@@ -70,9 +70,7 @@ const MockProviders: React.FC<MockProvidersProps> = ({
 
 	return (
 		<GameProvider>
-			<ThemeProvider>
-				{children}
-			</ThemeProvider>
+			<ThemeProvider>{children}</ThemeProvider>
 		</GameProvider>
 	);
 };
@@ -106,7 +104,9 @@ export const renderWithProviders = (
 
 	const render = (element: React.ReactElement) => {
 		// Create a more comprehensive DOM representation of React elements
-		const renderElement = (el: React.ReactElement | string | number | null | undefined): string => {
+		const renderElement = (
+			el: React.ReactElement | string | number | null | undefined,
+		): string => {
 			if (el === null || el === undefined) return '';
 			if (typeof el === 'string' || typeof el === 'number') return String(el);
 			if (!React.isValidElement(el)) return '';
@@ -118,13 +118,13 @@ export const renderWithProviders = (
 			if (typeof el.type === 'string') {
 				// Map React Native components to HTML equivalents
 				const componentMap: Record<string, string> = {
-					'View': 'div',
-					'Text': 'span',
-					'ScrollView': 'div',
-					'TouchableOpacity': 'button',
-					'TextInput': 'input',
-					'Image': 'img',
-					'SafeAreaView': 'div',
+					View: 'div',
+					Text: 'span',
+					ScrollView: 'div',
+					TouchableOpacity: 'button',
+					TextInput: 'input',
+					Image: 'img',
+					SafeAreaView: 'div',
 				};
 
 				const htmlTag = componentMap[el.type] || el.type;
@@ -138,23 +138,22 @@ export const renderWithProviders = (
 						// Convert React Native styles to CSS-like attributes
 						if (typeof value === 'object' && value !== null) {
 							const styleStr = Object.entries(value as Record<string, any>)
-								.map(([k, v]) => `${k.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${v}`)
+								.map(
+									([k, v]) =>
+										`${k.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${v}`,
+								)
 								.join('; ');
 							if (styleStr) attributes.push(`style="${styleStr}"`);
 						}
-					}
-					else if (key === 'source' && htmlTag === 'img') {
+					} else if (key === 'source' && htmlTag === 'img') {
 						// Handle Image source
 						attributes.push(`src="mock-image.png" alt="${el.type}-image"`);
-					}
-					else if (key === 'placeholder' && htmlTag === 'input') {
+					} else if (key === 'placeholder' && htmlTag === 'input') {
 						attributes.push(`placeholder="${value}"`);
-					}
-					else if (key === 'onPress' && htmlTag === 'button') {
+					} else if (key === 'onPress' && htmlTag === 'button') {
 						// Convert onPress to onClick for testing
 						attributes.push('onclick="handlePress()"');
-					}
-					else if (typeof value === 'string' || typeof value === 'number') {
+					} else if (typeof value === 'string' || typeof value === 'number') {
 						attributes.push(`${key}="${value}"`);
 					}
 				});
@@ -177,7 +176,8 @@ export const renderWithProviders = (
 				return `<${htmlTag}${attributeStr}>${childrenStr}</${htmlTag}>`;
 			} else {
 				// React component
-				const componentName = (el.type as any)?.displayName || (el.type as any)?.name || 'Component';
+				const componentName =
+					(el.type as any)?.displayName || (el.type as any)?.name || 'Component';
 				const testId = props['data-testid'] || props.testID;
 
 				// Handle specific components we know about
@@ -216,7 +216,8 @@ export const renderWithProviders = (
 
 		const renderChildren = (children: any): string => {
 			if (!children) return '';
-			if (typeof children === 'string' || typeof children === 'number') return String(children);
+			if (typeof children === 'string' || typeof children === 'number')
+				return String(children);
 			if (Array.isArray(children)) {
 				return children.map(child => renderElement(child)).join('');
 			}
@@ -227,9 +228,24 @@ export const renderWithProviders = (
 		const renderClassChooser = (props: any) => {
 			// Use test mock data that matches the test expectations
 			const classes = [
-				{ id: 'fighter', name: 'Fighter', description: 'A master of martial combat', isCustom: false },
-				{ id: 'wizard', name: 'Wizard', description: 'A scholarly magic-user', isCustom: false },
-				{ id: 'custom', name: 'Custom', description: 'Create your own class', isCustom: true },
+				{
+					id: 'fighter',
+					name: 'Fighter',
+					description: 'A master of martial combat',
+					isCustom: false,
+				},
+				{
+					id: 'wizard',
+					name: 'Wizard',
+					description: 'A scholarly magic-user',
+					isCustom: false,
+				},
+				{
+					id: 'custom',
+					name: 'Custom',
+					description: 'Create your own class',
+					isCustom: true,
+				},
 			];
 
 			// Check if we should show custom form (this would be managed by component state)
@@ -248,13 +264,16 @@ export const renderWithProviders = (
 				</div>`;
 			}
 
-			const classCards = classes.map(cls =>
-				`<button data-class-id="${cls.id}">
+			const classCards = classes
+				.map(
+					cls =>
+						`<button data-class-id="${cls.id}">
 					<img src="mock-image.png" alt="class-image" />
 					<span>${cls.name}</span>
 					<span>${cls.description}</span>
 				</button>`,
-			).join('');
+				)
+				.join('');
 
 			return `<div data-testid="scroll-view">
 				<span>Choose Your Class</span>
@@ -266,16 +285,24 @@ export const renderWithProviders = (
 			const races = [
 				{ id: 'human', name: 'Human', description: 'Versatile and ambitious' },
 				{ id: 'elf', name: 'Elf', description: 'Graceful and magical' },
-				{ id: 'custom', name: 'Custom', description: 'Create your own race!', isCustom: true },
+				{
+					id: 'custom',
+					name: 'Custom',
+					description: 'Create your own race!',
+					isCustom: true,
+				},
 			];
 
-			const raceCards = races.map(race =>
-				`<button onclick="selectRace('${race.id}')">
+			const raceCards = races
+				.map(
+					race =>
+						`<button onclick="selectRace('${race.id}')">
 					<img src="mock-image.png" alt="race-image" />
 					<span>${race.name}</span>
 					<span>${race.description}</span>
 				</button>`,
-			).join('');
+				)
+				.join('');
 
 			return `<div data-testid="scroll-view">
 				<span>Choose Your Race</span>
@@ -291,17 +318,20 @@ export const renderWithProviders = (
 				{ id: 'arcana', name: 'Arcana', ability: 'INT' },
 			];
 
-			const skillCards = skills.map(skill =>
-				`<button onclick="selectSkill('${skill.id}')">
+			const skillCards = skills
+				.map(
+					skill =>
+						`<button onclick="selectSkill('${skill.id}')">
 					<img src="mock-image.png" alt="skill-image" />
 					<span>${skill.name}</span>
 					<span>${skill.ability}</span>
 				</button>`,
-			).join('');
+				)
+				.join('');
 
-			const emptySlots = Array.from({ length: maxSkills }, (_, i) =>
-				'<div>Empty</div>',
-			).join('');
+			const emptySlots = Array.from({ length: maxSkills }, (_, i) => '<div>Empty</div>').join(
+				'',
+			);
 
 			return `<div data-testid="safe-area-view">
 				<div data-testid="scroll-view">
@@ -363,8 +393,8 @@ export const renderWithProviders = (
 	};
 
 	const getByText = (text: string): HTMLElement => {
-		const element = Array.from(container.querySelectorAll('*')).find(
-			el => el.textContent?.includes(text),
+		const element = Array.from(container.querySelectorAll('*')).find(el =>
+			el.textContent?.includes(text),
 		) as HTMLElement;
 		if (!element) {
 			throw new Error(`Unable to find element with text: ${text}`);
@@ -379,9 +409,27 @@ export const renderWithProviders = (
 				const classId = button.getAttribute('data-class-id');
 				if (classId && (currentElement.props as any)?.onSelect) {
 					const classes = [
-						{ id: 'fighter', name: 'Fighter', description: 'A master of martial combat', isCustom: false, image: 'fighter-image' },
-						{ id: 'wizard', name: 'Wizard', description: 'A scholarly magic-user', isCustom: false, image: 'wizard-image' },
-						{ id: 'custom', name: 'Custom', description: 'Create your own class', isCustom: true, image: 'custom-image' },
+						{
+							id: 'fighter',
+							name: 'Fighter',
+							description: 'A master of martial combat',
+							isCustom: false,
+							image: 'fighter-image',
+						},
+						{
+							id: 'wizard',
+							name: 'Wizard',
+							description: 'A scholarly magic-user',
+							isCustom: false,
+							image: 'wizard-image',
+						},
+						{
+							id: 'custom',
+							name: 'Custom',
+							description: 'Create your own class',
+							isCustom: true,
+							image: 'custom-image',
+						},
 					];
 					const selectedClass = classes.find(c => c.id === classId);
 					if (selectedClass) {
@@ -395,9 +443,11 @@ export const renderWithProviders = (
 	};
 
 	const queryByText = (text: string): HTMLElement | null => {
-		return Array.from(container.querySelectorAll('*')).find(
-			el => el.textContent?.includes(text),
-		) as HTMLElement || null;
+		return (
+			(Array.from(container.querySelectorAll('*')).find(el =>
+				el.textContent?.includes(text),
+			) as HTMLElement) || null
+		);
 	};
 
 	const getByPlaceholderText = (text: string): HTMLElement => {
@@ -493,12 +543,15 @@ export const createMockHook = <T,>(hookResult: T): (() => T) => {
  * Mock component factory for testing component interactions
  */
 export const createMockComponent = (name: string) => {
-	const MockComponent = ({ children, ...props }: any) => (
-		React.createElement('div', {
-			'data-testid': `mock-${name.toLowerCase()}`,
-			...props,
-		}, children)
-	);
+	const MockComponent = ({ children, ...props }: any) =>
+		React.createElement(
+			'div',
+			{
+				'data-testid': `mock-${name.toLowerCase()}`,
+				...props,
+			},
+			children,
+		);
 	MockComponent.displayName = `Mock${name}`;
 	return MockComponent;
 };
@@ -526,9 +579,11 @@ export const ComponentTestUtils = {
 	 * Mock async operation with controllable timing
 	 */
 	createMockAsyncOperation: <T,>(result: T, delay = 100) => {
-		return vi.fn().mockImplementation(
-			() => new Promise<T>(resolve => setTimeout(() => resolve(result), delay)),
-		);
+		return vi
+			.fn()
+			.mockImplementation(
+				() => new Promise<T>(resolve => setTimeout(() => resolve(result), delay)),
+			);
 	},
 };
 

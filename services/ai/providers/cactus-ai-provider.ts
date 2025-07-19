@@ -8,9 +8,12 @@ import { CactusMessage, CactusProvider } from './cactus-provider';
 
 // System prompts for different roles
 export const DnDSystemPrompts = {
-	DUNGEON_MASTER: 'You are an expert Dungeons & Dragons Dungeon Master. Your task is to respond to player actions in a D&D game, maintaining narrative consistency and applying game rules correctly.',
-	PLAYER_COMPANION: 'You are a helpful D&D player companion. Your task is to provide advice and suggestions to the player based on D&D rules and best practices.',
-	RULES_ADVISOR: 'You are a D&D rules expert. Your task is to provide accurate information about D&D rules when asked.',
+	DUNGEON_MASTER:
+		'You are an expert Dungeons & Dragons Dungeon Master. Your task is to respond to player actions in a D&D game, maintaining narrative consistency and applying game rules correctly.',
+	PLAYER_COMPANION:
+		'You are a helpful D&D player companion. Your task is to provide advice and suggestions to the player based on D&D rules and best practices.',
+	RULES_ADVISOR:
+		'You are a D&D rules expert. Your task is to provide accurate information about D&D rules when asked.',
 };
 
 // Configuration interface
@@ -79,9 +82,7 @@ export class CactusAIProvider {
 		const { prompt, context, systemPrompt } = params;
 
 		// Create messages for the provider
-		const messages: CactusMessage[] = [
-			{ role: 'system', content: systemPrompt },
-		];
+		const messages: CactusMessage[] = [{ role: 'system', content: systemPrompt }];
 
 		// Add conversation history
 		for (let i = 0; i < context.gameHistory.length; i++) {

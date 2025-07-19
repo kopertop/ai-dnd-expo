@@ -121,7 +121,9 @@ export const mockNavigation = {
 				throw new Error(`Expected navigation to ${routeName}, but got ${name}`);
 			}
 			if (params && JSON.stringify(navParams) !== JSON.stringify(params)) {
-				throw new Error(`Expected params ${JSON.stringify(params)}, but got ${JSON.stringify(navParams)}`);
+				throw new Error(
+					`Expected params ${JSON.stringify(params)}, but got ${JSON.stringify(navParams)}`,
+				);
 			}
 		});
 	},
@@ -168,7 +170,12 @@ export const mockExpoSpeech = {
 	resume: vi.fn().mockResolvedValue(undefined),
 	isSpeaking: vi.fn().mockResolvedValue(false),
 	getAvailableVoicesAsync: vi.fn().mockResolvedValue([
-		{ identifier: 'en-US-voice', name: 'English US', quality: 'Default', language: 'en-US' },
+		{
+			identifier: 'en-US-voice',
+			name: 'English US',
+			quality: 'Default',
+			language: 'en-US',
+		},
 	]),
 	// Test utilities
 	simulateSpeaking: (speaking: boolean = true) => {
@@ -198,7 +205,7 @@ export const mockExpoSpeechRecognition = {
 	simulateRecognition: (text: string) => {
 		// Simulate recognition result callback
 		const mockCallback = vi.fn();
-		mockExpoSpeechRecognition.start.mockImplementationOnce((options) => {
+		mockExpoSpeechRecognition.start.mockImplementationOnce(options => {
 			if (options?.onResult) {
 				setTimeout(() => options.onResult({ transcript: text, isFinal: true }), 100);
 			}
@@ -312,13 +319,13 @@ export const mockReanimated = {
 		Text: vi.fn(({ children }) => children),
 		ScrollView: vi.fn(({ children }) => children),
 	},
-	useSharedValue: vi.fn((initialValue) => ({ value: initialValue })),
+	useSharedValue: vi.fn(initialValue => ({ value: initialValue })),
 	useAnimatedStyle: vi.fn(() => ({})),
-	withTiming: vi.fn((value) => value),
-	withSpring: vi.fn((value) => value),
+	withTiming: vi.fn(value => value),
+	withSpring: vi.fn(value => value),
 	withDelay: vi.fn((delay, animation) => animation),
-	runOnJS: vi.fn((fn) => fn),
-	interpolate: vi.fn((value) => value),
+	runOnJS: vi.fn(fn => fn),
+	interpolate: vi.fn(value => value),
 	reset: () => {
 		vi.clearAllMocks();
 	},

@@ -164,7 +164,7 @@ export class DungeonMasterAgent {
 				});
 
 				if (attackRoll.total >= 15) {
-				// Hit
+					// Hit
 					toolCalls.push({
 						type: 'dice_roll',
 						parameters: { notation: '1d8', purpose: 'damage' },
@@ -195,7 +195,7 @@ export class DungeonMasterAgent {
 			}
 
 			case 'cast_spell':
-			// Check spell slots, then execute
+				// Check spell slots, then execute
 				content = `You begin casting ${intent.parameters.spell}...`;
 				// Add spell effect logic here
 				break;
@@ -206,7 +206,7 @@ export class DungeonMasterAgent {
 				break;
 
 			default:
-			// Use AI/Gemma for general responses (future implementation)
+				// Use AI/Gemma for general responses (future implementation)
 				content = await this.generateGenericResponse(originalInput);
 				break;
 		}
@@ -239,7 +239,7 @@ export class DungeonMasterAgent {
 					toolCall.result = await this.ruleEngine.lookupRule(toolCall.parameters.rule);
 					break;
 				case 'world_update':
-				// Update world state based on parameters
+					// Update world state based on parameters
 					break;
 			}
 		}

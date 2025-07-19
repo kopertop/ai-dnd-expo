@@ -305,7 +305,7 @@ export class ResponseQualityFilter {
 abstract class ContentFilter {
 	abstract filter(
 		text: string,
-		context: GameContext
+		context: GameContext,
 	): Promise<{
 		filteredText: string;
 		issues: QualityIssue[];
@@ -434,7 +434,7 @@ class AdultContentFilter extends ContentFilter {
 abstract class FormatValidator {
 	abstract validate(
 		text: string,
-		context: GameContext
+		context: GameContext,
 	): Promise<{
 		issues: QualityIssue[];
 	}>;
@@ -578,7 +578,7 @@ abstract class QualityValidator {
 	abstract validate(
 		text: string,
 		context: GameContext,
-		confidence: number
+		confidence: number,
 	): Promise<{
 		issues: QualityIssue[];
 	}>;

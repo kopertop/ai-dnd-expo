@@ -51,7 +51,9 @@ describe('useInputMode hook', () => {
 			const storageError = new Error('Storage unavailable');
 			mockAsyncStorage.getItem.mockRejectedValueOnce(storageError);
 
-			await expect(mockAsyncStorage.getItem('@ai-dnd/inputMode')).rejects.toThrow('Storage unavailable');
+			await expect(mockAsyncStorage.getItem('@ai-dnd/inputMode')).rejects.toThrow(
+				'Storage unavailable',
+			);
 		});
 	});
 
@@ -139,14 +141,18 @@ describe('useInputMode hook', () => {
 			const saveError = new Error('Storage save failed');
 			mockAsyncStorage.setItem.mockRejectedValueOnce(saveError);
 
-			await expect(mockAsyncStorage.setItem('@ai-dnd/inputMode', 'voice')).rejects.toThrow('Storage save failed');
+			await expect(mockAsyncStorage.setItem('@ai-dnd/inputMode', 'voice')).rejects.toThrow(
+				'Storage save failed',
+			);
 		});
 
 		it('should handle storage load errors', async () => {
 			const loadError = new Error('Storage load failed');
 			mockAsyncStorage.getItem.mockRejectedValueOnce(loadError);
 
-			await expect(mockAsyncStorage.getItem('@ai-dnd/inputMode')).rejects.toThrow('Storage load failed');
+			await expect(mockAsyncStorage.getItem('@ai-dnd/inputMode')).rejects.toThrow(
+				'Storage load failed',
+			);
 		});
 
 		it('should handle storage clear errors', async () => {
@@ -184,8 +190,16 @@ describe('useInputMode hook', () => {
 			await mockAsyncStorage.setItem('@ai-dnd/inputMode', 'voice');
 
 			expect(mockAsyncStorage.setItem).toHaveBeenCalledTimes(2);
-			expect(mockAsyncStorage.setItem).toHaveBeenNthCalledWith(1, '@ai-dnd/inputMode', 'text');
-			expect(mockAsyncStorage.setItem).toHaveBeenNthCalledWith(2, '@ai-dnd/inputMode', 'voice');
+			expect(mockAsyncStorage.setItem).toHaveBeenNthCalledWith(
+				1,
+				'@ai-dnd/inputMode',
+				'text',
+			);
+			expect(mockAsyncStorage.setItem).toHaveBeenNthCalledWith(
+				2,
+				'@ai-dnd/inputMode',
+				'voice',
+			);
 		});
 	});
 

@@ -56,7 +56,9 @@ describe('useVoiceRecognition hook', () => {
 			const permissionError = new Error('Permission request failed');
 			mockAudio.requestRecordingPermissionsAsync.mockRejectedValueOnce(permissionError);
 
-			await expect(mockAudio.requestRecordingPermissionsAsync()).rejects.toThrow('Permission request failed');
+			await expect(mockAudio.requestRecordingPermissionsAsync()).rejects.toThrow(
+				'Permission request failed',
+			);
 		});
 	});
 
@@ -108,21 +110,27 @@ describe('useVoiceRecognition hook', () => {
 			const startError = new Error('Speech recognition start failed');
 			mockSpeechRecognition.start.mockRejectedValueOnce(startError);
 
-			await expect(mockSpeechRecognition.start()).rejects.toThrow('Speech recognition start failed');
+			await expect(mockSpeechRecognition.start()).rejects.toThrow(
+				'Speech recognition start failed',
+			);
 		});
 
 		it('should handle speech recognition stop errors', async () => {
 			const stopError = new Error('Speech recognition stop failed');
 			mockSpeechRecognition.stop.mockRejectedValueOnce(stopError);
 
-			await expect(mockSpeechRecognition.stop()).rejects.toThrow('Speech recognition stop failed');
+			await expect(mockSpeechRecognition.stop()).rejects.toThrow(
+				'Speech recognition stop failed',
+			);
 		});
 
 		it('should handle permission check errors gracefully', async () => {
 			const permissionError = new Error('Permission check failed');
 			mockAudio.getRecordingPermissionsAsync.mockRejectedValueOnce(permissionError);
 
-			await expect(mockAudio.getRecordingPermissionsAsync()).rejects.toThrow('Permission check failed');
+			await expect(mockAudio.getRecordingPermissionsAsync()).rejects.toThrow(
+				'Permission check failed',
+			);
 		});
 	});
 
@@ -160,7 +168,9 @@ describe('useVoiceRecognition hook', () => {
 			// Mock conversion function
 			const convertSpeechToText = async (_uri: string, language: string = 'en-US') => {
 				await new Promise(resolve => setTimeout(resolve, 100)); // Simulate processing
-				return language === 'en-US' ? 'I want to attack the goblin with my sword' : 'Speech converted';
+				return language === 'en-US'
+					? 'I want to attack the goblin with my sword'
+					: 'Speech converted';
 			};
 
 			const result = await convertSpeechToText('test-audio.m4a', 'en-US');
@@ -171,7 +181,9 @@ describe('useVoiceRecognition hook', () => {
 		it('should handle different languages in conversion', async () => {
 			const convertSpeechToText = async (_uri: string, language: string = 'en-US') => {
 				await new Promise(resolve => setTimeout(resolve, 50));
-				return language === 'en-GB' ? 'I should like to attack the goblin' : 'I want to attack the goblin';
+				return language === 'en-GB'
+					? 'I should like to attack the goblin'
+					: 'I want to attack the goblin';
 			};
 
 			const usResult = await convertSpeechToText('test.m4a', 'en-US');
@@ -263,7 +275,7 @@ describe('useVoiceRecognition hook', () => {
 			// Simulate timeout by using fake timers
 			vi.useFakeTimers();
 
-			const timeoutPromise = new Promise((resolve) => {
+			const timeoutPromise = new Promise(resolve => {
 				setTimeout(() => resolve('timeout'), 5000);
 			});
 
@@ -279,7 +291,7 @@ describe('useVoiceRecognition hook', () => {
 		it('should handle custom timeout durations', async () => {
 			vi.useFakeTimers();
 
-			const customTimeoutPromise = new Promise((resolve) => {
+			const customTimeoutPromise = new Promise(resolve => {
 				setTimeout(() => resolve('custom timeout'), 10000);
 			});
 

@@ -49,3 +49,6 @@ coverage/
 
 # Markdown files in documentation folders
 .kiro/**/*.md
+
+# Assets directory (images, fonts, etc.)
+assets/

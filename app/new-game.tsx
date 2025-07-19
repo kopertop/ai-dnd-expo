@@ -466,7 +466,7 @@ const NewGameScreen: React.FC = () => {
 									}
 
 									try {
-									// Generate unique character ID
+										// Generate unique character ID
 										const characterId = `character-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 										// Create proper Character object that matches CharacterSchema

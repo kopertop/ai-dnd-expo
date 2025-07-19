@@ -3,8 +3,11 @@
  *
  * Provides D&D gameplay assistance using Cactus Compute's LLM
  */
-import { CactusMessage, CactusProviderSimple, createCactusProviderSimple } from '../providers/cactus-provider-simple';
-
+import {
+	CactusMessage,
+	CactusProviderSimple,
+	createCactusProviderSimple,
+} from '../providers/cactus-provider-simple';
 
 // Core interfaces
 export interface DMResponse {
@@ -156,9 +159,7 @@ When appropriate, include tool commands in your response using the following for
 Keep your responses concise, engaging, and true to D&D 5e rules.`;
 
 		// Create conversation history
-		const messages: CactusMessage[] = [
-			{ role: 'system', content: systemPrompt },
-		];
+		const messages: CactusMessage[] = [{ role: 'system', content: systemPrompt }];
 
 		// Add recent conversation history if available
 		if (context.gameHistory && context.gameHistory.length > 0) {

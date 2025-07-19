@@ -486,7 +486,6 @@ DM Response:`;
 				toolCommands,
 				processingTime,
 			};
-
 		} catch (error) {
 			console.error('ONNX inference failed:', error);
 			// Fallback to simulation
@@ -710,7 +709,10 @@ DM Response:`;
 	 * Delete model from storage
 	 */
 	async deleteModel(modelId: string): Promise<void> {
-		await this.storageManager.deleteModel(modelId, this.privacyManager.getPrivacySettings().secureDeleteEnabled);
+		await this.storageManager.deleteModel(
+			modelId,
+			this.privacyManager.getPrivacySettings().secureDeleteEnabled,
+		);
 	}
 
 	/**
