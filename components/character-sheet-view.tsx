@@ -1,8 +1,5 @@
-import Feather from '@expo/vector-icons/Feather';
-import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-	Alert,
 	Image,
 	ImageSourcePropType,
 	Pressable,
@@ -13,11 +10,9 @@ import {
 	View,
 } from 'react-native';
 
-
 import { ThemedView } from '@/components/themed-view';
 import { SKILL_LIST } from '@/constants/skills';
 import { STAT_KEYS } from '@/constants/stats';
-import { useAudio } from '@/hooks/use-audio-player';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useGameState } from '@/hooks/use-game-state';
 import { GearSlot } from '@/types/stats';
@@ -25,17 +20,16 @@ import { GearSlot } from '@/types/stats';
 export const CharacterSheetView: React.FC = () => {
 	const [tooltipSkill, setTooltipSkill] = useState<string | null>(null);
 	const [activeSlot, setActiveSlot] = useState<GearSlot | null>(null);
-	const { togglePlayPause, isPlaying } = useAudio();
 	const { playerCharacter, playerPortrait } = useGameState();
 	const colorScheme = useColorScheme();
-	
+
 	// TODO: Restore inventory manager
 	const loading = false;
 	const error = null;
 	const inventory: any[] = [];
 	const equipped: Record<string, any> = {};
-	const equipItem = async () => {};
-	const unequipItem = async () => {};
+	const equipItem = async () => { };
+	const unequipItem = async () => { };
 
 	if (!playerCharacter) return null;
 
@@ -69,26 +63,6 @@ export const CharacterSheetView: React.FC = () => {
 		setActiveSlot(null);
 	};
 
-	const handleMainMenu = () => {
-		Alert.alert(
-			'Return to Main Menu',
-			'Are you sure you want to return to the main menu? Any unsaved progress will be lost.',
-			[
-				{
-					text: 'Cancel',
-					style: 'cancel',
-				},
-				{
-					text: 'Return to Menu',
-					style: 'destructive',
-					onPress: () => {
-						router.replace('/');
-					},
-				},
-			],
-		);
-	};
-
 	// Use inventory with equipped status for display
 	const filteredInventory = activeSlot
 		? inventory.filter(entry => entry.item.slot === activeSlot)
@@ -98,7 +72,7 @@ export const CharacterSheetView: React.FC = () => {
 
 	return (
 		<ThemedView style={[styles.container, { backgroundColor }]}>
-			<ScrollView 
+			<ScrollView
 				style={styles.scrollView}
 				contentContainerStyle={styles.scrollContent}
 				showsVerticalScrollIndicator={false}
@@ -253,31 +227,6 @@ export const CharacterSheetView: React.FC = () => {
 					</View>
 				</View>
 			</ScrollView>
-
-			{/* Action Buttons */}
-			<View style={styles.actionBar}>
-				<TouchableOpacity
-					style={styles.actionButton}
-					onPress={togglePlayPause}
-					accessibilityLabel={
-						isPlaying ? 'Mute background music' : 'Unmute background music'
-					}
-				>
-					<Feather
-						name={isPlaying ? 'volume-2' : 'volume-x'}
-						size={16}
-						color={isPlaying ? '#4caf50' : '#f44336'}
-					/>
-					<Text style={[styles.actionButtonText, { color: isPlaying ? '#4caf50' : '#f44336' }]}>
-						{isPlaying ? 'Mute' : 'Music'}
-					</Text>
-				</TouchableOpacity>
-
-				<TouchableOpacity style={styles.actionButton} onPress={handleMainMenu}>
-					<Feather name="home" size={16} color="#C9B037" />
-					<Text style={styles.actionButtonText}>Menu</Text>
-				</TouchableOpacity>
-			</View>
 		</ThemedView>
 	);
 };
@@ -291,7 +240,6 @@ const styles = StyleSheet.create({
 	},
 	scrollContent: {
 		padding: 16,
-		paddingBottom: 80, // Space for action bar
 	},
 	header: {
 		flexDirection: 'row',
@@ -484,31 +432,5 @@ const styles = StyleSheet.create({
 		fontStyle: 'italic',
 		textAlign: 'center',
 		padding: 20,
-	},
-	actionBar: {
-		position: 'absolute',
-		bottom: 0,
-		left: 0,
-		right: 0,
-		flexDirection: 'row',
-		justifyContent: 'space-around',
-		paddingVertical: 12,
-		paddingHorizontal: 16,
-		backgroundColor: 'rgba(201, 176, 55, 0.1)',
-		borderTopWidth: 1,
-		borderTopColor: '#C9B037',
-	},
-	actionButton: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		padding: 8,
-		borderRadius: 8,
-		backgroundColor: 'rgba(201, 176, 55, 0.2)',
-		gap: 4,
-	},
-	actionButtonText: {
-		fontSize: 14,
-		fontWeight: '500',
-		color: '#C9B037',
 	},
 });
