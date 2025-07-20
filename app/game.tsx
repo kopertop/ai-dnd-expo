@@ -231,14 +231,6 @@ const GameScreen: React.FC = () => {
 		}
 	};
 
-	// Handle phone layout by redirecting to tabs
-	useEffect(() => {
-		if (isPhone && gameState && worldState) {
-			// For phone layout, we should redirect to the tab interface
-			// This will be handled by the app's routing logic
-		}
-	}, [isPhone, gameState, worldState]);
-
 	// Determine error state for ResponsiveGameContainer
 	let gameError: string | null = null;
 	if (!gameState) {
@@ -251,7 +243,8 @@ const GameScreen: React.FC = () => {
 	// Determine loading state
 	const gameLoading = loading || !worldState;
 
-	// For phone devices, show a message that they should use the tab interface
+	// For phone devices, show message to use tab interface
+	// The actual routing should be handled by the app's navigation structure
 	if (isPhone) {
 		return (
 			<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
@@ -259,8 +252,8 @@ const GameScreen: React.FC = () => {
 					Mobile Interface
 				</ThemedText>
 				<ThemedText style={{ textAlign: 'center' }}>
-					For the best mobile experience, please use the tab interface by navigating to
-					the main menu and selecting "Continue Game".
+					For the best mobile experience, please use the tab interface by navigating back
+					and selecting "Continue Game" from the main menu.
 				</ThemedText>
 			</View>
 		);

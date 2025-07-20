@@ -83,8 +83,8 @@ export const ResponsiveGameContainer: React.FC<ResponsiveGameContainerProps> = (
 		);
 	}
 
-	// Phone layout should not be handled by this component
-	// This component is only for tablet layout
+	// This component should only be used for tablet layouts
+	// Phone layouts are handled by the app routing system
 	if (isPhone) {
 		throw new Error(
 			'ResponsiveGameContainer should not be used for phone layouts. Use tab navigation instead.',
