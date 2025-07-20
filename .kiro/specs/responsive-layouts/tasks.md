@@ -116,14 +116,14 @@
   - Test integration with existing game functionality
   - _Requirements: 4.5, 5.5_
 
-- [ ] 10. Implement error handling and permissions
-  - [ ] 10.1 Add voice permission handling
+- [x] 10. Implement error handling and permissions
+  - [x] 10.1 Add voice permission handling
     - Create permission request utilities
     - Add user-friendly error messages for permission denials
     - Handle graceful fallbacks when voice features are unavailable
     - _Requirements: 6.9, 6.10_
 
-  - [ ] 10.2 Add speech recognition error handling
+  - [x] 10.2 Add speech recognition error handling
     - Handle network errors, no speech detected, and other STT errors
     - Provide visual feedback for error states
     - _Requirements: 6.10, 6.11_

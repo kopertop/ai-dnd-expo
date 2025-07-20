@@ -2,6 +2,12 @@ import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-spe
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
+import {
+	handleSpeechRecognitionError,
+	SpeechRecognitionError,
+} from '../utils/speech-recognition-errors';
+import { getVoicePermissionManager } from '../utils/voice-permissions';
+
 export interface SpeechRecognitionOptions {
 	language?: string;
 	continuous?: boolean;
@@ -16,11 +22,13 @@ export interface SpeechRecognitionResult {
 	recognizing: boolean;
 	transcript: string;
 	error: string | null;
+	errorInfo: SpeechRecognitionError | null;
 	isSupported: boolean;
 	hasPermission: boolean;
 	startListening: () => Promise<void>;
 	stopListening: () => void;
 	requestPermission: () => Promise<boolean>;
+	retryLastOperation: () => Promise<void>;
 }
 
 /**
@@ -33,8 +41,10 @@ export const useSpeechRecognition = (
 	const [recognizing, setRecognizing] = useState(false);
 	const [transcript, setTranscript] = useState('');
 	const [error, setError] = useState<string | null>(null);
+	const [errorInfo, setErrorInfo] = useState<SpeechRecognitionError | null>(null);
 	const [hasPermission, setHasPermission] = useState(false);
 	const [isSupported, setIsSupported] = useState(false);
+	const [lastOperation, setLastOperation] = useState<'start' | null>(null);
 
 	// Check if speech recognition is supported on this platform
 	useEffect(() => {
@@ -44,7 +54,8 @@ export const useSpeechRecognition = (
 
 	const checkPermissions = useCallback(async () => {
 		try {
-			const result = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+			const manager = getVoicePermissionManager();
+			const result = await manager.checkPermissions();
 			setHasPermission(result.granted);
 		} catch (err) {
 			console.error('Error checking speech recognition permissions:', err);
@@ -59,11 +70,26 @@ export const useSpeechRecognition = (
 
 	const requestPermission = useCallback(async (): Promise<boolean> => {
 		try {
-			const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+			const manager = getVoicePermissionManager();
+			const result = await manager.requestPermissions();
 			setHasPermission(result.granted);
 			return result.granted;
 		} catch (err) {
-			console.error('Error requesting speech recognition permissions:', err);
+			const manager = getVoicePermissionManager();
+			const permissionError = manager.getPermissionError(err);
+
+			// Convert permission error to speech recognition error format
+			const speechError: SpeechRecognitionError = {
+				code: permissionError.code,
+				message: permissionError.message,
+				userMessage: permissionError.userMessage,
+				canRetry: permissionError.canRetry,
+				isTemporary: false,
+				requiresAction: permissionError.showSettings,
+			};
+
+			setError(speechError.userMessage);
+			setErrorInfo(speechError);
 			setHasPermission(false);
 			return false;
 		}
@@ -71,7 +97,8 @@ export const useSpeechRecognition = (
 
 	const startListening = useCallback(async () => {
 		if (!isSupported) {
-			setError('Speech recognition is not supported on this platform');
+			const manager = getVoicePermissionManager();
+			manager.showVoiceUnavailableMessage('not_supported');
 			return;
 		}
 
@@ -80,14 +107,17 @@ export const useSpeechRecognition = (
 		}
 
 		setError(null);
+		setErrorInfo(null);
 		setTranscript('');
+		setLastOperation('start');
 
 		try {
 			// Request permission if not granted
 			if (!hasPermission) {
 				const granted = await requestPermission();
 				if (!granted) {
-					setError('Microphone permission is required for voice input');
+					const manager = getVoicePermissionManager();
+					manager.showVoiceUnavailableMessage('permissions');
 					return;
 				}
 			}
@@ -107,10 +137,10 @@ export const useSpeechRecognition = (
 
 			ExpoSpeechRecognitionModule.start(recognitionOptions);
 		} catch (err) {
-			const errorMessage =
-				err instanceof Error ? err.message : 'Failed to start speech recognition';
-			setError(errorMessage);
-			options.onError?.(errorMessage);
+			const errorInfo = handleSpeechRecognitionError(err, () => startListening(), false);
+			setError(errorInfo.userMessage);
+			setErrorInfo(errorInfo);
+			options.onError?.(errorInfo.userMessage);
 		}
 	}, [isSupported, recognizing, hasPermission, options, requestPermission]);
 
@@ -121,20 +151,30 @@ export const useSpeechRecognition = (
 
 		try {
 			ExpoSpeechRecognitionModule.stop();
+			setLastOperation(null);
 		} catch (err) {
-			console.error('Error stopping speech recognition:', err);
+			const errorInfo = handleSpeechRecognitionError(err, undefined, false);
+			console.error('Error stopping speech recognition:', errorInfo);
 		}
 	}, [recognizing]);
+
+	const retryLastOperation = useCallback(async () => {
+		if (lastOperation === 'start') {
+			await startListening();
+		}
+	}, [lastOperation, startListening]);
 
 	// Set up speech recognition event listeners
 	useSpeechRecognitionEvent('start', () => {
 		setRecognizing(true);
 		setError(null);
+		setErrorInfo(null);
 		options.onStart?.();
 	});
 
 	useSpeechRecognitionEvent('end', () => {
 		setRecognizing(false);
+		setLastOperation(null);
 		options.onEnd?.();
 	});
 
@@ -148,27 +188,29 @@ export const useSpeechRecognition = (
 	});
 
 	useSpeechRecognitionEvent('error', event => {
-		const errorMessage = event.message || 'Speech recognition error occurred';
+		const errorInfo = handleSpeechRecognitionError(event, retryLastOperation, false);
 
-		// Handle "no-speech" error more gracefully
-		if (event.error === 'no-speech') {
-			// Don't treat no speech as an error, just continue
-			return;
+		// Only set error state for errors that should be shown to user
+		if (errorInfo.code !== 'NO_SPEECH' && errorInfo.code !== 'CANCELLED') {
+			setError(errorInfo.userMessage);
+			setErrorInfo(errorInfo);
 		}
 
-		setError(errorMessage);
 		setRecognizing(false);
-		options.onError?.(errorMessage);
+		setLastOperation(null);
+		options.onError?.(errorInfo.userMessage);
 	});
 
 	return {
 		recognizing,
 		transcript,
 		error,
+		errorInfo,
 		isSupported,
 		hasPermission,
 		startListening,
 		stopListening,
 		requestPermission,
+		retryLastOperation,
 	};
 };

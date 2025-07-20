@@ -1,6 +1,8 @@
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
+
+import { getVoicePermissionManager } from '../utils/voice-permissions';
 
 export interface VoicePermissionsResult {
 	hasPermissions: boolean;
@@ -55,53 +57,30 @@ export const useVoicePermissions = (): VoicePermissionsResult => {
 			setIsLoading(true);
 			setError(null);
 
-			// First check if we already have permissions to avoid unnecessary prompts
-			const currentPermissions = await checkPermissions();
-			if (currentPermissions) {
-				console.log('✅ Permissions already granted, skipping request');
-				return true;
-			}
+			const manager = getVoicePermissionManager();
+			const result = await manager.requestPermissions();
 
-			console.log('🔐 Requesting speech recognition permissions...');
+			setHasPermissions(result.granted);
 
-			// Request speech recognition permissions
-			const speechResult = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-
-			console.log('🔐 Speech recognition permission result:', speechResult);
-
-			const granted = speechResult.granted;
-			setHasPermissions(granted);
-
-			if (!granted) {
+			if (!result.granted) {
 				const errorMessage =
 					'Voice permissions are required for speech recognition features';
 				setError(errorMessage);
-
-				// Show user-friendly alert
-				Alert.alert(
-					'Permissions Required',
-					Platform.select({
-						ios: 'Microphone and Speech Recognition permissions are needed for voice commands. Please enable them in Settings.',
-						android:
-							'Microphone permission is needed for voice commands. Please enable it in Settings.',
-						default: 'Voice permissions are needed for speech recognition features.',
-					}),
-					[{ text: 'OK' }],
-				);
 			}
 
-			return granted;
+			return result.granted;
 		} catch (err) {
-			const errorMessage =
-				err instanceof Error ? err.message : 'Failed to request permissions';
-			console.error('❌ Permission request failed:', errorMessage);
-			setError(errorMessage);
+			const manager = getVoicePermissionManager();
+			const errorInfo = manager.getPermissionError(err);
+
+			console.error('❌ Permission request failed:', errorInfo);
+			setError(errorInfo.userMessage);
 			setHasPermissions(false);
 			return false;
 		} finally {
 			setIsLoading(false);
 		}
-	}, [checkPermissions]);
+	}, []);
 
 	/**
 	 * Check permissions on mount

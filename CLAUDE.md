@@ -7,29 +7,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Project**: AI D&D platform with React Native/Expo using voice synthesis & image generation
 
 **Primary Commands**:
+
 - `npm run ios` - Start iOS simulator (primary testing method)
 - `npm start` - Start Expo dev server
 - `npm run check` - Run all typechecking, linting, and general "doctor" checks
 
-**Testing Protocol**: 
+**Testing Protocol**:
+
 - Always verify server isn't running before starting new one
 - Use AppleScript "tell application Simulator" for iOS testing
 - Must take screenshots & interact to verify completion
 - CRITICAL: Always test after assuming task completion
 
 **Architecture**:
+
 - Expo Router file-based routing in `/app`
 - Themed components with light/dark mode
 - Uses `@/` path aliases
 - Key dirs: `/components`, `/hooks`, `/constants`, `/services`
 
 **Working Features**:
+
 - Tavern companion recruitment
 - Voice chat with speech recognition/TTS
 - AI DM with tool calling
 - Location-aware quick actions
 
 **Development Rules**:
+
 - Edit existing files > create new ones
 - No proactive documentation creation
 - TypeScript strict mode
@@ -86,7 +91,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Testing app-specific configurations (icons, splash screens)
 - Implementing push notifications or universal links
 - Production-ready development environment
-
 
 ## AI D&D Platform Context
 

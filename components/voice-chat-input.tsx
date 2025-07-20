@@ -1,10 +1,14 @@
 import { FontAwesome } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { Alert, Animated, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
+import { VoiceErrorHandler } from './voice-error-handler';
+import { VoiceStatus, VoiceStatusIndicator } from './voice-status-indicator';
 
 import { Colors } from '@/constants/colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
+import { useVoiceErrorWithFeedback } from '@/hooks/use-voice-error-handling';
 
 interface VoiceChatInputProps {
 	onSend: (message: string) => void;
@@ -32,6 +36,9 @@ export const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
 	const [internalValue, setInternalValue] = useState('');
 	const [pulseAnim] = useState(new Animated.Value(1));
 
+	// Error handling
+	const { errorState, clearError } = useVoiceErrorWithFeedback();
+
 	// Use controlled or uncontrolled value
 	const message = controlledValue !== undefined ? controlledValue : internalValue;
 	const setMessage = controlledOnChangeText || setInternalValue;
@@ -39,24 +46,25 @@ export const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
 	const {
 		recognizing,
 		transcript,
-		error,
+		errorInfo,
 		startListening,
 		stopListening,
 		hasPermission,
-		requestPermission,
+		retryLastOperation,
+		isSupported,
 	} = useSpeechRecognition({
 		language: 'en-US',
 		continuous: false,
 		interimResults: true,
 		onStart: () => {
-			// Speech recognition started
+			clearError();
 		},
 		onEnd: () => {
 			// Speech recognition ended
 		},
 		onError: errorMessage => {
+			// Additional error handling can be done here if needed
 			console.error('Speech recognition error:', errorMessage);
-			Alert.alert('Voice Recognition Error', errorMessage);
 		},
 	});
 
@@ -106,21 +114,25 @@ export const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
 		if (recognizing) {
 			stopListening();
 		} else {
-			// Check permissions first
-			if (!hasPermission) {
-				const granted = await requestPermission();
-				if (!granted) {
-					Alert.alert(
-						'Permission Required',
-						'Microphone permission is needed for voice input. Please enable it in settings.',
-						[{ text: 'OK' }],
-					);
-					return;
-				}
-			}
-
 			await startListening();
 		}
+	};
+
+	const handleRetry = async () => {
+		await retryLastOperation();
+	};
+
+	// Determine voice status for visual feedback
+	const getVoiceStatus = (): VoiceStatus => {
+		if (!isSupported) return 'not_supported';
+		if (errorInfo) {
+			if (errorInfo.code === 'PERMISSION_DENIED' || errorInfo.code === 'PERMISSION_ERROR') {
+				return 'permission_denied';
+			}
+			return 'error';
+		}
+		if (recognizing) return 'listening';
+		return 'idle';
 	};
 
 	const getMicButtonColor = () => {
@@ -145,18 +157,14 @@ export const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
 	return (
 		<View style={styles.container}>
 			{/* Error display */}
-			{error && (
-				<View style={styles.errorContainer}>
-					<Text style={styles.errorText}>{error}</Text>
-				</View>
-			)}
+			<VoiceErrorHandler
+				error={errorInfo || errorState.currentError}
+				onRetry={handleRetry}
+				compact={true}
+			/>
 
-			{/* Listening indicator */}
-			{recognizing && (
-				<View style={styles.listeningContainer}>
-					<Text style={styles.listeningText}>🎤 Listening...</Text>
-				</View>
-			)}
+			{/* Voice status indicator */}
+			<VoiceStatusIndicator status={getVoiceStatus()} compact={true} animated={true} />
 
 			{/* Input container */}
 			<View style={styles.inputContainer}>
@@ -248,29 +256,7 @@ const createStyles = (colors: typeof Colors.light) =>
 			paddingHorizontal: 16,
 			paddingVertical: 8,
 		},
-		errorContainer: {
-			backgroundColor: '#ff4444',
-			borderRadius: 8,
-			padding: 8,
-			marginBottom: 8,
-		},
-		errorText: {
-			color: '#FFFFFF',
-			fontSize: 12,
-			textAlign: 'center',
-		},
-		listeningContainer: {
-			backgroundColor: colors.tint + '20',
-			borderRadius: 8,
-			padding: 8,
-			marginBottom: 8,
-			alignItems: 'center',
-		},
-		listeningText: {
-			color: colors.tint,
-			fontSize: 14,
-			fontWeight: '600',
-		},
+
 		inputContainer: {
 			flexDirection: 'row',
 			alignItems: 'flex-end',
