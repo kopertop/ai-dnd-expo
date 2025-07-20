@@ -1,12 +1,14 @@
 import { Slider, Switch } from '@expo/ui/swift-ui';
+import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { useSettingsStore } from '../stores/settings-store';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
+import { useGameState } from '@/hooks/use-game-state';
 import { TTSVoice, useTextToSpeech } from '@/hooks/use-text-to-speech';
 
 export const SettingsView: React.FC = () => {
@@ -20,6 +22,7 @@ export const SettingsView: React.FC = () => {
 	} = useSettingsStore();
 
 	const { availableVoices } = useTextToSpeech();
+	const { gameState, save } = useGameState();
 	const [selectedVoice, setSelectedVoice] = useState<TTSVoice | null>(null);
 
 	// Find the currently selected voice
@@ -36,6 +39,33 @@ export const SettingsView: React.FC = () => {
 
 	const handleVoiceSettingChange = (key: keyof typeof voiceSettings, value: any) => {
 		updateVoiceSettings({ [key]: value });
+	};
+
+	const handleSaveAndQuit = async () => {
+		if (!gameState) {
+			Alert.alert('Error', 'No game to save');
+			return;
+		}
+
+		try {
+			// Save the current game state
+			await save(gameState);
+
+			// Show confirmation and navigate back to main menu
+			Alert.alert(
+				'Game Saved',
+				'Your game has been saved successfully. You can continue it later from the main menu.',
+				[
+					{
+						text: 'OK',
+						onPress: () => router.replace('/'),
+					},
+				],
+			);
+		} catch (error) {
+			Alert.alert('Error', 'Failed to save game. Please try again.');
+			console.error('Save and quit error:', error);
+		}
 	};
 
 	return (
@@ -160,6 +190,23 @@ export const SettingsView: React.FC = () => {
 						</View>
 					)}
 				</View>
+
+				{/* Game Management Section */}
+				<View style={styles.section}>
+					<ThemedText type="subtitle" style={styles.sectionTitle}>
+						Game Management
+					</ThemedText>
+
+					<TouchableOpacity
+						style={styles.saveAndQuitButton}
+						onPress={handleSaveAndQuit}
+						activeOpacity={0.8}
+					>
+						<ThemedText style={styles.saveAndQuitButtonText}>
+							Save and Quit
+						</ThemedText>
+					</TouchableOpacity>
+				</View>
 			</ScrollView>
 		</ThemedView>
 	);
@@ -217,5 +264,20 @@ const styles = StyleSheet.create({
 		color: '#8B7355',
 		maxWidth: 150,
 		textAlign: 'right',
+	},
+	saveAndQuitButton: {
+		backgroundColor: '#C9B037',
+		paddingVertical: 16,
+		paddingHorizontal: 24,
+		borderRadius: 8,
+		alignItems: 'center',
+		marginTop: 16,
+		borderWidth: 2,
+		borderColor: '#B8A035',
+	},
+	saveAndQuitButtonText: {
+		color: '#3B2F1B',
+		fontWeight: 'bold',
+		fontSize: 18,
 	},
 });
