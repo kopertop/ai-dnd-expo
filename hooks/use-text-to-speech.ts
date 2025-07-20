@@ -2,6 +2,8 @@ import * as Speech from 'expo-speech';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
+import { useSettingsStore } from '@/stores/settings-store';
+
 export interface TTSOptions {
 	language?: string;
 	pitch?: number;
@@ -37,6 +39,7 @@ export const useTextToSpeech = (): TextToSpeechResult => {
 	const [isSpeaking, setIsSpeaking] = useState(false);
 	const [availableVoices, setAvailableVoices] = useState<TTSVoice[]>([]);
 	const [isAvailable, setIsAvailable] = useState(false);
+	const { voice: voiceSettings } = useSettingsStore();
 
 	/**
 	 * Check if TTS is available and load voices
@@ -55,6 +58,7 @@ export const useTextToSpeech = (): TextToSpeechResult => {
 					language: voice.language,
 					quality: voice.quality,
 				}));
+				// console.log('formattedVoices', formattedVoices);
 
 				setAvailableVoices(formattedVoices);
 			} catch (error) {
@@ -88,7 +92,7 @@ export const useTextToSpeech = (): TextToSpeechResult => {
 					language: options.language || getDMVoiceLanguage(),
 					pitch: options.pitch || getDMVoicePitch(),
 					rate: options.rate || getDMVoiceRate(),
-					voice: options.voice || getDMVoiceIdentifier(),
+					voice: options.voice || getDMVoiceIdentifier(voiceSettings.selectedVoiceId),
 					onStart: () => {
 						setIsSpeaking(true);
 						options.onStart?.();
@@ -185,10 +189,15 @@ const getDMVoiceRate = (): number => {
 /**
  * Get preferred DM voice identifier
  */
-const getDMVoiceIdentifier = (): string | undefined => {
-	// Platform-specific voice selection for DM character
+const getDMVoiceIdentifier = (selectedVoiceId?: string): string | undefined => {
+	// Use selected voice from settings if available
+	if (selectedVoiceId) {
+		return selectedVoiceId;
+	}
+
+	// Fall back to platform-specific defaults
 	if (Platform.OS === 'ios') {
-		return 'com.apple.speech.voice.Alex';
+		return 'com.apple.voice.compact.en-US.Samantha';
 	} else if (Platform.OS === 'android') {
 		return 'en-us-x-sfg#male_2-local'; // Deep male voice on Android
 	}

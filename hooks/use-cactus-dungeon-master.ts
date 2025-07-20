@@ -16,7 +16,7 @@ import {
 const CACTUS_API_KEY_STORAGE_KEY = 'cactus_api_key';
 const CACTUS_MODEL_PREFERENCE_KEY = 'cactus_model_preference';
 const DEFAULT_MODEL_URL =
-	'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf';
+	'https://huggingface.co/Cactus-Compute/SmolVLM2-500m-Instruct-GGUF/resolve/main/SmolVLM2-500M-Video-Instruct-Q8_0.gguf';
 
 // Types
 export interface Message {

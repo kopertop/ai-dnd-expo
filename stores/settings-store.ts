@@ -11,6 +11,7 @@ export interface VoiceSettings {
 	volume: number;
 	speechRate: number;
 	selectedVoiceId?: string;
+	preferredLanguage?: string;
 }
 
 export interface UserSettings {
@@ -40,6 +41,7 @@ export const useSettingsStore = create<SettingsStore>()(
 				volume: 1.0,
 				speechRate: 1.0,
 				selectedVoiceId: undefined,
+				preferredLanguage: 'en',
 			},
 
 			// Actions
