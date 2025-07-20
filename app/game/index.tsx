@@ -1,14 +1,14 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
-import { ResponsiveGameContainer } from '../components/responsive-game-container';
-import { ThemedText } from '../components/themed-text';
-import { useCactusDungeonMaster } from '../hooks/use-cactus-dungeon-master';
-import { useGameState } from '../hooks/use-game-state';
-import { useScreenSize } from '../hooks/use-screen-size';
-import { generateWorldForGameState } from '../services/world-generator';
-import { GameWorldState, Position } from '../types/world-map';
+import { ResponsiveGameContainer } from '@/components/responsive-game-container';
+import { ThemedText } from '@/components/themed-text';
+import { useCactusDungeonMaster } from '@/hooks/use-cactus-dungeon-master';
+import { useGameState } from '@/hooks/use-game-state';
+import { useScreenSize } from '@/hooks/use-screen-size';
+import { generateWorldForGameState } from '@/services/world-generator';
+import { GameWorldState, Position } from '@/types/world-map';
 
 const GameScreen: React.FC = () => {
 	const [worldState, setWorldState] = useState<GameWorldState | null>(null);
@@ -17,6 +17,7 @@ const GameScreen: React.FC = () => {
 	const { loading, gameState, save } = useGameState();
 	const [saveError, setSaveError] = useState<string | null>(null);
 	const { isPhone } = useScreenSize();
+	const router = useRouter();
 
 	// Initialize Dungeon Master agent
 	const playerCharacter = gameState
@@ -243,20 +244,17 @@ const GameScreen: React.FC = () => {
 	// Determine loading state
 	const gameLoading = loading || !worldState;
 
-	// For phone devices, show message to use tab interface
-	// The actual routing should be handled by the app's navigation structure
+	// For phone devices, redirect to tab interface
+	useEffect(() => {
+		if (isPhone) {
+			console.log('📱 Phone detected, redirecting to tab interface...');
+			router.replace('/game/(tabs)/' as any);
+		}
+	}, [isPhone, router]);
+
+	// Don't render anything while redirecting on phone
 	if (isPhone) {
-		return (
-			<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-				<ThemedText type="title" style={{ textAlign: 'center', marginBottom: 16 }}>
-					Mobile Interface
-				</ThemedText>
-				<ThemedText style={{ textAlign: 'center' }}>
-					For the best mobile experience, please use the tab interface by navigating back
-					and selecting "Continue Game" from the main menu.
-				</ThemedText>
-			</View>
-		);
+		return null;
 	}
 
 	return (
