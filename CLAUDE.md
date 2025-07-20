@@ -2,33 +2,48 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## Quick Reference
 
-This is an AI-powered Dungeons & Dragons platform built with React Native/Expo. The project enables players to experience D&D with AI-powered Dungeon Masters, NPCs, and companion characters. It features voice synthesis via Resemble.ai and dynamic image generation through Flux.dev, supporting both solo and multiplayer gameplay across mobile, web, and future desktop platforms.
+**Project**: AI D&D platform with React Native/Expo using voice synthesis & image generation
 
-## Development Commands
+**Primary Commands**:
+- `npm run ios` - Start iOS simulator (primary testing method)
+- `npm start` - Start Expo dev server
+- `npm run check` - Run all typechecking, linting, and general "doctor" checks
 
-### Core Commands
+**Testing Protocol**: 
+- Always verify server isn't running before starting new one
+- Use AppleScript "tell application Simulator" for iOS testing
+- Must take screenshots & interact to verify completion
+- CRITICAL: Always test after assuming task completion
 
-- `npm start` or `npx expo start` - Start the Expo development server
+**Architecture**:
+- Expo Router file-based routing in `/app`
+- Themed components with light/dark mode
+- Uses `@/` path aliases
+- Key dirs: `/components`, `/hooks`, `/constants`, `/services`
+
+**Working Features**:
+- Tavern companion recruitment
+- Voice chat with speech recognition/TTS
+- AI DM with tool calling
+- Location-aware quick actions
+
+**Development Rules**:
+- Edit existing files > create new ones
+- No proactive documentation creation
+- TypeScript strict mode
+- ESLint with Expo config
+
+## Additional Commands
+
 - `npm run android` - Start with Android emulator
-- `npm run ios` - Start with iOS simulator
 - `npm run web` - Start web version
-- `npm run lint` - Run ESLint
-
-### Native Build Commands
-
 - `npx expo run:android` - Build and run locally on Android
 - `npx expo run:ios` - Build and run locally on iOS
 - `npx expo prebuild` - Generate native code (for ejected projects)
 - `npx testflight` - Build and deploy to testflight
-
-### Project Reset
-
 - `npm run reset-project` - Moves current app to app-example and creates blank app directory
-
-### Type Checking
-
 - `npx tsc` - Run TypeScript type checking without compilation
 
 ## Architecture
@@ -42,46 +57,19 @@ This is an AI-powered Dungeons & Dragons platform built with React Native/Expo. 
 - Supports lazy-evaluation and deferred bundling
 - Universal navigation across Android, iOS, and web platforms
 
-### Key Directories
+### Additional Directories
 
-- `/app` - Route components and layouts
-- `/components` - Reusable UI components
-- `/hooks` - Custom React hooks
-- `/constants` - App constants (Colors, etc.)
 - `/assets` - Static assets (images, fonts)
 - `/services` - API services and AI integrations (to be created)
 - `/types` - TypeScript type definitions (to be created)
 - `/utils` - Utility functions (to be created)
 
-### Theming System
+## Tech Stack
 
-- Light/dark mode support via `useColorScheme` hook
-- Colors defined in `/constants/colors.ts`
-- `ThemedText` and `ThemedView` components for theme-aware UI
-- `useThemeColor` hook for accessing theme colors
-
-### Component Patterns
-
-- Themed components extend base React Native components with light/dark color props
-- Uses `@/` path alias for absolute imports
-- Platform-specific styling with `Platform.select()`
-
-## Key Files
-
-- `app/_layout.tsx` - Root layout with theme provider
-- `app/(tabs)/_layout.tsx` - Tab navigation layout
-- `components/themed-text.tsx` & `components/themed-view.tsx` - Core themed components
-- `hooks/use-theme-colors.ts` - Theme color resolution
-- `constants/colors.ts` - Color definitions
-- `tsconfig.json` - TypeScript config with path aliases
-
-## Development Notes
-
-- Uses Expo SDK ~53.0.17 with React Native 0.79.5
-- TypeScript strict mode enabled
-- ESLint configured with Expo config
-- Font loading handled in root layout
-- Platform-specific code supported via file extensions (.ios.tsx, .web.ts)
+- Expo SDK ~53.0.17 with React Native 0.79.5
+- TypeScript strict mode
+- ESLint with Expo config
+- Platform-specific code via file extensions (.ios.tsx, .web.ts)
 
 ## Expo Workflow Considerations
 
@@ -99,19 +87,6 @@ This is an AI-powered Dungeons & Dragons platform built with React Native/Expo. 
 - Implementing push notifications or universal links
 - Production-ready development environment
 
-### TypeScript Best Practices
-
-- Use `.tsx` for React components, `.ts` for non-JSX files
-- Leverage path aliases (`@/*`) for cleaner imports
-- Run `npx tsc` for type checking
-- Extend `expo/tsconfig.base` configuration
-
-### ESLint Configuration
-
-- Uses Flat config format (SDK 53+)
-- Extends `eslint-config-expo`
-- Add `.eslintignore` for performance optimization
-- Consider adding Prettier integration for consistent formatting
 
 ## AI D&D Platform Context
 
@@ -137,21 +112,9 @@ This is an AI-powered Dungeons & Dragons platform built with React Native/Expo. 
 - Develop real-time multiplayer infrastructure
 - Integrate voice and image generation APIs
 
-### Important Files for AI Development
+### Important Files for Development
 
 - `AI-INSTRUCTIONS.md` - Comprehensive AI development guidelines
 - `TODO.md` - Detailed development roadmap and feature planning
-- `OVERNIGHT-PROGRESS.md` - Status of overnight development work (cleaned up)
-- `COMPANION-DEMO.md` - Working tavern companion recruitment system
 - `/components/tavern-companion-recruitment.tsx` - Functional companion system
 - `/hooks/use-simple-companions.ts` - Companion management logic
-- Future: `/services/ai/agents/` - AI agent implementations
-- Future: `/services/ai/prompts/` - Prompt templates and management
-
-### Current Working Features
-
-- **Tavern Companion Recruitment** - Fully integrated with DM chat interface
-- **Location-aware Quick Actions** - Context-sensitive DM chat buttons
-- **Companion Management** - Party system with persistence
-- **Voice Chat** - Real-time speech recognition and TTS
-- **DM Agent** - AI-powered dungeon master with tool calling
