@@ -10,22 +10,25 @@ import {
 	Image,
 	Keyboard,
 	KeyboardAvoidingView,
-	Platform,
 	SafeAreaView,
 	ScrollView,
 	StyleSheet,
 	Text,
-	TextInput,
 	TouchableOpacity,
-	useWindowDimensions,
 	View,
+	useWindowDimensions,
 } from 'react-native';
+
+import { VoiceChatInput } from './voice-chat-input';
 
 import { Colors } from '@/constants/colors';
 import { RaceByID } from '@/constants/races';
 import { SKILL_LIST } from '@/constants/skills';
 import { useSimpleCompanions } from '@/hooks/use-simple-companions';
+import { useDMVoice } from '@/hooks/use-text-to-speech';
 import { DMMessage } from '@/services/ai/agents/dungeon-master-agent';
+import { useSettingsStore } from '@/stores/settings-store';
+import { useChatStore } from '@/stores/use-chat-store';
 import type { Character } from '@/types/character';
 
 interface ChatMessage {
@@ -78,7 +81,6 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 	activeCharacter,
 	isLoading = false,
 }) => {
-	const [inputText, setInputText] = useState('');
 	const companions = useSimpleCompanions();
 	const scrollViewRef = useRef<ScrollView>(null);
 	const { width: screenWidth } = useWindowDimensions();
@@ -88,6 +90,15 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 	const TOP_OFFSET = 80; // Matches your 'top: 80' in styles
 	const chatHeight = windowHeight - BOTTOM_BAR_HEIGHT - TOP_OFFSET;
 	const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+	// Connect to chat store for voice input state
+	const { currentInput, setCurrentInput } = useChatStore();
+
+	// Connect to settings store for TTS preferences
+	const { voice: voiceSettings } = useSettingsStore();
+
+	// Initialize TTS for DM responses
+	const dmVoice = useDMVoice();
 
 	useEffect(() => {
 		const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
@@ -132,11 +143,11 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 		};
 	});
 
-	const handleSendMessage = async () => {
-		if (inputText.trim() && !isLoading) {
-			const message = inputText.trim();
-			setInputText('');
-			await onSendMessage(message, activeCharacter);
+	const handleSendMessage = async (message: string) => {
+		if (message.trim() && !isLoading) {
+			const trimmedMessage = message.trim();
+			setCurrentInput(''); // Clear the store input
+			await onSendMessage(trimmedMessage, activeCharacter);
 		}
 	};
 
@@ -234,6 +245,23 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 		}
 	}, [chatMessages.length]);
 
+	// Auto-speak DM messages when TTS is enabled
+	useEffect(() => {
+		if (voiceSettings.ttsEnabled && voiceSettings.autoSpeak && chatMessages.length > 0) {
+			const lastMessage = chatMessages[chatMessages.length - 1];
+
+			// Only speak DM messages, not player messages
+			if (lastMessage.speakerId === 'dm' && lastMessage.content.trim()) {
+				// Use a small delay to ensure the message is rendered first
+				const speakTimeout = setTimeout(() => {
+					dmVoice.speakAsNarrator(lastMessage.content);
+				}, 500);
+
+				return () => clearTimeout(speakTimeout);
+			}
+		}
+	}, [chatMessages, voiceSettings.ttsEnabled, voiceSettings.autoSpeak, dmVoice]);
+
 	const lastDM = [...chatMessages].reverse().find(m => m.speakerId === 'dm');
 	const suggestions = lastDM ? getSuggestionsFromMessage(lastDM.content) : [];
 
@@ -253,6 +281,26 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 				<View style={styles.chatHeader}>
 					<Feather name="message-circle" size={20} color="#000" />
 					<Text style={styles.headerTitle}>Party Chat</Text>
+
+					{/* TTS Control Button */}
+					{voiceSettings.ttsEnabled && (
+						<TouchableOpacity
+							style={[styles.ttsButton, dmVoice.isSpeaking && styles.ttsButtonActive]}
+							onPress={() => {
+								if (dmVoice.isSpeaking) {
+									dmVoice.stop();
+								}
+							}}
+							accessibilityLabel={dmVoice.isSpeaking ? 'Stop speech' : 'TTS enabled'}
+						>
+							<Feather
+								name={dmVoice.isSpeaking ? 'volume-x' : 'volume-2'}
+								size={16}
+								color={dmVoice.isSpeaking ? '#ff4444' : '#8B2323'}
+							/>
+						</TouchableOpacity>
+					)}
+
 					<Text style={styles.turnIndicatorText}>
 						{getSpeakerName(activeCharacter)}&apos;s Turn
 					</Text>
@@ -287,7 +335,7 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 									paddingHorizontal: 14,
 									marginBottom: 6,
 								}}
-								onPress={() => onSendMessage(s.action, activeCharacter)}
+								onPress={() => handleSendMessage(s.action)}
 							>
 								<Text style={{ color: '#8B2323', fontWeight: 'bold' }}>
 									{s.label}
@@ -297,34 +345,19 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 					</View>
 				)}
 
-				{/* Input Area - Only show if it's player's turn */}
+				{/* Voice Input Area - Only show if it's player's turn */}
 				{(activeCharacter === 'player' ||
 					companions.activeCompanions.some(c => c.id === activeCharacter)) && (
-					<KeyboardAvoidingView
-						style={styles.inputContainer}
-						behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-					>
-						<TextInput
-							style={styles.textInput}
-							value={inputText}
-							onChangeText={setInputText}
+					<View style={styles.voiceInputContainer}>
+						<VoiceChatInput
+							onSend={handleSendMessage}
 							placeholder={`What does ${getSpeakerName(activeCharacter)} do?`}
-							placeholderTextColor="#999"
-							multiline={false}
+							value={currentInput}
+							onChangeText={setCurrentInput}
+							disabled={isLoading}
 							maxLength={500}
-							onSubmitEditing={handleSendMessage}
-							returnKeyType="send"
-							blurOnSubmit={false}
 						/>
-						<TouchableOpacity
-							style={styles.micButton}
-							onPress={() => {
-								/* TODO: Add mic functionality */
-							}}
-						>
-							<Feather name="mic" size={20} color="#8B2323" />
-						</TouchableOpacity>
-					</KeyboardAvoidingView>
+					</View>
 				)}
 
 				{/* DM Turn Indicator */}
@@ -373,6 +406,15 @@ const styles = StyleSheet.create({
 		fontWeight: 'bold',
 		flex: 1,
 		marginLeft: 8,
+	},
+	ttsButton: {
+		padding: 6,
+		borderRadius: 4,
+		backgroundColor: 'rgba(139, 35, 35, 0.1)',
+		marginHorizontal: 4,
+	},
+	ttsButtonActive: {
+		backgroundColor: 'rgba(255, 68, 68, 0.2)',
 	},
 	turnIndicatorText: {
 		color: '#8B2323',
@@ -455,37 +497,10 @@ const styles = StyleSheet.create({
 	dmMessageText: {
 		color: '#3B2F1B',
 	},
-	inputContainer: {
-		flexDirection: 'row',
-		padding: 12,
-		gap: 8,
-		alignItems: 'flex-end',
+	voiceInputContainer: {
 		borderTopWidth: 1,
 		borderTopColor: '#C9B037',
 		backgroundColor: '#FFF8E1',
-	},
-	textInput: {
-		flex: 1,
-		backgroundColor: '#FFF',
-		borderRadius: 20,
-		paddingHorizontal: 16,
-		paddingVertical: 10,
-		color: '#3B2F1B',
-		fontSize: 14,
-		height: 40,
-		borderWidth: 1,
-		borderColor: '#C9B037',
-	},
-	micButton: {
-		width: 40,
-		height: 40,
-		borderRadius: 20,
-		backgroundColor: '#FFF',
-		alignItems: 'center',
-		justifyContent: 'center',
-		borderWidth: 1,
-		borderColor: '#C9B037',
-		marginLeft: 8,
 	},
 	dmTurnIndicator: {
 		padding: 16,

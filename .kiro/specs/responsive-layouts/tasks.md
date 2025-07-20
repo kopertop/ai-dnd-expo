@@ -98,13 +98,13 @@
   - Integrate with layout store for state management
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 8. Integrate voice features across layouts
-  - [ ] 8.1 Add voice input to chat interfaces
+- [x] 8. Integrate voice features across layouts
+  - [x] 8.1 Add voice input to chat interfaces
     - Integrate VoiceChatInput component in both phone and tablet chat interfaces
     - Connect to chat store for message handling
     - _Requirements: 6.6, 6.11, 6.12_
 
-  - [ ] 8.2 Add text-to-speech for DM responses
+  - [x] 8.2 Add text-to-speech for DM responses
     - Integrate TTS hook in chat components to speak DM messages
     - Add voice selection options in settings
     - Respect user settings for TTS enabled/disabled
