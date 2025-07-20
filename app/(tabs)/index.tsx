@@ -1,9 +1,9 @@
 import { Stack } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { TurnBasedChat } from '@/components/turn-based-chat';
 import { useCactusDungeonMaster } from '@/hooks/use-cactus-dungeon-master';
 import { useGameState } from '@/hooks/use-game-state';
@@ -169,18 +169,18 @@ const ChatTab: React.FC = () => {
 
 	if (loading) {
 		return (
-			<ThemedView style={styles.container}>
+			<SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
 				<ActivityIndicator size="large" color="#C9B037" />
 				<ThemedText>
 					<Text>Loading your adventure...</Text>
 				</ThemedText>
-			</ThemedView>
+			</SafeAreaView>
 		);
 	}
 
 	if (!gameState) {
 		return (
-			<ThemedView style={styles.container}>
+			<SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
 				<ThemedText type="title">
 					<Text>No saved game found.</Text>
 				</ThemedText>
@@ -190,12 +190,12 @@ const ChatTab: React.FC = () => {
 				{saveError && (
 					<ThemedText style={{ marginTop: 12, color: 'red' }}>{saveError}</ThemedText>
 				)}
-			</ThemedView>
+			</SafeAreaView>
 		);
 	}
 
 	return (
-		<View style={styles.chatContainer}>
+		<SafeAreaView style={styles.chatContainer} edges={['top', 'left', 'right']}>
 			<Stack.Screen options={{ headerShown: false }} />
 
 			<TurnBasedChat
@@ -220,7 +220,7 @@ const ChatTab: React.FC = () => {
 					<Text>DM: {dmAgent.error}</Text>
 				</ThemedText>
 			)}
-		</View>
+		</SafeAreaView>
 	);
 };
 

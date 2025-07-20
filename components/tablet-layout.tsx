@@ -1,7 +1,15 @@
 import { FontAwesome } from '@expo/vector-icons';
-import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { LayoutAnimation, StyleSheet, TouchableOpacity, View } from 'react-native';
+import Animated, {
+	useAnimatedStyle,
+	useSharedValue,
+	withSpring,
+	withTiming,
+} from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnimatedModal } from './animated-modal';
 import { CharacterSheetModal } from './character-sheet-modal';
 import { GameCanvas } from './game-canvas';
 import { SettingsModal } from './settings-modal';
@@ -25,6 +33,53 @@ interface TabletLayoutProps {
 	onTileClick?: (position: Position) => void;
 }
 
+// Animated control button component
+const AnimatedControlButton: React.FC<{
+	onPress: () => void;
+	icon: string;
+	label: string;
+	accessibilityLabel: string;
+}> = ({ onPress, icon, label, accessibilityLabel }) => {
+	const scale = useSharedValue(1);
+	const opacity = useSharedValue(1);
+
+	const animatedStyle = useAnimatedStyle(() => ({
+		transform: [{ scale: scale.value }],
+		opacity: opacity.value,
+	}));
+
+	const handlePressIn = () => {
+		scale.value = withSpring(0.95, {
+			damping: 15,
+			stiffness: 300,
+		});
+		opacity.value = withTiming(0.8, { duration: 100 });
+	};
+
+	const handlePressOut = () => {
+		scale.value = withSpring(1, {
+			damping: 15,
+			stiffness: 300,
+		});
+		opacity.value = withTiming(1, { duration: 100 });
+	};
+
+	return (
+		<TouchableOpacity
+			onPress={onPress}
+			onPressIn={handlePressIn}
+			onPressOut={handlePressOut}
+			accessibilityLabel={accessibilityLabel}
+			activeOpacity={1}
+		>
+			<Animated.View style={[styles.controlButton, animatedStyle]}>
+				<FontAwesome name={icon as any} size={24} color="white" />
+				<ThemedText style={styles.buttonText}>{label}</ThemedText>
+			</Animated.View>
+		</TouchableOpacity>
+	);
+};
+
 export const TabletLayout: React.FC<TabletLayoutProps> = ({
 	playerCharacter,
 	dmMessages,
@@ -38,8 +93,26 @@ export const TabletLayout: React.FC<TabletLayoutProps> = ({
 }) => {
 	const { modals, openModal, closeModal } = useLayoutStore();
 
+	// Handle orientation changes with smooth animations
+	useEffect(() => {
+		const configureLayoutAnimation = () => {
+			LayoutAnimation.configureNext({
+				duration: 300,
+				create: {
+					type: LayoutAnimation.Types.easeInEaseOut,
+					property: LayoutAnimation.Properties.opacity,
+				},
+				update: {
+					type: LayoutAnimation.Types.easeInEaseOut,
+				},
+			});
+		};
+
+		configureLayoutAnimation();
+	}, []);
+
 	return (
-		<View style={styles.container}>
+		<SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
 			{/* Left Panel - Chat */}
 			<View style={styles.leftPanel}>
 				<TurnBasedChat
@@ -63,34 +136,39 @@ export const TabletLayout: React.FC<TabletLayoutProps> = ({
 
 			{/* Bottom Control Buttons */}
 			<View style={styles.bottomControls}>
-				<TouchableOpacity
-					style={styles.controlButton}
+				<AnimatedControlButton
 					onPress={() => openModal('characterSheet')}
+					icon="user"
+					label="Character"
 					accessibilityLabel="Open Character Sheet"
-				>
-					<FontAwesome name="user" size={24} color="white" />
-					<ThemedText style={styles.buttonText}>Character</ThemedText>
-				</TouchableOpacity>
+				/>
 
-				<TouchableOpacity
-					style={styles.controlButton}
+				<AnimatedControlButton
 					onPress={() => openModal('settings')}
+					icon="cog"
+					label="Settings"
 					accessibilityLabel="Open Settings"
-				>
-					<FontAwesome name="cog" size={24} color="white" />
-					<ThemedText style={styles.buttonText}>Settings</ThemedText>
-				</TouchableOpacity>
+				/>
 			</View>
 
 			{/* Character Sheet Modal */}
-			<CharacterSheetModal
+			<AnimatedModal
 				visible={modals.characterSheet}
 				onClose={() => closeModal('characterSheet')}
-			/>
+				animationType="scale"
+			>
+				<CharacterSheetModal visible={true} onClose={() => closeModal('characterSheet')} />
+			</AnimatedModal>
 
 			{/* Settings Modal */}
-			<SettingsModal visible={modals.settings} onClose={() => closeModal('settings')} />
-		</View>
+			<AnimatedModal
+				visible={modals.settings}
+				onClose={() => closeModal('settings')}
+				animationType="slide"
+			>
+				<SettingsModal visible={true} onClose={() => closeModal('settings')} />
+			</AnimatedModal>
+		</SafeAreaView>
 	);
 };
 

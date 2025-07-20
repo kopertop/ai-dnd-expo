@@ -1,10 +1,10 @@
 import { Stack } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CharacterSheetModal } from '@/components/character-sheet-modal';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { useGameState } from '@/hooks/use-game-state';
 
 const CharacterTab: React.FC = () => {
@@ -12,30 +12,30 @@ const CharacterTab: React.FC = () => {
 
 	if (loading) {
 		return (
-			<ThemedView style={styles.container}>
+			<SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
 				<ActivityIndicator size="large" color="#C9B037" />
 				<ThemedText>
 					<Text>Loading character...</Text>
 				</ThemedText>
-			</ThemedView>
+			</SafeAreaView>
 		);
 	}
 
 	if (!gameState) {
 		return (
-			<ThemedView style={styles.container}>
+			<SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
 				<ThemedText type="title">
 					<Text>No saved game found.</Text>
 				</ThemedText>
 				<ThemedText style={{ marginTop: 8 }}>
 					<Text>Please start a new game from the main menu.</Text>
 				</ThemedText>
-			</ThemedView>
+			</SafeAreaView>
 		);
 	}
 
 	return (
-		<View style={styles.characterContainer}>
+		<SafeAreaView style={styles.characterContainer} edges={['top', 'left', 'right']}>
 			<Stack.Screen options={{ headerShown: false }} />
 
 			{/* Use the existing CharacterSheetModal but always visible */}
@@ -46,7 +46,7 @@ const CharacterTab: React.FC = () => {
 					// This could navigate back or do nothing
 				}}
 			/>
-		</View>
+		</SafeAreaView>
 	);
 };
 

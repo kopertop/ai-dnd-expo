@@ -1,11 +1,11 @@
 import { Stack } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GameCanvas } from '@/components/game-canvas';
 import { GameStatusBar } from '@/components/game-status-bar';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { useGameState } from '@/hooks/use-game-state';
 import { generateWorldForGameState } from '@/services/world-generator';
 import { GameWorldState, Position } from '@/types/world-map';
@@ -112,32 +112,32 @@ const MapTab: React.FC = () => {
 
 	if (loading) {
 		return (
-			<ThemedView style={styles.container}>
+			<SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
 				<ActivityIndicator size="large" color="#C9B037" />
 				<ThemedText>
 					<Text>Loading map...</Text>
 				</ThemedText>
-			</ThemedView>
+			</SafeAreaView>
 		);
 	}
 
 	if (!gameState) {
 		return (
-			<ThemedView style={styles.container}>
+			<SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
 				<ThemedText type="title">
 					<Text>No saved game found.</Text>
 				</ThemedText>
 				<ThemedText style={{ marginTop: 8 }}>
 					<Text>Please start a new game from the main menu.</Text>
 				</ThemedText>
-			</ThemedView>
+			</SafeAreaView>
 		);
 	}
 
 	// Show loading while world is being generated
 	if (!worldState) {
 		return (
-			<ThemedView style={styles.container}>
+			<SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
 				<ActivityIndicator size="large" color="#C9B037" />
 				<ThemedText>
 					<Text>Generating world map...</Text>
@@ -147,12 +147,12 @@ const MapTab: React.FC = () => {
 						If this takes too long, try restarting the app or starting a new game.
 					</Text>
 				</ThemedText>
-			</ThemedView>
+			</SafeAreaView>
 		);
 	}
 
 	return (
-		<View style={styles.mapContainer}>
+		<SafeAreaView style={styles.mapContainer} edges={['top', 'left', 'right']}>
 			<Stack.Screen options={{ headerShown: false }} />
 
 			{/* Game Status Bar */}
@@ -176,7 +176,7 @@ const MapTab: React.FC = () => {
 			</View>
 
 			{saveError && <ThemedText style={styles.errorText}>{saveError}</ThemedText>}
-		</View>
+		</SafeAreaView>
 	);
 };
 

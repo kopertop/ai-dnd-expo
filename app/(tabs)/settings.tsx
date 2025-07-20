@@ -1,12 +1,13 @@
 import { Stack } from 'expo-router';
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SettingsModal } from '@/components/settings-modal';
 
 const SettingsTab: React.FC = () => {
 	return (
-		<View style={styles.settingsContainer}>
+		<SafeAreaView style={styles.settingsContainer} edges={['top', 'left', 'right']}>
 			<Stack.Screen options={{ headerShown: false }} />
 
 			{/* Use the existing SettingsModal but always visible */}
@@ -17,7 +18,7 @@ const SettingsTab: React.FC = () => {
 					// This could navigate back or do nothing
 				}}
 			/>
-		</View>
+		</SafeAreaView>
 	);
 };
 

@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Dimensions, LayoutAnimation, StyleSheet, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TabletLayout } from './tablet-layout';
 import { ThemedText } from './themed-text';
-import { ThemedView } from './themed-view';
 
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { DMMessage } from '@/services/ai/agents/dungeon-master-agent';
@@ -50,36 +50,69 @@ export const ResponsiveGameContainer: React.FC<ResponsiveGameContainerProps> = (
 	useEffect(() => {
 		const newLayout = isPhone ? 'phone' : 'tablet';
 		if (currentLayout !== newLayout) {
+			// Configure smooth layout animation
+			LayoutAnimation.configureNext({
+				duration: 300,
+				create: {
+					type: LayoutAnimation.Types.easeInEaseOut,
+					property: LayoutAnimation.Properties.opacity,
+				},
+				update: {
+					type: LayoutAnimation.Types.easeInEaseOut,
+				},
+			});
+
 			setTransitioning(true);
 			setLayout(newLayout);
 			// Small delay to allow for smooth transitions
-			setTimeout(() => setTransitioning(false), 100);
+			setTimeout(() => setTransitioning(false), 300);
 		}
 	}, [isPhone, isTablet, currentLayout, setLayout, setTransitioning]);
+
+	// Handle orientation changes
+	useEffect(() => {
+		const subscription = Dimensions.addEventListener('change', () => {
+			LayoutAnimation.configureNext({
+				duration: 300,
+				create: {
+					type: LayoutAnimation.Types.easeInEaseOut,
+					property: LayoutAnimation.Properties.opacity,
+				},
+				update: {
+					type: LayoutAnimation.Types.easeInEaseOut,
+				},
+			});
+		});
+
+		return () => subscription?.remove();
+	}, []);
 
 	// Show loading state while game is initializing
 	if (gameLoading) {
 		return (
-			<ThemedView style={styles.loadingContainer}>
+			<SafeAreaView
+				style={styles.loadingContainer}
+				edges={['top', 'left', 'right', 'bottom']}
+			>
 				<ActivityIndicator size="large" color="#C9B037" />
 				<ThemedText style={styles.loadingText}>
 					<Text>Loading your adventure...</Text>
 				</ThemedText>
-			</ThemedView>
+			</SafeAreaView>
 		);
 	}
 
 	// Show error state if game failed to load
 	if (gameError) {
 		return (
-			<ThemedView style={styles.errorContainer}>
+			<SafeAreaView style={styles.errorContainer} edges={['top', 'left', 'right', 'bottom']}>
 				<ThemedText type="title" style={styles.errorTitle}>
 					<Text>Game Error</Text>
 				</ThemedText>
 				<ThemedText style={styles.errorMessage}>
 					<Text>{gameError}</Text>
 				</ThemedText>
-			</ThemedView>
+			</SafeAreaView>
 		);
 	}
 
@@ -93,7 +126,7 @@ export const ResponsiveGameContainer: React.FC<ResponsiveGameContainerProps> = (
 
 	// Tablet layout: Render side-by-side layout directly
 	return (
-		<View style={styles.tabletContainer}>
+		<SafeAreaView style={styles.tabletContainer} edges={['bottom']}>
 			<TabletLayout
 				playerCharacter={playerCharacter}
 				dmMessages={dmMessages}
@@ -105,7 +138,7 @@ export const ResponsiveGameContainer: React.FC<ResponsiveGameContainerProps> = (
 				onPlayerMove={onPlayerMove}
 				onTileClick={onTileClick}
 			/>
-		</View>
+		</SafeAreaView>
 	);
 };
 

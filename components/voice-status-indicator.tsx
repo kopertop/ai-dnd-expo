@@ -130,7 +130,7 @@ export const VoiceStatusIndicator: React.FC<VoiceStatusIndicatorProps> = ({
 					style={[
 						styles.compactIconContainer,
 						status === 'listening' &&
-						animated && {
+							animated && {
 							transform: [{ scale: pulseAnim }],
 						},
 					]}
@@ -152,7 +152,7 @@ export const VoiceStatusIndicator: React.FC<VoiceStatusIndicatorProps> = ({
 				style={[
 					styles.iconContainer,
 					status === 'listening' &&
-					animated && {
+						animated && {
 						transform: [{ scale: pulseAnim }],
 					},
 				]}

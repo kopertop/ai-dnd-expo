@@ -128,12 +128,19 @@
     - Provide visual feedback for error states
     - _Requirements: 6.10, 6.11_
 
-- [ ] 11. Add smooth transitions and animations
-  - Implement tab transition animations for phone layout using react-native-reanimated
-  - Add modal appearance/disappearance animations for tablet layout
-  - Ensure smooth orientation change handling with LayoutAnimation
-  - Wrap interfaces in SafeAreaView to avoid notch/status bar issues
-  - _Requirements: 5.1, 5.2, 5.3, 5.4_
+- [-] 11. Add smooth transitions and animations
+
+	- [x] 11.1 Development
+	- Implement tab transition animations for phone layout using react-native-reanimated
+	- Add modal appearance/disappearance animations for tablet layout
+	- Ensure smooth orientation change handling with LayoutAnimation
+	- Wrap interfaces in SafeAreaView to avoid notch/status bar issues
+	- _Requirements: 5.1, 5.2, 5.3, 5.4_
+
+	- [ ] 11.2 Check and commit
+	- Run `npm run check`
+	- Fisx any remaining issues
+	- Commit changes if there are no issues
 
 - [ ] 12. Testing and validation
   - [ ] 12.1 Test device detection and layout switching
@@ -160,3 +167,8 @@
     - Test error scenarios and fallback behaviors
     - Verify voice settings are applied correctly
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+
+	- [ ] 12.5 Check and commit
+	- Run `npm run check`
+	- Fisx any remaining issues
+	- Commit changes if there are no issues
