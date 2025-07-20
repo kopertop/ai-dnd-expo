@@ -117,7 +117,7 @@ export default defineConfig([
 						{
 							name: 'uuid',
 							message:
-								'Please use the custom ID generator from "../utils/id-generator" instead of uuid.',
+								'Please use the custom ID generator from "@/utils/id-generator" instead of uuid.',
 						},
 					],
 
