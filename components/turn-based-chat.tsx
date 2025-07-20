@@ -245,6 +245,9 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 		}
 	}, [chatMessages.length]);
 
+	// Track last spoken message to prevent re-speaking
+	const lastSpokenMessageRef = useRef<string>('');
+
 	// Auto-speak DM messages when TTS is enabled
 	useEffect(() => {
 		if (voiceSettings.ttsEnabled && voiceSettings.autoSpeak && chatMessages.length > 0) {
@@ -252,15 +255,23 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 
 			// Only speak DM messages, not player messages
 			if (lastMessage.speakerId === 'dm' && lastMessage.content.trim()) {
-				// Use a small delay to ensure the message is rendered first
-				const speakTimeout = setTimeout(() => {
-					dmVoice.speakAsNarrator(lastMessage.content);
-				}, 500);
+				// Check if we've already spoken this exact message
+				if (lastSpokenMessageRef.current !== lastMessage.content) {
+					lastSpokenMessageRef.current = lastMessage.content;
+					
+					// Stop any current speech first
+					dmVoice.stop();
+					
+					// Use a small delay to ensure the message is rendered first
+					const speakTimeout = setTimeout(() => {
+						dmVoice.speakAsNarrator(lastMessage.content);
+					}, 500);
 
-				return () => clearTimeout(speakTimeout);
+					return () => clearTimeout(speakTimeout);
+				}
 			}
 		}
-	}, [chatMessages, voiceSettings.ttsEnabled, voiceSettings.autoSpeak, dmVoice]);
+	}, [chatMessages, voiceSettings.ttsEnabled, voiceSettings.autoSpeak]);
 
 	const lastDM = [...chatMessages].reverse().find(m => m.speakerId === 'dm');
 	const suggestions = lastDM ? getSuggestionsFromMessage(lastDM.content) : [];

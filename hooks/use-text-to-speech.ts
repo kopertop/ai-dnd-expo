@@ -188,8 +188,7 @@ const getDMVoiceRate = (): number => {
 const getDMVoiceIdentifier = (): string | undefined => {
 	// Platform-specific voice selection for DM character
 	if (Platform.OS === 'ios') {
-		// Use a deeper, more authoritative voice for DM
-		return 'com.apple.ttsbundle.Daniel-compact'; // Deep male voice
+		return 'com.apple.speech.voice.Alex';
 	} else if (Platform.OS === 'android') {
 		return 'en-us-x-sfg#male_2-local'; // Deep male voice on Android
 	}
