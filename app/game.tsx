@@ -1,13 +1,9 @@
 import { Stack } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { View } from 'react-native';
 
-import { CharacterSheetModal } from '../components/character-sheet-modal';
-import { GameCanvas } from '../components/game-canvas';
-import { GameStatusBar } from '../components/game-status-bar';
+import { ResponsiveGameContainer } from '../components/responsive-game-container';
 import { ThemedText } from '../components/themed-text';
-import { ThemedView } from '../components/themed-view';
-import { TurnBasedChat } from '../components/turn-based-chat';
 import { useCactusDungeonMaster } from '../hooks/use-cactus-dungeon-master';
 import { useGameState } from '../hooks/use-game-state';
 import { useScreenSize } from '../hooks/use-screen-size';
@@ -15,13 +11,12 @@ import { generateWorldForGameState } from '../services/world-generator';
 import { GameWorldState, Position } from '../types/world-map';
 
 const GameScreen: React.FC = () => {
-	const [showSheet, setShowSheet] = useState(false);
 	const [worldState, setWorldState] = useState<GameWorldState | null>(null);
 	const [activeCharacter, setActiveCharacter] = useState<'dm' | 'player' | string>('dm');
 	const [hasInitialized, setHasInitialized] = useState(false);
-	const { isMobile } = useScreenSize();
 	const { loading, gameState, save } = useGameState();
 	const [saveError, setSaveError] = useState<string | null>(null);
+	const { isPhone } = useScreenSize();
 
 	// Initialize Dungeon Master agent
 	const playerCharacter = gameState
@@ -46,7 +41,7 @@ const GameScreen: React.FC = () => {
 				if (gameStateToSave) {
 					try {
 						await save(gameStateToSave);
-					} catch (error) {
+					} catch {
 						setSaveError('Failed to save game state');
 					}
 				}
@@ -62,12 +57,6 @@ const GameScreen: React.FC = () => {
 				clearTimeout(saveTimeoutRef.current);
 			}
 		};
-	}, []);
-
-	// Track screen dimensions for responsive layout
-	useEffect(() => {
-		// Responsive layout logic placeholder (currently unused)
-		// If needed, add logic to handle screen size changes here
 	}, []);
 
 	// Generate or load world state when game state is available
@@ -163,7 +152,14 @@ const GameScreen: React.FC = () => {
 			console.log('✅ Custom greeting replaced, switching to player turn');
 			setActiveCharacter('player'); // Switch to player's turn after DM greeting
 		}
-	}, [gameState, playerCharacter, dmAgent.messages.length, hasInitialized, dmAgent.isLoading]);
+	}, [
+		gameState,
+		playerCharacter,
+		dmAgent.messages.length,
+		hasInitialized,
+		dmAgent.isLoading,
+		dmAgent,
+	]);
 
 	const handlePlayerMove = async (newPosition: Position) => {
 		if (!worldState) return;
@@ -235,50 +231,38 @@ const GameScreen: React.FC = () => {
 		}
 	};
 
-	if (loading) {
-		return (
-			<ThemedView style={styles.container}>
-				<ActivityIndicator size="large" color="#C9B037" />
-				<ThemedText>
-					<Text>Loading your adventure...</Text>
-				</ThemedText>
-			</ThemedView>
-		);
-	}
+	// Handle phone layout by redirecting to tabs
+	useEffect(() => {
+		if (isPhone && gameState && worldState) {
+			// For phone layout, we should redirect to the tab interface
+			// This will be handled by the app's routing logic
+		}
+	}, [isPhone, gameState, worldState]);
 
+	// Determine error state for ResponsiveGameContainer
+	let gameError: string | null = null;
 	if (!gameState) {
-		return (
-			<ThemedView style={styles.container}>
-				<ThemedText type="title">
-					<Text>No saved game found.</Text>
-				</ThemedText>
-				<ThemedText style={{ marginTop: 8 }}>
-					<Text>Please start a new game from the main menu.</Text>
-				</ThemedText>
-				{saveError && (
-					<ThemedText style={{ marginTop: 12, color: 'red' }}>{saveError}</ThemedText>
-				)}
-			</ThemedView>
-		);
+		gameError = saveError || 'No saved game found. Please start a new game from the main menu.';
+	}
+	if (dmAgent.error) {
+		gameError = `DM Error: ${dmAgent.error}`;
 	}
 
-	// Show loading while world is being generated
-	if (!worldState) {
+	// Determine loading state
+	const gameLoading = loading || !worldState;
+
+	// For phone devices, show a message that they should use the tab interface
+	if (isPhone) {
 		return (
-			<ThemedView style={styles.container}>
-				<ActivityIndicator size="large" color="#C9B037" />
-				<ThemedText>
-					<Text>Generating world map...</Text>
+			<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+				<ThemedText type="title" style={{ textAlign: 'center', marginBottom: 16 }}>
+					Mobile Interface
 				</ThemedText>
-				<ThemedText style={{ marginTop: 8 }}>
-					<Text>
-						If this takes too long, try restarting the app or starting a new game.
-					</Text>
+				<ThemedText style={{ textAlign: 'center' }}>
+					For the best mobile experience, please use the tab interface by navigating to
+					the main menu and selecting "Continue Game".
 				</ThemedText>
-				{saveError && (
-					<ThemedText style={{ marginTop: 12, color: 'red' }}>{saveError}</ThemedText>
-				)}
-			</ThemedView>
+			</View>
 		);
 	}
 
@@ -286,28 +270,7 @@ const GameScreen: React.FC = () => {
 		<View style={{ width: '100%', height: '100%' }}>
 			<Stack.Screen options={{ headerShown: false }} />
 
-			{/* Game Status Bar */}
-			<GameStatusBar
-				gameState={gameState}
-				onPortraitPress={() => setShowSheet(true)}
-				style={isMobile ? styles.statusBarPinnedMobile : styles.statusBarPinned}
-				activeCharacter={activeCharacter}
-			/>
-
-			{/* Main Game Canvas */}
-			<View style={styles.gameContainer}>
-				<GameCanvas
-					worldState={worldState}
-					onPlayerMove={handlePlayerMove}
-					onTileClick={handleTileClick}
-				/>
-			</View>
-
-			{/* Character sheet modal */}
-			<CharacterSheetModal visible={showSheet} onClose={() => setShowSheet(false)} />
-
-			{/* Turn-Based Chat */}
-			<TurnBasedChat
+			<ResponsiveGameContainer
 				playerCharacter={playerCharacter || null}
 				dmMessages={dmAgent.messages.map((msg, index) => ({
 					id: `msg-${index}`,
@@ -320,20 +283,15 @@ const GameScreen: React.FC = () => {
 				activeCharacter={activeCharacter}
 				onTurnChange={handleTurnChange}
 				isLoading={dmAgent.isLoading}
+				worldState={worldState || undefined}
+				onPlayerMove={handlePlayerMove}
+				onTileClick={handleTileClick}
+				gameLoading={gameLoading}
+				gameError={gameError}
 			/>
 
-			{/* Voice Chat Button */}
-			{/*
-			<VoiceChatButton
-				onVoiceInput={dmAgent.sendVoiceMessage}
-				isDisabled={dmAgent.isLoading}
-				position={isMobile ? 'bottom-right' : 'top-right'}
-				onTranscriptChange={handleTranscriptChange}
-			/>
-			*/}
-
-			{/* Save error feedback */}
-			{saveError && (
+			{/* Save error feedback - only show if not handled by ResponsiveGameContainer */}
+			{saveError && gameState && worldState && (
 				<ThemedText
 					style={{
 						position: 'absolute',
@@ -348,60 +306,10 @@ const GameScreen: React.FC = () => {
 					{saveError}
 				</ThemedText>
 			)}
-
-			{/* DM error feedback */}
-			{dmAgent.error && (
-				<ThemedText
-					style={{
-						position: 'absolute',
-						bottom: 48,
-						left: 0,
-						right: 0,
-						textAlign: 'center',
-						color: 'orange',
-						zIndex: 999,
-					}}
-				>
-					<Text>DM: {dmAgent.error}</Text>
-				</ThemedText>
-			)}
 		</View>
 	);
 };
 
 export default GameScreen;
 
-const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-		alignItems: 'center',
-		justifyContent: 'center',
-		padding: 20,
-		backgroundColor: '#F9F6EF',
-	},
-	gameContainer: {
-		flex: 1,
-		width: '100%',
-		// Removed marginTop so the map starts directly below the header bar
-		backgroundColor: '#2c5530',
-	},
-	statusBarPinned: {
-		width: '100%',
-		position: 'absolute',
-		top: 0,
-		left: 0,
-		right: 0,
-		zIndex: 100,
-	},
-	statusBarPinnedMobile: {
-		width: '100%',
-		position: 'absolute',
-		height: 65,
-		paddingTop: 10,
-		paddingBottom: 20,
-		bottom: 0,
-		left: 0,
-		right: 0,
-		zIndex: 100,
-	},
-});
+// Styles removed - now handled by ResponsiveGameContainer
