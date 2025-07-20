@@ -60,20 +60,20 @@
     - Add visual feedback for listening state
     - _Requirements: 6.6, 6.12, 6.13_
 
-- [ ] 5. Implement phone layout with Expo Router tabs
-  - [ ] 5.1 Create tab-based file structure
+- [x] 5. Implement phone layout with Expo Router tabs
+  - [x] 5.1 Create tab-based file structure
     - Create `app/(tabs)/` directory structure
     - Set up `_layout.tsx` for tab navigation configuration
     - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-  - [ ] 5.2 Implement individual tab screens
+  - [x] 5.2 Implement individual tab screens
     - Create `app/(tabs)/index.tsx` for Chat tab using existing TurnBasedChat component
     - Create `app/(tabs)/character.tsx` for Character Sheet tab
     - Create `app/(tabs)/map.tsx` for Map/Game View tab using existing GameCanvas
     - Create `app/(tabs)/settings.tsx` for Settings tab
     - _Requirements: 1.5, 1.6, 1.7, 1.8_
 
-  - [ ] 5.3 Configure tab icons and styling
+  - [x] 5.3 Configure tab icons and styling
     - Add FontAwesome icons for each tab
     - Configure tab bar styling and active tint colors
     - Ensure tab state preservation when switching
