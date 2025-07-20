@@ -79,14 +79,14 @@
     - Ensure tab state preservation when switching
     - _Requirements: 1.9, 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 6. Implement tablet layout with side-by-side panels
-  - [ ] 6.1 Create tablet layout component
+- [x] 6. Implement tablet layout with side-by-side panels
+  - [x] 6.1 Create tablet layout component
     - Build `components/TabletLayout.tsx` with side-by-side structure
     - Implement left panel for chat and right panel for game map
     - Add bottom control buttons for character sheet and settings
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-  - [ ] 6.2 Implement modal dialogs for tablet
+  - [x] 6.2 Implement modal dialogs for tablet
     - Create character sheet modal that opens from bottom controls
     - Create settings modal that opens from bottom controls
     - Ensure modals don't interfere with main game view

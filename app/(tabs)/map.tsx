@@ -175,11 +175,7 @@ const MapTab: React.FC = () => {
 				/>
 			</View>
 
-			{saveError && (
-				<ThemedText style={styles.errorText}>
-					{saveError}
-				</ThemedText>
-			)}
+			{saveError && <ThemedText style={styles.errorText}>{saveError}</ThemedText>}
 		</View>
 	);
 };

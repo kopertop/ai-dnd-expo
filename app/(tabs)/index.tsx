@@ -85,12 +85,12 @@ const ChatTab: React.FC = () => {
 	// Generate initial DM greeting when game loads
 	useEffect(() => {
 		if (
-			gameState
-			&& playerCharacter
-			&& dmAgent.isInitialized
-			&& !hasInitialized
-			&& dmAgent.messages.length === 1
-			&& !dmAgent.isLoading
+			gameState &&
+			playerCharacter &&
+			dmAgent.isInitialized &&
+			!hasInitialized &&
+			dmAgent.messages.length === 1 &&
+			!dmAgent.isLoading
 		) {
 			setHasInitialized(true);
 
@@ -105,23 +105,23 @@ const ChatTab: React.FC = () => {
 
 				if (locationLower.includes('tavern') || locationLower.includes('inn')) {
 					if (
-						playerClass.toLowerCase().includes('wizard')
-						|| playerClass.toLowerCase().includes('mage')
+						playerClass.toLowerCase().includes('wizard') ||
+						playerClass.toLowerCase().includes('mage')
 					) {
 						greeting = `You push open the heavy wooden door and step into ${location}. The warm glow of candlelight dances across your weathered spellbook as you lower your hood, revealing your ${race.toLowerCase()} features. Your keen eyes scan the dimly lit common room, noting potential allies nursing their ales and shadowy figures who might pose a threat. The scent of roasted meat and old ale fills your nostrils as you consider your next move, ${name}.`;
 					} else if (
-						playerClass.toLowerCase().includes('rogue')
-						|| playerClass.toLowerCase().includes('thief')
+						playerClass.toLowerCase().includes('rogue') ||
+						playerClass.toLowerCase().includes('thief')
 					) {
 						greeting = `You slip quietly through the entrance of ${location}, your ${race.toLowerCase()} heritage allowing you to move with practiced stealth. The tavern's dim lighting suits you perfectly as you assess the room - noting exit routes, potential marks, and anyone who might recognize you. Your hand instinctively checks your coin purse as you blend into the shadows near the bar, ${name}.`;
 					} else if (
-						playerClass.toLowerCase().includes('fighter')
-						|| playerClass.toLowerCase().includes('warrior')
+						playerClass.toLowerCase().includes('fighter') ||
+						playerClass.toLowerCase().includes('warrior')
 					) {
 						greeting = `You stride confidently into ${location}, your armor catching the firelight from the hearth. Fellow patrons glance up at your ${race.toLowerCase()} frame, some with respect, others with wariness. You approach the bar with the bearing of someone accustomed to both battle and negotiation, ready for whatever this establishment might offer, ${name}.`;
 					} else if (
-						playerClass.toLowerCase().includes('cleric')
-						|| playerClass.toLowerCase().includes('paladin')
+						playerClass.toLowerCase().includes('cleric') ||
+						playerClass.toLowerCase().includes('paladin')
 					) {
 						greeting = `You enter ${location} with quiet dignity, your holy symbol visible beneath your traveling cloak. The ${race.toLowerCase()} features of your face show both compassion and determination as you observe the tavern's patrons - some clearly in need of guidance, others perhaps requiring a more... direct approach to righteousness. You offer a silent prayer as you consider how best to serve your divine purpose here, ${name}.`;
 					} else {
@@ -142,7 +142,15 @@ const ChatTab: React.FC = () => {
 			dmAgent.replaceWelcomeMessage(initialMessage);
 			setActiveCharacter('player');
 		}
-	}, [gameState, playerCharacter, dmAgent.isInitialized, dmAgent.messages.length, hasInitialized, dmAgent.isLoading, dmAgent]);
+	}, [
+		gameState,
+		playerCharacter,
+		dmAgent.isInitialized,
+		dmAgent.messages.length,
+		hasInitialized,
+		dmAgent.isLoading,
+		dmAgent,
+	]);
 
 	const handleTurnChange = (newActiveCharacter: 'dm' | 'player' | string) => {
 		setActiveCharacter(newActiveCharacter);
@@ -205,11 +213,7 @@ const ChatTab: React.FC = () => {
 				isLoading={dmAgent.isLoading}
 			/>
 
-			{saveError && (
-				<ThemedText style={styles.errorText}>
-					{saveError}
-				</ThemedText>
-			)}
+			{saveError && <ThemedText style={styles.errorText}>{saveError}</ThemedText>}
 
 			{dmAgent.error && (
 				<ThemedText style={styles.dmErrorText}>
