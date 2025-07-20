@@ -95,7 +95,6 @@ export class WorkingAIProvider implements WorkingAIProviderInterface {
 
 		try {
 			console.log('🚀 WorkingAIProvider: Starting initialization...');
-			console.log('📊 Debug info:', this.debugInfo);
 
 			// Step 1: Check platform compatibility
 			await this.checkPlatformCompatibility();

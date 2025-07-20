@@ -47,10 +47,6 @@ const IndexScreen: React.FC = () => {
 					</TouchableOpacity>
 				)}
 
-				{/* AI Debug Test button */}
-				<TouchableOpacity style={styles.debugBtn} onPress={() => router.push('/cactus-dm')}>
-					<ThemedText style={styles.debugBtnText}>🧪 AI Debug Tests</ThemedText>
-				</TouchableOpacity>
 
 				{/* Settings button */}
 				<TouchableOpacity
@@ -102,19 +98,6 @@ const styles = StyleSheet.create({
 		color: '#3B2F1B',
 		fontWeight: 'bold',
 		fontSize: 18,
-	},
-	debugBtn: {
-		marginTop: 20,
-		backgroundColor: '#FF6B6B',
-		paddingVertical: 12,
-		paddingHorizontal: 32,
-		borderRadius: 8,
-		alignItems: 'center',
-	},
-	debugBtnText: {
-		color: '#FFFFFF',
-		fontWeight: 'bold',
-		fontSize: 16,
 	},
 	licensesBtn: {
 		marginTop: 30,

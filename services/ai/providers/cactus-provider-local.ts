@@ -134,7 +134,6 @@ export class CactusLocalProvider implements CactusLocalProviderInterface {
 
 		try {
 			console.log('🚀 CactusLocalProvider: Starting initialization...');
-			console.log('📊 Debug info:', this.debugInfo);
 
 			// Step 1: Check platform compatibility
 			await this.checkPlatformCompatibility();
