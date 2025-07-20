@@ -3,7 +3,6 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GameCanvas } from '@/components/game-canvas';
-import { GameStatusBar } from '@/components/game-status-bar';
 import { ThemedText } from '@/components/themed-text';
 import { useGameState } from '@/hooks/use-game-state';
 import { generateWorldForGameState } from '@/services/world-generator';
@@ -152,17 +151,6 @@ const MapTab: React.FC = () => {
 
 	return (
 		<SafeAreaView style={styles.mapContainer} edges={['left', 'right']}>
-			{/* Game Status Bar */}
-			<GameStatusBar
-				gameState={gameState}
-				onPortraitPress={() => {
-					// In tab mode, navigate to character tab instead of modal
-					// This could use router.push('/(tabs)/character') if needed
-				}}
-				style={styles.statusBar}
-				activeCharacter="player"
-			/>
-
 			{/* Main Game Canvas */}
 			<View style={styles.gameContainer}>
 				<GameCanvas
@@ -191,18 +179,9 @@ const styles = StyleSheet.create({
 		flex: 1,
 		backgroundColor: '#2c5530',
 	},
-	statusBar: {
-		width: '100%',
-		position: 'absolute',
-		top: 0,
-		left: 0,
-		right: 0,
-		zIndex: 100,
-	},
 	gameContainer: {
 		flex: 1,
 		width: '100%',
-		marginTop: 80, // Account for status bar height
 		backgroundColor: '#2c5530',
 	},
 	errorText: {
