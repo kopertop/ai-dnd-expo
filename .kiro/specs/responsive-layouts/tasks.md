@@ -137,7 +137,7 @@
 	- Wrap interfaces in SafeAreaView to avoid notch/status bar issues
 	- _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-	- [ ] 11.2 Check and commit
+	- [x] 11.2 Check and commit
 	- Run `npm run check`
 	- Fisx any remaining issues
 	- Commit changes if there are no issues
