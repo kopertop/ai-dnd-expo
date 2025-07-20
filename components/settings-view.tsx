@@ -1,5 +1,5 @@
-import { Feather } from '@expo/vector-icons';
 import { Slider, Switch } from '@expo/ui/swift-ui';
+import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -66,10 +66,11 @@ export const SettingsView: React.FC = () => {
 			// Stop any current speech first
 			stop();
 			setPlayingVoiceId(voice.identifier);
-			
+
 			// Sample text for voice testing
-			const sampleText = "Greetings, adventurer! Your quest begins in the ancient tavern where mysterious shadows dance upon the walls.";
-			
+			const sampleText =
+				'Greetings, adventurer! Your quest begins in the ancient tavern where mysterious shadows dance upon the walls.';
+
 			try {
 				await speak(sampleText, {
 					voice: voice.identifier,
@@ -217,14 +218,15 @@ export const SettingsView: React.FC = () => {
 
 					{/* Voice Selection */}
 					{filteredVoices.length > 0 && (
-						<TouchableOpacity 
+						<TouchableOpacity
 							style={styles.settingItem}
 							onPress={() => setIsVoicePickerVisible(true)}
 						>
 							<View style={styles.voiceSettingContent}>
 								<ThemedText>Voice</ThemedText>
 								<ThemedText style={styles.voiceCount}>
-									{filteredVoices.length} {(voiceSettings.preferredLanguage || 'EN').toUpperCase()} voices
+									{filteredVoices.length}{' '}
+									{(voiceSettings.preferredLanguage || 'EN').toUpperCase()} voices
 								</ThemedText>
 							</View>
 							<View style={styles.voiceSelectionContainer}>
@@ -265,21 +267,22 @@ export const SettingsView: React.FC = () => {
 						<ThemedText type="title" style={styles.modalTitle}>
 							Select Voice
 						</ThemedText>
-						<TouchableOpacity 
+						<TouchableOpacity
 							onPress={() => setIsVoicePickerVisible(false)}
 							style={styles.closeButton}
 						>
 							<ThemedText style={styles.closeButtonText}>Done</ThemedText>
 						</TouchableOpacity>
 					</View>
-					
+
 					<ScrollView style={styles.voiceList}>
-						{filteredVoices.map((voice) => (
+						{filteredVoices.map(voice => (
 							<View
 								key={voice.identifier}
 								style={[
 									styles.voiceItem,
-									selectedVoice?.identifier === voice.identifier && styles.selectedVoiceItem
+									selectedVoice?.identifier === voice.identifier &&
+										styles.selectedVoiceItem,
 								]}
 							>
 								<TouchableOpacity
@@ -287,13 +290,15 @@ export const SettingsView: React.FC = () => {
 									onPress={() => handleVoiceSelect(voice)}
 								>
 									<View style={styles.voiceInfo}>
-										<ThemedText style={styles.voiceName}>{voice.name}</ThemedText>
+										<ThemedText style={styles.voiceName}>
+											{voice.name}
+										</ThemedText>
 										<ThemedText style={styles.voiceDetails}>
 											{voice.language} • {voice.quality}
 										</ThemedText>
 									</View>
 								</TouchableOpacity>
-								
+
 								<View style={styles.voiceActions}>
 									<TouchableOpacity
 										style={styles.playButton}
@@ -302,14 +307,14 @@ export const SettingsView: React.FC = () => {
 										<Feather
 											name={
 												playingVoiceId === voice.identifier && isSpeaking
-													? "pause-circle"
-													: "play-circle"
+													? 'pause-circle'
+													: 'play-circle'
 											}
 											size={24}
 											color="#C9B037"
 										/>
 									</TouchableOpacity>
-									
+
 									{selectedVoice?.identifier === voice.identifier && (
 										<ThemedText style={styles.checkmark}>✓</ThemedText>
 									)}

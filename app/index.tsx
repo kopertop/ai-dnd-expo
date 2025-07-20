@@ -47,7 +47,6 @@ const IndexScreen: React.FC = () => {
 					</TouchableOpacity>
 				)}
 
-
 				{/* Settings button */}
 				<TouchableOpacity
 					style={styles.settingsBtn}

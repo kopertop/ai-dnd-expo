@@ -1,6 +1,6 @@
 import type { CactusOAICompatibleMessage } from 'cactus-react-native';
 import { CactusVLM } from 'cactus-react-native';
-import RNFS from 'react-native-fs';
+import * as FileSystem from 'expo-file-system';
 
 export type Message = CactusOAICompatibleMessage & {
 	images?: string[];
@@ -23,51 +23,52 @@ class CactusManager {
 		fileName: string,
 		onProgress: (progress: number, file: string) => void,
 	): Promise<string> {
-		const filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+		const filePath = `${FileSystem.documentDirectory}${fileName}`;
 
-		if (await RNFS.exists(filePath)) {
+		// Check if file already exists
+		const fileInfo = await FileSystem.getInfoAsync(filePath);
+		if (fileInfo.exists) {
 			return filePath;
 		}
 
 		onProgress(0, fileName);
 
-		const { promise } = RNFS.downloadFile({
-			fromUrl: url,
-			toFile: filePath,
-			progress: (res: any) => {
-				const progress = res.bytesWritten / res.contentLength;
+		// Download with progress tracking
+		const downloadResumable = FileSystem.createDownloadResumable(
+			url,
+			filePath,
+			{},
+			downloadProgress => {
+				const progress =
+					downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
 				onProgress(progress, fileName);
 			},
-		});
+		);
 
-		const result = await promise;
+		const result = await downloadResumable.downloadAsync();
 
-		if (result.statusCode === 200) {
-			return filePath;
+		if (result && result.uri) {
+			return result.uri;
 		} else {
 			throw new Error(`Failed to download ${fileName}`);
 		}
 	}
 
 	async downloadDemoImage(): Promise<string> {
-		const documentsPath = RNFS.DocumentDirectoryPath;
-		const targetPath = `${documentsPath}/demo_image.jpg`;
+		const targetPath = `${FileSystem.documentDirectory}demo_image.jpg`;
 
-		if (await RNFS.exists(targetPath)) {
+		// Check if file already exists
+		const fileInfo = await FileSystem.getInfoAsync(targetPath);
+		if (fileInfo.exists) {
 			return targetPath;
 		}
 
-		const { promise } = RNFS.downloadFile({
-			fromUrl: demoImageUrl,
-			toFile: targetPath,
-		});
+		const result = await FileSystem.downloadAsync(demoImageUrl, targetPath);
 
-		const result = await promise;
-
-		if (result.statusCode === 200) {
-			return targetPath;
+		if (result.uri) {
+			return result.uri;
 		} else {
-			throw new Error(`Failed to download demo image. Status code: ${result.statusCode}`);
+			throw new Error('Failed to download demo image');
 		}
 	}
 

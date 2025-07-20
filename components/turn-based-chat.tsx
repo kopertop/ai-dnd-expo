@@ -258,10 +258,10 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 				// Check if we've already spoken this exact message
 				if (lastSpokenMessageRef.current !== lastMessage.content) {
 					lastSpokenMessageRef.current = lastMessage.content;
-					
+
 					// Stop any current speech first
 					dmVoice.stop();
-					
+
 					// Use a small delay to ensure the message is rendered first
 					const speakTimeout = setTimeout(() => {
 						dmVoice.speakAsNarrator(lastMessage.content);
