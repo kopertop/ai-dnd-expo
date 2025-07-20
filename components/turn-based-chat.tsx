@@ -270,12 +270,12 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 			style={[
 				styles.container,
 				isMobile
-					? { ...styles.containerMobile, height: keyboardOpen ? undefined : chatHeight }
+					? { ...styles.containerMobile, flex: 1, height: undefined }
 					: styles.containerDesktop,
 			]}
 		>
 			<KeyboardAvoidingView
-				style={[styles.chatContainer, keyboardOpen ? { flex: 1 } : { height: chatHeight }]}
+				style={[styles.chatContainer, { flex: 1 }]}
 			>
 				{/* Chat Header */}
 				<View style={styles.chatHeader}>
@@ -373,25 +373,25 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 
 const styles = StyleSheet.create({
 	container: {
+		flex: 1,
+	},
+	containerDesktop: {
 		position: 'absolute',
 		top: 80,
 		zIndex: 300,
-	},
-	containerDesktop: {
 		right: 16, // Fixed to right side
 		width: 500, // Max width 500px
 		maxWidth: 500,
 	},
 	containerMobile: {
-		left: 16,
-		right: 16,
+		flex: 1,
 	},
 	chatContainer: {
-		backgroundColor: 'rgba(249, 246, 239, 0.95)', // Parchment background
-		borderRadius: 16,
+		backgroundColor: '#F9F6EF', // Full opacity for mobile
+		borderRadius: 0, // No border radius for mobile
 		overflow: 'hidden',
-		borderWidth: 2,
-		borderColor: '#C9B037',
+		borderWidth: 0, // No border for mobile
+		borderColor: 'transparent',
 	},
 	chatHeader: {
 		backgroundColor: '#FFD700',

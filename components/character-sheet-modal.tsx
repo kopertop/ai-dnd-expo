@@ -14,15 +14,15 @@ import {
 	View,
 } from 'react-native';
 
-import { useGameState } from '@/hooks/use-game-state';
-import { GearSlot } from '@/types/stats';
 
 import { ThemedView } from '@/components/themed-view';
 import { SKILL_LIST } from '@/constants/skills';
 import { STAT_KEYS } from '@/constants/stats';
 import { useAudio } from '@/hooks/use-audio-player';
+import { useGameState } from '@/hooks/use-game-state';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import styles from '@/styles/character-sheet-modal.styles';
+import { GearSlot } from '@/types/stats';
 
 interface CharacterSheetModalProps {
 	visible: boolean;
@@ -195,9 +195,9 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 													android_ripple={
 														isMobile
 															? {
-																	color: '#C9B037',
-																	borderless: false,
-																}
+																color: '#C9B037',
+																borderless: false,
+															}
 															: undefined
 													}
 													onPress={() => {

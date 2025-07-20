@@ -27,7 +27,12 @@ const IndexScreen: React.FC = () => {
 
 	return (
 		<>
-			<Stack.Screen options={{ title: 'Home' }} />
+			<Stack.Screen
+				options={{
+					title: 'Home',
+					headerShown: false,
+				}}
+			/>
 			<ThemedView style={styles.container}>
 				<ThemedText type="title">Welcome to the AI D&D Platform</ThemedText>
 				<Link href="/new-game" style={styles.link}>

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { CLASSES } from '@/constants/classes';
 import {
 	CARD_GAP,
 	cardGridStyles,
@@ -10,6 +9,8 @@ import {
 	SCREEN_WIDTH,
 } from '../styles/card-grid.styles';
 import { newGameStyles } from '../styles/new-game.styles';
+
+import { CLASSES } from '@/constants/classes';
 import { ClassOption } from '@/types/class-option';
 
 interface ClassChooserProps {

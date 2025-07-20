@@ -131,8 +131,8 @@ export const VoiceStatusIndicator: React.FC<VoiceStatusIndicatorProps> = ({
 						styles.compactIconContainer,
 						status === 'listening' &&
 							animated && {
-								transform: [{ scale: pulseAnim }],
-							},
+							transform: [{ scale: pulseAnim }],
+						},
 					]}
 				>
 					<FontAwesome name={config.icon as any} size={12} color={config.color} />
@@ -153,8 +153,8 @@ export const VoiceStatusIndicator: React.FC<VoiceStatusIndicatorProps> = ({
 					styles.iconContainer,
 					status === 'listening' &&
 						animated && {
-							transform: [{ scale: pulseAnim }],
-						},
+						transform: [{ scale: pulseAnim }],
+					},
 				]}
 			>
 				<FontAwesome name={config.icon as any} size={16} color={config.color} />

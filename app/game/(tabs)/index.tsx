@@ -1,4 +1,3 @@
-import { Stack } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -169,7 +168,7 @@ const ChatTab: React.FC = () => {
 
 	if (loading) {
 		return (
-			<SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+			<SafeAreaView style={styles.container} edges={['left', 'right']}>
 				<ActivityIndicator size="large" color="#C9B037" />
 				<ThemedText>
 					<Text>Loading your adventure...</Text>
@@ -180,7 +179,7 @@ const ChatTab: React.FC = () => {
 
 	if (!gameState) {
 		return (
-			<SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+			<SafeAreaView style={styles.container} edges={['left', 'right']}>
 				<ThemedText type="title">
 					<Text>No saved game found.</Text>
 				</ThemedText>
@@ -195,9 +194,7 @@ const ChatTab: React.FC = () => {
 	}
 
 	return (
-		<SafeAreaView style={styles.chatContainer} edges={['top', 'left', 'right']}>
-			<Stack.Screen options={{ headerShown: false }} />
-
+		<SafeAreaView style={styles.chatContainer} edges={['left', 'right']}>
 			<TurnBasedChat
 				playerCharacter={playerCharacter || null}
 				dmMessages={dmAgent.messages.map((msg, index) => ({

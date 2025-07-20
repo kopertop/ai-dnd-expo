@@ -3,9 +3,9 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { LayoutAnimation, Platform } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useGameState } from '@/hooks/use-game-state';
 
 // Animated tab icon component
 const AnimatedTabIcon: React.FC<{
@@ -42,12 +42,16 @@ const AnimatedTabIcon: React.FC<{
 
 const TabLayout: React.FC = () => {
 	const colorScheme = useColorScheme();
+	const { gameState } = useGameState();
 
 	// D&D themed colors
 	const activeColor = '#C9B037'; // Gold
 	const inactiveColor = colorScheme === 'dark' ? '#8B7355' : '#8B6914'; // Darker gold variants
 	const backgroundColor = colorScheme === 'dark' ? '#2C1810' : '#F9F6EF'; // Parchment colors
 	const borderColor = colorScheme === 'dark' ? '#5D4E37' : '#C9B037'; // Gold border
+
+	// Get game name for header
+	const gameName = gameState?.gameWorld || 'D&D Adventure';
 
 	// Handle orientation changes with smooth animations
 	React.useEffect(() => {
@@ -68,107 +72,116 @@ const TabLayout: React.FC = () => {
 	}, []);
 
 	return (
-		<SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-			<Tabs
-				screenOptions={{
-					tabBarActiveTintColor: activeColor,
-					tabBarInactiveTintColor: inactiveColor,
-					tabBarStyle: {
-						backgroundColor: backgroundColor,
-						borderTopColor: borderColor,
-						borderTopWidth: 2,
-						height: Platform.OS === 'ios' ? 85 : 65,
-						paddingBottom: Platform.OS === 'ios' ? 25 : 10,
-						paddingTop: 8,
-						// Add subtle shadow for better visual separation
-						shadowColor: '#000',
-						shadowOffset: {
-							width: 0,
-							height: -2,
-						},
-						shadowOpacity: 0.1,
-						shadowRadius: 3,
-						elevation: 5,
+		<Tabs
+			screenOptions={{
+				tabBarActiveTintColor: activeColor,
+				tabBarInactiveTintColor: inactiveColor,
+				tabBarStyle: {
+					backgroundColor: backgroundColor,
+					borderTopColor: borderColor,
+					borderTopWidth: 2,
+					height: Platform.OS === 'ios' ? 85 : 65,
+					paddingBottom: Platform.OS === 'ios' ? 25 : 10,
+					paddingTop: 8,
+					// Add subtle shadow for better visual separation
+					shadowColor: '#000',
+					shadowOffset: {
+						width: 0,
+						height: -2,
 					},
-					tabBarLabelStyle: {
-						fontSize: 12,
-						fontWeight: '600',
-						marginTop: 2,
-						// Ensure text is readable
-						textAlign: 'center',
-					},
-					tabBarIconStyle: {
-						marginBottom: 2,
-					},
-					headerShown: false,
-					// Ensure tab state is preserved when switching
-					lazy: false,
-					// Add smooth transition animation
-					animation: 'shift',
+					shadowOpacity: 0.1,
+					shadowRadius: 3,
+					elevation: 5,
+				},
+				tabBarLabelStyle: {
+					fontSize: 12,
+					fontWeight: '600',
+					marginTop: 2,
+					// Ensure text is readable
+					textAlign: 'center',
+				},
+				tabBarIconStyle: {
+					marginBottom: 2,
+				},
+				headerShown: false,
+				headerStyle: {
+					backgroundColor: backgroundColor,
+					borderBottomColor: borderColor,
+					borderBottomWidth: 1,
+				},
+				headerTitleStyle: {
+					color: '#3B2F1B',
+					fontWeight: 'bold',
+					fontSize: 18,
+				},
+				headerTintColor: '#C9B037',
+				// Ensure tab state is preserved when switching
+				lazy: false,
+				// Add smooth transition animation
+				animation: 'shift',
+			}}
+		>
+			<Tabs.Screen
+				name="index"
+				options={{
+					title: 'Chat',
+					tabBarIcon: ({ color, size, focused }) => (
+						<AnimatedTabIcon
+							name="comments"
+							color={color}
+							size={size}
+							focused={focused}
+						/>
+					),
+					tabBarAccessibilityLabel: 'Chat with Dungeon Master',
 				}}
-			>
-				<Tabs.Screen
-					name="index"
-					options={{
-						title: 'Chat',
-						tabBarIcon: ({ color, size, focused }) => (
-							<AnimatedTabIcon
-								name="comments"
-								color={color}
-								size={size}
-								focused={focused}
-							/>
-						),
-						tabBarAccessibilityLabel: 'Chat with Dungeon Master',
-					}}
-				/>
-				<Tabs.Screen
-					name="character"
-					options={{
-						title: 'Character',
-						tabBarIcon: ({ color, size, focused }) => (
-							<AnimatedTabIcon
-								name="user"
-								color={color}
-								size={size}
-								focused={focused}
-							/>
-						),
-						tabBarAccessibilityLabel: 'View Character Sheet',
-					}}
-				/>
-				<Tabs.Screen
-					name="map"
-					options={{
-						title: 'Map',
-						tabBarIcon: ({ color, size, focused }) => (
-							<AnimatedTabIcon
-								name="map"
-								color={color}
-								size={size}
-								focused={focused}
-							/>
-						),
-						tabBarAccessibilityLabel: 'View Game Map',
-					}}
-				/>
-				<Tabs.Screen
-					name="settings"
-					options={{
-						title: 'Settings',
-						tabBarIcon: ({ color, size, focused }) => (
-							<AnimatedTabIcon
-								name="cog"
-								color={color}
-								size={size}
-								focused={focused}
-							/>
-						),
-						tabBarAccessibilityLabel: 'Game Settings',
-					}}
-				/>
-			</Tabs>
-		</SafeAreaView>
+			/>
+			<Tabs.Screen
+				name="character"
+				options={{
+					title: 'Character',
+					tabBarIcon: ({ color, size, focused }) => (
+						<AnimatedTabIcon
+							name="user"
+							color={color}
+							size={size}
+							focused={focused}
+						/>
+					),
+					tabBarAccessibilityLabel: 'View Character Sheet',
+				}}
+			/>
+			<Tabs.Screen
+				name="map"
+				options={{
+					title: 'Map',
+					tabBarIcon: ({ color, size, focused }) => (
+						<AnimatedTabIcon
+							name="map"
+							color={color}
+							size={size}
+							focused={focused}
+						/>
+					),
+					tabBarAccessibilityLabel: 'View Game Map',
+				}}
+			/>
+			<Tabs.Screen
+				name="settings"
+				options={{
+					title: 'Settings',
+					tabBarIcon: ({ color, size, focused }) => (
+						<AnimatedTabIcon
+							name="cog"
+							color={color}
+							size={size}
+							focused={focused}
+						/>
+					),
+					tabBarAccessibilityLabel: 'Game Settings',
+				}}
+			/>
+		</Tabs>
 	);
 };
 

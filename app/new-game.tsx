@@ -10,25 +10,25 @@ import {
 	View,
 } from 'react-native';
 
+import { newGameStyles } from '../styles/new-game.styles';
+
 import { AttributePicker } from '@/components/attribute-picker';
 import { ClassChooser } from '@/components/class-chooser';
 import { LocationChooser } from '@/components/location-chooser';
 import { RaceChooser } from '@/components/race-chooser';
 import { SkillChooser } from '@/components/skill-chooser';
+import { ThemedView } from '@/components/themed-view';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { WorldChooser } from '@/components/world-chooser';
 import { generateRandomBackground } from '@/constants/backgrounds';
 import { useGameState } from '@/hooks/use-game-state';
-import { newGameStyles } from '../styles/new-game.styles';
+import { useScreenSize } from '@/hooks/use-screen-size';
 import { ClassOption } from '@/types/class-option';
 import { LocationOption } from '@/types/location-option';
 import { RaceOption } from '@/types/race-option';
 import { Skill } from '@/types/skill';
 import { StatBlock } from '@/types/stats';
 import { WorldOption } from '@/types/world-option';
-
-import { ThemedView } from '@/components/themed-view';
-import { useScreenSize } from '@/hooks/use-screen-size';
 
 type WizardStep = 'world' | 'location' | 'race' | 'class' | 'attributes' | 'skills' | 'character';
 
@@ -47,8 +47,8 @@ const NewGameScreen: React.FC = () => {
 	const { isMobile } = useScreenSize();
 
 	const { save } = useGameState();
-	const addItem = async (item: string, quantity: number) => {};
-	const equipItem = async (item: string) => {};
+	const addItem = async (item: string, quantity: number) => { };
+	const equipItem = async (item: string) => { };
 
 	// Pan responder for swipe gestures
 	const panResponder = PanResponder.create({
@@ -228,9 +228,9 @@ const NewGameScreen: React.FC = () => {
 							style={[
 								isMobile ? newGameStyles.stepDotMobile : newGameStyles.stepDot,
 								index === currentStepIndex &&
-									(isMobile
-										? newGameStyles.stepDotActiveMobile
-										: newGameStyles.stepDotActive),
+								(isMobile
+									? newGameStyles.stepDotActiveMobile
+									: newGameStyles.stepDotActive),
 								index < currentStepIndex && newGameStyles.stepDotCompleted,
 							]}
 						/>
@@ -560,7 +560,9 @@ const NewGameScreen: React.FC = () => {
 
 	return (
 		<ThemedView style={[newGameStyles.container, isMobile && newGameStyles.containerMobile]}>
-			<Stack.Screen options={{ headerShown: !isMobile }} />
+			<Stack.Screen options={{
+				headerShown: false,
+			}} />
 			<View {...panResponder.panHandlers} style={{ flex: 1 }}>
 				<ScrollView
 					contentContainerStyle={[

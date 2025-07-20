@@ -53,7 +53,7 @@ const RootLayout: React.FC = () => {
 						<Stack initialRouteName="index">
 							<Stack.Screen name="index" options={{ headerShown: false }} />
 							<Stack.Screen name="new-game" options={{ headerShown: false }} />
-							<Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+							<Stack.Screen name="game" options={{ headerShown: false }} />
 							<Stack.Screen name="+not-found" />
 						</Stack>
 						<StatusBar style="auto" />

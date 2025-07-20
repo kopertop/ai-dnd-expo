@@ -1,4 +1,4 @@
-import { Stack, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
@@ -259,8 +259,6 @@ const GameScreen: React.FC = () => {
 
 	return (
 		<View style={{ width: '100%', height: '100%' }}>
-			<Stack.Screen options={{ headerShown: false }} />
-
 			<ResponsiveGameContainer
 				playerCharacter={playerCharacter || null}
 				dmMessages={dmAgent.messages.map((msg, index) => ({

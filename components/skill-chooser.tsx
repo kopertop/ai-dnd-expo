@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { SKILL_LIST } from '@/constants/skills';
 import {
 	CARD_GAP,
 	cardGridStyles,
@@ -11,6 +10,8 @@ import {
 	SCREEN_WIDTH,
 } from '../styles/card-grid.styles';
 import { newGameStyles } from '../styles/new-game.styles';
+
+import { SKILL_LIST } from '@/constants/skills';
 import { Skill } from '@/types/skill';
 
 interface SkillChooserProps {

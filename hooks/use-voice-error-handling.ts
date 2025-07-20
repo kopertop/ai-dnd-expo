@@ -72,8 +72,8 @@ export const useVoiceErrorHandling = (): VoiceErrorHandling => {
 			actionText: 'Open Settings',
 			onAction: errorInfo.showSettings
 				? () => {
-						manager.showVoiceUnavailableMessage('permissions');
-					}
+					manager.showVoiceUnavailableMessage('permissions');
+				}
 				: undefined,
 		};
 

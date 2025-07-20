@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import * as path from 'path';
+
 import { glob } from 'glob';
 
 // Patterns to replace relative imports with @/ aliases

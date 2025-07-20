@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { LOCATIONS } from '@/constants/locations';
 import {
 	CARD_GAP,
 	cardGridStyles,
@@ -10,6 +9,8 @@ import {
 	SCREEN_WIDTH,
 } from '../styles/card-grid.styles';
 import { newGameStyles } from '../styles/new-game.styles';
+
+import { LOCATIONS } from '@/constants/locations';
 import { LocationOption } from '@/types/location-option';
 
 interface LocationChooserProps {

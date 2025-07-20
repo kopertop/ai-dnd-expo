@@ -12,9 +12,10 @@ import {
 	View,
 } from 'react-native';
 
+import { newGameStyles } from '../styles/new-game.styles';
+
 import { Colors } from '@/constants/colors';
 import { ABILITY_COLORS, SKILL_LIST } from '@/constants/skills';
-import { newGameStyles } from '../styles/new-game.styles';
 import { ClassOption } from '@/types/class-option';
 import { RaceOption } from '@/types/race-option';
 import { PartialStatBlock, STAT_KEYS, StatBlock, StatKey } from '@/types/stats';
