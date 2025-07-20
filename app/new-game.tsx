@@ -10,22 +10,22 @@ import {
 	View,
 } from 'react-native';
 
-import { AttributePicker } from '../components/attribute-picker';
-import { ClassChooser } from '../components/class-chooser';
-import { LocationChooser } from '../components/location-chooser';
-import { RaceChooser } from '../components/race-chooser';
-import { SkillChooser } from '../components/skill-chooser';
-import { ConfirmModal } from '../components/ui/confirm-modal';
-import { WorldChooser } from '../components/world-chooser';
-import { generateRandomBackground } from '../constants/backgrounds';
-import { useGameState } from '../hooks/use-game-state';
+import { AttributePicker } from '@/components/attribute-picker';
+import { ClassChooser } from '@/components/class-chooser';
+import { LocationChooser } from '@/components/location-chooser';
+import { RaceChooser } from '@/components/race-chooser';
+import { SkillChooser } from '@/components/skill-chooser';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
+import { WorldChooser } from '@/components/world-chooser';
+import { generateRandomBackground } from '@/constants/backgrounds';
+import { useGameState } from '@/hooks/use-game-state';
 import { newGameStyles } from '../styles/new-game.styles';
-import { ClassOption } from '../types/class-option';
-import { LocationOption } from '../types/location-option';
-import { RaceOption } from '../types/race-option';
-import { Skill } from '../types/skill';
-import { StatBlock } from '../types/stats';
-import { WorldOption } from '../types/world-option';
+import { ClassOption } from '@/types/class-option';
+import { LocationOption } from '@/types/location-option';
+import { RaceOption } from '@/types/race-option';
+import { Skill } from '@/types/skill';
+import { StatBlock } from '@/types/stats';
+import { WorldOption } from '@/types/world-option';
 
 import { ThemedView } from '@/components/themed-view';
 import { useScreenSize } from '@/hooks/use-screen-size';

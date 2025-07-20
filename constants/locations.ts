@@ -1,4 +1,4 @@
-import { LocationOption } from '../types/location-option';
+import { LocationOption } from '@/types/location-option';
 
 export const LOCATIONS: LocationOption[] = [
 	{

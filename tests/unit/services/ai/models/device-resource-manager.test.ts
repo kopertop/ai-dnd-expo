@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-	DeviceResourceManager,
-	ResourceUtils,
-} from '../../../../../services/ai/models/device-resource-manager';
+import { DeviceResourceManager, ResourceUtils } from '@/services/ai/models/device-resource-manager';
 
 describe('DeviceResourceManager', () => {
 	let resourceManager: DeviceResourceManager;

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Gemma3InferenceEngine } from '../../../../../services/ai/models/gemma3-inference-engine';
+import { Gemma3InferenceEngine } from '@/services/ai/models/gemma3-inference-engine';
 
 describe('Gemma3InferenceEngine', () => {
 	let inferenceEngine: Gemma3InferenceEngine;

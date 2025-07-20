@@ -1,6 +1,6 @@
 // D&D 4e Skills by Ability Score with color coding
 
-import { Skill } from '../types/skill';
+import { Skill } from '@/types/skill';
 
 export type AbilityKey = 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
 

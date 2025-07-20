@@ -10,7 +10,7 @@ import {
 	CactusDMAgentSimple,
 	DMResponse,
 	GameContext,
-} from '../services/ai/agents/cactus-dm-agent-simple';
+} from '@/services/ai/agents/cactus-dm-agent-simple';
 
 // Constants
 const CACTUS_API_KEY_STORAGE_KEY = 'cactus_api_key';

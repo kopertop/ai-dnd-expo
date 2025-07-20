@@ -1,4 +1,4 @@
-import { WorldOption } from '../types/world-option';
+import { WorldOption } from '@/types/world-option';
 
 export const WORLDS: WorldOption[] = [
 	{

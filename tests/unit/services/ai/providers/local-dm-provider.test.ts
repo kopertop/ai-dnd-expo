@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-	DefaultLocalDMConfig,
-	LocalDMProvider,
-} from '../../../../../services/ai/providers/local-dm-provider';
+import { DefaultLocalDMConfig, LocalDMProvider } from '@/services/ai/providers/local-dm-provider';
 
 describe('LocalDMProvider', () => {
 	beforeEach(() => {

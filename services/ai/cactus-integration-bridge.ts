@@ -168,7 +168,7 @@ export function getCactusDeviceInfo(): {
 	platform: string;
 	os: string;
 	model?: string;
-	} {
+} {
 	return {
 		platform: Platform.OS,
 		os: Platform.Version.toString(),

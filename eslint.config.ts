@@ -121,7 +121,16 @@ export default defineConfig([
 						},
 					],
 
-					patterns: ['uuid/*', '*/uuid'],
+					patterns: [
+						{
+							group: ['uuid/*', '*/uuid'],
+							message: 'Please use the custom ID generator instead of uuid.',
+						},
+						{
+							group: ['../**/components/*', '../**/hooks/*', '../**/services/*', '../**/types/*', '../**/constants/*', '../**/utils/*'],
+							message: 'Use @/ alias instead of relative imports (e.g., @/hooks/use-game-state instead of ../../hooks/use-game-state)',
+						},
+					],
 				},
 			],
 

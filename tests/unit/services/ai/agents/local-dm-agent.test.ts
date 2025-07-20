@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LocalDMAgent } from '../../../../../services/ai/agents/local-dm-agent';
+import { LocalDMAgent } from '@/services/ai/agents/local-dm-agent';
 
 describe('LocalDMAgent', () => {
 	let dmAgent: LocalDMAgent;

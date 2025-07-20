@@ -10,11 +10,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useDMVoice } from '../hooks/use-text-to-speech';
-import { DMMessage } from '../services/ai/agents/dungeon-master-agent';
-import { AIServiceManager, DefaultAIConfig } from '../services/ai/ai-service-manager';
-import { Character } from '../types/character';
-import { GameWorldState } from '../types/world-map';
+import { useDMVoice } from '@/hooks/use-text-to-speech';
+import { DMMessage } from '@/services/ai/agents/dungeon-master-agent';
+import { AIServiceManager, DefaultAIConfig } from '@/services/ai/ai-service-manager';
+import { Character } from '@/types/character';
+import { GameWorldState } from '@/types/world-map';
 
 export interface UseEnhancedDungeonMasterReturn {
 	messages: DMMessage[];
@@ -76,15 +76,15 @@ export const useEnhancedDungeonMaster = (
 		local: {
 			available: boolean;
 			resourceUsage?: import('../services/ai/providers/local-dm-provider').ResourceUsage;
-				};
+		};
 		cache: { size: number; hitRate: number };
 		overall: 'healthy' | 'degraded' | 'offline';
-				}>({
-					cactus: { available: false },
-					local: { available: false },
-					cache: { size: 0, hitRate: 0 },
-					overall: 'offline',
-				});
+	}>({
+		cactus: { available: false },
+		local: { available: false },
+		cache: { size: 0, hitRate: 0 },
+		overall: 'offline',
+	});
 
 	// New state for local provider functionality
 	const [localProviderStatus, setLocalProviderStatus] = useState<{
@@ -92,11 +92,11 @@ export const useEnhancedDungeonMaster = (
 		modelLoaded: boolean;
 		error: string | null;
 		resourceUsage?: import('../services/ai/providers/local-dm-provider').ResourceUsage;
-			}>({
-				isReady: false,
-				modelLoaded: false,
-				error: null,
-			});
+	}>({
+		isReady: false,
+		modelLoaded: false,
+		error: null,
+	});
 
 	const [currentProvider, setCurrentProvider] = useState<'local' | 'cactus' | 'fallback'>(
 		'fallback',

@@ -14,8 +14,8 @@ import {
 	View,
 } from 'react-native';
 
-import { useCactusDungeonMaster } from '../../hooks/use-cactus-dungeon-master';
-import { useColorScheme } from '../../hooks/use-color-scheme';
+import { useCactusDungeonMaster } from '@/hooks/use-cactus-dungeon-master';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface CactusDMChatProps {
 	playerName: string;

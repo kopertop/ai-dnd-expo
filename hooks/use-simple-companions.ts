@@ -233,10 +233,10 @@ export function useSimpleCompanions(): CompanionManager {
 			const partyConfig: PartyConfiguration = partyConfigData
 				? JSON.parse(partyConfigData)
 				: {
-					maxSize: 4,
-					activeCompanions: [],
-					leadershipStyle: 'democratic',
-				};
+						maxSize: 4,
+						activeCompanions: [],
+						leadershipStyle: 'democratic',
+					};
 
 			updateDerivedState(companions, partyConfig);
 

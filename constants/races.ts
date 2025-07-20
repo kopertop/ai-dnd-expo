@@ -1,4 +1,4 @@
-import { RaceOption } from '../types/race-option';
+import { RaceOption } from '@/types/race-option';
 
 export const RACES: RaceOption[] = [
 	{

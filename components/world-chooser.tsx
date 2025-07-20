@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { WORLDS } from '../constants/worlds';
+import { WORLDS } from '@/constants/worlds';
 import { cardGridStyles, SCREEN_WIDTH } from '../styles/card-grid.styles';
 import { newGameStyles } from '../styles/new-game.styles';
-import { WorldOption } from '../types/world-option';
+import { WorldOption } from '@/types/world-option';
 
 interface WorldChooserProps {
 	onSelect: (world: WorldOption) => void;

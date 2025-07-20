@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-	ONNXModelManager,
-	ONNXModelUtils,
-} from '../../../../../services/ai/models/onnx-model-manager';
+import { ONNXModelManager, ONNXModelUtils } from '@/services/ai/models/onnx-model-manager';
 
 describe('ONNXModelManager', () => {
 	beforeEach(() => {

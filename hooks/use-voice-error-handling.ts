@@ -3,8 +3,8 @@ import { useCallback, useState } from 'react';
 import {
 	getSpeechRecognitionErrorHandler,
 	SpeechRecognitionError,
-} from '../utils/speech-recognition-errors';
-import { getVoicePermissionManager } from '../utils/voice-permissions';
+} from '@/utils/speech-recognition-errors';
+import { getVoicePermissionManager } from '@/utils/voice-permissions';
 
 export interface VoiceErrorState {
 	currentError: SpeechRecognitionError | null;
@@ -72,8 +72,8 @@ export const useVoiceErrorHandling = (): VoiceErrorHandling => {
 			actionText: 'Open Settings',
 			onAction: errorInfo.showSettings
 				? () => {
-					manager.showVoiceUnavailableMessage('permissions');
-				}
+						manager.showVoiceUnavailableMessage('permissions');
+					}
 				: undefined,
 		};
 

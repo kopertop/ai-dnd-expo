@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AIServiceManager, DefaultAIConfig } from '../../../../../services/ai/ai-service-manager';
-import { CactusAIProvider } from '../../../../../services/ai/providers/cactus-provider';
-import { LocalDMProvider } from '../../../../../services/ai/providers/local-dm-provider';
+import { AIServiceManager, DefaultAIConfig } from '@/services/ai/ai-service-manager';
+import { CactusAIProvider } from '@/services/ai/providers/cactus-provider';
+import { LocalDMProvider } from '@/services/ai/providers/local-dm-provider';
 
 describe('AIServiceManager', () => {
 	let serviceManager: AIServiceManager;

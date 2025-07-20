@@ -2,7 +2,7 @@ import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
-import { getVoicePermissionManager } from '../utils/voice-permissions';
+import { getVoicePermissionManager } from '@/utils/voice-permissions';
 
 export interface VoicePermissionsResult {
 	hasPermissions: boolean;

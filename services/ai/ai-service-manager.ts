@@ -543,7 +543,7 @@ export class AIServiceManager {
 			status?: import('./providers/local-dm-provider').ProviderStatus;
 		};
 		fallback: { enabled: boolean };
-		} {
+	} {
 		return {
 			cactus: {
 				initialized: !!this.cactusProvider,
@@ -710,7 +710,7 @@ export class AIServiceManager {
 		cactus: { healthy: boolean; lastCheck: number; consecutiveFailures: number };
 		local: { healthy: boolean; lastCheck: number; consecutiveFailures: number };
 		optimal: 'local' | 'cactus' | 'fallback';
-		} {
+	} {
 		return {
 			...this.providerHealthStatus,
 			optimal: this.getOptimalProvider(),

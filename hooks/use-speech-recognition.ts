@@ -5,8 +5,8 @@ import { Platform } from 'react-native';
 import {
 	handleSpeechRecognitionError,
 	SpeechRecognitionError,
-} from '../utils/speech-recognition-errors';
-import { getVoicePermissionManager } from '../utils/voice-permissions';
+} from '@/utils/speech-recognition-errors';
+import { getVoicePermissionManager } from '@/utils/voice-permissions';
 
 export interface SpeechRecognitionOptions {
 	language?: string;

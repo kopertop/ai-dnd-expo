@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ModelQuantizationManager } from '../../../../../services/ai/models/model-quantization-manager';
+import { ModelQuantizationManager } from '@/services/ai/models/model-quantization-manager';
 
 describe('ModelQuantizationManager', () => {
 	beforeEach(() => {

@@ -3,8 +3,8 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 
 import { CARD_GAP, cardGridStyles, SCREEN_WIDTH } from '../styles/card-grid.styles';
 import { newGameStyles } from '../styles/new-game.styles';
-import { ClassOption } from '../types/class-option';
-import { STAT_KEYS, StatBlock, StatKey } from '../types/stats';
+import { ClassOption } from '@/types/class-option';
+import { STAT_KEYS, StatBlock, StatKey } from '@/types/stats';
 
 import { Colors } from '@/constants/colors';
 
