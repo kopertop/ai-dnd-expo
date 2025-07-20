@@ -47,8 +47,8 @@ const NewGameScreen: React.FC = () => {
 	const { isMobile } = useScreenSize();
 
 	const { save } = useGameState();
-	const addItem = async (item: string, quantity: number) => { };
-	const equipItem = async (item: string) => { };
+	const addItem = async (item: string, quantity: number) => {};
+	const equipItem = async (item: string) => {};
 
 	// Pan responder for swipe gestures
 	const panResponder = PanResponder.create({
@@ -228,9 +228,9 @@ const NewGameScreen: React.FC = () => {
 							style={[
 								isMobile ? newGameStyles.stepDotMobile : newGameStyles.stepDot,
 								index === currentStepIndex &&
-								(isMobile
-									? newGameStyles.stepDotActiveMobile
-									: newGameStyles.stepDotActive),
+									(isMobile
+										? newGameStyles.stepDotActiveMobile
+										: newGameStyles.stepDotActive),
 								index < currentStepIndex && newGameStyles.stepDotCompleted,
 							]}
 						/>
@@ -560,9 +560,11 @@ const NewGameScreen: React.FC = () => {
 
 	return (
 		<ThemedView style={[newGameStyles.container, isMobile && newGameStyles.containerMobile]}>
-			<Stack.Screen options={{
-				headerShown: false,
-			}} />
+			<Stack.Screen
+				options={{
+					headerShown: false,
+				}}
+			/>
 			<View {...panResponder.panHandlers} style={{ flex: 1 }}>
 				<ScrollView
 					contentContainerStyle={[

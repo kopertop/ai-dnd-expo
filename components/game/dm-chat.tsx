@@ -1,11 +1,12 @@
 /**
  * DM Chat Component
  *
- * A component for interacting with the DM agent
+ * A component for interacting with the DM agent using Cactus VLM
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
 	ActivityIndicator,
+	Alert,
 	ScrollView,
 	StyleSheet,
 	Text,
@@ -14,8 +15,9 @@ import {
 	View,
 } from 'react-native';
 
+import { cactus, Message } from '../cactus';
+
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useDungeonMaster } from '@/hooks/use-dungeon-master';
 
 interface DMChatProps {
 	playerName: string;
@@ -25,12 +27,7 @@ interface DMChatProps {
 	onToolCommand?: (type: string, params: string) => void;
 }
 
-type MessageRole = 'user' | 'assistant';
-
-interface ChatMessage {
-	role: MessageRole;
-	content: string;
-}
+type ChatMessage = Message;
 
 export const DMChat: React.FC<DMChatProps> = ({
 	playerName,
@@ -42,55 +39,43 @@ export const DMChat: React.FC<DMChatProps> = ({
 	const [input, setInput] = useState('');
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [isInitializing, setIsInitializing] = useState(true);
+	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [isInitialized, setIsInitialized] = useState(false);
+	const [initProgress, setInitProgress] = useState(0);
 	const scrollViewRef = useRef<ScrollView>(null);
 	const colorScheme = useColorScheme();
 
-	const {
-		isInitialized,
-		isLoading,
-		error,
-		initProgress,
-		initialize,
-		processPlayerAction,
-		generateNarration,
-	} = useDungeonMaster({
-		autoInitialize: true,
-		fallbackMode: 'localfirst',
-	});
-
-	// Generate initial narration when component mounts
+	// Initialize Cactus VLM
 	useEffect(() => {
-		const generateInitialNarration = async () => {
-			if (isInitialized) {
-				try {
-					const narration = await generateNarration(currentScene, {
-						playerName,
-						playerClass,
-						playerRace,
-						currentLocation: currentScene,
-					});
+		const initializeCactus = async () => {
+			try {
+				setError(null);
+				await cactus.initialize(progress => {
+					setInitProgress(progress);
+				});
+				setIsInitialized(true);
 
-					setMessages([{ role: 'assistant', content: narration }]);
-					setIsInitializing(false);
-				} catch (err) {
-					console.error('Error generating initial narration:', err);
-					setIsInitializing(false);
-				}
+				// Generate initial DM narration
+				const initialMessage: Message = {
+					role: 'user',
+					content: `You are an expert Dungeon Master for D&D 5e. Start a new adventure for ${playerName}, a ${playerRace} ${playerClass}, in the ${currentScene}. Set the scene with vivid descriptions and present them with an engaging situation or choice. Keep it concise but immersive.`,
+				};
+
+				const response = await cactus.generateResponse(initialMessage);
+				setMessages([{ role: 'assistant', content: response }]);
+				setIsInitializing(false);
+			} catch (error) {
+				console.error('Failed to initialize Cactus:', error);
+				setError('Failed to initialize DM. Please try again.');
+				setIsInitializing(false);
 			}
 		};
 
-		if (isInitialized && isInitializing) {
-			generateInitialNarration();
+		if (isInitializing) {
+			initializeCactus();
 		}
-	}, [
-		isInitialized,
-		isInitializing,
-		currentScene,
-		playerName,
-		playerClass,
-		playerRace,
-		generateNarration,
-	]);
+	}, [isInitializing, playerName, playerRace, playerClass, currentScene]);
 
 	// Handle sending a message
 	const handleSend = async () => {
@@ -100,41 +85,52 @@ export const DMChat: React.FC<DMChatProps> = ({
 		setInput('');
 
 		// Add user message to chat
-		const updatedMessages: ChatMessage[] = [
-			...messages,
-			{ role: 'user', content: userMessage },
-		];
+		const userChatMessage: ChatMessage = { role: 'user', content: userMessage };
+		const updatedMessages: ChatMessage[] = [...messages, userChatMessage];
 		setMessages(updatedMessages);
+		setIsLoading(true);
 
-		// Process player action
-		const response = await processPlayerAction(userMessage, {
-			playerName,
-			playerClass,
-			playerRace,
-			currentScene,
-			gameHistory: updatedMessages.map(msg => msg.content),
-		});
+		try {
+			// Create DM context message
+			const dmContextMessage: Message = {
+				role: 'user',
+				content: `You are an expert Dungeon Master for D&D 5e. The player ${playerName} (${playerRace} ${playerClass}) is in ${currentScene}. They said: "${userMessage}". 
+				
+Respond as the DM with:
+1. Narrative description of what happens
+2. Any dice rolls or skill checks needed
+3. New situations or choices for the player
+4. Keep responses engaging but concise.
 
-		// Add assistant response to chat
-		setMessages([...updatedMessages, { role: 'assistant', content: response.text }]);
+Previous context: ${messages
+		.slice(-3)
+		.map(m => `${m.role}: ${m.content}`)
+		.join('\n')}`,
+			};
 
-		// Handle tool commands
-		if (response.toolCommands.length > 0 && onToolCommand) {
-			response.toolCommands.forEach(command => {
-				onToolCommand(command.type, command.params);
-			});
+			const response = await cactus.generateResponse(dmContextMessage);
+
+			// Add assistant response to chat
+			setMessages([...updatedMessages, { role: 'assistant', content: response }]);
+
+			// Scroll to bottom
+			setTimeout(() => {
+				scrollViewRef.current?.scrollToEnd({ animated: true });
+			}, 100);
+		} catch (error) {
+			console.error('Error generating DM response:', error);
+			Alert.alert('Error', 'Failed to get DM response. Please try again.');
+		} finally {
+			setIsLoading(false);
 		}
-
-		// Scroll to bottom
-		setTimeout(() => {
-			scrollViewRef.current?.scrollToEnd({ animated: true });
-		}, 100);
 	};
 
 	// Retry initialization if it failed
 	const handleRetryInit = () => {
 		setIsInitializing(true);
-		initialize();
+		setError(null);
+		setIsInitialized(false);
+		setInitProgress(0);
 	};
 
 	// Determine text and background colors based on color scheme

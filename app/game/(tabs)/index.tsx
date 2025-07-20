@@ -25,7 +25,7 @@ const ChatTab: React.FC = () => {
 		playerCharacter: playerCharacter || null,
 		autoInitialize: true,
 		modelUrl:
-			'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf',
+			'https://huggingface.co/Cactus-Compute/SmolVLM2-500m-Instruct-GGUF/resolve/main/SmolVLM2-500M-Video-Instruct-Q8_0.gguf',
 	});
 
 	// Debounced save to prevent excessive saves

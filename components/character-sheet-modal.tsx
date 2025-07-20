@@ -14,7 +14,6 @@ import {
 	View,
 } from 'react-native';
 
-
 import { ThemedView } from '@/components/themed-view';
 import { SKILL_LIST } from '@/constants/skills';
 import { STAT_KEYS } from '@/constants/stats';

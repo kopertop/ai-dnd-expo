@@ -113,9 +113,7 @@ export const SettingsView: React.FC = () => {
 						<ThemedText>Text-to-Speech</ThemedText>
 						<Switch
 							value={voiceSettings.ttsEnabled}
-							onValueChange={value =>
-								handleVoiceSettingChange('ttsEnabled', value)
-							}
+							onValueChange={value => handleVoiceSettingChange('ttsEnabled', value)}
 							color="#2196F3"
 							label=""
 							variant="switch"
@@ -126,9 +124,7 @@ export const SettingsView: React.FC = () => {
 						<ThemedText>Speech-to-Text</ThemedText>
 						<Switch
 							value={voiceSettings.sttEnabled}
-							onValueChange={value =>
-								handleVoiceSettingChange('sttEnabled', value)
-							}
+							onValueChange={value => handleVoiceSettingChange('sttEnabled', value)}
 							color="#2196F3"
 							label=""
 							variant="switch"
@@ -139,9 +135,7 @@ export const SettingsView: React.FC = () => {
 						<ThemedText>Auto-speak DM Messages</ThemedText>
 						<Switch
 							value={voiceSettings.autoSpeak}
-							onValueChange={value =>
-								handleVoiceSettingChange('autoSpeak', value)
-							}
+							onValueChange={value => handleVoiceSettingChange('autoSpeak', value)}
 							color="#2196F3"
 							label=""
 							variant="switch"
@@ -154,9 +148,7 @@ export const SettingsView: React.FC = () => {
 							<Slider
 								style={styles.volumeSlider}
 								value={voiceSettings.volume}
-								onValueChange={value =>
-									handleVoiceSettingChange('volume', value)
-								}
+								onValueChange={value => handleVoiceSettingChange('volume', value)}
 							/>
 							<ThemedText style={styles.volumeText}>
 								{Math.round(voiceSettings.volume * 100)}%
@@ -202,9 +194,7 @@ export const SettingsView: React.FC = () => {
 						onPress={handleSaveAndQuit}
 						activeOpacity={0.8}
 					>
-						<ThemedText style={styles.saveAndQuitButtonText}>
-							Save and Quit
-						</ThemedText>
+						<ThemedText style={styles.saveAndQuitButtonText}>Save and Quit</ThemedText>
 					</TouchableOpacity>
 				</View>
 			</ScrollView>

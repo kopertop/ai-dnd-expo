@@ -28,8 +28,8 @@ export const CharacterSheetView: React.FC = () => {
 	const error = null;
 	const inventory: any[] = [];
 	const equipped: Record<string, any> = {};
-	const equipItem = async () => { };
-	const unequipItem = async () => { };
+	const equipItem = async () => {};
+	const unequipItem = async () => {};
 
 	if (!playerCharacter) return null;
 
@@ -128,9 +128,7 @@ export const CharacterSheetView: React.FC = () => {
 							<Pressable
 								key={String(skill.id)}
 								onPress={() =>
-									setTooltipSkill(
-										tooltipSkill === skill.id ? null : skill.id,
-									)
+									setTooltipSkill(tooltipSkill === skill.id ? null : skill.id)
 								}
 								style={styles.skillItem}
 							>
@@ -148,7 +146,17 @@ export const CharacterSheetView: React.FC = () => {
 				<View style={styles.section}>
 					<Text style={styles.sectionTitle}>Equipment</Text>
 					<View style={styles.gearGrid}>
-						{(['helmet', 'chest', 'arms', 'legs', 'boots', 'mainHand', 'offHand'] as GearSlot[]).map(slot => (
+						{(
+							[
+								'helmet',
+								'chest',
+								'arms',
+								'legs',
+								'boots',
+								'mainHand',
+								'offHand',
+							] as GearSlot[]
+						).map(slot => (
 							<TouchableOpacity
 								key={slot}
 								style={[
@@ -196,7 +204,10 @@ export const CharacterSheetView: React.FC = () => {
 										key={String(item.id)}
 										onPress={() => {
 											if (activeSlot && canEquip) {
-												if (isEquipped && entry.equippedSlot === activeSlot) {
+												if (
+													isEquipped &&
+													entry.equippedSlot === activeSlot
+												) {
 													handleUnequipSlot(activeSlot);
 												} else {
 													handleAssignItem(item);

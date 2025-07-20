@@ -6,7 +6,7 @@
 import React from 'react';
 import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
-import { CactusDMExample } from '@/components/game/cactus-dm-example';
+import CactusDebugTest from '@/components/game/cactus-debug-test';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const CactusDMScreen: React.FC = () => {
@@ -24,7 +24,7 @@ const CactusDMScreen: React.FC = () => {
 			</View>
 
 			<View style={styles.content}>
-				<CactusDMExample />
+				<CactusDebugTest />
 			</View>
 		</SafeAreaView>
 	);

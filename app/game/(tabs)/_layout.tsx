@@ -141,12 +141,7 @@ const TabLayout: React.FC = () => {
 				options={{
 					title: 'Character',
 					tabBarIcon: ({ color, size, focused }) => (
-						<AnimatedTabIcon
-							name="user"
-							color={color}
-							size={size}
-							focused={focused}
-						/>
+						<AnimatedTabIcon name="user" color={color} size={size} focused={focused} />
 					),
 					tabBarAccessibilityLabel: 'View Character Sheet',
 				}}
@@ -156,12 +151,7 @@ const TabLayout: React.FC = () => {
 				options={{
 					title: 'Map',
 					tabBarIcon: ({ color, size, focused }) => (
-						<AnimatedTabIcon
-							name="map"
-							color={color}
-							size={size}
-							focused={focused}
-						/>
+						<AnimatedTabIcon name="map" color={color} size={size} focused={focused} />
 					),
 					tabBarAccessibilityLabel: 'View Game Map',
 				}}
@@ -171,12 +161,7 @@ const TabLayout: React.FC = () => {
 				options={{
 					title: 'Settings',
 					tabBarIcon: ({ color, size, focused }) => (
-						<AnimatedTabIcon
-							name="cog"
-							color={color}
-							size={size}
-							focused={focused}
-						/>
+						<AnimatedTabIcon name="cog" color={color} size={size} focused={focused} />
 					),
 					tabBarAccessibilityLabel: 'Game Settings',
 				}}

@@ -8,7 +8,6 @@ import { Colors } from '@/constants/colors';
 import { ClassOption } from '@/types/class-option';
 import { STAT_KEYS, StatBlock, StatKey } from '@/types/stats';
 
-
 const POINT_BUY_COST: Record<number, number> = {
 	8: 0,
 	9: 1,

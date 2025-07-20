@@ -274,9 +274,7 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 					: styles.containerDesktop,
 			]}
 		>
-			<KeyboardAvoidingView
-				style={[styles.chatContainer, { flex: 1 }]}
-			>
+			<KeyboardAvoidingView style={[styles.chatContainer, { flex: 1 }]}>
 				{/* Chat Header */}
 				<View style={styles.chatHeader}>
 					<Feather name="message-circle" size={20} color="#000" />
