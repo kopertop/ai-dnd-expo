@@ -26,7 +26,7 @@ export const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
 	value: controlledValue,
 	onChangeText: controlledOnChangeText,
 	disabled = false,
-	multiline = true,
+	multiline = false,
 	maxLength = 500,
 }) => {
 	const colorScheme = useColorScheme();
@@ -182,6 +182,9 @@ export const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
 					maxLength={maxLength}
 					editable={!disabled}
 					textAlignVertical={multiline ? 'top' : 'center'}
+					onSubmitEditing={handleSend}
+					returnKeyType="send"
+					blurOnSubmit={true}
 				/>
 
 				{/* Voice button */}
@@ -259,22 +262,22 @@ const createStyles = (colors: typeof Colors.light) =>
 
 		inputContainer: {
 			flexDirection: 'row',
-			alignItems: 'flex-end',
+			alignItems: 'center',
 			backgroundColor: colors.background,
 			borderRadius: 24,
 			borderWidth: 1,
 			borderColor: colors.text + '20',
 			paddingHorizontal: 16,
-			paddingVertical: 8,
+			paddingVertical: 12,
 			minHeight: 48,
 		},
 		textInput: {
 			flex: 1,
 			fontSize: 16,
 			color: colors.text,
-			paddingVertical: 8,
+			paddingVertical: 4,
 			paddingRight: 8,
-			minHeight: 32,
+			minHeight: 24,
 		},
 		multilineInput: {
 			maxHeight: 120,

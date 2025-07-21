@@ -10,6 +10,7 @@ import {
 	Image,
 	Keyboard,
 	KeyboardAvoidingView,
+	Platform,
 	SafeAreaView,
 	ScrollView,
 	StyleSheet,
@@ -285,7 +286,11 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 					: styles.containerDesktop,
 			]}
 		>
-			<KeyboardAvoidingView style={[styles.chatContainer, { flex: 1 }]}>
+			<KeyboardAvoidingView
+				style={[styles.chatContainer, { flex: 1 }]}
+				behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+				keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+			>
 				{/* Chat Header */}
 				<View style={styles.chatHeader}>
 					<Feather name="message-circle" size={20} color="#000" />
@@ -319,6 +324,7 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 				<ScrollView
 					ref={scrollViewRef}
 					style={styles.messagesContainer}
+					contentContainerStyle={{ flexGrow: 1 }}
 					showsVerticalScrollIndicator={false}
 				>
 					{chatMessages.map(renderMessage)}
@@ -355,19 +361,19 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 				)}
 
 				{/* Voice Input Area - Only show if it's player's turn */}
-				{(activeCharacter === 'player' ||
-					companions.activeCompanions.some(c => c.id === activeCharacter)) && (
-					<View style={styles.voiceInputContainer}>
-						<VoiceChatInput
-							onSend={handleSendMessage}
-							placeholder={`What does ${getSpeakerName(activeCharacter)} do?`}
-							value={currentInput}
-							onChangeText={setCurrentInput}
-							disabled={isLoading}
-							maxLength={500}
-						/>
-					</View>
-				)}
+				{(
+					activeCharacter === 'player'
+					|| companions.activeCompanions.some(c => c.id === activeCharacter)
+				) && (<View style={styles.voiceInputContainer}>
+					<VoiceChatInput
+						onSend={handleSendMessage}
+						placeholder={`What does ${getSpeakerName(activeCharacter)} do?`}
+						value={currentInput}
+						onChangeText={setCurrentInput}
+						disabled={isLoading}
+						maxLength={500}
+					/>
+				</View>)}
 
 				{/* DM Turn Indicator */}
 				{activeCharacter === 'dm' && (
