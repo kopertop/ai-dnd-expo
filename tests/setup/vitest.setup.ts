@@ -1,6 +1,9 @@
 import React from 'react';
 import { vi } from 'vitest';
 
+// Define global __DEV__ for Expo modules
+global.__DEV__ = true;
+
 // Mock React Native modules that don't work in test environment
 vi.mock('react-native', () => ({
 	// Core components
@@ -103,6 +106,23 @@ vi.mock('expo-haptics', () => ({
 	impactAsync: vi.fn(),
 	notificationAsync: vi.fn(),
 	selectionAsync: vi.fn(),
+}));
+
+vi.mock('expo-file-system', () => ({
+	documentDirectory: '/mock/documents/',
+	makeDirectoryAsync: vi.fn(),
+	readAsStringAsync: vi.fn(),
+	writeAsStringAsync: vi.fn(),
+	copyAsync: vi.fn(),
+	getInfoAsync: vi.fn(),
+	downloadAsync: vi.fn(),
+	createDownloadResumable: vi.fn(),
+}));
+
+vi.mock('cactus-react-native', () => ({
+	CactusVLM: {
+		init: vi.fn(),
+	},
 }));
 
 vi.mock('@react-native-async-storage/async-storage', () => ({

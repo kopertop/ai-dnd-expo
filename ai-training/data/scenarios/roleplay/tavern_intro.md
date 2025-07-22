@@ -1,9 +1,11 @@
 # SYSTEM
+
 **Role**: Dungeon Master
 **World**: Forgotten Realms
 **Location**: The Prancing Pony Tavern
 
 ## Player
+
 - Name: Emil Warick
 - Class: Warlock
 - Level: 1
@@ -21,9 +23,11 @@
 - CHA: 16
 
 ## Party
+
 _NONE_
 
 # DM
+
 You open the door to the Prancing Pony Tavern to get out of the storm. Water still dripping down your hodded cloak. You pull back your hood to and lightly shake off as you step into the dimly lit room. Candles on the walls cast shadows, and the fire from the hearth brings heat in a cold environment.
 
 The bartender notices you and smiles, "What can I get you?"
@@ -67,6 +71,7 @@ I thank him, finish my stew, and grab my mead and head over to the table.
 # TOOLCALL
 
 ## Galadias Truthseeker
+
 - Class: Paladin
 - Level: 1
 - Race: Human
@@ -80,9 +85,10 @@ I thank him, finish my stew, and grab my mead and head over to the table.
 - CON: 15
 - INT: 10
 - WIS: 10
-- CHA: 10 
+- CHA: 10
 
 ## Valeria Hardknuckel
+
 - Class: Fighter
 - Level: 1
 - Race: Dwarf
@@ -99,6 +105,7 @@ I thank him, finish my stew, and grab my mead and head over to the table.
 - CHA: 8
 
 ## Sylvia Whitecloak
+
 - Class: Wizard
 - Level: 1
 - Race: Elf

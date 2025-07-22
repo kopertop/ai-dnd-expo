@@ -361,19 +361,19 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 				)}
 
 				{/* Voice Input Area - Only show if it's player's turn */}
-				{(
-					activeCharacter === 'player'
-					|| companions.activeCompanions.some(c => c.id === activeCharacter)
-				) && (<View style={styles.voiceInputContainer}>
-					<VoiceChatInput
-						onSend={handleSendMessage}
-						placeholder={`What does ${getSpeakerName(activeCharacter)} do?`}
-						value={currentInput}
-						onChangeText={setCurrentInput}
-						disabled={isLoading}
-						maxLength={500}
-					/>
-				</View>)}
+				{(activeCharacter === 'player' ||
+					companions.activeCompanions.some(c => c.id === activeCharacter)) && (
+					<View style={styles.voiceInputContainer}>
+						<VoiceChatInput
+							onSend={handleSendMessage}
+							placeholder={`What does ${getSpeakerName(activeCharacter)} do?`}
+							value={currentInput}
+							onChangeText={setCurrentInput}
+							disabled={isLoading}
+							maxLength={500}
+						/>
+					</View>
+				)}
 
 				{/* DM Turn Indicator */}
 				{activeCharacter === 'dm' && (

@@ -17,9 +17,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 		bundleIdentifier: 'org.coredumped.ai-dnd',
 		infoPlist: {
 			ITSAppUsesNonExemptEncryption: false,
-			NSPhotoLibraryUsageDescription: 'This app may request access to your photo library due to third-party libraries, but does not use your photos unless you explicitly choose to upload one.',
-			NSMicrophoneUsageDescription: 'This app uses the microphone to enable voice commands and speech recognition for an immersive D&D gameplay experience.',
-			NSSpeechRecognitionUsageDescription: 'This app uses speech recognition to convert your voice commands into text for interacting with the AI Dungeon Master.',
+			NSPhotoLibraryUsageDescription:
+				'This app may request access to your photo library due to third-party libraries, but does not use your photos unless you explicitly choose to upload one.',
+			NSMicrophoneUsageDescription:
+				'This app uses the microphone to enable voice commands and speech recognition for an immersive D&D gameplay experience.',
+			NSSpeechRecognitionUsageDescription:
+				'This app uses speech recognition to convert your voice commands into text for interacting with the AI Dungeon Master.',
 		},
 	},
 	android: {

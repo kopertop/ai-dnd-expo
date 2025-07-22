@@ -157,6 +157,16 @@ const TabLayout: React.FC = () => {
 				}}
 			/>
 			<Tabs.Screen
+				name="dnd-model"
+				options={{
+					title: 'AI Model',
+					tabBarIcon: ({ color, size, focused }) => (
+						<AnimatedTabIcon name="magic" color={color} size={size} focused={focused} />
+					),
+					tabBarAccessibilityLabel: 'D&D AI Model Test',
+				}}
+			/>
+			<Tabs.Screen
 				name="settings"
 				options={{
 					title: 'Settings',

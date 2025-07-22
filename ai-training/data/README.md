@@ -20,35 +20,44 @@ Each scenario follows this markdown structure:
 
 ```markdown
 # SYSTEM
+
 Role: Dungeon Master
 World: [Campaign Setting]
 Location: [Specific Location]
 Party:
+
 - [Character Name] ([Race Class], Level [X], HP: [current/max])
 
 # USER
+
 [Player's action or question]
 
 # DM
+
 [Dungeon Master's response and narrative]
 
 # TOOLCALL (if applicable)
+
 [Tool results, dice rolls, game mechanics]
 ```
 
 ## Available Scenarios
 
 ### Combat (`combat/`)
+
 - **goblin_ambush.md** - Initiative, positioning, and multi-enemy combat
 - **spellcasting_combat.md** - Healing spells, tactical movement, cover mechanics
 
 ### Roleplay (`roleplay/`)
+
 - **tavern_information.md** - Social interaction, information gathering, persuasion
 
 ### Exploration (`exploration/`)
+
 - **dungeon_trap.md** - Trap detection, investigation, problem-solving options
 
 ### Shopping (`shopping/`)
+
 - **magic_items.md** - Item purchasing, magical equipment, merchant interactions
 
 ## Tool Call Format
