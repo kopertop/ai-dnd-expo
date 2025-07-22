@@ -10,6 +10,7 @@
   "main": "expo-router/entry",
   "version": "1.1.5",
   "scripts": {
+    "train": "./ai-training/train.sh",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",

@@ -6,7 +6,26 @@ This feature enables the AI D&D platform to train custom GGUF (GPT-Generated Uni
 
 ## Requirements
 
-### Requirement 1
+### Requirement 1 (CRITICAL)
+
+**User Story:** As a developer, I want to be able to run a single command to have it build and train a new gguf file that can be used within my CactusTTS system for my D&D Application, so that I can easily create custom models without manual setup and seamlessly integrate them with my existing Cactus infrastructure.
+
+#### Acceptance Criteria
+
+1. WHEN running `pnpm run train` THEN the system SHALL automatically parse all training data from the ai-training directory
+2. WHEN executing the training command THEN the system SHALL automatically download and install all required dependencies without user intervention
+3. WHEN training begins THEN the system SHALL automatically train a new LLM based on Gemma3n with D&D-specific data from the training scenarios
+4. WHEN training completes THEN the system SHALL generate a GGUF file that can be directly used in the CactusTTS system
+5. WHEN the model is ready THEN the system SHALL provide the correct modelPath and mmprojPath values for seamless integration with cactus.ts
+6. WHEN dependencies are missing THEN the system SHALL automatically detect, download, and install them including Python packages, model dependencies, and training frameworks
+7. WHEN training data is updated THEN the system SHALL detect changes and retrain only necessary components to optimize training time
+8. WHEN the command fails THEN the system SHALL provide clear error messages with specific recovery instructions and troubleshooting steps
+9. WHEN training is successful THEN the system SHALL automatically validate the generated model works with the existing Cactus integration and D&D tool calling format
+10. WHEN the process completes THEN the system SHALL output the exact modelPath and mmprojPath configuration needed for cactus.ts integration
+11. WHEN the training process runs THEN the system SHALL provide real-time progress updates and estimated completion times
+12. WHEN the GGUF model is generated THEN the system SHALL ensure it is compatible with the existing CactusTTS infrastructure and local-dm-agent.ts implementation
+
+### Requirement 2
 
 **User Story:** As a developer, I want to set up a training environment for GGUF models in a Jupyter notebook on macOS, so that I can fine-tune existing models with D&D-specific data.
 

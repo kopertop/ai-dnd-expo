@@ -2,85 +2,158 @@
 
 ## Overview
 
-This design document outlines the architecture and components for implementing a custom GGUF model training system for the AI D&D platform. The system will enable developers to fine-tune existing language models with D&D-specific data, creating optimized models that understand game mechanics, character interactions, and tool usage patterns. The entire training process will run within a Jupyter notebook environment on macOS, making it accessible to developers without requiring specialized infrastructure.
+This design document outlines the architecture and components for implementing a custom GGUF model training system for the AI D&D platform. The primary goal is to provide a **single command solution** (`pnpm run train`) that automatically handles the entire process from dependency installation to generating a ready-to-use GGUF model for the CactusTTS system.
+
+The system will enable developers to fine-tune existing language models (specifically Gemma3n) with D&D-specific data, creating optimized models that understand game mechanics, character interactions, and tool usage patterns. The entire process will be fully automated, requiring no manual intervention, and will output the exact modelPath and mmprojPath configuration needed for seamless integration with the existing cactus.ts infrastructure.
 
 ## Architecture
 
-The custom GGUF model training system follows a modular architecture with the following key components:
+The custom GGUF model training system follows a command-driven architecture centered around the `pnpm run train` command. The system is designed for complete automation with the following key components:
 
 ```mermaid
 graph TD
-    A[Jupyter Notebook Interface] --> B[Environment Setup]
-    A --> C[Data Processing]
-    A --> D[Model Training]
-    A --> E[Model Validation]
-    A --> F[Model Export]
+    A[pnpm run train] --> B[Automated Environment Setup]
+    A --> C[Automated Data Processing]
+    A --> D[Automated Model Training]
+    A --> E[Automated Model Validation]
+    A --> F[Automated Model Export & Integration]
     
-    B --> B1[Dependency Management]
-    B --> B2[Hardware Detection]
+    B --> B1[Dependency Auto-Install]
+    B --> B2[Hardware Auto-Detection]
+    B --> B3[Python Environment Setup]
     
-    C --> C1[Data Loading]
-    C --> C2[Data Preprocessing]
-    C --> C3[Data Validation]
+    C --> C1[Training Data Auto-Parse]
+    C --> C2[Data Auto-Preprocessing]
+    C --> C3[Data Auto-Validation]
     
-    D --> D1[Training Configuration]
-    D --> D2[Training Loop]
-    D --> D3[Checkpoint Management]
+    D --> D1[Gemma3n Base Model Loading]
+    D --> D2[Automated Training Loop]
+    D --> D3[Progress Monitoring]
     
-    E --> E1[Validation Framework]
-    E --> E2[Performance Metrics]
+    E --> E1[CactusTTS Compatibility Check]
+    E --> E2[Tool Call Validation]
     
-    F --> F1[GGUF Conversion]
-    F --> F2[Cactus Integration]
+    F --> F1[GGUF Auto-Conversion]
+    F --> F2[Cactus.ts Integration Config]
+    F --> F3[ModelPath/MmprojPath Output]
 ```
 
 ### Components and Interfaces
 
-#### 1. Jupyter Notebook Interface
+#### 1. Command-Line Interface (Primary)
 
-The primary interface for the training system will be a Jupyter notebook that guides developers through the entire process from environment setup to model export.
+The primary interface for the training system is the `pnpm run train` command that provides a fully automated, zero-configuration training experience.
 
 **Key Features:**
-- Interactive cells with explanatory markdown
-- Code execution with real-time feedback
+- Single command execution with no user intervention required
+- Automatic detection and installation of all dependencies
+- Real-time progress updates and status reporting
+- Automatic error handling with clear recovery instructions
+- Direct output of integration configuration for cactus.ts
+
+**Implementation:**
+```json
+// package.json scripts section
+{
+  "scripts": {
+    "train": "node scripts/train-model.js",
+    "train:dev": "node scripts/train-model.js --dev",
+    "train:validate": "node scripts/validate-training.js"
+  }
+}
+```
+
+**Command Flow:**
+1. Parse command-line arguments and configuration
+2. Validate system requirements and auto-install dependencies
+3. Load and process training data from ai-training directory
+4. Execute automated training pipeline
+5. Generate GGUF model and output integration paths
+
+#### 2. Jupyter Notebook Interface (Secondary)
+
+An optional Jupyter notebook interface for developers who want to customize the training process or debug issues.
+
+**Key Features:**
+- Interactive cells for step-by-step execution
 - Visualization of training progress and metrics
-- Modular structure allowing execution of specific sections
+- Debugging capabilities for training data and model performance
+- Advanced configuration options for expert users
 
 **Implementation:**
-- A main notebook (`train_gguf_model.ipynb`) with clearly defined sections
-- Supporting Python modules imported by the notebook
-- Configuration cells for customizing training parameters
-- Visualization cells for monitoring training progress
+- A main notebook (`train_gguf_model.ipynb`) that can be run independently
+- Integration with the command-line interface for shared functionality
+- Optional execution when `--notebook` flag is used with `pnpm run train`
 
-#### 2. Environment Setup
+#### 3. Automated Environment Setup
 
-This component handles the initialization of the training environment, including dependency management and hardware detection.
+This component handles the complete automation of environment initialization, requiring zero user intervention.
 
 **Key Features:**
-- Automated installation of required packages
-- Detection of available hardware (CPU/GPU)
-- Configuration of appropriate backends (Metal/CPU)
-- Validation of environment readiness
+- Automatic detection and installation of Python dependencies
+- Automatic detection and installation of system dependencies (if needed)
+- Hardware detection and optimal configuration selection
+- Automatic fallback to CPU if GPU unavailable
+- Validation and health checks with detailed reporting
 
 **Implementation:**
+```javascript
+// scripts/train-model.js - Main entry point
+const { EnvironmentManager } = require('./training/environment-manager');
+
+class AutomatedTrainingPipeline {
+    async run() {
+        console.log('🚀 Starting automated GGUF model training...');
+        
+        // Step 1: Environment setup
+        const envManager = new EnvironmentManager();
+        await envManager.autoSetup();
+        
+        // Step 2: Data processing
+        await this.processTrainingData();
+        
+        // Step 3: Model training
+        await this.trainModel();
+        
+        // Step 4: Export and integration
+        const config = await this.exportAndIntegrate();
+        
+        console.log('✅ Training complete! Integration config:');
+        console.log(`modelPath: "${config.modelPath}"`);
+        console.log(`mmprojPath: "${config.mmprojPath}"`);
+    }
+}
+```
+
 ```python
-# Environment setup module
+# Python environment manager called by Node.js
 class EnvironmentManager:
-    def __init__(self, requirements_file="requirements.txt"):
-        self.requirements_file = requirements_file
-        self.hardware_info = {}
+    def __init__(self):
+        self.python_deps = [
+            "torch>=2.0.0",
+            "transformers>=4.30.0", 
+            "datasets>=2.12.0",
+            "accelerate>=0.20.0",
+            "bitsandbytes>=0.39.0",
+            "peft>=0.4.0",
+            "trl>=0.4.7",
+            "gguf>=0.1.0"
+        ]
         
-    def detect_hardware(self):
-        """Detect available hardware (CPU/GPU) and capabilities"""
-        # Implementation for macOS Metal detection
+    async def auto_setup(self):
+        """Completely automated environment setup"""
+        await self.check_python_version()
+        await self.install_python_dependencies()
+        await self.detect_and_configure_hardware()
+        await self.validate_installation()
         
-    def install_dependencies(self):
-        """Install required Python packages"""
-        # Implementation using pip/conda
+    async def install_python_dependencies(self):
+        """Auto-install all required Python packages"""
+        # Implementation with automatic pip install
         
-    def validate_environment(self):
-        """Validate that all dependencies are correctly installed"""
-        # Implementation with status report
+    async def detect_and_configure_hardware(self):
+        """Auto-detect and configure optimal hardware settings"""
+        # Implementation for macOS Metal/CPU detection
 ```
 
 #### 3. Data Processing
@@ -200,40 +273,100 @@ class ModelValidator:
         # Implementation for report generation
 ```
 
-#### 6. Model Export
+#### 6. Automated Model Export & CactusTTS Integration
 
-This component handles the export of trained models to GGUF format and integration with Cactus.
+This component handles the complete automation of model export and seamless integration with the existing CactusTTS infrastructure.
 
 **Key Features:**
-- Conversion to GGUF format
-- Model quantization options
-- Size optimization for mobile deployment
-- Generation of Cactus configuration templates
-- Validation of exported models
+- Automatic conversion to GGUF format optimized for CactusTTS
+- Automatic model quantization for optimal performance
+- Automatic size optimization for mobile deployment
+- Direct integration with existing cactus.ts configuration
+- Automatic validation against local-dm-agent.ts requirements
+- Output of exact modelPath and mmprojPath values
 
 **Implementation:**
 ```python
-# Model export module
-class ModelExporter:
-    def __init__(self, model_path, output_dir="exported_models"):
-        self.model_path = model_path
-        self.output_dir = output_dir
+# Automated model export and integration
+class CactusIntegrationManager:
+    def __init__(self, trained_model_path):
+        self.trained_model_path = trained_model_path
+        self.cactus_config_path = "components/cactus.ts"
+        self.output_dir = "assets/models"
         
-    def convert_to_gguf(self, quantization_level="Q4_K_M"):
-        """Convert model to GGUF format"""
-        # Implementation for GGUF conversion
+    async def auto_export_and_integrate(self):
+        """Fully automated export and integration process"""
+        # Step 1: Convert to GGUF with optimal settings for CactusTTS
+        gguf_path = await self.convert_to_gguf_optimized()
         
-    def optimize_for_mobile(self, max_size_gb=2):
-        """Optimize model size for mobile deployment"""
-        # Implementation for size optimization
+        # Step 2: Generate multimodal projection if needed
+        mmproj_path = await self.generate_mmproj_if_needed()
         
-    def generate_cactus_config(self):
-        """Generate Cactus configuration template"""
-        # Implementation for config generation
+        # Step 3: Validate compatibility with existing Cactus infrastructure
+        await self.validate_cactus_compatibility(gguf_path, mmproj_path)
         
-    def validate_exported_model(self):
-        """Validate exported model functionality"""
-        # Implementation for export validation
+        # Step 4: Output integration configuration
+        config = {
+            "modelPath": f"./assets/models/{os.path.basename(gguf_path)}",
+            "mmprojPath": f"./assets/models/{os.path.basename(mmproj_path)}" if mmproj_path else None
+        }
+        
+        return config
+        
+    async def convert_to_gguf_optimized(self):
+        """Convert model to GGUF with CactusTTS-specific optimizations"""
+        # Implementation optimized for Cactus integration
+        
+    async def validate_cactus_compatibility(self, model_path, mmproj_path):
+        """Validate model works with existing Cactus infrastructure"""
+        # Test against local-dm-agent.ts requirements
+        # Validate tool calling format compatibility
+        # Check memory requirements for mobile deployment
+```
+
+#### 7. Integration Configuration Output
+
+This component provides the exact configuration needed for seamless integration with the existing cactus.ts file.
+
+**Key Features:**
+- Automatic detection of optimal model paths
+- Generation of ready-to-use configuration snippets
+- Validation of paths and model compatibility
+- Clear instructions for integration
+
+**Implementation:**
+```javascript
+// Integration configuration manager
+class IntegrationConfigManager {
+    constructor(modelPath, mmprojPath) {
+        this.modelPath = modelPath;
+        this.mmprojPath = mmprojPath;
+    }
+    
+    generateCactusConfig() {
+        return {
+            modelPath: this.modelPath,
+            mmprojPath: this.mmprojPath,
+            // Additional configuration for CactusTTS integration
+            maxTokens: 2048,
+            temperature: 0.7,
+            topP: 0.9,
+            // Tool calling configuration
+            toolCallFormat: "bracket", // [roll: perception]
+            supportedTools: ["roll", "health", "inventory", "spellcast", "check"]
+        };
+    }
+    
+    outputIntegrationInstructions() {
+        console.log('\n🎯 Integration Complete!');
+        console.log('Add the following to your cactus.ts file:');
+        console.log(`\nmodelPath: "${this.modelPath}"`);
+        if (this.mmprojPath) {
+            console.log(`mmprojPath: "${this.mmprojPath}"`);
+        }
+        console.log('\n✅ Your custom D&D model is ready to use!');
+    }
+}
 ```
 
 ## Data Models
@@ -389,37 +522,123 @@ The testing strategy for the custom GGUF model training system includes:
 - Evaluate inference performance on different hardware
 - Test model size optimization techniques
 
+## Automated Workflow Design
+
+The `pnpm run train` command executes the following fully automated workflow:
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant CLI as pnpm run train
+    participant Env as Environment Manager
+    participant Data as Data Processor
+    participant Train as Model Trainer
+    participant Export as Export Manager
+    participant Cactus as CactusTTS Integration
+    
+    Dev->>CLI: pnpm run train
+    CLI->>Env: Auto-setup environment
+    Env->>Env: Install Python dependencies
+    Env->>Env: Detect hardware capabilities
+    Env->>CLI: Environment ready ✅
+    
+    CLI->>Data: Parse training data
+    Data->>Data: Load ai-training scenarios
+    Data->>Data: Process markdown files
+    Data->>CLI: Training data ready ✅
+    
+    CLI->>Train: Start automated training
+    Train->>Train: Load Gemma3n base model
+    Train->>Train: Execute training loop
+    Train->>CLI: Training complete ✅
+    
+    CLI->>Export: Export to GGUF
+    Export->>Export: Convert and optimize
+    Export->>Cactus: Validate compatibility
+    Export->>CLI: Model exported ✅
+    
+    CLI->>Dev: Output modelPath & mmprojPath
+```
+
 ## Implementation Plan
 
-The implementation will follow these phases:
+The implementation will prioritize the automated command-line interface with the following phases:
 
-1. **Environment Setup**
-   - Create Jupyter notebook structure
-   - Implement dependency management
-   - Add hardware detection and configuration
+### Phase 1: Command-Line Infrastructure (CRITICAL)
+- Create `scripts/train-model.js` as the main entry point
+- Implement automated environment setup with dependency installation
+- Add progress reporting and error handling
+- Create package.json script configuration
 
-2. **Data Processing**
-   - Implement markdown parsing
-   - Create data preprocessing pipeline
-   - Add validation and augmentation features
+### Phase 2: Automated Data Processing
+- Implement automatic parsing of ai-training directory
+- Create markdown scenario processing pipeline
+- Add data validation and preprocessing automation
+- Integrate with Gemma3n-specific formatting requirements
 
-3. **Model Training**
-   - Implement model loading and preparation
-   - Create training loop with monitoring
-   - Add checkpoint management
+### Phase 3: Automated Training Pipeline
+- Implement Gemma3n base model loading and preparation
+- Create automated training loop with progress monitoring
+- Add checkpoint management and recovery
+- Integrate hardware optimization (Metal/CPU)
 
-4. **Model Validation**
-   - Implement validation framework
-   - Create metrics calculation
-   - Add comparison with baseline
+### Phase 4: Automated Export & Integration
+- Implement GGUF conversion with CactusTTS optimization
+- Create automatic model validation against existing infrastructure
+- Generate exact modelPath and mmprojPath configuration
+- Add integration validation with local-dm-agent.ts
 
-5. **Model Export**
-   - Implement GGUF conversion
-   - Add quantization options
-   - Create Cactus integration utilities
+### Phase 5: Jupyter Notebook (Optional)
+- Create optional notebook interface for advanced users
+- Implement debugging and visualization capabilities
+- Add integration with command-line interface
+- Provide detailed training analytics
 
-Each phase will be implemented as a separate section in the Jupyter notebook, allowing developers to execute the process step by step.
+Each phase will be implemented to work seamlessly with the `pnpm run train` command, ensuring the primary requirement of single-command automation is met.
+
+## CactusTTS Integration Requirements
+
+The system must ensure seamless integration with the existing CactusTTS infrastructure:
+
+### Model Compatibility
+- **Format**: GGUF format compatible with Cactus compute network
+- **Size**: Optimized for mobile deployment (< 2GB recommended)
+- **Quantization**: Q4_K_M or similar for optimal performance/size balance
+- **Context Length**: 2048 tokens minimum for D&D scenarios
+
+### Tool Calling Format
+The trained model must support the existing tool calling format used in the D&D platform:
+```
+[roll: perception] -> <TOOLCALL>perception: 15 + 10(skill) = *25*</TOOLCALL>
+[health: player, -5] -> <TOOLCALL>health: player health reduced by 5</TOOLCALL>
+```
+
+### Integration Points
+1. **cactus.ts Configuration**:
+   ```typescript
+   modelPath: "./assets/models/custom-dnd-gemma3n.gguf"
+   mmprojPath: "./assets/models/custom-dnd-gemma3n-mmproj.gguf" // if needed
+   ```
+
+2. **local-dm-agent.ts Compatibility**:
+   - Must work with existing agent initialization
+   - Support for D&D-specific system prompts
+   - Compatible with current message handling
+
+3. **File Structure**:
+   ```
+   assets/models/
+   ├── custom-dnd-gemma3n.gguf
+   ├── custom-dnd-gemma3n-mmproj.gguf (optional)
+   └── model-metadata.json
+   ```
+
+### Validation Requirements
+- Automatic testing against existing D&D scenarios
+- Validation of tool call parsing and execution
+- Performance benchmarking against current models
+- Memory usage validation for mobile deployment
 
 ## Conclusion
 
-This design provides a comprehensive framework for implementing a custom GGUF model training system for the AI D&D platform. By running entirely within a Jupyter notebook on macOS, the system will be accessible to developers without requiring specialized infrastructure. The modular architecture allows for flexibility and extensibility, while the structured data format ensures consistent training results.
+This design provides a comprehensive framework for implementing a **single-command automated** GGUF model training system for the AI D&D platform. The primary focus on `pnpm run train` automation ensures developers can easily create custom models without manual intervention, while the seamless CactusTTS integration guarantees compatibility with the existing infrastructure. The modular architecture allows for flexibility and extensibility, while the structured data format ensures consistent training results optimized for D&D gameplay.
