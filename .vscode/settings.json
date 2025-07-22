@@ -63,7 +63,10 @@
 		"grep *",
 		"ls *",
 		"npm list *",
-		"npm run check"
+		"npm run check",
+		"python *",
+		"python3.11 *",
+		"pip3.11 *"
 	],
 	"[markdown]": {
 		"editor.defaultFormatter": "yzhang.markdown-all-in-one"

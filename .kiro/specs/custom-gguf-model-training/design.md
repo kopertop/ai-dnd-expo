@@ -1,378 +1,425 @@
-# Design Document
+# Design Document: Custom GGUF Model Training
 
 ## Overview
 
-The Custom GGUF Model Training system provides a comprehensive framework for fine-tuning language models specifically for D&D gameplay. The system leverages modern fine-tuning techniques like LoRA (Low-Rank Adaptation) and QLoRA for efficient training on local hardware, with automatic conversion to GGUF format for deployment with Cactus agents. The architecture supports markdown-based training data creation, automated preprocessing, and mobile-optimized model generation.
+This design document outlines the architecture and components for implementing a custom GGUF model training system for the AI D&D platform. The system will enable developers to fine-tune existing language models with D&D-specific data, creating optimized models that understand game mechanics, character interactions, and tool usage patterns. The entire training process will run within a Jupyter notebook environment on macOS, making it accessible to developers without requiring specialized infrastructure.
 
 ## Architecture
 
-### High-Level Architecture
+The custom GGUF model training system follows a modular architecture with the following key components:
 
 ```mermaid
-graph TB
-    A[Markdown Training Data] --> B[Data Preprocessor]
-    B --> C[Training Pipeline]
-    D[Base Model] --> C
-    C --> E[Fine-tuned Model]
-    E --> F[GGUF Converter]
-    F --> G[Optimized GGUF Model]
-    G --> H[Cactus Integration]
+graph TD
+    A[Jupyter Notebook Interface] --> B[Environment Setup]
+    A --> C[Data Processing]
+    A --> D[Model Training]
+    A --> E[Model Validation]
+    A --> F[Model Export]
     
-    I[Training Config] --> C
-    J[Validation Framework] --> K[Model Evaluator]
-    G --> K
-    K --> L[Performance Metrics]
+    B --> B1[Dependency Management]
+    B --> B2[Hardware Detection]
+    
+    C --> C1[Data Loading]
+    C --> C2[Data Preprocessing]
+    C --> C3[Data Validation]
+    
+    D --> D1[Training Configuration]
+    D --> D2[Training Loop]
+    D --> D3[Checkpoint Management]
+    
+    E --> E1[Validation Framework]
+    E --> E2[Performance Metrics]
+    
+    F --> F1[GGUF Conversion]
+    F --> F2[Cactus Integration]
 ```
 
-### Directory Structure
+### Components and Interfaces
 
-```
-ai-training/
-├── config/
-│   ├── training_config.yaml
-│   ├── model_configs/
-│   └── optimization_profiles.yaml
-├── data/
-│   ├── scenarios/
-│   │   ├── combat/
-│   │   │   ├── tavern-brawl.md
-│   │   │   ├── dragon-encounter.md
-│   │   │   └── ambush-scenario.md
-│   │   ├── roleplay/
-│   │   │   ├── merchant-negotiation.md
-│   │   │   ├── noble-court.md
-│   │   │   └── tavern-gossip.md
-│   │   ├── exploration/
-│   │   │   ├── dungeon-discovery.md
-│   │   │   ├── wilderness-travel.md
-│   │   │   └── ancient-ruins.md
-│   │   └── mixed/
-│   │       ├── full-session-1.md
-│   │       └── campaign-arc.md
-│   ├── processed/
-│   └── validation/
-├── models/
-│   ├── base/
-│   ├── checkpoints/
-│   ├── fine-tuned/
-│   └── gguf/
-├── scripts/
-│   ├── setup.py
-│   ├── preprocess.py
-│   ├── train.py
-│   ├── convert.py
-│   └── validate.py
-├── src/
-│   ├── data_processing/
-│   ├── training/
-│   ├── conversion/
-│   └── validation/
-├── tools/
-│   ├── markdown_parser.py
-│   ├── tool_call_extractor.py
-│   └── scenario_validator.py
-└── requirements.txt
-```
+#### 1. Jupyter Notebook Interface
 
-### Training Data Schema
+The primary interface for the training system will be a Jupyter notebook that guides developers through the entire process from environment setup to model export.
 
-Each markdown file in the scenarios folders follows this structured format:
+**Key Features:**
+- Interactive cells with explanatory markdown
+- Code execution with real-time feedback
+- Visualization of training progress and metrics
+- Modular structure allowing execution of specific sections
 
-```markdown
-<SYSTEM>
-# Role
-You are the Dungeon Master of a D&D Campaign
+**Implementation:**
+- A main notebook (`train_gguf_model.ipynb`) with clearly defined sections
+- Supporting Python modules imported by the notebook
+- Configuration cells for customizing training parameters
+- Visualization cells for monitoring training progress
 
-# World
-Faerun - a mystical realm filled with ancient magic, diverse races, and endless adventures. The world is recovering from recent conflicts between good and evil forces.
+#### 2. Environment Setup
 
-# Location
-The party is gathered at the Prancing Pony tavern in the bustling trade city of Waterdeep. The tavern is crowded with merchants, adventurers, and locals sharing tales over ale.
+This component handles the initialization of the training environment, including dependency management and hardware detection.
 
-# Party
+**Key Features:**
+- Automated installation of required packages
+- Detection of available hardware (CPU/GPU)
+- Configuration of appropriate backends (Metal/CPU)
+- Validation of environment readiness
 
-## Chris
-- Player Character
-- Wizard
-- Level 3
-- Health: 18/18
-- Exp: 750/2700
-- Inventory: Spellbook, Staff of Power, 50 gold pieces, Health Potion x2
-- Spells: Magic Missile, Shield, Fireball
-
-## Sarah
-- Player Character  
-- Rogue
-- Level 3
-- Health: 22/22
-- Exp: 800/2700
-- Inventory: Thieves' Tools, Shortsword +1, Leather Armor, 75 gold pieces
-- Skills: Stealth +7, Sleight of Hand +6, Perception +5
-
-## Thorin
-- NPC Companion
-- Dwarf Fighter
-- Level 2
-- Health: 28/28
-- Exp: 300/900
-- Inventory: Warhammer, Chain Mail, Shield, 25 gold pieces
-</SYSTEM>
-
-<User>I want to look around the tavern to see if there's anything suspicious</User>
-
-<DM>That's a great idea! Let me have you roll for perception to see what you notice.
-
-[roll: perception]</DM>
-
-<TOOLCALL>perception: 12 + 5(skill) = *17*</TOOLCALL>
-
-<DM>*SUCCESS* With your keen eyes, you notice several interesting details. In the far corner, a hooded figure sits alone, occasionally glancing toward your party. Near the bar, two merchants are having a heated whispered conversation about "missing shipments." The bartender seems nervous, wiping the same mug repeatedly while watching the room.
-
-What would you like to investigate further?</DM>
-
-<User>I'll try to get closer to the hooded figure without being noticed</User>
-
-<DM>You crouch down and attempt to navigate the shadows.
-
-[roll: stealth]</DM>
-
-<TOOLCALL>stealth: 15 + 7(skill) = *22*</TOOLCALL>
-
-<DM>*SUCCESS* You move like a shadow through the tavern, weaving between patrons with incredible grace. You manage to get close enough to overhear the hooded figure muttering about "the shipment arriving at midnight" and "meeting at the old warehouse by the docks."
-
-The figure hasn't noticed you at all. What's your next move?</DM>
-
-<User>I want to signal to Sarah and Thorin about what I discovered</User>
-
-<DM>You attempt to signal to Sarah and Thorin without alerting the hooded figure.
-
-[roll: sleight_of_hand]</DM>
-
-<TOOLCALL>sleight_of_hand: 8 + 6(skill) = *14*</TOOLCALL>
-
-<DM>*FAILED* You waive your hands as the hooded figure glances in your direction. It catches the sight of you and attacks.
-
-**ROLL FOR INITIATIVE**
-
-[roll: initiative]
-[begin combat]
-</DM>
-```
-
-This schema provides:
-- **Structured System Context**: Clear role definition, world setting, location description, and complete party information
-- **Natural Conversation Flow**: Realistic player-DM interactions with proper context
-- **Tool Call Integration**: Embedded tool calls using `[roll: skill_name]` format
-- **Tool Results**: Structured `<TOOLCALL>` responses with calculations and outcomes
-- **Narrative Continuity**: Each response builds on previous actions and maintains story flow
-- **Multiple Interaction Types**: Combat, roleplay, exploration, and skill challenges
-
-## Components and Interfaces
-
-### 1. Data Processing Pipeline
-
-#### MarkdownParser
+**Implementation:**
 ```python
-class MarkdownParser:
-    def parse_scenario(self, file_path: str) -> TrainingScenario
-    def extract_system_context(self, content: str) -> SystemContext
-    def extract_conversation(self, content: str) -> List[ConversationTurn]
-    def validate_format(self, content: str) -> ValidationResult
+# Environment setup module
+class EnvironmentManager:
+    def __init__(self, requirements_file="requirements.txt"):
+        self.requirements_file = requirements_file
+        self.hardware_info = {}
+        
+    def detect_hardware(self):
+        """Detect available hardware (CPU/GPU) and capabilities"""
+        # Implementation for macOS Metal detection
+        
+    def install_dependencies(self):
+        """Install required Python packages"""
+        # Implementation using pip/conda
+        
+    def validate_environment(self):
+        """Validate that all dependencies are correctly installed"""
+        # Implementation with status report
 ```
 
-#### TrainingDataProcessor
+#### 3. Data Processing
+
+This component handles the loading, preprocessing, and validation of training data.
+
+**Key Features:**
+- Support for markdown-based training scenarios
+- Parsing of system context, conversations, and tool calls
+- Data cleaning and normalization
+- Dataset splitting (train/validation)
+- Data augmentation techniques
+
+**Implementation:**
 ```python
-class TrainingDataProcessor:
-    def process_scenarios(self, scenario_dir: str) -> ProcessedDataset
-    def create_training_pairs(self, scenarios: List[TrainingScenario]) -> List[TrainingPair]
-    def augment_data(self, dataset: ProcessedDataset) -> ProcessedDataset
-    def balance_dataset(self, dataset: ProcessedDataset) -> ProcessedDataset
+# Data processing module
+class DataProcessor:
+    def __init__(self, data_dir="training_data"):
+        self.data_dir = data_dir
+        self.datasets = {}
+        
+    def load_markdown_scenarios(self, scenario_type=None):
+        """Load markdown scenarios from directory"""
+        # Implementation for parsing markdown files
+        
+    def parse_system_context(self, markdown_content):
+        """Extract system context from markdown"""
+        # Implementation for parsing headers
+        
+    def parse_conversations(self, markdown_content):
+        """Extract conversations and tool calls"""
+        # Implementation for parsing dialogue
+        
+    def prepare_training_data(self):
+        """Convert parsed data to training format"""
+        # Implementation for formatting training data
+        
+    def split_datasets(self, train_ratio=0.8):
+        """Split data into training and validation sets"""
+        # Implementation for dataset splitting
 ```
 
-### 2. Training Pipeline
+#### 4. Model Training
 
-#### ModelTrainer
+This component handles the configuration and execution of model training.
+
+**Key Features:**
+- Support for different base models (Gemma, Qwen)
+- Hyperparameter configuration
+- Training loop with progress monitoring
+- Checkpoint management
+- Early stopping based on validation metrics
+
+**Implementation:**
 ```python
+# Model training module
 class ModelTrainer:
-    def __init__(self, config: TrainingConfig)
-    def load_base_model(self, model_path: str) -> BaseModel
-    def setup_lora_config(self) -> LoRAConfig
-    def train(self, dataset: ProcessedDataset) -> FineTunedModel
-    def save_checkpoint(self, epoch: int, model: Model) -> None
-    def evaluate(self, model: Model, validation_set: Dataset) -> Metrics
+    def __init__(self, base_model, output_dir="trained_models"):
+        self.base_model = base_model
+        self.output_dir = output_dir
+        self.training_args = {}
+        
+    def configure_training(self, learning_rate=1e-5, batch_size=4, epochs=3):
+        """Configure training hyperparameters"""
+        # Implementation for setting training arguments
+        
+    def prepare_model(self):
+        """Load and prepare base model for fine-tuning"""
+        # Implementation for model loading and preparation
+        
+    def train(self, train_dataset, val_dataset):
+        """Execute training loop"""
+        # Implementation for training process
+        
+    def save_checkpoint(self, step):
+        """Save model checkpoint"""
+        # Implementation for checkpoint saving
 ```
 
-#### TrainingConfig
+#### 5. Model Validation
+
+This component handles the validation and testing of trained models.
+
+**Key Features:**
+- Evaluation on D&D-specific scenarios
+- Tool call accuracy assessment
+- Response quality evaluation
+- Comparison with baseline models
+- Generation of validation reports
+
+**Implementation:**
 ```python
-@dataclass
-class TrainingConfig:
-    base_model: str
-    learning_rate: float
-    batch_size: int
-    epochs: int
-    lora_rank: int
-    lora_alpha: int
-    target_modules: List[str]
-    gradient_accumulation_steps: int
-    warmup_steps: int
-    max_seq_length: int
-    use_gpu: bool
-    memory_limit_gb: float
-```
-
-### 3. GGUF Conversion System
-
-#### GGUFConverter
-```python
-class GGUFConverter:
-    def convert_to_gguf(self, model_path: str, output_path: str) -> str
-    def quantize_model(self, model_path: str, quantization_type: str) -> str
-    def optimize_for_mobile(self, model_path: str, size_limit_gb: float) -> str
-    def validate_gguf(self, gguf_path: str) -> ValidationResult
-```
-
-### 4. Validation Framework
-
-#### ModelValidator
-```python
+# Model validation module
 class ModelValidator:
-    def validate_tool_calls(self, model: Model, test_scenarios: List[Scenario]) -> ToolCallMetrics
-    def validate_conversation_quality(self, model: Model, test_set: Dataset) -> QualityMetrics
-    def benchmark_performance(self, model: Model, baseline: Model) -> BenchmarkResults
-    def test_cactus_compatibility(self, gguf_path: str) -> CompatibilityReport
+    def __init__(self, model_path):
+        self.model_path = model_path
+        self.metrics = {}
+        
+    def load_model(self):
+        """Load trained model for validation"""
+        # Implementation for model loading
+        
+    def evaluate_tool_calls(self, test_dataset):
+        """Evaluate tool call accuracy"""
+        # Implementation for tool call testing
+        
+    def evaluate_responses(self, test_dataset):
+        """Evaluate response quality"""
+        # Implementation for response quality testing
+        
+    def compare_with_baseline(self, baseline_model):
+        """Compare with baseline model"""
+        # Implementation for model comparison
+        
+    def generate_report(self):
+        """Generate validation report"""
+        # Implementation for report generation
+```
+
+#### 6. Model Export
+
+This component handles the export of trained models to GGUF format and integration with Cactus.
+
+**Key Features:**
+- Conversion to GGUF format
+- Model quantization options
+- Size optimization for mobile deployment
+- Generation of Cactus configuration templates
+- Validation of exported models
+
+**Implementation:**
+```python
+# Model export module
+class ModelExporter:
+    def __init__(self, model_path, output_dir="exported_models"):
+        self.model_path = model_path
+        self.output_dir = output_dir
+        
+    def convert_to_gguf(self, quantization_level="Q4_K_M"):
+        """Convert model to GGUF format"""
+        # Implementation for GGUF conversion
+        
+    def optimize_for_mobile(self, max_size_gb=2):
+        """Optimize model size for mobile deployment"""
+        # Implementation for size optimization
+        
+    def generate_cactus_config(self):
+        """Generate Cactus configuration template"""
+        # Implementation for config generation
+        
+    def validate_exported_model(self):
+        """Validate exported model functionality"""
+        # Implementation for export validation
 ```
 
 ## Data Models
 
-### Training Data Structures
+### Training Data Structure
 
-```python
-@dataclass
-class SystemContext:
-    role: str
-    world: str
-    location: str
-    party: List[Character]
+The training data will be organized in a hierarchical structure:
 
-@dataclass
-class Character:
-    name: str
-    character_type: str  # "Player Character" or NPC type
-    class_name: str
-    level: int
-    health: Tuple[int, int]  # current, max
-    experience: Tuple[int, int]  # current, next_level
-    inventory: List[str]
-    stats: Dict[str, int]
-
-@dataclass
-class ConversationTurn:
-    speaker: str  # "User", "DM", "TOOLCALL"
-    content: str
-    tool_calls: List[ToolCall] = None
-
-@dataclass
-class ToolCall:
-    tool_name: str
-    arguments: List[str]
-    result: str = None
-
-@dataclass
-class TrainingScenario:
-    system_context: SystemContext
-    conversation: List[ConversationTurn]
-    scenario_type: str
-    metadata: Dict[str, Any]
+```
+training_data/
+├── combat/
+│   ├── basic_combat.md
+│   ├── complex_combat.md
+│   └── ...
+├── roleplay/
+│   ├── tavern_interaction.md
+│   ├── quest_negotiation.md
+│   └── ...
+├── exploration/
+│   ├── dungeon_exploration.md
+│   ├── wilderness_travel.md
+│   └── ...
+└── ...
 ```
 
-### Model Configuration
+### Markdown Scenario Format
+
+Each markdown scenario will follow a structured format:
+
+```markdown
+# SYSTEM
+Role: Dungeon Master
+World: Forgotten Realms
+Location: Tavern
+Party:
+- Thordak (Dragonborn Fighter, Level 5, HP: 45/45)
+- Elara (Elf Wizard, Level 5, HP: 28/28)
+- Grimm (Dwarf Cleric, Level 5, HP: 38/38)
+
+# CONVERSATION
+## User
+I want to approach the bartender and ask about rumors in town.
+
+## DM
+The burly half-orc bartender looks up as you approach. "What'll it be?" he grunts, wiping a mug with a questionably clean rag.
+
+When you ask about rumors, he leans in closer. "Well, there's been talk of strange lights in the old tower north of town. Some say it's ghosts, others say it's that crazy wizard Zandor up to no good again."
+
+He eyes you up and down. "You lot look capable. Thinking of checking it out? Might want to test your perception first."
+
+[roll: perception]
+
+## TOOLCALL
+perception: 15 + 10(skill) = *25*
+
+## DM
+With your keen awareness, you notice a hooded figure in the corner of the tavern who seems to be listening intently to your conversation. They quickly look away when they realize you've spotted them.
+
+The bartender continues, "If you're heading to the tower, be careful. Last fellow who went there came back babbling nonsense about living statues."
+```
+
+### Training Configuration
+
+The training configuration will be stored as a Python dictionary:
 
 ```python
-@dataclass
-class ModelConfig:
-    name: str
-    base_model_path: str
-    target_size_gb: float
-    quantization_type: str
-    optimization_profile: str
-    supported_tools: List[str]
+training_config = {
+    "base_model": "gemma-3-2b-it",
+    "learning_rate": 1e-5,
+    "batch_size": 4,
+    "epochs": 3,
+    "max_seq_length": 2048,
+    "warmup_steps": 100,
+    "weight_decay": 0.01,
+    "quantization": "Q4_K_M",
+    "output_dir": "trained_models/dnd_gemma_3b",
+    "checkpoint_interval": 500
+}
+```
 
-@dataclass
-class OptimizationProfile:
-    name: str
-    target_platform: str  # "mobile", "desktop", "server"
-    memory_limit_gb: float
-    inference_speed_priority: float
-    quality_priority: float
-    quantization_settings: Dict[str, Any]
+### Model Metadata
+
+The model metadata will be stored as a JSON file:
+
+```json
+{
+  "model_name": "dnd_gemma_3b_gguf",
+  "base_model": "gemma-3-2b-it",
+  "training_date": "2025-07-21",
+  "training_steps": 1500,
+  "final_loss": 0.0823,
+  "validation_accuracy": 0.912,
+  "tool_call_accuracy": 0.945,
+  "quantization_level": "Q4_K_M",
+  "file_size_mb": 1850,
+  "compatible_platforms": ["macOS", "iOS", "Android"],
+  "recommended_context_length": 2048,
+  "supported_tools": ["roll", "health", "inventory", "spellcast", "check"]
+}
 ```
 
 ## Error Handling
 
-### Training Error Recovery
-- **Checkpoint Recovery**: Automatic resumption from last valid checkpoint on training interruption
-- **Memory Management**: Dynamic batch size adjustment when GPU memory is insufficient
-- **Data Validation**: Pre-training validation of all markdown scenarios with detailed error reporting
-- **Model Compatibility**: Automatic fallback to CPU training if GPU acceleration fails
+The system will implement comprehensive error handling to ensure a smooth training experience:
 
-### Conversion Error Handling
-- **Format Validation**: Comprehensive validation of GGUF format before deployment
-- **Size Optimization**: Iterative quantization with quality checks to meet size constraints
-- **Compatibility Testing**: Automated testing with Cactus agent before model approval
+1. **Environment Setup Errors**
+   - Dependency installation failures
+   - Hardware compatibility issues
+   - Python version mismatches
 
-### Runtime Error Management
-- **Tool Call Parsing**: Robust parsing with fallback to text-only responses for malformed tool calls
-- **Context Management**: Automatic truncation and summarization for oversized contexts
-- **Performance Monitoring**: Real-time monitoring with automatic model switching on performance degradation
+2. **Data Processing Errors**
+   - Malformed markdown files
+   - Missing required fields
+   - Invalid tool call syntax
+
+3. **Training Errors**
+   - Out of memory errors
+   - Model loading failures
+   - Training divergence
+
+4. **Export Errors**
+   - Conversion failures
+   - Size limit violations
+   - Compatibility issues
+
+Each error will be caught, logged with detailed information, and presented with actionable recovery suggestions.
 
 ## Testing Strategy
 
+The testing strategy for the custom GGUF model training system includes:
+
 ### Unit Testing
-- **Data Processing**: Test markdown parsing, validation, and conversion to training format
-- **Tool Call Extraction**: Validate extraction and formatting of tool calls from conversations
-- **Model Configuration**: Test configuration loading, validation, and parameter setup
-- **GGUF Conversion**: Test conversion pipeline with various model sizes and quantization levels
+
+- Test individual components (DataProcessor, ModelTrainer, etc.)
+- Validate parsing logic for markdown scenarios
+- Verify tool call extraction and formatting
 
 ### Integration Testing
-- **End-to-End Pipeline**: Test complete flow from markdown to deployed GGUF model
-- **Cactus Integration**: Validate model loading and basic functionality in Cactus environment
-- **Multi-Scenario Training**: Test training with diverse scenario types and validate generalization
-- **Performance Benchmarking**: Compare trained models against baseline on standardized test sets
+
+- Test end-to-end training pipeline with small datasets
+- Verify model loading, training, and export processes
+- Validate integration between components
 
 ### Validation Testing
-- **Tool Call Accuracy**: Measure accuracy of tool call generation and parameter extraction
-- **Conversation Quality**: Evaluate response quality, coherence, and D&D appropriateness
-- **Mobile Performance**: Test inference speed and memory usage on target mobile devices
-- **Stress Testing**: Validate model behavior under edge cases and unusual inputs
 
-### Acceptance Testing
-- **Real Gameplay Testing**: Test trained models in actual D&D sessions with human players
-- **Tool Integration**: Validate all supported tools work correctly with trained models
-- **Performance Requirements**: Ensure models meet size and speed requirements for mobile deployment
-- **Quality Assurance**: Verify trained models maintain or improve upon baseline model quality
+- Evaluate trained models on D&D-specific scenarios
+- Test tool call accuracy and response quality
+- Compare performance with baseline models
 
-## Implementation Phases
+### Performance Testing
 
-### Phase 1: Foundation
-- Set up training environment and dependencies
-- Implement markdown parsing and data processing pipeline
-- Create basic training configuration system
-- Establish project structure and tooling
+- Measure training speed and resource usage
+- Evaluate inference performance on different hardware
+- Test model size optimization techniques
 
-### Phase 2: Training Pipeline
-- Implement LoRA-based fine-tuning system
-- Add support for multiple base models (Gemma, Qwen)
-- Create checkpoint management and recovery system
-- Implement basic validation and metrics collection
+## Implementation Plan
 
-### Phase 3: GGUF Integration
-- Develop GGUF conversion and quantization pipeline
-- Implement mobile optimization and size constraints
-- Create Cactus integration and compatibility testing
-- Add performance monitoring and benchmarking
+The implementation will follow these phases:
 
-### Phase 4: Advanced Features
-- Implement data augmentation and balancing techniques
-- Add support for incremental training and model updates
-- Create comprehensive validation and testing framework
-- Develop automated deployment and rollback capabilities
+1. **Environment Setup**
+   - Create Jupyter notebook structure
+   - Implement dependency management
+   - Add hardware detection and configuration
+
+2. **Data Processing**
+   - Implement markdown parsing
+   - Create data preprocessing pipeline
+   - Add validation and augmentation features
+
+3. **Model Training**
+   - Implement model loading and preparation
+   - Create training loop with monitoring
+   - Add checkpoint management
+
+4. **Model Validation**
+   - Implement validation framework
+   - Create metrics calculation
+   - Add comparison with baseline
+
+5. **Model Export**
+   - Implement GGUF conversion
+   - Add quantization options
+   - Create Cactus integration utilities
+
+Each phase will be implemented as a separate section in the Jupyter notebook, allowing developers to execute the process step by step.
+
+## Conclusion
+
+This design provides a comprehensive framework for implementing a custom GGUF model training system for the AI D&D platform. By running entirely within a Jupyter notebook on macOS, the system will be accessible to developers without requiring specialized infrastructure. The modular architecture allows for flexibility and extensibility, while the structured data format ensures consistent training results.

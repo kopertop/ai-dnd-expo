@@ -8,18 +8,20 @@ This feature enables the AI D&D platform to train custom GGUF (GPT-Generated Uni
 
 ### Requirement 1
 
-**User Story:** As a developer, I want to set up a training environment for GGUF models, so that I can fine-tune existing models with D&D-specific data.
+**User Story:** As a developer, I want to set up a training environment for GGUF models in a Jupyter notebook on macOS, so that I can fine-tune existing models with D&D-specific data.
 
 #### Acceptance Criteria
 
-1. WHEN the training environment is initialized THEN the system SHALL create an isolated `ai-training` directory with all necessary dependencies
-2. WHEN setting up the environment THEN the system SHALL support Python-based training tools and libraries
-3. WHEN configuring the base model THEN the system SHALL support loading existing models like Gemma-3 or Qwen variants
-4. IF the base model is incompatible THEN the system SHALL provide clear error messages and suggested alternatives
-5. WHEN the environment is ready THEN the system SHALL validate all dependencies and provide a status report
-6. WHEN running on macOS THEN the system SHALL support local training without requiring external cloud services
-7. WHEN GPU acceleration is available THEN the system SHALL automatically detect and utilize Metal Performance Shaders or CUDA capabilities
-8. WHEN running without GPU THEN the system SHALL fall back to CPU-based training with reasonable performance
+1. WHEN the training environment is initialized THEN the system SHALL run entirely within a Jupyter notebook on macOS
+2. WHEN setting up the notebook THEN the system SHALL provide clear installation instructions for all dependencies
+3. WHEN the training environment is initialized THEN the system SHALL create an isolated `ai-training` directory with all necessary dependencies
+4. WHEN setting up the environment THEN the system SHALL support Python-based training tools and libraries
+5. WHEN configuring the base model THEN the system SHALL support loading existing models like Gemma-3 or Qwen variants
+6. IF the base model is incompatible THEN the system SHALL provide clear error messages and suggested alternatives
+7. WHEN the environment is ready THEN the system SHALL validate all dependencies and provide a status report
+8. WHEN running on macOS THEN the system SHALL support local training without requiring external cloud services
+9. WHEN GPU acceleration is available THEN the system SHALL automatically detect and utilize Metal Performance Shaders capabilities
+10. WHEN running without GPU THEN the system SHALL fall back to CPU-based training with reasonable performance
 
 ### Requirement 2
 
