@@ -24,8 +24,7 @@ const ChatTab: React.FC = () => {
 		worldState,
 		playerCharacter: playerCharacter || null,
 		autoInitialize: true,
-		modelUrl:
-			'https://huggingface.co/Cactus-Compute/SmolVLM2-500m-Instruct-GGUF/resolve/main/SmolVLM2-500M-Video-Instruct-Q8_0.gguf',
+		modelUrl: '../assets/models/gemma-3n-E2B-it-Q4_K_S.gguf', // Use local GGUF model
 	});
 
 	// Debounced save to prevent excessive saves

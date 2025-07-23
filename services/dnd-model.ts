@@ -27,19 +27,52 @@ class DnDModelManager {
 	private modelConfig: any = null;
 
 	async loadModelConfig(): Promise<void> {
-		const configPath = `${FileSystem.documentDirectory}ai-training/trained_models/dnd_model/cactus_config.json`;
+		// Try multiple possible config paths
+		const possiblePaths = [
+			// App bundle path (for development)
+			'../ai-training/trained_models/dnd_model/cactus_config.json',
+			// Documents directory path (for runtime)
+			`${FileSystem.documentDirectory}dnd_model/cactus_config.json`,
+			// Assets path (for deployed model)
+			'../assets/models/custom-dnd-model/cactus_integration.json',
+		];
+
+		let configContent: string | null = null;
+		let configPath: string | null = null;
+
+		for (const path of possiblePaths) {
+			try {
+				const info = await FileSystem.getInfoAsync(path);
+				if (info.exists) {
+					configContent = await FileSystem.readAsStringAsync(path);
+					configPath = path;
+					console.log(`✅ Found config at: ${path}`);
+					break;
+				}
+			} catch (error) {
+				console.warn(`Failed to check config at ${path}:`, error);
+			}
+		}
+
+		if (!configContent) {
+			throw new Error(`Failed to load D&D model configuration from any of the expected paths: ${possiblePaths.join(', ')}`);
+		}
 
 		try {
-			const configContent = await FileSystem.readAsStringAsync(configPath);
 			this.modelConfig = JSON.parse(configContent);
+			console.log('✅ D&D Model config loaded successfully:', this.modelConfig);
 		} catch (error) {
-			throw new Error(`Failed to load D&D model configuration: ${error}`);
+			throw new Error(`Failed to parse D&D model configuration: ${error}`);
 		}
 	}
 
 	async copyTrainedModel(): Promise<{ modelPath: string; configPath: string }> {
-		// Source paths in the bundle/app
-		const sourceDir = '../ai-training/trained_models/dnd_model/';
+		// Source paths in the bundle/app - try multiple locations
+		const sourcePaths = [
+			'../ai-training/trained_models/dnd_model/',
+			'../assets/models/custom-dnd-model/',
+		];
+
 		const targetDir = `${FileSystem.documentDirectory}dnd_model/`;
 
 		// Ensure target directory exists
@@ -55,21 +88,52 @@ class DnDModelManager {
 			'tokenizer.json',
 			'tokenizer_config.json',
 			'vocab.json',
+			'config.json',
+			'model.safetensors',
+			'cactus_integration.json',
 		];
+
+		let sourcePath: string | null = null;
+
+		// Find which source path has the most files
+		for (const path of sourcePaths) {
+			try {
+				let fileCount = 0;
+				for (const fileName of modelFiles) {
+					const filePath = path + fileName;
+					const fileInfo = await FileSystem.getInfoAsync(filePath);
+					if (fileInfo.exists) {
+						fileCount++;
+					}
+				}
+				if (fileCount > 0) {
+					sourcePath = path;
+					console.log(`✅ Found ${fileCount} model files at: ${path}`);
+					break;
+				}
+			} catch (error) {
+				console.warn(`Failed to check source path ${path}:`, error);
+			}
+		}
+
+		if (!sourcePath) {
+			throw new Error('No valid model source found');
+		}
 
 		// Copy all model files
 		for (const fileName of modelFiles) {
-			const sourcePath = sourceDir + fileName;
+			const sourcePathFull = sourcePath + fileName;
 			const targetPath = targetDir + fileName;
 
 			try {
 				// Check if source exists and copy
-				const sourceInfo = await FileSystem.getInfoAsync(sourcePath);
+				const sourceInfo = await FileSystem.getInfoAsync(sourcePathFull);
 				if (sourceInfo.exists) {
 					await FileSystem.copyAsync({
-						from: sourcePath,
+						from: sourcePathFull,
 						to: targetPath,
 					});
+					console.log(`✅ Copied: ${fileName}`);
 				}
 			} catch (error) {
 				console.warn(`Failed to copy ${fileName}: ${error}`);
@@ -96,7 +160,8 @@ class DnDModelManager {
 			const configContent = await FileSystem.readAsStringAsync(configPath);
 			this.modelConfig = JSON.parse(configContent);
 		} catch (error) {
-			throw new Error(`Failed to load D&D model config: ${error}`);
+			// Fallback to loading from bundle
+			await this.loadModelConfig();
 		}
 
 		onProgress(0.5);

@@ -27,8 +27,7 @@ const GameScreen: React.FC = () => {
 		worldState,
 		playerCharacter: playerCharacter || null,
 		autoInitialize: true,
-		modelUrl:
-			'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf',
+		modelUrl: '../assets/models/gemma-3n-E2B-it-Q4_K_S.gguf', // Use local GGUF model
 	});
 
 	// Debounced save to prevent excessive saves on frequent player moves

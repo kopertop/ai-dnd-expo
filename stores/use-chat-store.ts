@@ -50,6 +50,28 @@ export const useChatStore = create<ChatState>()(
 		{
 			name: 'chat-storage',
 			partialize: state => ({ messages: state.messages }),
+			onRehydrateStorage: () => (state) => {
+				// Handle storage rehydration errors gracefully
+				if (state) {
+					console.log('✅ Chat store rehydrated successfully');
+				} else {
+					console.warn('⚠️ Chat store rehydration failed, using default state');
+				}
+			},
+			// Add error handling for storage failures
+			skipHydration: false,
+			version: 1,
+			migrate: (persistedState: any, version: number) => {
+				// Handle migration if needed
+				if (version === 0) {
+					// Migrate from version 0 to 1
+					return {
+						...persistedState,
+						messages: persistedState.messages || [],
+					};
+				}
+				return persistedState;
+			},
 		},
 	),
 );

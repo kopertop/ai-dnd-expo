@@ -1,38 +1,28 @@
 {
 	"editor.codeActionsOnSave": {
-		"source.fixAll": "explicit",
-		"source.organizeImports": "explicit",
-		"source.sortMembers": "explicit"
+		"source.fixAll.eslint": "explicit",
+		"source.organizeImports": "explicit"
 	},
-	"editor.formatOnSave": true,
-	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"editor.formatOnSave": false,
 	"editor.insertSpaces": false,
-	"editor.tabSize": 4,
+	"editor.tabSize": 3,
 	"editor.detectIndentation": false,
 	"[javascript]": {
-		"editor.defaultFormatter": "esbenp.prettier-vscode"
+		"editor.defaultFormatter": "dbaeumer.vscode-eslint"
 	},
 	"[javascriptreact]": {
-		"editor.defaultFormatter": "esbenp.prettier-vscode"
+		"editor.defaultFormatter": "dbaeumer.vscode-eslint"
 	},
 	"[typescript]": {
-		"editor.defaultFormatter": "vscode.typescript-language-features"
+		"editor.defaultFormatter": "dbaeumer.vscode-eslint"
 	},
 	"[typescriptreact]": {
-		"editor.defaultFormatter": "vscode.typescript-language-features"
+		"editor.defaultFormatter": "dbaeumer.vscode-eslint"
 	},
 	"[json]": {
 		"editor.defaultFormatter": "vscode.json-language-features"
 	},
-	"prettier.useTabs": true,
-	"prettier.tabWidth": 4,
-	"prettier.semi": true,
-	"prettier.singleQuote": true,
-	"prettier.trailingComma": "es5",
-	"prettier.bracketSpacing": true,
-	"prettier.arrowParens": "avoid",
-	"prettier.endOfLine": "lf",
-	"prettier.printWidth": 100,
+
 	"kiroAgent.trustedCommands": [
 		"npm run typecheck",
 		"npm run lint *",

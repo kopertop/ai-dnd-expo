@@ -75,6 +75,48 @@ function getSuggestionsFromMessage(message: string) {
 	return suggestions;
 }
 
+function processToolCalls(content: string): string {
+	// Process tool call format: [tool_name: arguments]
+	const toolCallRegex = /\[(\w+):\s*([^\]]+)\]/g;
+
+	return content.replace(toolCallRegex, (match, toolName, args) => {
+		// Execute the tool call and return the result
+		switch (toolName.toLowerCase()) {
+			case 'roll':
+				// Simulate dice roll: d20, 2d6, etc.
+				const rollMatch = args.match(/(\d+)?d(\d+)([+-]\d+)?/);
+				if (rollMatch) {
+					const [, numDice = '1', sides, modifier = ''] = rollMatch;
+					const rolls = Array.from(
+						{ length: parseInt(numDice) },
+						() => Math.floor(Math.random() * parseInt(sides)) + 1,
+					);
+					const total =
+						rolls.reduce((sum, roll) => sum + roll, 0) +
+						(modifier ? parseInt(modifier) : 0);
+					return `🎲 **Roll Result**: ${rolls.join(' + ')}${modifier} = **${total}**`;
+				}
+				break;
+
+			case 'health':
+				const [target, change] = args.split(',').map((s: string) => s.trim());
+				const changeValue = parseInt(change);
+				const changeText = changeValue > 0 ? 'increased' : 'decreased';
+				return `❤️ **Health**: ${target} health ${changeText} by ${Math.abs(changeValue)}`;
+
+			case 'check':
+			case 'save':
+				const roll = Math.floor(Math.random() * 20) + 1;
+				return `🎯 **${toolName.charAt(0).toUpperCase() + toolName.slice(1)}**: ${args} = **${roll}**`;
+
+			default:
+				return `⚙️ **${toolName}**: ${args}`;
+		}
+
+		return match; // Return original if no processing
+	});
+}
+
 export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 	playerCharacter,
 	dmMessages,
@@ -133,6 +175,9 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 			content = content.replace(/^Player:\s*/, '');
 		}
 		// All other messages default to DM (including msg.speaker === 'Dungeon Master')
+
+		// Process tool calls in the content
+		content = processToolCalls(content);
 
 		return {
 			id: msg.id || `msg-${index}`,

@@ -100,7 +100,7 @@ export class CactusProvider implements CactusProviderInterface {
 	}
 
 	/**
-	 * Get the model path, downloading if necessary
+	 * Get the model path, preferring local models over downloads
 	 */
 	private async getModelPath(onProgress?: (progress: number) => void): Promise<string> {
 		// If model path is directly provided, use it
@@ -114,9 +114,45 @@ export class CactusProvider implements CactusProviderInterface {
 			return cachedPath;
 		}
 
-		// Download the model
-		const modelUrl = this.config.modelUrl || DEFAULT_MODEL_URL;
-		return this.downloadModel(modelUrl, onProgress);
+		// Try to find local GGUF models first
+		const localModelPath = await this.findLocalGGUFModel();
+		if (localModelPath) {
+			console.log(`✅ Using local GGUF model: ${localModelPath}`);
+			return localModelPath;
+		}
+
+		// Only download if no local model is found and fallback mode allows it
+		if (this.config.fallbackMode !== 'local') {
+			const modelUrl = this.config.modelUrl || DEFAULT_MODEL_URL;
+			return this.downloadModel(modelUrl, onProgress);
+		}
+
+		throw new Error('No local GGUF model found and remote downloads are disabled');
+	}
+
+	/**
+	 * Find local GGUF models in the assets directory
+	 */
+	private async findLocalGGUFModel(): Promise<string | null> {
+		const possiblePaths = [
+			'../assets/models/gemma-3n-E2B-it-Q4_K_S.gguf',
+			'../assets/models/custom-dnd-trained-model/model.gguf',
+			`${FileSystem.documentDirectory}cactus-models/gemma-3n-E2B-it-Q4_K_S.gguf`,
+		];
+
+		for (const path of possiblePaths) {
+			try {
+				const info = await FileSystem.getInfoAsync(path);
+				if (info.exists) {
+					console.log(`✅ Found local GGUF model at: ${path}`);
+					return path;
+				}
+			} catch (error) {
+				console.warn(`Failed to check local model at ${path}:`, error);
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -216,17 +252,23 @@ export class CactusProvider implements CactusProviderInterface {
 			throw new Error('Cactus LLM not initialized');
 		}
 
-		const completionParams = {
-			n_predict: params.n_predict || 256,
-			temperature: params.temperature || 0.7,
-			top_p: params.top_p || 0.9,
-			stop: params.stop || [],
-			mode: this.config.fallbackMode,
-		};
-
 		try {
-			const result = await this.lm.completion(messages, completionParams);
-			return result.text || '';
+			// Convert messages to the format expected by CactusLM
+			const formattedMessages = messages.map(msg => ({
+				role: msg.role,
+				content: msg.content,
+			}));
+
+			// Generate completion
+			const response = await this.lm.completion({
+				messages: formattedMessages,
+				temperature: params.temperature || 0.7,
+				top_p: params.top_p || 0.9,
+				n_predict: params.n_predict || 512,
+				stop: params.stop || stopWords,
+			});
+
+			return response.content || '';
 		} catch (error) {
 			console.error('Error generating completion:', error);
 			throw error;
@@ -234,7 +276,7 @@ export class CactusProvider implements CactusProviderInterface {
 	}
 
 	/**
-	 * Generate a streaming completion with token callbacks
+	 * Generate a streaming completion from the provided messages
 	 */
 	async streamingCompletion(
 		messages: CactusMessage[],
@@ -245,26 +287,31 @@ export class CactusProvider implements CactusProviderInterface {
 			throw new Error('Cactus LLM not initialized');
 		}
 
-		const completionParams = {
-			n_predict: params.n_predict || 256,
-			temperature: params.temperature || 0.7,
-			top_p: params.top_p || 0.9,
-			stop: params.stop || [],
-			mode: this.config.fallbackMode,
-		};
-
-		let responseText = '';
-
 		try {
-			const result = await this.lm.completion(messages, completionParams, (data: any) => {
-				if (data.token) {
-					responseText += data.token;
-					if (onToken) onToken(data.token);
-				}
+			// Convert messages to the format expected by CactusLM
+			const formattedMessages = messages.map(msg => ({
+				role: msg.role,
+				content: msg.content,
+			}));
+
+			let fullResponse = '';
+
+			// Generate streaming completion
+			await this.lm.completion({
+				messages: formattedMessages,
+				temperature: params.temperature || 0.7,
+				top_p: params.top_p || 0.9,
+				n_predict: params.n_predict || 512,
+				stop: params.stop || stopWords,
+				onToken: (token: string) => {
+					fullResponse += token;
+					if (onToken) {
+						onToken(token);
+					}
+				},
 			});
 
-			// In case the streaming didn't capture everything
-			return responseText || result.text || '';
+			return fullResponse;
 		} catch (error) {
 			console.error('Error generating streaming completion:', error);
 			throw error;
@@ -272,7 +319,7 @@ export class CactusProvider implements CactusProviderInterface {
 	}
 
 	/**
-	 * Reset the conversation context
+	 * Rewind the conversation context
 	 */
 	rewind(): void {
 		if (this.lm) {
@@ -281,7 +328,9 @@ export class CactusProvider implements CactusProviderInterface {
 	}
 }
 
-// Helper function to create a provider instance
+// Stop words for completion
+const stopWords = ['<|end_of_text|>', '<|endoftext|>', '</s>', '<end_of_utterance>'];
+
 export const createCactusProvider = (config?: CactusProviderConfig): CactusProviderInterface => {
 	return new CactusProvider(config);
 };

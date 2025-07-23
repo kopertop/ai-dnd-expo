@@ -1009,7 +1009,7 @@ export class AIServiceManager {
 export const DefaultAIConfig: AIServiceConfig = {
 	cactus: {
 		enabled: true,
-		modelPath: '/Documents/AIModels/gemma-3-2b-int8/model.gguf',
+		modelPath: '../assets/models/gemma-3n-E2B-it-Q4_K_S.gguf', // Use local GGUF model
 		contextSize: 2048,
 	},
 	local: {
