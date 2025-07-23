@@ -32,14 +32,14 @@ fi
 
 # Install conversion dependencies
 echo -e "${BLUE}📦 Checking conversion dependencies...${NC}"
-python3 -c "import torch, transformers, peft" 2>/dev/null || {
+python3.11 -c "import torch, transformers, peft" 2>/dev/null || {
     echo -e "${YELLOW}Installing missing dependencies...${NC}"
     pip install torch transformers peft
 }
 
 # Run GGUF conversion
 echo -e "${BLUE}🚀 Starting GGUF conversion...${NC}"
-python3 convert_to_gguf.py "$@"
+python3.11 convert_to_gguf.py "$@"
 
 # Check exit code
 if [ $? -eq 0 ]; then

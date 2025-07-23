@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { dndModel, type DnDMessage, type ToolCall } from '@/services/dnd-model';
 

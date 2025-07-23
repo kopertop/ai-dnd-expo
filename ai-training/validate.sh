@@ -32,14 +32,14 @@ fi
 
 # Install validation dependencies if needed
 echo -e "${BLUE}📦 Checking validation dependencies...${NC}"
-python3 -c "import torch, transformers, peft" 2>/dev/null || {
+python3.11 -c "import torch, transformers, peft" 2>/dev/null || {
     echo -e "${YELLOW}Installing missing dependencies...${NC}"
     pip install torch transformers peft
 }
 
 # Run validation
 echo -e "${BLUE}🚀 Starting model validation...${NC}"
-python3 validate_trained_model.py
+python3.11 validate_trained_model.py
 
 # Check exit code
 if [ $? -eq 0 ]; then

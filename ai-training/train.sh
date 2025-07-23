@@ -18,7 +18,7 @@ echo "📂 Working directory: $(pwd)"
 # Check if virtual environment exists, create if not
 if [ ! -d "venv" ]; then
     echo -e "${YELLOW}🔧 Creating virtual environment...${NC}"
-    python3 -m venv venv
+    python3.11 -m venv venv
 fi
 
 # Activate virtual environment
@@ -65,7 +65,7 @@ echo -e "${GREEN}✅ All dependencies installed!${NC}"
 
 # Check system info
 echo -e "${BLUE}🖥️  System Information:${NC}"
-python3 -c "
+python3.11 -c "
 import torch
 import platform
 print(f'Python: {platform.python_version()}')
@@ -98,7 +98,7 @@ echo -e "${GREEN}✅ Model download completed!${NC}"
 # Run training
 echo -e "${BLUE}🏋️‍♂️ Starting training...${NC}"
 echo -e "${BLUE}Using native HuggingFace transformers for reliable training...${NC}"
-python3 train_dnd_model.py
+python3.11 train_dnd_model.py
 
 echo -e "${GREEN}🎉 Training completed successfully!${NC}"
 echo -e "${GREEN}Your D&D model is ready for CactusAI integration!${NC}"

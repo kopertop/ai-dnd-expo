@@ -15,6 +15,7 @@ dist/
 web-build/
 expo-env.d.ts
 .projectId.json
+app.json
 
 # Native
 .kotlin/

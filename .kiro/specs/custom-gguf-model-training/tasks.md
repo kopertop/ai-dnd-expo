@@ -89,21 +89,21 @@
     - _Requirements: 1.9, 1.12, 6.6, 6.7_
 
 - [ ] 6. Implement automated GGUF export and CactusTTS integration
-  - [-] 6.1 Create automated GGUF conversion and optimization
+  - [x] 6.1 Create automated GGUF conversion and optimization
     - Implement automatic conversion from trained HuggingFace model to GGUF format using llama.cpp
     - Create automatic quantization with optimal settings for CactusTTS (Q4_K_M)
     - Add automatic size optimization to stay under 2GB for mobile deployment
     - Implement automatic GGUF file generation and validation
     - _Requirements: 1.4, 1.12, 6.6, 6.7, 6.8_
 
-  - [ ] 6.2 Create automated CactusTTS integration configuration
+  - [-] 6.2 Create automated CactusTTS integration configuration
     - Implement automatic placement of GGUF files in assets/models directory
     - Create automatic generation of exact modelPath and mmprojPath values
     - Add automatic validation of file paths and model accessibility
     - Implement automatic output of integration configuration for cactus.ts
     - _Requirements: 1.5, 1.10, 6.2, 6.3_
 
-  - [ ] 6.3 Implement automated integration validation
+  - [x] 6.3 Implement automated integration validation
     - Create automatic testing of generated model with existing Cactus infrastructure
     - Implement automatic validation of tool calling format compatibility
     - Add automatic verification of model loading and basic functionality

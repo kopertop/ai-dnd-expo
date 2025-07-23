@@ -8,17 +8,42 @@
 		"esModuleInterop": true,
 		"baseUrl": ".",
 		"paths": {
-			"@/*": ["./*"],
-			"@/assets/*": ["./assets/*"],
-			"@/components/*": ["./components/*"],
-			"@/constants/*": ["./constants/*"],
-			"@/contexts/*": ["./contexts/*"],
-			"@/hooks/*": ["./hooks/*"],
-			"@/styles/*": ["./styles/*"],
-			"@/types/*": ["./types/*"],
-			"@/utils/*": ["./utils/*"]
+			"@/*": [
+				"./*"
+			],
+			"@/assets/*": [
+				"./assets/*"
+			],
+			"@/components/*": [
+				"./components/*"
+			],
+			"@/constants/*": [
+				"./constants/*"
+			],
+			"@/contexts/*": [
+				"./contexts/*"
+			],
+			"@/hooks/*": [
+				"./hooks/*"
+			],
+			"@/styles/*": [
+				"./styles/*"
+			],
+			"@/types/*": [
+				"./types/*"
+			],
+			"@/utils/*": [
+				"./utils/*"
+			]
 		}
 	},
-	"include": ["**/*.ts", "**/*.tsx"],
-	"exclude": ["node_modules", "tests/**/*"]
+	"include": [
+		"**/*.ts",
+		"**/*.tsx"
+	],
+	"exclude": [
+		"node_modules",
+		"tests/**/*",
+		"ai-training/llama.cpp/**/*"
+	]
 }

@@ -28,8 +28,15 @@ class GGUFConverter:
         if self.llama_cpp_dir.exists():
             convert_script = self.llama_cpp_dir / "convert_hf_to_gguf.py"
             quantize_bin = self.llama_cpp_dir / "llama-quantize"
+            build_quantize = self.llama_cpp_dir / "build" / "bin" / "llama-quantize"
 
-            if convert_script.exists() and quantize_bin.exists():
+            # Check if conversion script exists
+            if not convert_script.exists():
+                print("⚠️  llama.cpp conversion script not found")
+                return False
+
+            # Check for quantize binary in either location
+            if quantize_bin.exists() or build_quantize.exists():
                 print("✅ llama.cpp found and ready")
                 return True
 
@@ -49,9 +56,27 @@ class GGUFConverter:
                     str(self.llama_cpp_dir)
                 ], check=True)
 
-            # Build llama.cpp
-            print("🔨 Building llama.cpp...")
-            subprocess.run(["make", "-C", str(self.llama_cpp_dir)], check=True)
+            # Build llama.cpp using CMake
+            print("🔨 Building llama.cpp with CMake...")
+            build_dir = self.llama_cpp_dir / "build"
+            build_dir.mkdir(exist_ok=True)
+
+            # Configure with CMake
+            subprocess.run([
+                "cmake", "-B", str(build_dir), "-S", str(self.llama_cpp_dir),
+                "-DCMAKE_BUILD_TYPE=Release"
+            ], check=True)
+
+            # Build
+            subprocess.run([
+                "cmake", "--build", str(build_dir), "--config", "Release", "-j", "4"
+            ], check=True)
+
+            # Copy binaries to main directory for easier access
+            quantize_src = build_dir / "bin" / "llama-quantize"
+            quantize_dst = self.llama_cpp_dir / "llama-quantize"
+            if quantize_src.exists():
+                shutil.copy2(quantize_src, quantize_dst)
 
             # Install Python requirements
             requirements_file = self.llama_cpp_dir / "requirements.txt"
@@ -160,7 +185,14 @@ class GGUFConverter:
         quantized_file = gguf_file.parent / f"model-{quantization.lower()}.gguf"
 
         try:
+            # Try different possible locations for quantize binary
             quantize_bin = self.llama_cpp_dir / "llama-quantize"
+            build_quantize = self.llama_cpp_dir / "build" / "bin" / "llama-quantize"
+
+            if build_quantize.exists():
+                quantize_bin = build_quantize
+            elif not quantize_bin.exists():
+                raise FileNotFoundError("llama-quantize binary not found")
 
             cmd = [
                 str(quantize_bin),
