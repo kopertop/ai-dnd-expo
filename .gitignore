@@ -6,6 +6,9 @@ node_modules/
 # Local Configs
 *.local.json
 
+# Generated config files
+app.json
+
 # Expo
 .expo/
 dist/
@@ -23,7 +26,7 @@ expo-env.d.ts
 *.mobileprovision
 
 # Native build directories
-ios/
+# ios/  # Temporarily commit iOS to force EAS to use it
 android/
 build-*.ipa
 

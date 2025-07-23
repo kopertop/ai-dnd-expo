@@ -5,14 +5,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 	name: 'ai-dnd-expo',
 	slug: 'ai-dnd-expo',
 	version: require('./package.json').version,
-	runtimeVersion: require('./package.json').version,
 	orientation: 'portrait',
 	icon: './assets/images/icon.png',
 	scheme: 'aidndexpo',
 	userInterfaceStyle: 'automatic',
 	newArchEnabled: true,
+	owner: 'kopertop',
 	ios: {
-		buildNumber: '8',
+		buildNumber: '9',
 		supportsTablet: true,
 		bundleIdentifier: 'org.coredumped.ai-dnd',
 		infoPlist: {
