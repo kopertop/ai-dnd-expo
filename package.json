@@ -38,7 +38,7 @@
     "test:all": "npm run test && npm run test:services",
     "test:all:coverage": "npm run test:coverage && npm run test:services:coverage",
     "type-check": "tsc --noEmit",
-    "build:local": "tsx scripts/generate-app-config.ts && eas build --profile production --local --platform ios",
+    "build:local": "npm run postversion && tsx scripts/generate-app-config.ts && eas build --profile production --local --platform ios",
     "build:development": "eas build --profile development",
     "build:staging": "eas build --profile staging",
     "build:production": "eas build --profile production",
