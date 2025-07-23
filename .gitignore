@@ -27,7 +27,7 @@ app.json
 *.mobileprovision
 
 # Native build directories
-# ios/  # Temporarily commit iOS to force EAS to use it
+ios/
 android/
 build-*.ipa
 

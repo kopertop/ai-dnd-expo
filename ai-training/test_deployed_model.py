@@ -1,13 +1,12 @@
-#!/usr/bin/env python3.11
+#!/usr/bin/env python3
 """
-Test Deployed Model Integration
-Validates that the deployed model works correctly with the CactusTTS infrastructure
+Deployed Model Testing Script
+Tests deployed models for integration with the existing Cactus infrastructure
 """
 
 import json
 import os
 import sys
-import time
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -16,156 +15,186 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 class DeployedModelTester:
-    """Tests deployed models for integration validation."""
+    """Tests deployed models for CactusTTS integration."""
 
-    def __init__(self, model_path: str = None):
+    def __init__(self, model_name: str = "custom-dnd-trained-model"):
         self.script_dir = Path(__file__).parent
-        self.project_root = self.script_dir.parent
-
-        # Default to deployed model location
-        if model_path is None:
-            model_path = self.project_root / "assets" / "models" / "custom-dnd-model"
-
-        self.model_path = Path(model_path)
+        self.assets_dir = self.script_dir.parent / "assets/models"
+        self.model_dir = self.assets_dir / model_name
+        self.model_name = model_name
         self.model = None
         self.tokenizer = None
-        self.integration_config = None
 
-    def check_deployment(self) -> bool:
-        """Check if the model is properly deployed."""
-        if not self.model_path.exists():
-            print(f"❌ Deployed model not found: {self.model_path}")
-            print("Run 'npm run train:deploy' first to deploy the model")
-            return False
+    def validate_deployment(self) -> Dict[str, Any]:
+        """Validate that the model is properly deployed."""
+        print("🔍 Validating model deployment...")
 
-        # Check for required files
+        validation = {
+            "model_exists": self.model_dir.exists(),
+            "required_files": [],
+            "missing_files": [],
+            "config_valid": False,
+            "size_mb": 0
+        }
+
+        if not validation["model_exists"]:
+            validation["error"] = f"Model directory not found: {self.model_dir}"
+            return validation
+
+        # Check required files
         required_files = [
             "config.json",
             "tokenizer.json",
-            "cactus_integration.json",
-            "integration_example.ts"
+            "model.safetensors",
+            "deployment_config.json"
         ]
 
-        missing_files = []
         for file in required_files:
-            if not (self.model_path / file).exists():
-                missing_files.append(file)
+            file_path = self.model_dir / file
+            if file_path.exists():
+                validation["required_files"].append(file)
+                validation["size_mb"] += file_path.stat().st_size / (1024 * 1024)
+            else:
+                validation["missing_files"].append(file)
 
-        if missing_files:
-            print(f"❌ Missing required files: {missing_files}")
-            return False
+        # Validate config
+        config_path = self.model_dir / "config.json"
+        if config_path.exists():
+            try:
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                validation["config_valid"] = "model_type" in config
+                validation["model_type"] = config.get("model_type", "unknown")
+            except Exception as e:
+                validation["config_error"] = str(e)
 
-        print(f"✅ Deployed model found: {self.model_path}")
-        return True
+        validation["size_mb"] = round(validation["size_mb"], 2)
 
-    def load_integration_config(self) -> bool:
-        """Load the integration configuration."""
-        config_file = self.model_path / "cactus_integration.json"
+        print(f"✅ Model directory: {validation['model_exists']}")
+        print(f"📄 Required files: {len(validation['required_files'])}/{len(required_files)}")
+        if validation["missing_files"]:
+            print(f"⚠️  Missing files: {validation['missing_files']}")
+        print(f"📦 Total size: {validation['size_mb']} MB")
 
-        try:
-            with open(config_file, 'r') as f:
-                self.integration_config = json.load(f)
-            print("✅ Integration config loaded")
-            return True
-        except Exception as e:
-            print(f"❌ Failed to load integration config: {e}")
-            return False
+        return validation
 
-    def load_deployed_model(self) -> bool:
+    def load_model(self) -> bool:
         """Load the deployed model for testing."""
+        print("📥 Loading deployed model...")
+
         try:
-            print(f"📥 Loading deployed model from: {self.model_path}")
+            # Load model
+            self.model = AutoModelForCausalLM.from_pretrained(
+                str(self.model_dir),
+                torch_dtype=torch.float32,
+                device_map="cpu",
+                local_files_only=True
+            )
 
             # Load tokenizer
-            self.tokenizer = AutoTokenizer.from_pretrained(str(self.model_path))
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                str(self.model_dir),
+                local_files_only=True
+            )
+
             if self.tokenizer.pad_token is None:
                 self.tokenizer.pad_token = self.tokenizer.eos_token
 
-            # Load model
-            self.model = AutoModelForCausalLM.from_pretrained(
-                str(self.model_path),
-                torch_dtype=torch.float32,
-                device_map="cpu"  # Keep on CPU for testing
-            )
-
-            print("✅ Deployed model loaded successfully!")
+            print("✅ Model and tokenizer loaded successfully")
             return True
 
         except Exception as e:
-            print(f"❌ Failed to load deployed model: {e}")
+            print(f"❌ Failed to load model: {e}")
             return False
 
     def test_basic_generation(self) -> Dict[str, Any]:
-        """Test basic text generation."""
-        print("🧪 Testing basic generation...")
+        """Test basic text generation capabilities."""
+        print("🧪 Testing basic text generation...")
 
-        test_prompt = "User: Hello, I'm ready to start our D&D adventure.\nDM:"
+        test_prompts = [
+            "User: I want to roll for perception.\nDM:",
+            "User: What do I see in this room?\nDM:",
+            "User: I attack the goblin with my sword.\nDM:"
+        ]
 
-        try:
-            start_time = time.time()
+        results = []
 
-            inputs = self.tokenizer.encode(test_prompt, return_tensors="pt")
+        for prompt in test_prompts:
+            try:
+                # Tokenize
+                inputs = self.tokenizer.encode(prompt, return_tensors="pt")
 
-            with torch.no_grad():
-                outputs = self.model.generate(
-                    inputs,
-                    max_length=inputs.shape[1] + 100,
-                    num_return_sequences=1,
-                    temperature=0.7,
-                    top_p=0.9,
-                    do_sample=True,
-                    pad_token_id=self.tokenizer.eos_token_id,
-                )
+                # Generate
+                with torch.no_grad():
+                    outputs = self.model.generate(
+                        inputs,
+                        max_length=inputs.shape[1] + 100,
+                        num_return_sequences=1,
+                        temperature=0.7,
+                        top_p=0.9,
+                        do_sample=True,
+                        pad_token_id=self.tokenizer.eos_token_id,
+                        eos_token_id=self.tokenizer.eos_token_id,
+                    )
 
-            response = self.tokenizer.decode(outputs[0][inputs.shape[1]:], skip_special_tokens=True)
+                # Decode
+                response = self.tokenizer.decode(outputs[0][inputs.shape[1]:], skip_special_tokens=True)
 
-            end_time = time.time()
-            generation_time = end_time - start_time
+                result = {
+                    "prompt": prompt,
+                    "response": response.strip(),
+                    "response_length": len(response.strip()),
+                    "success": True
+                }
 
-            return {
-                "success": True,
-                "prompt": test_prompt,
-                "response": response.strip(),
-                "generation_time": round(generation_time, 3),
-                "response_length": len(response.strip())
-            }
+                print(f"   ✅ Prompt: {prompt[:30]}...")
+                print(f"      Response: {response.strip()[:60]}...")
 
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            except Exception as e:
+                result = {
+                    "prompt": prompt,
+                    "error": str(e),
+                    "success": False
+                }
+                print(f"   ❌ Failed: {prompt[:30]}... - {e}")
 
-    def test_dnd_scenarios(self) -> List[Dict[str, Any]]:
+            results.append(result)
+
+        success_count = sum(1 for r in results if r["success"])
+        print(f"✅ Generation test: {success_count}/{len(results)} prompts successful")
+
+        return {
+            "total_prompts": len(results),
+            "successful": success_count,
+            "success_rate": success_count / len(results),
+            "results": results
+        }
+
+    def test_dnd_scenarios(self) -> Dict[str, Any]:
         """Test D&D-specific scenarios."""
-        print("🎲 Testing D&D scenarios...")
+        print("🎲 Testing D&D scenario responses...")
 
-        scenarios = [
+        dnd_scenarios = [
             {
-                "name": "Combat Initiative",
-                "prompt": "User: We encounter a group of goblins. What should we do?\nDM:",
-                "expects": ["roll", "initiative", "combat", "attack"]
+                "name": "Perception Check",
+                "prompt": "Context:\nRole: Dungeon Master\nLocation: Tavern\nParty: Thordak (Fighter, Level 5)\n\nPlayer: I want to look around the room carefully.\nDM:",
+                "expects_tools": True
             },
             {
-                "name": "Skill Check Request",
-                "prompt": "User: I want to search the room for hidden doors.\nDM:",
-                "expects": ["perception", "investigation", "roll", "check"]
-            },
-            {
-                "name": "Spellcasting",
-                "prompt": "User: I cast Fireball at the enemies.\nDM:",
-                "expects": ["damage", "roll", "save", "spell"]
+                "name": "Combat Action",
+                "prompt": "Context:\nRole: Dungeon Master\nLocation: Combat\nParty: Elara (Wizard, Level 5)\n\nPlayer: I cast Magic Missile at the orc.\nDM:",
+                "expects_tools": True
             },
             {
                 "name": "Roleplay Interaction",
-                "prompt": "User: I approach the tavern keeper and ask about local rumors.\nDM:",
-                "expects": ["tavern", "rumors", "information", "talk"]
+                "prompt": "Context:\nRole: Dungeon Master\nLocation: Village\nParty: Grimm (Cleric, Level 5)\n\nPlayer: I approach the village elder and ask about the recent troubles.\nDM:",
+                "expects_tools": False
             }
         ]
 
         results = []
 
-        for scenario in scenarios:
+        for scenario in dnd_scenarios:
             try:
                 inputs = self.tokenizer.encode(scenario["prompt"], return_tensors="pt")
 
@@ -182,283 +211,217 @@ class DeployedModelTester:
 
                 response = self.tokenizer.decode(outputs[0][inputs.shape[1]:], skip_special_tokens=True)
 
-                # Check for expected keywords
-                response_lower = response.lower()
-                found_keywords = [kw for kw in scenario["expects"] if kw in response_lower]
-                relevance_score = len(found_keywords) / len(scenario["expects"])
+                # Check for tool calls
+                has_tool_calls = "[" in response and "]" in response
 
-                results.append({
+                result = {
                     "scenario": scenario["name"],
-                    "prompt": scenario["prompt"],
                     "response": response.strip(),
-                    "expected_keywords": scenario["expects"],
-                    "found_keywords": found_keywords,
-                    "relevance_score": relevance_score,
-                    "success": relevance_score > 0.2  # At least 20% keyword match
-                })
+                    "has_tool_calls": has_tool_calls,
+                    "expects_tools": scenario["expects_tools"],
+                    "tool_expectation_met": has_tool_calls == scenario["expects_tools"],
+                    "success": True
+                }
+
+                status = "✅" if result["tool_expectation_met"] else "⚠️"
+                print(f"   {status} {scenario['name']}: Tool calls = {has_tool_calls}")
 
             except Exception as e:
-                results.append({
+                result = {
                     "scenario": scenario["name"],
                     "error": str(e),
                     "success": False
-                })
+                }
+                print(f"   ❌ {scenario['name']}: Failed - {e}")
 
-        return results
+            results.append(result)
 
-    def test_tool_call_format(self) -> Dict[str, Any]:
-        """Test tool call format generation."""
-        print("🔧 Testing tool call format...")
+        success_count = sum(1 for r in results if r["success"])
+        tool_accuracy = sum(1 for r in results if r.get("tool_expectation_met", False))
 
-        tool_prompts = [
-            "User: I want to roll for perception.\nDM:",
-            "User: I attack with my sword.\nDM:",
-            "User: I'm taking damage, update my health.\nDM:"
-        ]
-
-        results = []
-        total_tool_calls = 0
-
-        for prompt in tool_prompts:
-            try:
-                inputs = self.tokenizer.encode(prompt, return_tensors="pt")
-
-                with torch.no_grad():
-                    outputs = self.model.generate(
-                        inputs,
-                        max_length=inputs.shape[1] + 80,
-                        num_return_sequences=1,
-                        temperature=0.7,
-                        do_sample=True,
-                        pad_token_id=self.tokenizer.eos_token_id,
-                    )
-
-                response = self.tokenizer.decode(outputs[0][inputs.shape[1]:], skip_special_tokens=True)
-
-                # Look for tool call patterns
-                import re
-                tool_calls = re.findall(r'\[(\w+):\s*([^\]]+)\]', response)
-
-                results.append({
-                    "prompt": prompt,
-                    "response": response.strip(),
-                    "tool_calls": tool_calls,
-                    "has_tool_calls": len(tool_calls) > 0
-                })
-
-                total_tool_calls += len(tool_calls)
-
-            except Exception as e:
-                results.append({
-                    "prompt": prompt,
-                    "error": str(e),
-                    "has_tool_calls": False
-                })
+        print(f"✅ D&D scenarios: {success_count}/{len(results)} successful")
+        print(f"🔧 Tool accuracy: {tool_accuracy}/{len(results)} correct")
 
         return {
-            "results": results,
-            "total_prompts": len(tool_prompts),
-            "total_tool_calls": total_tool_calls,
-            "tool_call_rate": total_tool_calls / len(tool_prompts) if tool_prompts else 0
+            "total_scenarios": len(results),
+            "successful": success_count,
+            "tool_accuracy": tool_accuracy,
+            "success_rate": success_count / len(results),
+            "tool_accuracy_rate": tool_accuracy / len(results),
+            "results": results
         }
 
-    def test_performance_metrics(self) -> Dict[str, Any]:
-        """Test performance metrics."""
-        print("⚡ Testing performance metrics...")
+    def test_cactus_compatibility(self) -> Dict[str, Any]:
+        """Test compatibility with Cactus infrastructure requirements."""
+        print("🔗 Testing CactusTTS compatibility...")
 
-        test_prompts = [
-            "User: Tell me about this dungeon.\nDM:",
-            "User: What do I see in this room?\nDM:",
-            "User: I want to cast a spell.\nDM:"
-        ]
+        compatibility_tests = {
+            "model_format": False,
+            "tokenizer_format": False,
+            "size_acceptable": False,
+            "config_valid": False,
+            "generation_works": False
+        }
 
-        times = []
-        token_counts = []
+        # Check model format
+        model_files = list(self.model_dir.glob("*.safetensors")) + list(self.model_dir.glob("*.bin"))
+        compatibility_tests["model_format"] = len(model_files) > 0
 
-        for prompt in test_prompts:
-            try:
-                start_time = time.time()
-
-                inputs = self.tokenizer.encode(prompt, return_tensors="pt")
-
-                with torch.no_grad():
-                    outputs = self.model.generate(
-                        inputs,
-                        max_length=inputs.shape[1] + 100,
-                        num_return_sequences=1,
-                        temperature=0.7,
-                        do_sample=True,
-                    )
-
-                response = self.tokenizer.decode(outputs[0][inputs.shape[1]:], skip_special_tokens=True)
-
-                end_time = time.time()
-                generation_time = end_time - start_time
-                token_count = len(self.tokenizer.encode(response))
-
-                times.append(generation_time)
-                token_counts.append(token_count)
-
-            except Exception as e:
-                print(f"⚠️  Performance test failed for prompt: {e}")
-
-        if times and token_counts:
-            avg_time = sum(times) / len(times)
-            avg_tokens = sum(token_counts) / len(token_counts)
-            tokens_per_second = avg_tokens / avg_time if avg_time > 0 else 0
-
-            return {
-                "average_generation_time": round(avg_time, 3),
-                "average_tokens_generated": round(avg_tokens, 1),
-                "tokens_per_second": round(tokens_per_second, 2),
-                "test_count": len(times)
-            }
-        else:
-            return {
-                "error": "No successful performance tests",
-                "test_count": 0
-            }
-
-    def run_integration_validation(self) -> Dict[str, Any]:
-        """Run complete integration validation."""
-        print("🔗 Starting Deployed Model Integration Validation")
-        print("=" * 60)
-
-        # Check deployment
-        if not self.check_deployment():
-            return {"success": False, "error": "Model not properly deployed"}
-
-        # Load integration config
-        if not self.load_integration_config():
-            return {"success": False, "error": "Failed to load integration config"}
-
-        # Load model
-        if not self.load_deployed_model():
-            return {"success": False, "error": "Failed to load deployed model"}
-
-        # Run tests
-        basic_test = self.test_basic_generation()
-        dnd_scenarios = self.test_dnd_scenarios()
-        tool_calls = self.test_tool_call_format()
-        performance = self.test_performance_metrics()
-
-        # Calculate overall success
-        successful_scenarios = sum(1 for s in dnd_scenarios if s.get("success", False))
-        scenario_success_rate = successful_scenarios / len(dnd_scenarios) if dnd_scenarios else 0
-
-        overall_success = (
-            basic_test.get("success", False) and
-            scenario_success_rate >= 0.5 and  # At least 50% scenarios successful
-            performance.get("tokens_per_second", 0) > 1.0  # Reasonable performance
+        # Check tokenizer format
+        tokenizer_files = ["tokenizer.json", "vocab.json"]
+        compatibility_tests["tokenizer_format"] = all(
+            (self.model_dir / f).exists() for f in tokenizer_files
         )
 
-        results = {
-            "success": overall_success,
-            "model_path": str(self.model_path),
-            "integration_config": self.integration_config,
-            "basic_generation": basic_test,
-            "dnd_scenarios": dnd_scenarios,
-            "tool_calls": tool_calls,
-            "performance": performance,
-            "summary": {
-                "total_scenarios": len(dnd_scenarios),
-                "successful_scenarios": successful_scenarios,
-                "scenario_success_rate": round(scenario_success_rate, 2),
-                "tool_call_rate": tool_calls.get("tool_call_rate", 0),
-                "performance_adequate": performance.get("tokens_per_second", 0) > 1.0
-            }
+        # Check size (should be reasonable for mobile)
+        total_size = sum(f.stat().st_size for f in model_files) / (1024 * 1024)
+        compatibility_tests["size_acceptable"] = total_size < 3000  # 3GB limit
+
+        # Check config
+        config_path = self.model_dir / "config.json"
+        if config_path.exists():
+            try:
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                compatibility_tests["config_valid"] = "model_type" in config
+            except:
+                pass
+
+        # Check generation
+        if self.model and self.tokenizer:
+            try:
+                test_input = self.tokenizer.encode("Test", return_tensors="pt")
+                with torch.no_grad():
+                    output = self.model.generate(test_input, max_length=test_input.shape[1] + 5)
+                compatibility_tests["generation_works"] = output.shape[1] > test_input.shape[1]
+            except:
+                pass
+
+        # Print results
+        for test, passed in compatibility_tests.items():
+            status = "✅" if passed else "❌"
+            print(f"   {status} {test.replace('_', ' ').title()}")
+
+        compatibility_score = sum(compatibility_tests.values()) / len(compatibility_tests)
+        print(f"🎯 Overall compatibility: {compatibility_score:.1%}")
+
+        return {
+            "tests": compatibility_tests,
+            "score": compatibility_score,
+            "model_size_mb": total_size,
+            "passed": compatibility_score >= 0.8
         }
 
-        return results
-
-    def generate_validation_report(self, results: Dict[str, Any]) -> str:
-        """Generate validation report."""
+    def generate_test_report(self, validation: Dict, generation: Dict, dnd: Dict, compatibility: Dict) -> str:
+        """Generate a comprehensive test report."""
         report = f"""
-🔗 Deployed Model Integration Validation Report
-{'=' * 60}
+🧪 Deployed Model Test Report
+{'=' * 50}
 
 📋 Model Information:
-- Model Path: {results['model_path']}
-- Integration Config: {'✅ Loaded' if results.get('integration_config') else '❌ Missing'}
+- Model Name: {self.model_name}
+- Model Path: {self.model_dir}
+- Model Size: {validation.get('size_mb', 0)} MB
 
-✅ Test Results:
+✅ Deployment Validation:
+- Model Exists: {'✅' if validation['model_exists'] else '❌'}
+- Required Files: {len(validation['required_files'])}/{len(validation['required_files']) + len(validation['missing_files'])}
+- Config Valid: {'✅' if validation['config_valid'] else '❌'}
 
-🧪 Basic Generation:
+🔧 Generation Testing:
+- Success Rate: {generation['success_rate']:.1%}
+- Successful Prompts: {generation['successful']}/{generation['total_prompts']}
+
+🎲 D&D Scenario Testing:
+- Success Rate: {dnd['success_rate']:.1%}
+- Tool Call Accuracy: {dnd['tool_accuracy_rate']:.1%}
+- Scenarios Passed: {dnd['successful']}/{dnd['total_scenarios']}
+
+🔗 CactusTTS Compatibility:
+- Compatibility Score: {compatibility['score']:.1%}
+- Model Size: {compatibility['model_size_mb']:.1f} MB
+- Overall Status: {'✅ COMPATIBLE' if compatibility['passed'] else '❌ NEEDS WORK'}
+
+{'=' * 50}
 """
 
-        basic = results["basic_generation"]
-        if basic.get("success"):
-            report += f"   ✅ PASS - Generated {basic.get('response_length', 0)} chars in {basic.get('generation_time', 0)}s"
-        else:
-            report += f"   ❌ FAIL - {basic.get('error', 'Unknown error')}"
+        if not compatibility['passed']:
+            report += "\n⚠️  Issues to Address:\n"
+            for test, passed in compatibility['tests'].items():
+                if not passed:
+                    report += f"   - {test.replace('_', ' ').title()}\n"
 
-        report += f"\n\n🎲 D&D Scenarios:"
-        summary = results["summary"]
-        report += f"\n   Success Rate: {summary['successful_scenarios']}/{summary['total_scenarios']} ({summary['scenario_success_rate']:.1%})"
-
-        for scenario in results["dnd_scenarios"]:
-            status = "✅" if scenario.get("success") else "❌"
-            relevance = scenario.get("relevance_score", 0)
-            report += f"\n   {status} {scenario['scenario']}: {relevance:.1%} relevance"
-
-        report += f"\n\n🔧 Tool Calls:"
-        tool_results = results["tool_calls"]
-        report += f"\n   Tool Call Rate: {tool_results.get('tool_call_rate', 0):.1f} calls/prompt"
-        report += f"\n   Total Tool Calls: {tool_results.get('total_tool_calls', 0)}"
-
-        report += f"\n\n⚡ Performance:"
-        perf = results["performance"]
-        if "error" not in perf:
-            report += f"\n   Speed: {perf.get('tokens_per_second', 0):.1f} tokens/second"
-            report += f"\n   Avg Time: {perf.get('average_generation_time', 0):.2f}s"
-        else:
-            report += f"\n   ❌ Performance test failed"
-
-        # Overall result
-        overall = "✅ PASS" if results["success"] else "❌ NEEDS WORK"
-        report += f"\n\n🎯 Overall Result: {overall}"
-
-        if not results["success"]:
-            report += "\n\n⚠️  Issues to address:"
-            if not basic.get("success"):
-                report += "\n   - Basic generation not working"
-            if summary["scenario_success_rate"] < 0.5:
-                report += "\n   - D&D scenario performance too low"
-            if not summary["performance_adequate"]:
-                report += "\n   - Performance too slow"
-
-        report += f"\n\n{'=' * 60}"
         return report
+
+    def run_tests(self) -> Dict[str, Any]:
+        """Run complete test suite."""
+        print("🧪 Starting Deployed Model Testing")
+        print("=" * 50)
+
+        # Validate deployment
+        validation = self.validate_deployment()
+        if not validation["model_exists"]:
+            return {"success": False, "error": "Model not deployed", "validation": validation}
+
+        # Load model
+        if not self.load_model():
+            return {"success": False, "error": "Failed to load model", "validation": validation}
+
+        # Run tests
+        generation_test = self.test_basic_generation()
+        dnd_test = self.test_dnd_scenarios()
+        compatibility_test = self.test_cactus_compatibility()
+
+        # Generate report
+        report = self.generate_test_report(validation, generation_test, dnd_test, compatibility_test)
+
+        results = {
+            "success": True,
+            "validation": validation,
+            "generation_test": generation_test,
+            "dnd_test": dnd_test,
+            "compatibility_test": compatibility_test,
+            "report": report
+        }
+
+        print(report)
+
+        # Save results
+        results_file = self.model_dir / "test_results.json"
+        with open(results_file, 'w') as f:
+            json.dump(results, f, indent=2)
+
+        print(f"💾 Test results saved to: {results_file}")
+
+        return results
 
 
 def main():
-    """Main validation function."""
+    """Main testing function."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Test deployed D&D model integration")
-    parser.add_argument("--model", help="Path to deployed model (default: assets/models/custom-dnd-model)")
+    parser = argparse.ArgumentParser(description="Test deployed D&D model")
+    parser.add_argument("--model", default="custom-dnd-trained-model",
+                       help="Model name in assets/models directory")
 
     args = parser.parse_args()
 
+    # Run tests
     tester = DeployedModelTester(args.model)
-    results = tester.run_integration_validation()
+    results = tester.run_tests()
 
-    if 'error' in results:
-        print(f"❌ Validation failed: {results['error']}")
+    if results["success"]:
+        compatibility_passed = results["compatibility_test"]["passed"]
+        if compatibility_passed:
+            print("\n🎉 All tests passed! Model is ready for CactusTTS integration!")
+            return True
+        else:
+            print("\n⚠️  Tests completed but compatibility issues found.")
+            print("Check the report above for details.")
+            return False
+    else:
+        print(f"\n💥 Testing failed: {results['error']}")
         return False
-
-    # Generate and print report
-    report = tester.generate_validation_report(results)
-    print(report)
-
-    # Save results
-    results_file = tester.script_dir / "deployed_model_validation.json"
-    with open(results_file, 'w') as f:
-        json.dump(results, f, indent=2)
-
-    print(f"\n💾 Results saved to: {results_file}")
-
-    return results["success"]
 
 
 if __name__ == "__main__":

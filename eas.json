@@ -1,64 +1,31 @@
 {
-	"cli": {
-		"version": ">= 5.0.0",
-		"appVersionSource": "local"
-	},
-	"build": {
-		"development": {
-			"developmentClient": true,
-			"distribution": "internal",
-			"env": {
-				"EXPO_PUBLIC_ENVIRONMENT": "development"
-			},
-			"ios": {
-				"resourceClass": "m-medium"
-			},
-			"android": {
-				"resourceClass": "medium"
-			}
-		},
-		"staging": {
-			"distribution": "internal",
-			"env": {
-				"EXPO_PUBLIC_ENVIRONMENT": "staging"
-			},
-			"channel": "staging",
-			"ios": {
-				"resourceClass": "m-medium"
-			},
-			"android": {
-				"resourceClass": "medium"
-			}
-		},
-		"production": {
-			"env": {
-				"EXPO_PUBLIC_ENVIRONMENT": "production"
-			},
-			"channel": "production",
-			"ios": {
-				"resourceClass": "m-medium"
-			},
-			"android": {
-				"resourceClass": "medium"
-			}
-		}
-	},
-	"submit": {
-		"staging": {
-			"android": {
-				"track": "internal"
-			},
-			"ios": {
-				"appleTeamId": "T2H2YPQXA9"
-			}
-		},
-		"production": {
-			"android": {
-				"track": "production"
-			},
-			"ios": {
-				"appleTeamId": "T2H2YPQXA9"
-			}
-		}
-	}
+  "cli": {
+    "version": ">= 16.3.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "environment": "development",
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "environment": "preview"
+    },
+    "production": {
+      "autoIncrement": true,
+      "environment": "production"
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "T2H2YPQXA9"
+      }
+    }
+  }
 }

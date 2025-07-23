@@ -36,8 +36,8 @@ def check_environment():
 def check_libraries():
     """Check if required libraries are installed."""
     try:
-        import transformers
         import peft
+        import transformers
         import trl
         print(f"✅ Training libraries available")
         return True
@@ -51,19 +51,19 @@ def install_dependencies():
     packages = [
         "torch",
         "transformers",
-        "datasets", 
+        "datasets",
         "accelerate",
         "peft",
         "trl",
         "bitsandbytes"
     ]
-    
+
     for package in packages:
         print(f"Installing {package}...")
         subprocess.run([
             sys.executable, "-m", "pip", "install", package, "--quiet", "--upgrade"
         ], check=False)
-    
+
     print("✅ Installation completed!")
 
 def load_training_data():
@@ -129,33 +129,59 @@ def load_training_data():
     print(f"✅ Loaded {len(training_data)} training conversations")
     return training_data
 
-def train_model():
-    """Execute the training process."""
-    print("🚀 Starting D&D model training...")
+class DNDModelTrainer:
+    """D&D Model Trainer with incremental training support."""
 
-    # Use native HuggingFace transformers
-    try:
+    def __init__(self):
+        self.base_model_path = None
+        self.incremental_mode = False
+        self.learning_rate = 2e-4
+        self.epochs = None
+        self.max_steps = 60
+
+    def train(self):
+        """Execute the training process."""
+        print("🚀 Starting D&D model training...")
+
+        if self.incremental_mode:
+            print("🔄 Incremental training mode enabled")
+        else:
+            print("🆕 Full training mode")
+
+        # Use native HuggingFace transformers
+        try:
+            import torch
+            from datasets import Dataset
+            from peft import LoraConfig, get_peft_model
+            from transformers import (AutoModelForCausalLM, AutoTokenizer,
+                                      DataCollatorForLanguageModeling,
+                                      TrainingArguments)
+            from trl import SFTTrainer
+            print("✅ Using native HuggingFace transformers with LoRA")
+        except ImportError as e:
+            print(f"❌ Failed to import training libraries: {e}")
+            print("💡 Try running: pip install datasets transformers accelerate trl peft")
+            return False
+
+        return self._execute_training()
+
+    def _execute_training(self):
+        """Internal training execution."""
         import torch
         from datasets import Dataset
         from peft import LoraConfig, get_peft_model
         from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                                  DataCollatorForLanguageModeling,
                                   TrainingArguments)
         from trl import SFTTrainer
-        print("✅ Using native HuggingFace transformers with LoRA")
-    except ImportError as e:
-        print(f"❌ Failed to import training libraries: {e}")
-        print("💡 Try running: pip install datasets transformers accelerate trl peft")
-        return False
 
-    # Training configuration with reliable HuggingFace models
+        # Training configuration with reliable HuggingFace models
     possible_models = [
         "microsoft/DialoGPT-medium",
         "facebook/opt-350m",
         "EleutherAI/gpt-neo-125M",
         "distilgpt2"
     ]
-    
+
     CONFIG = {
         "model_name": possible_models[0],  # Will be updated below
         "max_seq_length": 2048,
@@ -175,7 +201,7 @@ def train_model():
         "gguf_quantization": "q4_k_m",
         "system_message": "You are a Dungeon Master assistant for D&D 5e. You help with gameplay, rules, and story generation. Use tool calls when needed for game mechanics."
     }
-    
+
     # Try to find a working model
     working_model = None
     for model_name in possible_models:
@@ -189,11 +215,11 @@ def train_model():
         except Exception as e:
             print(f"❌ {model_name} not available: {str(e)[:100]}...")
             continue
-    
+
     if not working_model:
         print("❌ No compatible models found. Using local fallback.")
         working_model = "microsoft/DialoGPT-medium"
-    
+
     CONFIG["model_name"] = working_model
 
     print(f"📥 Loading model: {CONFIG['model_name']}")
@@ -280,7 +306,7 @@ def train_model():
 
     # Setup trainer
     from transformers import TrainingArguments
-    
+
     training_args = TrainingArguments(
         per_device_train_batch_size=CONFIG["per_device_train_batch_size"],
         gradient_accumulation_steps=CONFIG["gradient_accumulation_steps"],
@@ -299,7 +325,7 @@ def train_model():
         report_to="none",
         remove_unused_columns=False,
     )
-    
+
     # Use the simplest SFTTrainer configuration
     trainer = SFTTrainer(
         model=model,
@@ -332,7 +358,7 @@ def train_model():
     print("   1. Install llama.cpp: git clone https://github.com/ggerganov/llama.cpp")
     print("   2. Convert: python llama.cpp/convert.py --outtype f16 ./trained_models/dnd_model")
     print("   3. Quantize: ./llama.cpp/quantize ./trained_models/dnd_model/ggml-model-f16.gguf ./trained_models/dnd_model/ggml-model-q4_0.gguf q4_0")
-    
+
     gguf_save_path = model_save_path
 
     # Create CactusAI configuration
@@ -402,7 +428,7 @@ def main():
     if not check_libraries():
         print("📦 Installing training libraries...")
         install_dependencies()
-        
+
         # Final check
         if not check_libraries():
             print("⚠️  Training library installation failed")
