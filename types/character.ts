@@ -8,6 +8,7 @@ export const CharacterSchema = z.object({
 	race: z.string(),
 	name: z.string(),
 	class: z.string(),
+	trait: z.string().optional(),
 	image: z.string().optional(),
 	description: z.string().optional(),
 	stats: StatBlockSchema,

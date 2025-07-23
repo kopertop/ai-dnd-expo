@@ -267,4 +267,44 @@ export const newGameStyles = StyleSheet.create({
 		fontSize: 16,
 		fontFamily: fantasyFont,
 	},
+	// Back button styles
+	backButton: {
+		position: 'absolute',
+		zIndex: 10,
+		backgroundColor: DnDTheme.gold,
+		paddingVertical: 8,
+		paddingHorizontal: 16,
+		borderRadius: 8,
+		borderWidth: 2,
+		borderColor: DnDTheme.borderBrown,
+		shadowColor: DnDTheme.borderBrown,
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.2,
+		shadowRadius: 4,
+	},
+	backButtonMobile: {
+		paddingVertical: 6,
+		paddingHorizontal: 12,
+	},
+	backButtonText: {
+		color: DnDTheme.textDark,
+		fontWeight: 'bold',
+		fontSize: 14,
+		fontFamily: fantasyFont,
+	},
+	backButtonTextMobile: {
+		fontSize: 12,
+	},
+	// Swipe hint styles
+	swipeHint: {
+		alignItems: 'center',
+		marginBottom: 8,
+		opacity: 0.6,
+	},
+	swipeHintText: {
+		fontSize: 12,
+		color: DnDTheme.textDark,
+		fontFamily: detailFont,
+		fontStyle: 'italic',
+	},
 });

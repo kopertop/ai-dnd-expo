@@ -9,6 +9,7 @@ import {
 	TouchableOpacity,
 	View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { newGameStyles } from '../styles/new-game.styles';
 
@@ -18,6 +19,7 @@ import { LocationChooser } from '@/components/location-chooser';
 import { RaceChooser } from '@/components/race-chooser';
 import { SkillChooser } from '@/components/skill-chooser';
 import { ThemedView } from '@/components/themed-view';
+import { TraitChooser } from '@/components/trait-chooser';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { WorldChooser } from '@/components/world-chooser';
 import { generateRandomBackground } from '@/constants/backgrounds';
@@ -28,9 +30,10 @@ import { LocationOption } from '@/types/location-option';
 import { RaceOption } from '@/types/race-option';
 import { Skill } from '@/types/skill';
 import { StatBlock } from '@/types/stats';
+import { TraitOption } from '@/types/trait-option';
 import { WorldOption } from '@/types/world-option';
 
-type WizardStep = 'world' | 'location' | 'race' | 'class' | 'attributes' | 'skills' | 'character';
+type WizardStep = 'world' | 'location' | 'race' | 'class' | 'trait' | 'attributes' | 'skills' | 'character';
 
 const NewGameScreen: React.FC = () => {
 	const [currentStep, setCurrentStep] = useState<WizardStep>('world');
@@ -38,6 +41,7 @@ const NewGameScreen: React.FC = () => {
 	const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
 	const [selectedRace, setSelectedRace] = useState<RaceOption | null>(null);
 	const [selectedClass, setSelectedClass] = useState<ClassOption | null>(null);
+	const [selectedTrait, setSelectedTrait] = useState<TraitOption | null>(null);
 	const [selectedAttributes, setSelectedAttributes] = useState<StatBlock | null>(null);
 	const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
 	const [characterName, setCharacterName] = useState('');
@@ -45,19 +49,21 @@ const NewGameScreen: React.FC = () => {
 	const [showConfirm, setShowConfirm] = useState(false);
 	const [pendingCharacter, setPendingCharacter] = useState<any>(null);
 	const { isMobile } = useScreenSize();
+	const insets = useSafeAreaInsets();
 
 	const { save } = useGameState();
-	const addItem = async (item: string, quantity: number) => {};
-	const equipItem = async (item: string) => {};
+	const addItem = async (item: string, quantity: number) => { };
+	const equipItem = async (item: string) => { };
 
 	// Pan responder for swipe gestures
 	const panResponder = PanResponder.create({
 		onMoveShouldSetPanResponder: (evt, gestureState) => {
-			// Only respond to horizontal swipes that are significant
-			return (
-				Math.abs(gestureState.dx) > Math.abs(gestureState.dy) &&
-				Math.abs(gestureState.dx) > 20
-			);
+			// Only respond to horizontal swipes that are significant and from the edge
+			const isHorizontalSwipe = Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+			const isSignificantSwipe = Math.abs(gestureState.dx) > 30;
+			const isFromLeftEdge = evt.nativeEvent.pageX < 50; // Only trigger from left edge
+
+			return isHorizontalSwipe && isSignificantSwipe && isFromLeftEdge && currentStep !== 'world';
 		},
 		onPanResponderGrant: () => {
 			// Gesture started
@@ -92,6 +98,11 @@ const NewGameScreen: React.FC = () => {
 
 	const handleClassSelect = (classOption: ClassOption) => {
 		setSelectedClass(classOption);
+		setCurrentStep('trait');
+	};
+
+	const handleTraitSelect = (trait: TraitOption) => {
+		setSelectedTrait(trait);
 		setCurrentStep('attributes');
 	};
 
@@ -111,7 +122,8 @@ const NewGameScreen: React.FC = () => {
 			!selectedWorld ||
 			!selectedLocation ||
 			!selectedRace ||
-			!selectedClass
+			!selectedClass ||
+			!selectedTrait
 		) {
 			console.error('❌ Missing required data for character creation');
 			return;
@@ -127,6 +139,7 @@ const NewGameScreen: React.FC = () => {
 			race: selectedRace.name, // Required field from race selection
 			name: pendingCharacter.name,
 			class: selectedClass.name, // Required field from class selection
+			trait: selectedTrait?.name, // Optional field from trait selection
 			description: pendingCharacter.description || '',
 			stats: pendingCharacter.stats,
 			skills: selectedSkills.map(s => s.id), // Use selectedSkills
@@ -194,28 +207,91 @@ const NewGameScreen: React.FC = () => {
 
 	// Add this function to handle going back a step
 	const handlePreviousStep = () => {
+		console.log('🔄 Going back from step:', currentStep);
 		const steps: WizardStep[] = [
 			'world',
 			'location',
 			'race',
 			'class',
+			'trait',
 			'attributes',
 			'skills',
 			'character',
 		];
 		const currentIndex = steps.indexOf(currentStep);
 		if (currentIndex > 0) {
-			setCurrentStep(steps[currentIndex - 1]);
+			const previousStep = steps[currentIndex - 1];
+			console.log('🔄 Going back to step:', previousStep);
+			setCurrentStep(previousStep);
+
+			// Clear data that depends on the step we're going back to
+			if (previousStep === 'world') {
+				// Going back to world selection - clear everything
+				setSelectedWorld(null);
+				setSelectedLocation(null);
+				setSelectedRace(null);
+				setSelectedClass(null);
+				setSelectedTrait(null);
+				setSelectedAttributes(null);
+				setSelectedSkills([]);
+				setCharacterName('');
+				setCustomStory('');
+			} else if (previousStep === 'location') {
+				// Going back to location - clear location and everything after
+				setSelectedLocation(null);
+				setSelectedRace(null);
+				setSelectedClass(null);
+				setSelectedTrait(null);
+				setSelectedAttributes(null);
+				setSelectedSkills([]);
+				setCharacterName('');
+				setCustomStory('');
+			} else if (previousStep === 'race') {
+				// Going back to race - clear race and everything after
+				setSelectedRace(null);
+				setSelectedClass(null);
+				setSelectedTrait(null);
+				setSelectedAttributes(null);
+				setSelectedSkills([]);
+				setCharacterName('');
+				setCustomStory('');
+			} else if (previousStep === 'class') {
+				// Going back to class - clear class and everything after
+				setSelectedClass(null);
+				setSelectedTrait(null);
+				setSelectedAttributes(null);
+				setSelectedSkills([]);
+				setCharacterName('');
+				setCustomStory('');
+			} else if (previousStep === 'trait') {
+				// Going back to trait - clear trait and everything after
+				setSelectedTrait(null);
+				setSelectedAttributes(null);
+				setSelectedSkills([]);
+				setCharacterName('');
+				setCustomStory('');
+			} else if (previousStep === 'attributes') {
+				// Going back to attributes - clear attributes and everything after
+				setSelectedAttributes(null);
+				setSelectedSkills([]);
+				setCharacterName('');
+				setCustomStory('');
+			} else if (previousStep === 'skills') {
+				// Going back to skills - clear skills and character data
+				setSelectedSkills([]);
+				setCharacterName('');
+				setCustomStory('');
+			}
 		}
 	};
 
 	const getStepNumber = (step: WizardStep): number => {
-		const steps = ['world', 'location', 'race', 'class', 'attributes', 'skills', 'character'];
+		const steps = ['world', 'location', 'race', 'class', 'trait', 'attributes', 'skills', 'character'];
 		return steps.indexOf(step);
 	};
 
 	const renderStepIndicator = () => {
-		const steps = ['world', 'location', 'race', 'class', 'attributes', 'skills', 'character'];
+		const steps = ['world', 'location', 'race', 'class', 'trait', 'attributes', 'skills', 'character'];
 		const currentStepIndex = getStepNumber(currentStep);
 
 		return (
@@ -228,9 +304,9 @@ const NewGameScreen: React.FC = () => {
 							style={[
 								isMobile ? newGameStyles.stepDotMobile : newGameStyles.stepDot,
 								index === currentStepIndex &&
-									(isMobile
-										? newGameStyles.stepDotActiveMobile
-										: newGameStyles.stepDotActive),
+								(isMobile
+									? newGameStyles.stepDotActiveMobile
+									: newGameStyles.stepDotActive),
 								index < currentStepIndex && newGameStyles.stepDotCompleted,
 							]}
 						/>
@@ -284,6 +360,14 @@ const NewGameScreen: React.FC = () => {
 						<ClassChooser onSelect={handleClassSelect} />
 					</View>
 				);
+			case 'trait':
+				return (
+					<View
+						style={isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox}
+					>
+						<TraitChooser onSelect={handleTraitSelect} />
+					</View>
+				);
 			case 'attributes':
 				if (!selectedClass) return null;
 				return (
@@ -305,14 +389,14 @@ const NewGameScreen: React.FC = () => {
 					</View>
 				);
 			case 'character': {
-				if (!selectedRace || !selectedClass || !selectedAttributes) {
+				if (!selectedRace || !selectedClass || !selectedTrait || !selectedAttributes) {
 					return (
 						<View
 							style={
 								isMobile ? newGameStyles.sectionBoxMobile : newGameStyles.sectionBox
 							}
 						>
-							<Text>Missing race, class, or attributes selection.</Text>
+							<Text>Missing race, class, trait, or attributes selection.</Text>
 						</View>
 					);
 				}
@@ -453,6 +537,7 @@ const NewGameScreen: React.FC = () => {
 										!selectedLocation ||
 										!selectedRace ||
 										!selectedClass ||
+										!selectedTrait ||
 										!selectedAttributes
 									) {
 										console.error(
@@ -476,6 +561,7 @@ const NewGameScreen: React.FC = () => {
 											race: selectedRace.name, // Required field from race selection
 											name: characterData.name,
 											class: selectedClass.name, // Required field from class selection
+											trait: selectedTrait.name, // Required field from trait selection
 											description: characterData.description || '',
 											stats: characterData.stats,
 											skills: selectedSkills.map(s => s.id), // Use selectedSkills
@@ -570,11 +656,27 @@ const NewGameScreen: React.FC = () => {
 					contentContainerStyle={[
 						newGameStyles.scrollViewContent,
 						isMobile && newGameStyles.scrollViewContentMobile,
+						{
+							paddingTop: insets.top,
+						},
 					]}
 					showsVerticalScrollIndicator={true}
 					bounces={false}
 				>
 					{renderStepIndicator()}
+					{/* Swipe hint */}
+					{currentStep !== 'world' && (
+						<TouchableOpacity
+							onPress={handlePreviousStep}
+							activeOpacity={0.7}
+						>
+							<View style={newGameStyles.swipeHint}>
+								<Text style={newGameStyles.swipeHintText}>
+									← Swipe right to go back
+								</Text>
+							</View>
+						</TouchableOpacity>
+					)}
 					{renderStepContent()}
 				</ScrollView>
 			</View>

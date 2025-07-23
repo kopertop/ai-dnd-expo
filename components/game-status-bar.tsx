@@ -47,9 +47,9 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 					style={[
 						activeCharacter === 'dm' ? styles.activePortrait : styles.inactivePortrait,
 						isMobile &&
-							(activeCharacter === 'dm'
-								? styles.activePortraitMobile
-								: styles.inactivePortraitMobile),
+						(activeCharacter === 'dm'
+							? styles.activePortraitMobile
+							: styles.inactivePortraitMobile),
 					]}
 				>
 					<Image
@@ -59,9 +59,9 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 								? styles.activePortraitImage
 								: styles.inactivePortraitImage,
 							isMobile &&
-								(activeCharacter === 'dm'
-									? styles.activePortraitImageMobile
-									: styles.inactivePortraitImageMobile),
+							(activeCharacter === 'dm'
+								? styles.activePortraitImageMobile
+								: styles.inactivePortraitImageMobile),
 						]}
 					/>
 					{activeCharacter === 'dm' && (
@@ -81,9 +81,9 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 							? styles.activePortrait
 							: styles.inactivePortrait,
 						isMobile &&
-							(activeCharacter === 'sample'
-								? styles.activePortraitMobile
-								: styles.inactivePortraitMobile),
+						(activeCharacter === 'sample'
+							? styles.activePortraitMobile
+							: styles.inactivePortraitMobile),
 					]}
 				>
 					<Image
@@ -93,9 +93,9 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 								? styles.activePortraitImage
 								: styles.inactivePortraitImage,
 							isMobile &&
-								(activeCharacter === 'sample'
-									? styles.activePortraitImageMobile
-									: styles.inactivePortraitImageMobile),
+							(activeCharacter === 'sample'
+								? styles.activePortraitImageMobile
+								: styles.inactivePortraitImageMobile),
 						]}
 					/>
 					{activeCharacter === 'sample' && (
@@ -117,9 +117,9 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 								? styles.activePortrait
 								: styles.inactivePortrait,
 							isMobile &&
-								(activeCharacter === companion.id
-									? styles.activePortraitMobile
-									: styles.inactivePortraitMobile),
+							(activeCharacter === companion.id
+								? styles.activePortraitMobile
+								: styles.inactivePortraitMobile),
 						]}
 					>
 						{companion.image ? (
@@ -130,9 +130,9 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 										? styles.activePortraitImage
 										: styles.inactivePortraitImage,
 									isMobile &&
-										(activeCharacter === companion.id
-											? styles.activePortraitImageMobile
-											: styles.inactivePortraitImageMobile),
+									(activeCharacter === companion.id
+										? styles.activePortraitImageMobile
+										: styles.inactivePortraitImageMobile),
 								]}
 							/>
 						) : (
@@ -176,6 +176,7 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 								<ThemedText style={styles.metaTextMobile}>
 									<Text>
 										{playerCharacter?.race} / {playerCharacter?.class}
+										{playerCharacter?.trait && ` / ${playerCharacter.trait}`}
 									</Text>
 								</ThemedText>
 							</View>
@@ -202,6 +203,7 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 							<ThemedText style={styles.metaText}>
 								<Text>
 									{playerCharacter?.race} / {playerCharacter?.class}
+									{playerCharacter?.trait && ` / ${playerCharacter.trait}`}
 								</Text>
 							</ThemedText>
 							<ThemedText style={styles.statText}>

@@ -28,8 +28,8 @@ export const CharacterSheetView: React.FC = () => {
 	const error = null;
 	const inventory: any[] = [];
 	const equipped: Record<string, any> = {};
-	const equipItem = async () => {};
-	const unequipItem = async () => {};
+	const equipItem = async () => { };
+	const unequipItem = async () => { };
 
 	if (!playerCharacter) return null;
 
@@ -40,6 +40,7 @@ export const CharacterSheetView: React.FC = () => {
 		skills = [],
 		race,
 		class: characterClass,
+		trait,
 		level,
 		health,
 		maxHealth,
@@ -88,7 +89,8 @@ export const CharacterSheetView: React.FC = () => {
 					<View style={styles.characterInfo}>
 						<Text style={styles.characterName}>{name}</Text>
 						<Text style={styles.characterDetails}>
-							{characterClass} / {race} / Level {level}
+							{characterClass} / {race}
+							{trait && ` / ${trait}`} / Level {level}
 						</Text>
 						<View style={styles.healthRow}>
 							<Text style={styles.healthText}>

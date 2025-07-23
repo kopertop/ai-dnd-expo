@@ -39,8 +39,8 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 	const error = null;
 	const inventory: any[] = [];
 	const equipped: Record<string, any> = {};
-	const equipItem = async () => {};
-	const unequipItem = async () => {};
+	const equipItem = async () => { };
+	const unequipItem = async () => { };
 
 	if (!playerCharacter) return null;
 
@@ -51,6 +51,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 		skills = [],
 		race,
 		class: characterClass,
+		trait,
 		level,
 		health,
 		maxHealth,
@@ -147,6 +148,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 									<View style={styles.infoRow}>
 										<Text style={styles.infoText}>{characterClass}</Text>
 										<Text style={styles.infoText}>/ {race}</Text>
+										{trait && <Text style={styles.infoText}>/ {trait}</Text>}
 										<Text style={styles.infoText}>/ Level {level}</Text>
 									</View>
 									<Text style={styles.nameText}>{name}</Text>
@@ -234,7 +236,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 															: styles.inventoryItemBox,
 														isEquipped && styles.inventoryItemEquipped,
 														!isCompatible &&
-															styles.inventoryItemIncompatible,
+														styles.inventoryItemIncompatible,
 													]}
 												>
 													<Image
@@ -288,7 +290,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 												style={[
 													styles.gearSlot,
 													activeSlot === 'helmet' &&
-														styles.gearSlotActive,
+													styles.gearSlotActive,
 												]}
 												onPress={() => handleSlotPress('helmet')}
 											>
@@ -319,7 +321,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 														styles.gearSlot,
 														styles.gearSlotArm,
 														activeSlot === 'arms' &&
-															styles.gearSlotActive,
+														styles.gearSlotActive,
 													]}
 													onPress={() => handleSlotPress('arms')}
 												>
@@ -374,7 +376,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 														styles.gearSlot,
 														styles.gearSlotArm,
 														activeSlot === 'arms' &&
-															styles.gearSlotActive,
+														styles.gearSlotActive,
 													]}
 													onPress={() => handleSlotPress('arms')}
 												>
@@ -406,7 +408,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 													styles.gearSlot,
 													styles.gearSlotHand,
 													activeSlot === 'mainHand' &&
-														styles.gearSlotActive,
+													styles.gearSlotActive,
 												]}
 												onPress={() => handleSlotPress('mainHand')}
 											>
@@ -459,7 +461,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 													styles.gearSlot,
 													styles.gearSlotHand,
 													activeSlot === 'offHand' &&
-														styles.gearSlotActive,
+													styles.gearSlotActive,
 												]}
 												onPress={() => handleSlotPress('offHand')}
 											>
