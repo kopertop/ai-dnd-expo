@@ -12,7 +12,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 	newArchEnabled: true,
 	owner: 'kopertop',
 	ios: {
-		buildNumber: '9',
+		buildNumber: '10',
 		supportsTablet: true,
 		bundleIdentifier: 'org.coredumped.ai-dnd',
 		infoPlist: {

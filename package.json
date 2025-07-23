@@ -47,7 +47,7 @@
     "deploy:production": "./scripts/deploy.sh deploy production",
     "submit:staging": "./scripts/deploy.sh submit staging",
     "submit:production": "./scripts/deploy.sh submit production",
-    "postversion": "node -e \"import fs from 'fs'; const appContent = fs.readFileSync('./app.ts', 'utf8'); const newAppContent = appContent.replace(/buildNumber: \\\"(\\d+)\\\"/, (match, buildNum) => `buildNumber: \\\"${parseInt(buildNum) + 1}\\\"`); fs.writeFileSync('./app.ts', newAppContent);\""
+    "postversion": "perl -i -pe \"s/buildNumber: '(\\\\d+)'/sprintf(\\\"buildNumber: '%d'\\\", \\$1 + 1)/e\" app.ts"
   },
   "dependencies": {
     "@eslint/compat": "^1.2.8",
