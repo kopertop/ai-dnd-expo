@@ -44,10 +44,7 @@ const config: { expo: ExpoConfig } = {
 			buildNumber: buildVersion,
 			infoPlist: {
 				ITSAppUsesNonExemptEncryption: false,
-				NSLocationWhenInUseUsageDescription: 'WorkOrder needs your location to track employee positions for safety and work order management.',
-				NSLocationAlwaysAndWhenInUseUsageDescription: 'WorkOrder needs continuous location access to track employee positions in the background for safety and work order management.',
-				NSLocationAlwaysUsageDescription: 'WorkOrder needs continuous location access to track employee positions in the background for safety and work order management.',
-				UIBackgroundModes: ['location'],
+				NSPhotoLibraryUsageDescription: 'Used to save and upload images of your character and game world.',
 			},
 			entitlements: {
 				'aps-environment': 'production',
