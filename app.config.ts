@@ -9,7 +9,6 @@ const config: { expo: ExpoConfig } = {
 		slug: 'ai-dnd-expo',
 		scheme: 'aidndexpo',
 		version: require('./package.json').version,
-		buildVersion,
 		orientation: 'portrait',
 		icon: './assets/images/icon.png',
 		userInterfaceStyle: 'light',

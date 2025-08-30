@@ -2,7 +2,7 @@ import React from 'react';
 import { vi } from 'vitest';
 
 // Define global __DEV__ for Expo modules
-global.__DEV__ = true;
+(global as any).__DEV__ = true;
 
 // Mock React Native modules that don't work in test environment
 vi.mock('react-native', () => ({
@@ -180,6 +180,27 @@ vi.mock('@shopify/react-native-skia', () => ({
 
 // Import and setup enhanced external dependency mocks
 import { MockManager } from '../unit/__mocks__/external-dependencies';
+
+// Mock the specific problematic vector icons file to avoid JSX parsing issues
+vi.mock('@expo/vector-icons/build/createIconSet', () => ({
+	default: vi.fn(() => vi.fn(() => null)),
+}));
+
+// Also mock the main vector icons module
+vi.mock('@expo/vector-icons', () => ({
+	Feather: vi.fn(() => null),
+	FontAwesome: vi.fn(() => null),
+	MaterialIcons: vi.fn(() => null),
+	Ionicons: vi.fn(() => null),
+	AntDesign: vi.fn(() => null),
+	Entypo: vi.fn(() => null),
+	EvilIcons: vi.fn(() => null),
+	Foundation: vi.fn(() => null),
+	MaterialCommunityIcons: vi.fn(() => null),
+	Octicons: vi.fn(() => null),
+	Zocial: vi.fn(() => null),
+	SimpleLineIcons: vi.fn(() => null),
+}));
 
 // Setup all external dependency mocks
 MockManager.setupAll();
