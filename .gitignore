@@ -87,7 +87,3 @@ Thumbs.db
 
 # Models files are huge and downloaded at build time
 assets/models/
-ai-training/models/
-ai-training/venv/
-ai-training/trained_models/
-ai-training/logs/

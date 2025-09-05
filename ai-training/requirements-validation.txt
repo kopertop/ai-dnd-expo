@@ -1,2 +1,0 @@
-# Requirements for system validation script
-psutil>=5.9.0

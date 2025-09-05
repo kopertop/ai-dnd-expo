@@ -43,7 +43,7 @@ Business logic and state management:
 
 ### `/services` - External Integrations
 API services and business logic:
-- **AI Services**: `ai/ai-service-manager.ts`, `ai/providers/cactus-provider.ts`
+- **AI Services**: `ai/agents/dm-agent.ts`, `ai/providers/apple-ai-provider.ts`, `ai/providers/working-ai-provider.ts`
 - **Game Logic**: `world-generator.ts`, `movement-animation.ts`
 - **AI Agents**: `ai/agents/` (dungeon master, NPCs, companions)
 

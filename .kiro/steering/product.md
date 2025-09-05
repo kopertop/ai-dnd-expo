@@ -6,7 +6,7 @@ An open-source cross-platform application for playing Dungeons and Dragons with 
 
 ### Core Features
 
-- **AI Dungeon Master**: Intelligent DM powered by Cactus + Gemma3 that creates dynamic stories and manages gameplay
+- **AI Dungeon Master**: Intelligent DM powered by Apple on-device models (via `@react-native-ai/apple`) with a rules‑based fallback
 - **AI NPCs**: Fully voiced non-player characters with unique personalities  
 - **AI Players**: Optional AI companions for solo adventures or to fill party roles
 - **Voice Integration**: Text-to-speech and speech recognition for immersive gameplay

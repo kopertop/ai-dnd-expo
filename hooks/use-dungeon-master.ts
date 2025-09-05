@@ -1,11 +1,13 @@
 /**
- * Hook for using Cactus Compute's LLM as a Dungeon Master
+ * Hook for using the AI Dungeon Master.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { DMProvider } from '@/services/ai/providers/dm-provider';
+import type { Character } from '@/types/character';
+import type { GameWorldState } from '@/types/world-map';
 
 // Types
 export interface UseDungeonMasterOptions {
@@ -13,6 +15,9 @@ export interface UseDungeonMasterOptions {
 	apiKey?: string;
 	fallbackMode?: 'local' | 'localfirst' | 'remotefirst' | 'remote';
 	autoInitialize?: boolean;
+  // Optional convenience inputs to build context automatically
+  worldState?: GameWorldState | null;
+  playerCharacter?: Character | null;
 }
 
 export interface DMResponse {
@@ -30,13 +35,11 @@ export interface DMContext {
 	gameHistory: string[];
 }
 
-// Constants
-const CACTUS_API_KEY_STORAGE_KEY = 'cactus_api_key';
-const DEFAULT_MODEL_URL =
-	'https://huggingface.co/Cactus-Compute/Gemma3-1B-Instruct-GGUF/resolve/main/Gemma3-1B-Instruct-Q4_0.gguf';
+// Constants (kept generic to avoid vendor naming)
+const DM_API_KEY_STORAGE_KEY = 'dm_api_key';
 
 /**
- * Hook for using Cactus Compute's LLM as a Dungeon Master
+ * Hook for using the AI Dungeon Master.
  */
 export const useDungeonMaster = (options: UseDungeonMasterOptions = {}) => {
 	const [provider, setProvider] = useState<DMProvider | null>(null);
@@ -45,6 +48,7 @@ export const useDungeonMaster = (options: UseDungeonMasterOptions = {}) => {
 	const [error, setError] = useState<string | null>(null);
 	const [initProgress, setInitProgress] = useState(0);
 	const colorScheme = useColorScheme();
+	const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
 
 	// Initialize the provider
 	const initialize = useCallback(async () => {
@@ -52,16 +56,11 @@ export const useDungeonMaster = (options: UseDungeonMasterOptions = {}) => {
 			setIsLoading(true);
 			setError(null);
 
-			// Get API key from storage if not provided
-			let apiKey = options.apiKey;
-			if (!apiKey) {
-				apiKey = (await AsyncStorage.getItem(CACTUS_API_KEY_STORAGE_KEY)) || undefined;
-			}
 
-			// Create provider
+			// Create provider (modelUrl/apiKey optional; unused by rule-based provider)
 			const dmProvider = new DMProvider({
-				modelUrl: options.modelUrl || DEFAULT_MODEL_URL,
-				apiKey,
+				modelUrl: options.modelUrl,
+				apiKey: options.apiKey,
 				fallbackMode: options.fallbackMode || 'localfirst',
 			});
 
@@ -74,6 +73,8 @@ export const useDungeonMaster = (options: UseDungeonMasterOptions = {}) => {
 				setProvider(dmProvider);
 				setIsInitialized(true);
 				console.log('✅ DM initialized successfully');
+				// Set a default welcome message for UI consumers that expect it
+				setMessages([{ role: 'assistant', content: 'Welcome to your adventure!' }]);
 			} else {
 				setError('Failed to initialize DM');
 			}
@@ -136,6 +137,37 @@ export const useDungeonMaster = (options: UseDungeonMasterOptions = {}) => {
 		[provider, isInitialized],
 	);
 
+	// High-level chat API expected by UI
+	const sendMessage = useCallback(
+		async (message: string) => {
+			if (!provider || !isInitialized) {
+				setError('DM is not initialized');
+				return;
+			}
+
+			// Append user message
+			setMessages(prev => [...prev, { role: 'user', content: message }]);
+
+			// Build DM context from options + recent messages
+			const ctx: DMContext = {
+				playerName: options.playerCharacter?.name || 'Player',
+				playerClass: options.playerCharacter?.class || 'Adventurer',
+				playerRace: options.playerCharacter?.race || 'Human',
+				currentScene: options.worldState?.worldMap?.name || 'Unknown Location',
+				gameHistory: messages.map(m => `${m.role}: ${m.content}`).slice(-5),
+			};
+
+			const result = await processPlayerAction(message, ctx);
+			setMessages(prev => [...prev, { role: 'assistant', content: result.text }]);
+			return result;
+		},
+		[provider, isInitialized, options.playerCharacter, options.worldState, messages, processPlayerAction],
+	);
+
+	const replaceWelcomeMessage = useCallback((content: string) => {
+		setMessages([{ role: 'assistant', content }]);
+	}, []);
+
 	// Generate narration
 	const generateNarration = useCallback(
 		async (
@@ -172,7 +204,7 @@ export const useDungeonMaster = (options: UseDungeonMasterOptions = {}) => {
 	// Set API key
 	const setApiKey = useCallback(async (apiKey: string): Promise<boolean> => {
 		try {
-			await AsyncStorage.setItem(CACTUS_API_KEY_STORAGE_KEY, apiKey);
+			await AsyncStorage.setItem(DM_API_KEY_STORAGE_KEY, apiKey);
 			return true;
 		} catch (err) {
 			console.error('Error saving API key:', err);
@@ -213,5 +245,9 @@ export const useDungeonMaster = (options: UseDungeonMasterOptions = {}) => {
 		generateNarration,
 		setApiKey,
 		cleanup,
+		// compatibility additions
+		messages,
+		sendMessage,
+		replaceWelcomeMessage,
 	};
 };

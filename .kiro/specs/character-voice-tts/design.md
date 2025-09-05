@@ -46,7 +46,7 @@ The Character Voice TTS system integrates with:
 1. **AI Service Manager**: Extends the existing service architecture pattern
 2. **Game State Management**: Leverages character tracking from `useGameState`
 3. **Current TTS Hook**: Enhances `useTextToSpeech` with character-specific functionality
-4. **Cactus Local System**: Utilizes existing ONNX runtime for ChatterboxTTS models
+4. **On-Device First**: Prefer platform capabilities; avoid bespoke local runtimes unless necessary
 
 ## Components and Interfaces
 
@@ -328,7 +328,7 @@ interface ErrorRecoveryStrategy {
 - Research and integrate ChatterboxTTS ONNX models
 - Implement ChatterboxTTS engine with ONNX runtime
 - Add model loading and resource management
-- Integrate with existing Cactus local system
+- Integrate with platform capabilities when available
 - Implement voice assignment algorithms with ChatterboxTTS voices
 
 ### Phase 3: Cloud TTS Fallback
@@ -360,7 +360,7 @@ interface ErrorRecoveryStrategy {
 2. **High Quality**: Neural TTS with natural-sounding voices
 3. **Multiple Voices**: Variety of character-appropriate voices
 4. **Mobile Optimized**: Designed for on-device inference
-5. **ONNX Compatible**: Integrates with existing Cactus infrastructure
+5. **Platform Compatible**: Integrates cleanly with platform/NLU capabilities
 
 **Model Requirements**:
 - Mobile-optimized (< 100MB total for all voice models)
@@ -407,9 +407,9 @@ interface ErrorRecoveryStrategy {
 - Provide WebAssembly fallback for ONNX models
 - Handle browser compatibility differences
 
-### Integration with Existing Cactus System
+### Integration
 
-The Character Voice TTS system will integrate with the existing Cactus local AI infrastructure:
+The Character Voice TTS system should integrate with platform capabilities or approved APIs:
 
 1. **Shared ONNX Runtime**: Utilize existing ONNX runtime setup
 2. **Model Management**: Follow existing patterns for local model loading

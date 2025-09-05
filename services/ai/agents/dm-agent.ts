@@ -1,14 +1,17 @@
 /**
  * DM Agent for AI D&D Platform
  *
- * Provides intelligent D&D gameplay assistance using Cactus Compute's LLM
- * Handles player actions, rule integration, and narrative generation
+ * Provides intelligent D&D gameplay assistance using on-device logic or
+ * platform models. This version removes legacy vendor/local-training dependencies.
+ * It currently uses the WorkingAIProvider (rule-based simulator), and can be
+ * swapped with @react-native-ai/apple-backed provider later.
  */
+import { AppleAIProvider } from '../providers/apple-ai-provider';
 import {
-	CactusMessage,
-	CactusProvider,
-	CactusProviderInterface,
-} from '../providers/cactus-provider';
+	WorkingAIMessage,
+	WorkingAIProvider,
+	WorkingAIProviderInterface,
+} from '../providers/working-ai-provider';
 
 import { Character } from '@/types/character';
 import { GameState } from '@/types/game';
@@ -99,7 +102,9 @@ export interface DMConfig {
  * DMAgent implementation with D&D-specific processing
  */
 export class DMAgentImpl implements DMAgent {
-	private cactusProvider: CactusProviderInterface;
+	private primaryProvider: WorkingAIProviderInterface;
+	private fallbackProvider: WorkingAIProviderInterface;
+	private activeProvider: WorkingAIProviderInterface | null = null;
 	private isInitialized = false;
 	private performanceMode: 'performance' | 'balanced' | 'quality' = 'balanced';
 	private batteryOptimizationEnabled = false;
@@ -111,7 +116,9 @@ export class DMAgentImpl implements DMAgent {
 	};
 
 	constructor() {
-		this.cactusProvider = new CactusProvider();
+		// Primary: Apple Intelligence via AI SDK (iOS); Fallback: rule-based
+		this.primaryProvider = new AppleAIProvider();
+		this.fallbackProvider = new WorkingAIProvider({ useRuleBased: true, debugMode: true });
 	}
 
 	/**
@@ -119,10 +126,23 @@ export class DMAgentImpl implements DMAgent {
 	 */
 	async initialize(config: DMConfig): Promise<boolean> {
 		try {
-			// Initialize the Cactus provider
-			await this.cactusProvider.initialize(progress => {
-				console.log(`DM Agent initialization progress: ${Math.round(progress * 100)}%`);
+			// Try Apple provider first; fall back to rule-based
+			const appleOk = await this.primaryProvider.initialize(p => {
+				const pct = Math.round((p ?? 1) * 100);
+				console.log(`DM Agent (apple) init: ${pct}%`);
 			});
+
+			if (appleOk) {
+				this.activeProvider = this.primaryProvider;
+			} else {
+				console.warn('Apple provider unavailable, using rule-based fallback');
+				const rbOk = await this.fallbackProvider.initialize(p => {
+					const pct = Math.round((p ?? 1) * 100);
+					console.log(`DM Agent (fallback) init: ${pct}%`);
+				});
+				if (!rbOk) throw new Error('Failed to initialize any DM provider');
+				this.activeProvider = this.fallbackProvider;
+			}
 
 			this.isInitialized = true;
 			console.log('✅ DMAgent: Initialized successfully');
@@ -135,7 +155,7 @@ export class DMAgentImpl implements DMAgent {
 	}
 
 	/**
-	 * Process player action with Cactus LLM
+	 * Process player action with AI provider
 	 */
 	async processPlayerAction(action: string, context: GameContext): Promise<DMResponse> {
 		const startTime = Date.now();
@@ -152,13 +172,15 @@ export class DMAgentImpl implements DMAgent {
 				return this.responseCache.get(cacheKey)!;
 			}
 
-			// Prepare context for the LLM
+			// Prepare context messages
 			const messages = this.prepareMessagesForAction(action, context);
 
-			// Generate response using Cactus LLM
-			const response = await this.cactusProvider.completion(messages, {
+			if (!this.activeProvider) throw new Error('No active DM provider');
+
+			// Generate response via active provider
+			const response = await this.activeProvider.completion(messages, {
 				temperature: this.getTemperatureForMode(),
-				n_predict: 512,
+				n_predict: 256,
 			});
 
 			// Process the response
@@ -205,13 +227,15 @@ export class DMAgentImpl implements DMAgent {
 				throw new Error('DMAgent not initialized');
 			}
 
-			// Prepare context for the LLM
+			// Prepare context for narration
 			const messages = this.prepareMessagesForNarration(scene, context);
 
-			// Generate narration using Cactus LLM
-			const narration = await this.cactusProvider.completion(messages, {
+			if (!this.activeProvider) throw new Error('No active DM provider');
+
+			// Generate narration
+			const narration = await this.activeProvider.completion(messages, {
 				temperature: this.getTemperatureForMode(),
-				n_predict: 256,
+				n_predict: 128,
 			});
 
 			return narration;
@@ -226,7 +250,7 @@ export class DMAgentImpl implements DMAgent {
 	 */
 	async unloadModel(): Promise<void> {
 		try {
-			this.cactusProvider.rewind();
+			this.activeProvider?.rewind();
 			this.isInitialized = false;
 			this.responseCache.clear();
 			console.log('✅ DMAgent: Model unloaded successfully');
@@ -273,7 +297,7 @@ export class DMAgentImpl implements DMAgent {
 	/**
 	 * Prepare messages for player action processing
 	 */
-	private prepareMessagesForAction(action: string, context: GameContext): CactusMessage[] {
+	private prepareMessagesForAction(action: string, context: GameContext): WorkingAIMessage[] {
 		const { playerCharacter, gameState, currentScene, currentLocation, inCombat } = context;
 
 		// Create system prompt
@@ -297,7 +321,7 @@ When appropriate, include tool commands in your response using the following for
 Keep your responses concise, engaging, and true to D&D 5e rules.`;
 
 		// Create conversation history
-		const messages: CactusMessage[] = [{ role: 'system', content: systemPrompt }];
+		const messages: WorkingAIMessage[] = [{ role: 'system', content: systemPrompt }];
 
 		// Add recent conversation history if available
 		if (context.conversationHistory && context.conversationHistory.length > 0) {
@@ -322,7 +346,7 @@ Keep your responses concise, engaging, and true to D&D 5e rules.`;
 	/**
 	 * Prepare messages for scene narration
 	 */
-	private prepareMessagesForNarration(scene: string, context: GameContext): CactusMessage[] {
+	private prepareMessagesForNarration(scene: string, context: GameContext): WorkingAIMessage[] {
 		const { playerCharacter, currentLocation, timeOfDay, weather } = context;
 
 		// Create system prompt

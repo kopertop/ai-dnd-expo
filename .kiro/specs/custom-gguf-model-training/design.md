@@ -1,8 +1,8 @@
-# Design Document: Custom GGUF Model Training
+# Design Document: Custom GGUF Model Training (Deprecated)
 
 ## Overview
 
-This design document outlines the architecture and components for implementing a custom GGUF model training system for the AI D&D platform. The primary goal is to provide a **single command solution** (`pnpm run train`) that automatically handles the entire process from dependency installation to generating a ready-to-use GGUF model for the CactusTTS system.
+This document is deprecated. The platform now uses Apple on-device foundational models via `@react-native-ai/apple` with the `ai` SDK and no longer requires GGUF training or distribution.
 
 The system will enable developers to fine-tune existing language models (specifically Gemma3n) with D&D-specific data, creating optimized models that understand game mechanics, character interactions, and tool usage patterns. The entire process will be fully automated, requiring no manual intervention, and will output the exact modelPath and mmprojPath configuration needed for seamless integration with the existing cactus.ts infrastructure.
 

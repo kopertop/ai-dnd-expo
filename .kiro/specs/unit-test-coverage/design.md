@@ -183,7 +183,7 @@ interface TestFixtures {
 
 #### External API Mocks
 ```typescript
-interface MockedCactusProvider {
+interface MockedProvider {
   generateResponse: MockedFunction<(prompt: string) => Promise<string>>;
   isAvailable: MockedFunction<() => boolean>;
   configure: MockedFunction<(config: any) => void>;
@@ -251,7 +251,7 @@ interface CoverageReport {
 ### Spy-Based Testing Strategy
 
 #### External Dependencies
-- **Cactus AI Provider**: Spy on provider methods and return controlled responses
+- **Apple/Rules Providers**: Spy on provider methods and return controlled responses
 - **AsyncStorage**: Spy on storage methods with in-memory implementations
 - **React Navigation**: Spy on navigation functions and track calls
 - **Expo APIs**: Spy on platform-specific methods and provide mock responses
@@ -326,7 +326,7 @@ describe('CharacterSheetModal', () => {
 ```typescript
 // tests/unit/services/ai-service-manager.test.ts
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { CactusProvider } from '@/services/ai/providers/cactus-provider';
+import { AppleAIProvider } from '@/services/ai/providers/apple-ai-provider';
 import { AIServiceManager } from '@/services/ai/ai-service-manager';
 
 describe('AIServiceManager', () => {

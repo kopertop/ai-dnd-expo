@@ -2,21 +2,14 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GameCanvas } from '@/components/game-canvas';
+import * as SkiaGameCanvasModule from '@/components/skia-game-canvas';
+import * as SvgGameCanvasModule from '@/components/svg-game-canvas';
 import { WorldMapFactory } from '@/tests/fixtures/mock-factories';
 import {
-    assertNoConsoleErrors,
-    renderWithProviders,
-    waitForAsyncUpdates,
+	assertNoConsoleErrors,
+	renderWithProviders,
+	waitForAsyncUpdates,
 } from '@/tests/utils/render-helpers';
-
-// Mock the child components
-vi.mock('@/components/skia-game-canvas', () => ({
-	SkiaGameCanvas: vi.fn(),
-}));
-
-vi.mock('@/components/svg-game-canvas', () => ({
-	SvgGameCanvas: vi.fn(),
-}));
 
 describe('GameCanvas', () => {
 	const mockWorldState = WorldMapFactory.createGameWorldState();
@@ -25,6 +18,10 @@ describe('GameCanvas', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+
+		// Mock the child components using vi.spyOn
+		vi.spyOn(SkiaGameCanvasModule, 'SkiaGameCanvas').mockImplementation(() => null);
+		vi.spyOn(SvgGameCanvasModule, 'SvgGameCanvas').mockImplementation(() => null);
 	});
 
 	afterEach(() => {

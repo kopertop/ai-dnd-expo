@@ -1,26 +1,39 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock expo-speech
-const mockSpeech = {
-	speak: vi.fn().mockResolvedValue(undefined),
-	stop: vi.fn(),
-	pause: vi.fn(),
-	resume: vi.fn(),
-	isSpeaking: vi.fn().mockResolvedValue(false),
-	getAvailableVoicesAsync: vi.fn().mockResolvedValue([
-		{
-			identifier: 'com.apple.ttsbundle.Daniel-compact',
-			name: 'Daniel',
-			language: 'en-US',
-			quality: 'Default',
+// Mock Apple Speech API
+const mockAppleSpeech = {
+	apple: {
+		speechModel: vi.fn().mockReturnValue('apple-speech-model'),
+	},
+	AppleSpeech: {
+		getVoices: vi.fn().mockResolvedValue([
+			{
+				identifier: 'com.apple.voice.compact.en-US.Samantha',
+				name: 'Samantha',
+				language: 'en-US',
+				quality: 'default',
+				isPersonalVoice: false,
+				isNoveltyVoice: false,
+			},
+		]),
+	},
+};
+
+// Mock AI Speech Generation
+const mockAISpeech = {
+	experimental_generateSpeech: vi.fn().mockResolvedValue({
+		audio: {
+			uint8Array: new Uint8Array(1024),
+			base64: 'base64-encoded-audio',
 		},
-	]),
+	}),
 };
 
 describe('useTextToSpeech hook', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		vi.doMock('expo-speech', () => mockSpeech);
+		vi.doMock('@react-native-ai/apple', () => mockAppleSpeech);
+		vi.doMock('ai', () => mockAISpeech);
 	});
 
 	afterEach(() => {
@@ -28,133 +41,149 @@ describe('useTextToSpeech hook', () => {
 	});
 
 	describe('speech functionality', () => {
-		it('should have speak method available', () => {
-			expect(mockSpeech.speak).toBeDefined();
-			expect(typeof mockSpeech.speak).toBe('function');
+		it('should have Apple Speech API available', () => {
+			expect(mockAppleSpeech.apple.speechModel).toBeDefined();
+			expect(typeof mockAppleSpeech.apple.speechModel).toBe('function');
 		});
 
-		it('should have stop method available', () => {
-			expect(mockSpeech.stop).toBeDefined();
-			expect(typeof mockSpeech.stop).toBe('function');
+		it('should have AppleSpeech.getVoices method available', () => {
+			expect(mockAppleSpeech.AppleSpeech.getVoices).toBeDefined();
+			expect(typeof mockAppleSpeech.AppleSpeech.getVoices).toBe('function');
 		});
 
-		it('should have pause method available', () => {
-			expect(mockSpeech.pause).toBeDefined();
-			expect(typeof mockSpeech.pause).toBe('function');
+		it('should have AI speech generation available', () => {
+			expect(mockAISpeech.experimental_generateSpeech).toBeDefined();
+			expect(typeof mockAISpeech.experimental_generateSpeech).toBe('function');
 		});
 
-		it('should have resume method available', () => {
-			expect(mockSpeech.resume).toBeDefined();
-			expect(typeof mockSpeech.resume).toBe('function');
+		it('should call Apple Speech API with correct parameters', async () => {
+			await mockAISpeech.experimental_generateSpeech({
+				model: mockAppleSpeech.apple.speechModel(),
+				text: 'Hello, world!',
+				voice: 'com.apple.voice.compact.en-US.Samantha',
+				language: 'en-US',
+			});
+
+			expect(mockAISpeech.experimental_generateSpeech).toHaveBeenCalledWith({
+				model: 'apple-speech-model',
+				text: 'Hello, world!',
+				voice: 'com.apple.voice.compact.en-US.Samantha',
+				language: 'en-US',
+			});
 		});
 
-		it('should call speak method with text', async () => {
-			await mockSpeech.speak('Hello, world!');
+		it('should get available voices', async () => {
+			const voices = await mockAppleSpeech.AppleSpeech.getVoices();
 
-			expect(mockSpeech.speak).toHaveBeenCalledWith('Hello, world!');
-		});
-
-		it('should call stop method', () => {
-			mockSpeech.stop();
-
-			expect(mockSpeech.stop).toHaveBeenCalled();
-		});
-
-		it('should call pause method', () => {
-			mockSpeech.pause();
-
-			expect(mockSpeech.pause).toHaveBeenCalled();
-		});
-
-		it('should call resume method', () => {
-			mockSpeech.resume();
-
-			expect(mockSpeech.resume).toHaveBeenCalled();
+			expect(mockAppleSpeech.AppleSpeech.getVoices).toHaveBeenCalled();
+			expect(voices).toHaveLength(1);
+			expect(voices[0].name).toBe('Samantha');
 		});
 	});
 
 	describe('speech state management', () => {
-		it('should check if speaking', async () => {
-			mockSpeech.isSpeaking.mockResolvedValueOnce(false);
-			const isSpeaking = await mockSpeech.isSpeaking();
+		it('should get available voices with correct structure', async () => {
+			const voices = await mockAppleSpeech.AppleSpeech.getVoices();
 
-			expect(mockSpeech.isSpeaking).toHaveBeenCalled();
-			expect(isSpeaking).toBe(false);
-		});
-
-		it('should return true when speaking', async () => {
-			mockSpeech.isSpeaking.mockResolvedValueOnce(true);
-
-			const isSpeaking = await mockSpeech.isSpeaking();
-
-			expect(isSpeaking).toBe(true);
-		});
-
-		it('should get available voices', async () => {
-			mockSpeech.getAvailableVoicesAsync.mockResolvedValueOnce([
-				{
-					identifier: 'com.apple.ttsbundle.Daniel-compact',
-					name: 'Daniel',
-					language: 'en-US',
-					quality: 'Default',
-				},
-			]);
-			const voices = await mockSpeech.getAvailableVoicesAsync();
-
-			expect(mockSpeech.getAvailableVoicesAsync).toHaveBeenCalled();
+			expect(mockAppleSpeech.AppleSpeech.getVoices).toHaveBeenCalled();
 			expect(voices).toHaveLength(1);
-			expect(voices[0].name).toBe('Daniel');
+			expect(voices[0].name).toBe('Samantha');
+			expect(voices[0].identifier).toBe('com.apple.voice.compact.en-US.Samantha');
+			expect(voices[0].language).toBe('en-US');
+			expect(voices[0].quality).toBe('default');
+		});
+
+		it('should handle voice quality types correctly', async () => {
+			const voices = await mockAppleSpeech.AppleSpeech.getVoices();
+			const voice = voices[0];
+
+			expect(['default', 'enhanced', 'premium']).toContain(voice.quality);
+		});
+
+		it('should include personal voice flags', async () => {
+			const voices = await mockAppleSpeech.AppleSpeech.getVoices();
+			const voice = voices[0];
+
+			expect(typeof voice.isPersonalVoice).toBe('boolean');
+			expect(typeof voice.isNoveltyVoice).toBe('boolean');
 		});
 	});
 
 	describe('speech options', () => {
-		it('should speak with custom options', async () => {
+		it('should generate speech with custom options', async () => {
 			const options = {
+				model: mockAppleSpeech.apple.speechModel(),
+				text: 'Test speech',
+				voice: 'com.apple.voice.compact.en-US.Samantha',
 				language: 'en-US',
-				pitch: 0.8,
-				rate: 0.5,
 			};
 
-			await mockSpeech.speak('Test speech', options);
+			await mockAISpeech.experimental_generateSpeech(options);
 
-			expect(mockSpeech.speak).toHaveBeenCalledWith('Test speech', options);
+			expect(mockAISpeech.experimental_generateSpeech).toHaveBeenCalledWith(options);
 		});
 
 		it('should handle empty text gracefully', async () => {
-			await mockSpeech.speak('');
+			await mockAISpeech.experimental_generateSpeech({
+				model: mockAppleSpeech.apple.speechModel(),
+				text: '',
+				voice: 'com.apple.voice.compact.en-US.Samantha',
+				language: 'en-US',
+			});
 
-			expect(mockSpeech.speak).toHaveBeenCalledWith('');
+			expect(mockAISpeech.experimental_generateSpeech).toHaveBeenCalledWith({
+				model: 'apple-speech-model',
+				text: '',
+				voice: 'com.apple.voice.compact.en-US.Samantha',
+				language: 'en-US',
+			});
 		});
 
-		it('should handle null text gracefully', async () => {
-			await mockSpeech.speak(null);
+		it('should return audio data in correct format', async () => {
+			const result = await mockAISpeech.experimental_generateSpeech({
+				model: mockAppleSpeech.apple.speechModel(),
+				text: 'Test speech',
+				voice: 'com.apple.voice.compact.en-US.Samantha',
+				language: 'en-US',
+			});
 
-			expect(mockSpeech.speak).toHaveBeenCalledWith(null);
+			expect(result.audio).toBeDefined();
+			expect(result.audio.uint8Array).toBeInstanceOf(Uint8Array);
+			expect(result.audio.base64).toBe('base64-encoded-audio');
 		});
 	});
 
 	describe('error handling', () => {
-		it('should handle speak errors gracefully', async () => {
+		it('should handle speech generation errors gracefully', async () => {
 			const speechError = new Error('Speech synthesis failed');
-			mockSpeech.speak.mockRejectedValueOnce(speechError);
+			mockAISpeech.experimental_generateSpeech.mockRejectedValueOnce(speechError);
 
-			await expect(mockSpeech.speak('Error test')).rejects.toThrow('Speech synthesis failed');
+			await expect(
+				mockAISpeech.experimental_generateSpeech({
+					model: mockAppleSpeech.apple.speechModel(),
+					text: 'Error test',
+					voice: 'com.apple.voice.compact.en-US.Samantha',
+					language: 'en-US',
+				}),
+			).rejects.toThrow('Speech synthesis failed');
 		});
 
 		it('should handle voice loading errors gracefully', async () => {
 			const voiceError = new Error('Voice loading failed');
-			mockSpeech.getAvailableVoicesAsync.mockRejectedValueOnce(voiceError);
+			mockAppleSpeech.AppleSpeech.getVoices.mockRejectedValueOnce(voiceError);
 
-			await expect(mockSpeech.getAvailableVoicesAsync()).rejects.toThrow(
+			await expect(mockAppleSpeech.AppleSpeech.getVoices()).rejects.toThrow(
 				'Voice loading failed',
 			);
 		});
 
-		it('should handle isSpeaking errors gracefully', async () => {
-			const statusError = new Error('Status check failed');
-			mockSpeech.isSpeaking.mockRejectedValueOnce(statusError);
+		it('should handle model creation errors gracefully', async () => {
+			const modelError = new Error('Model creation failed');
+			mockAppleSpeech.apple.speechModel.mockImplementationOnce(() => {
+				throw modelError;
+			});
 
-			await expect(mockSpeech.isSpeaking()).rejects.toThrow('Status check failed');
+			expect(() => mockAppleSpeech.apple.speechModel()).toThrow('Model creation failed');
 		});
 	});
 
@@ -227,22 +256,42 @@ describe('useTextToSpeech hook', () => {
 	});
 
 	describe('performance', () => {
-		it('should handle rapid speech requests', async () => {
+		it('should handle rapid speech generation requests', async () => {
 			const promises = [
-				mockSpeech.speak('First'),
-				mockSpeech.speak('Second'),
-				mockSpeech.speak('Third'),
+				mockAISpeech.experimental_generateSpeech({
+					model: mockAppleSpeech.apple.speechModel(),
+					text: 'First',
+					voice: 'com.apple.voice.compact.en-US.Samantha',
+					language: 'en-US',
+				}),
+				mockAISpeech.experimental_generateSpeech({
+					model: mockAppleSpeech.apple.speechModel(),
+					text: 'Second',
+					voice: 'com.apple.voice.compact.en-US.Samantha',
+					language: 'en-US',
+				}),
+				mockAISpeech.experimental_generateSpeech({
+					model: mockAppleSpeech.apple.speechModel(),
+					text: 'Third',
+					voice: 'com.apple.voice.compact.en-US.Samantha',
+					language: 'en-US',
+				}),
 			];
 
 			await Promise.all(promises);
 
-			expect(mockSpeech.speak).toHaveBeenCalledTimes(3);
+			expect(mockAISpeech.experimental_generateSpeech).toHaveBeenCalledTimes(3);
 		});
 
 		it('should complete speech operations quickly', async () => {
 			const startTime = performance.now();
 
-			await mockSpeech.speak('Performance test');
+			await mockAISpeech.experimental_generateSpeech({
+				model: mockAppleSpeech.apple.speechModel(),
+				text: 'Performance test',
+				voice: 'com.apple.voice.compact.en-US.Samantha',
+				language: 'en-US',
+			});
 
 			const endTime = performance.now();
 			const duration = endTime - startTime;

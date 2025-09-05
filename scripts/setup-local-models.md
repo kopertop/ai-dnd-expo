@@ -1,8 +1,8 @@
-# Setting Up Local Models for AI D&D App
+# Setting Up Local Models for AI D&D App (Deprecated)
 
 ## Overview
 
-The app now supports loading AI models from local build folders instead of downloading them from Hugging Face. This avoids authentication issues and provides better reliability.
+This guide is deprecated. The app now uses Apple on-device models via `@react-native-ai/apple` with the `ai` SDK. No manual model downloads are required.
 
 ## Model Setup Instructions
 
@@ -51,12 +51,9 @@ ai-dnd-expo/
 └── ...
 ```
 
-### 5. Test the Local Provider
+### 5. Test (Current)
 
-1. Open the app
-2. Tap "🧪 AI Debug Tests"
-3. Try the "📁 Cactus Local Provider" (blue button)
-4. It should find and load the local model file
+Open the app and use features backed by the DM. On supported iOS devices, responses come from on-device Apple Intelligence; otherwise, the rules-based fallback is used.
 
 ## Model Specifications
 
@@ -89,13 +86,9 @@ If you get "Model file appears to be too small" error:
 - Re-download the model file
 - Check your internet connection
 
-### Cactus LM Initialization Fails
+### Apple Provider Unavailable
 
-If Cactus LM fails to initialize:
-
-- The app will automatically fall back to rule-based AI
-- This still provides full D&D functionality
-- Check the debug info for specific error details
+If Apple on-device models are unavailable (e.g., simulator or unsupported OS), the app automatically falls back to a rules-based DM.
 
 ## Next Steps
 
@@ -104,4 +97,4 @@ If Cactus LM fails to initialize:
 3. **If it works**: The app will use the local model for AI responses
 4. **If it fails**: The app will use rule-based fallback (still fully functional)
 
-The local model approach should resolve the 401 authentication errors and provide a more reliable AI experience!
+The new on-device Apple integration provides a reliable, private AI experience without external downloads.

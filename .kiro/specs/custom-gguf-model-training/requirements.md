@@ -2,13 +2,13 @@
 
 ## Introduction
 
-This feature enables the AI D&D platform to train custom GGUF (GPT-Generated Unified Format) models specifically optimized for D&D gameplay. The system will provide a framework for fine-tuning existing models (like Gemma or Qwen) with D&D-specific training data, including system prompts, character interactions, and tool usage patterns. The trained models will be compatible with the local Cactus agent infrastructure and support the platform's tool calling format for game mechanics like dice rolls and health management.
+Deprecated: We no longer train or ship GGUF models. The platform uses Apple on-device foundational models via `@react-native-ai/apple` with the `ai` SDK.
 
 ## Requirements
 
 ### Requirement 1 (CRITICAL)
 
-**User Story:** As a developer, I want to be able to run a single command to have it build and train a new gguf file that can be used within my CactusTTS system for my D&D Application, so that I can easily create custom models without manual setup and seamlessly integrate them with my existing Cactus infrastructure.
+Removed (replaced by on-device Apple provider).
 
 #### Acceptance Criteria
 

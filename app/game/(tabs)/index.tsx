@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { TurnBasedChat } from '@/components/turn-based-chat';
-import { useCactusDungeonMaster } from '@/hooks/use-cactus-dungeon-master';
+import { useDungeonMaster } from '@/hooks/use-dungeon-master';
 import { useGameState } from '@/hooks/use-game-state';
 import { generateWorldForGameState } from '@/services/world-generator';
 import { GameWorldState } from '@/types/world-map';
@@ -20,11 +20,10 @@ const ChatTab: React.FC = () => {
 	const playerCharacter = gameState
 		? gameState.characters.find(c => c.id === gameState.playerCharacterId)
 		: null;
-	const dmAgent = useCactusDungeonMaster({
+	const dmAgent = useDungeonMaster({
 		worldState,
 		playerCharacter: playerCharacter || null,
 		autoInitialize: true,
-		modelUrl: '../assets/models/gemma-3n-E2B-it-Q4_K_S.gguf', // Use local GGUF model
 	});
 
 	// Debounced save to prevent excessive saves

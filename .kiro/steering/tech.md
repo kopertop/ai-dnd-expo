@@ -6,10 +6,9 @@
 - **Expo Router**: File-based routing system for navigation
 
 ## AI Integration
-- **Cactus Compute**: Distributed compute network for AI model inference
-- **Gemma3**: Google's instruction-tuned language model for D&D gameplay
-- **@cactus-compute/client**: Official client library for Cactus integration
-- **Intelligent Fallbacks**: Rule-based responses when AI services are unavailable
+- **Apple Intelligence**: On-device foundational models (iOS) via `@react-native-ai/apple`
+- **ai SDK**: High-level text generation used with the Apple provider
+- **Intelligent Fallbacks**: Rules-based provider when device models are unavailable
 
 ## UI & Styling
 - **React Native StyleSheet**: Component styling with theming support
@@ -87,12 +86,7 @@ npm run test:coverage # Coverage report
 
 ## Environment Configuration
 
-Required environment variables:
-```bash
-EXPO_PUBLIC_CACTUS_API_KEY=your_api_key_here
-EXPO_PUBLIC_CACTUS_ENDPOINT=https://api.cactus-compute.com
-EXPO_PUBLIC_CACTUS_MODEL=gemma-3-2b-instruct
-```
+No AI keys are required for on-device Apple models. See `.env.example`.
 
 ## Performance Considerations
 - Response caching for AI interactions

@@ -30,7 +30,7 @@
 
 - [ ] 5. Implement ChatterboxTTS engine with ONNX runtime integration
   - Create ChatterboxTTSEngine class implementing TTSEngine interface
-  - Integrate with existing Cactus local ONNX runtime for model loading and inference
+  - Prefer platform TTS; avoid custom ONNX pipelines unless required
   - Implement model loading, unloading, and resource management methods
   - Add voice synthesis methods using ChatterboxTTS models
   - _Requirements: 3.1, 3.2, 3.3, 5.1, 5.2, 5.3_

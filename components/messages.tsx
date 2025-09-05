@@ -1,6 +1,10 @@
 import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import type { Message } from './cactus';
+type Message = {
+  role: 'user' | 'assistant' | 'system';
+  content: string | null | undefined;
+  images?: string[];
+};
 
 export const MessageBubble = ({ message }: { message: Message }) => (
 	<View

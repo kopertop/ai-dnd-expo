@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This feature implements a local, offline text-to-speech system that assigns unique, consistent voices to each character in the D&D game. The system ensures that each character (player characters, NPCs, and AI companions) maintains the same voice throughout the entire game session and across multiple sessions. The solution must work entirely offline without requiring cloud-based services, leveraging local TTS engines and potentially integrating with the existing ONNX-based Cactus local development system.
+This feature implements an on-device text-to-speech system that assigns unique, consistent voices to each character in the D&D game. Where available, prefer platform TTS; avoid bespoke ONNX pipelines.
 
 ## Requirements
 
@@ -52,7 +52,7 @@ This feature implements a local, offline text-to-speech system that assigns uniq
 
 ### Requirement 5
 
-**User Story:** As a developer, I want the TTS system to integrate seamlessly with our existing Cactus ONNX local system, so that we maintain architectural consistency.
+**User Story:** As a developer, I want the TTS system to integrate seamlessly with platform TTS capabilities for maintainability and consistency.
 
 #### Acceptance Criteria
 

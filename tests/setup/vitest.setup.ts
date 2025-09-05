@@ -46,13 +46,34 @@ vi.mock('react-native', () => ({
 	useColorScheme: vi.fn().mockReturnValue('light'),
 }));
 
-// Mock Expo modules
-vi.mock('expo-speech', () => ({
-	speak: vi.fn(),
-	stop: vi.fn(),
-	pause: vi.fn(),
-	resume: vi.fn(),
-	isSpeaking: vi.fn().mockResolvedValue(false),
+// Mock Apple Speech API
+vi.mock('@react-native-ai/apple', () => ({
+	apple: {
+		speechModel: vi.fn().mockReturnValue('apple-speech-model'),
+	},
+	AppleSpeech: {
+		getVoices: vi.fn().mockResolvedValue([
+			{
+				identifier: 'com.apple.voice.compact.en-US.Samantha',
+				name: 'Samantha',
+				language: 'en-US',
+				quality: 'default',
+				isPersonalVoice: false,
+				isNoveltyVoice: false,
+			},
+		]),
+		generate: vi.fn().mockResolvedValue(new ArrayBuffer(1024)),
+	},
+}));
+
+// Mock AI Speech Generation
+vi.mock('ai', () => ({
+	experimental_generateSpeech: vi.fn().mockResolvedValue({
+		audio: {
+			uint8Array: new Uint8Array(1024),
+			base64: 'base64-encoded-audio',
+		},
+	}),
 }));
 
 vi.mock('expo-speech-recognition', () => ({
@@ -119,11 +140,7 @@ vi.mock('expo-file-system', () => ({
 	createDownloadResumable: vi.fn(),
 }));
 
-vi.mock('cactus-react-native', () => ({
-	CactusVLM: {
-		init: vi.fn(),
-	},
-}));
+// Removed legacy vendor mocks: no longer used in the codebase
 
 vi.mock('@react-native-async-storage/async-storage', () => ({
 	getItem: vi.fn(),

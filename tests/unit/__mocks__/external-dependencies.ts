@@ -5,47 +5,7 @@
 
 import { vi } from 'vitest';
 
-/**
- * Mock Cactus AI provider with configurable responses
- */
-export const mockCactusProvider = {
-	generateText: vi.fn().mockResolvedValue({
-		text: 'Mock AI response from Cactus',
-		usage: { totalTokens: 25 },
-	}),
-	isAvailable: vi.fn().mockReturnValue(true),
-	configure: vi.fn(),
-	setModel: vi.fn(),
-	getModel: vi.fn().mockReturnValue('gemma-3-2b-instruct'),
-	// Simulate different response scenarios
-	simulateSuccess: (response: string) => {
-		mockCactusProvider.generateText.mockResolvedValueOnce({
-			text: response,
-			usage: { totalTokens: response.length / 4 },
-		});
-	},
-	simulateError: (error: Error) => {
-		mockCactusProvider.generateText.mockRejectedValueOnce(error);
-	},
-	simulateTimeout: () => {
-		const timeoutError = new Error('Request timeout');
-		(timeoutError as any).code = 'TIMEOUT';
-		mockCactusProvider.generateText.mockRejectedValueOnce(timeoutError);
-	},
-	simulateRateLimit: () => {
-		const rateLimitError = new Error('Rate limit exceeded');
-		(rateLimitError as any).status = 429;
-		mockCactusProvider.generateText.mockRejectedValueOnce(rateLimitError);
-	},
-	reset: () => {
-		vi.clearAllMocks();
-		mockCactusProvider.generateText.mockResolvedValue({
-			text: 'Mock AI response from Cactus',
-			usage: { totalTokens: 25 },
-		});
-		mockCactusProvider.isAvailable.mockReturnValue(true);
-	},
-};
+// Removed legacy provider mocks
 
 /**
  * Mock AsyncStorage with in-memory implementation
@@ -161,32 +121,72 @@ export const mockExpoRouter: any = {
 };
 
 /**
- * Mock Expo Speech API
+ * Mock Apple Speech API
  */
-export const mockExpoSpeech = {
-	speak: vi.fn().mockResolvedValue(undefined),
-	stop: vi.fn().mockResolvedValue(undefined),
-	pause: vi.fn().mockResolvedValue(undefined),
-	resume: vi.fn().mockResolvedValue(undefined),
-	isSpeaking: vi.fn().mockResolvedValue(false),
-	getAvailableVoicesAsync: vi.fn().mockResolvedValue([
-		{
-			identifier: 'en-US-voice',
-			name: 'English US',
-			quality: 'Default',
-			language: 'en-US',
-		},
-	]),
+export const mockAppleSpeech = {
+	apple: {
+		speechModel: vi.fn().mockReturnValue('apple-speech-model'),
+	},
+	AppleSpeech: {
+		getVoices: vi.fn().mockResolvedValue([
+			{
+				identifier: 'com.apple.voice.compact.en-US.Samantha',
+				name: 'Samantha',
+				language: 'en-US',
+				quality: 'default',
+				isPersonalVoice: false,
+				isNoveltyVoice: false,
+			},
+		]),
+		generate: vi.fn().mockResolvedValue(new ArrayBuffer(1024)),
+	},
 	// Test utilities
-	simulateSpeaking: (speaking: boolean = true) => {
-		mockExpoSpeech.isSpeaking.mockResolvedValue(speaking);
+	simulateVoices: (voices: any[]) => {
+		mockAppleSpeech.AppleSpeech.getVoices.mockResolvedValueOnce(voices);
 	},
 	simulateError: (error: Error) => {
-		mockExpoSpeech.speak.mockRejectedValueOnce(error);
+		mockAppleSpeech.AppleSpeech.generate.mockRejectedValueOnce(error);
 	},
 	reset: () => {
 		vi.clearAllMocks();
-		mockExpoSpeech.isSpeaking.mockResolvedValue(false);
+		mockAppleSpeech.AppleSpeech.getVoices.mockResolvedValue([
+			{
+				identifier: 'com.apple.voice.compact.en-US.Samantha',
+				name: 'Samantha',
+				language: 'en-US',
+				quality: 'default',
+				isPersonalVoice: false,
+				isNoveltyVoice: false,
+			},
+		]);
+	},
+};
+
+/**
+ * Mock AI Speech Generation
+ */
+export const mockAISpeech = {
+	experimental_generateSpeech: vi.fn().mockResolvedValue({
+		audio: {
+			uint8Array: new Uint8Array(1024),
+			base64: 'base64-encoded-audio',
+		},
+	}),
+	// Test utilities
+	simulateSuccess: (audioData: any) => {
+		mockAISpeech.experimental_generateSpeech.mockResolvedValueOnce(audioData);
+	},
+	simulateError: (error: Error) => {
+		mockAISpeech.experimental_generateSpeech.mockRejectedValueOnce(error);
+	},
+	reset: () => {
+		vi.clearAllMocks();
+		mockAISpeech.experimental_generateSpeech.mockResolvedValue({
+			audio: {
+				uint8Array: new Uint8Array(1024),
+				base64: 'base64-encoded-audio',
+			},
+		});
 	},
 };
 
@@ -358,10 +358,6 @@ export class MockManager {
 		// This method is kept for backward compatibility
 	}
 
-	static setupCactus(): void {
-		// Use vi.mock('cactus-react-native', () => ({ ... })) in test files
-	}
-
 	static setupAsyncStorage(): void {
 		// Use vi.mock('@react-native-async-storage/async-storage', () => ({ ... })) in test files
 	}
@@ -370,8 +366,12 @@ export class MockManager {
 		// Use vi.mock('expo-router', () => ({ ... })) in test files
 	}
 
-	static setupExpoAPIs(): void {
-		// Use vi.mock('expo-speech', () => ({ ... })) in test files
+	static setupAppleSpeech(): void {
+		// Use vi.mock('@react-native-ai/apple', () => ({ ... })) in test files
+	}
+
+	static setupAISpeech(): void {
+		// Use vi.mock('ai', () => ({ ... })) in test files
 	}
 
 	static setupReactNativeLibraries(): void {
@@ -379,11 +379,11 @@ export class MockManager {
 	}
 
 	static resetAll(): void {
-		mockCactusProvider.reset();
 		mockAsyncStorage.reset();
 		mockNavigation.reset();
 		mockExpoRouter.reset();
-		mockExpoSpeech.reset();
+		mockAppleSpeech.reset();
+		mockAISpeech.reset();
 		mockExpoSpeechRecognition.reset();
 		mockExpoAudio.reset();
 		mockExpoHaptics.reset();
@@ -400,12 +400,12 @@ export class MockManager {
 // Export individual mocks for specific use cases
 export const AsyncStorageMock = mockAsyncStorage;
 export const AudioMock = mockExpoAudio;
-export const CactusMock = mockCactusProvider;
 export const ExpoRouterMock = mockExpoRouter;
 export const GestureHandlerMock = mockGestureHandler;
 export const HapticsMock = mockExpoHaptics;
 export const NavigationMock = mockNavigation;
 export const ReanimatedMock = mockReanimated;
 export const SkiaMock = mockSkia;
-export const SpeechMock = mockExpoSpeech;
+export const AppleSpeechMock = mockAppleSpeech;
+export const AISpeechMock = mockAISpeech;
 export const SpeechRecognitionMock = mockExpoSpeechRecognition;

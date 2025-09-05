@@ -1,7 +1,8 @@
 /**
  * DM Provider for AI D&D Platform
  *
- * Integrates with Cactus Compute's LLM for D&D gameplay
+ * Provides a thin wrapper around the internal DMAgent, now decoupled from
+ * legacy vendor/local-training. Ready to swap to @react-native-ai/apple.
  */
 import { DMAgent, DMResponse, GameContext, createDMAgent } from '../agents/dm-agent';
 
@@ -146,7 +147,7 @@ export class DMProvider {
 				toolCommands: response.toolCommands,
 				processingTime: response.processingTime,
 				metadata: {
-					modelUsed: 'Cactus Compute LLM',
+					modelUsed: 'On-device DM',
 				},
 			};
 		} catch (error) {
