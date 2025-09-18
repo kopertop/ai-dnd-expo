@@ -23,7 +23,7 @@ This document captures the full, step‑by‑step plan to replace the current pl
     - Cleans up the sound object on unmount.
     - Sets `isAvailable` to `true` only after successful voice load; otherwise `false`.
 
-- [ ] **2️⃣ Add fallback (non‑iOS) hook**
+- [x] **2️⃣ Add fallback (non‑iOS) hook**
   - File: `hooks/use-text-to-speech.ts`
   - Export the generic hook that re‑exports:
     ```ts

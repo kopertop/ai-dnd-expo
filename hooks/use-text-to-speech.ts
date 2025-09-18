@@ -1,5 +1,5 @@
 // Apple Speech imports removed to avoid runtime module registration
-import { Platform } from 'react-native';
+const { Platform } = require('react-native');
 
 export interface TTSOptions {
 	language?: string;
