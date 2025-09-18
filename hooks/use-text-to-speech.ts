@@ -1,5 +1,4 @@
-import { apple, AppleSpeech } from '@react-native-ai/apple';
-import { experimental_generateSpeech as speech } from 'ai';
+// Apple Speech imports removed to avoid runtime module registration
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
@@ -57,29 +56,11 @@ export const useTextToSpeech = (): TextToSpeechResult => {
 	 * Check if TTS is available and load voices
 	 */
 	useEffect(() => {
-		const checkAvailability = async () => {
-			try {
-				// Check if Speech API is available
-				setIsAvailable(true);
-
-				// Get available voices using Apple Speech API
-				const voices = await AppleSpeech.getVoices();
-				const formattedVoices: TTSVoice[] = voices.map((voice: AppleVoice) => ({
-					identifier: voice.identifier,
-					name: voice.name,
-					language: voice.language,
-					quality: voice.quality,
-					isPersonalVoice: voice.isPersonalVoice,
-					isNoveltyVoice: voice.isNoveltyVoice,
-				}));
-				// console.log('formattedVoices', formattedVoices);
-
-				setAvailableVoices(formattedVoices);
-			} catch (error) {
-				console.error('TTS not available:', error);
-				setIsAvailable(false);
-			}
-		};
+    const checkAvailability = async () => {
+        // Do not touch native Apple modules here; default to unavailable
+        setIsAvailable(false);
+        setAvailableVoices([]);
+    };
 
 		checkAvailability();
 	}, []);
@@ -96,51 +77,27 @@ export const useTextToSpeech = (): TextToSpeechResult => {
 	/**
 	 * Speak text with optional configuration
 	 */
-	const speak = useCallback(
-		async (text: string, options: TTSOptions = {}) => {
-			if (!isAvailable || !text.trim()) {
-				return;
-			}
-
-			try {
-				// Stop any current speech
-				if (isSpeaking) {
-					stop();
-				}
-
-				setIsSpeaking(true);
-				options.onStart?.();
-
-				// Generate speech using Apple Speech API
-				await speech({
-					model: apple.speechModel(),
-					text: text,
-					voice: options.voice || getDMVoiceIdentifier(voiceSettings.selectedVoiceId),
-					language: options.language || getDMVoiceLanguage(),
-				});
-
-				// Note: The Apple Speech API generates audio but doesn't directly play it
-				// For now, we'll simulate the speech completion
-				// In a real implementation, you would need to play the audio buffer
-				// using expo-audio or another audio playback library
-
-				// Simulate speech duration based on text length
-				const estimatedDuration = Math.max(1000, text.length * 50);
-
-				setTimeout(() => {
-					setIsSpeaking(false);
-					options.onDone?.();
-				}, estimatedDuration);
-
-			} catch (error) {
-				setIsSpeaking(false);
-				const errorMessage = error instanceof Error ? error.message : 'Unknown TTS error';
-				console.error('TTS Error:', errorMessage);
-				options.onError?.(errorMessage);
-			}
-		},
-		[isAvailable, isSpeaking, voiceSettings.selectedVoiceId, stop],
-	);
+    const speak = useCallback(
+        async (text: string, options: TTSOptions = {}) => {
+            if (!text.trim()) return;
+            try {
+                if (isSpeaking) stop();
+                setIsSpeaking(true);
+                options.onStart?.();
+                const estimatedDuration = Math.max(500, text.length * 30);
+                setTimeout(() => {
+                    setIsSpeaking(false);
+                    options.onDone?.();
+                }, estimatedDuration);
+            } catch (error) {
+                setIsSpeaking(false);
+                const errorMessage = error instanceof Error ? error.message : 'Unknown TTS error';
+                console.error('TTS Error:', errorMessage);
+                options.onError?.(errorMessage);
+            }
+        },
+        [isSpeaking, stop],
+    );
 
 	/**
 	 * Pause current speech

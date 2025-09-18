@@ -1,5 +1,4 @@
-import { apple } from '@react-native-ai/apple';
-import { experimental_generateSpeech as speech } from 'ai';
+// Removed Apple Speech imports; manager simulates TTS duration by default
 import { Platform } from 'react-native';
 
 import { CharacterVoiceRegistry } from './character-voice-registry';
@@ -252,21 +251,8 @@ export class CharacterVoiceManager {
 			// Call onStart callback
 			options.onStart?.();
 
-			// Generate speech using Apple Speech API
-			await speech({
-				model: apple.speechModel(),
-				text: cleanText,
-				voice: options.voiceId || voiceProfile.engineVoiceId,
-				language: options.language || voiceProfile.language,
-			});
-
-			// Note: The Apple Speech API generates audio but doesn't directly play it
-			// For now, we'll simulate the speech completion
-			// In a real implementation, you would need to play the audio buffer
-			// using expo-audio or another audio playback library
-
-			// Simulate speech duration based on text length
-			const estimatedDuration = Math.max(1000, cleanText.length * 50);
+            // Minimal no-op speech: simulate completion timing for UI flow
+            const estimatedDuration = Math.max(500, cleanText.length * 30);
 
 			setTimeout(() => {
 				const usageTime = Date.now() - startTime;

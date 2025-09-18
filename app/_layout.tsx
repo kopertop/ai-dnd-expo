@@ -50,8 +50,8 @@ const RootLayout: React.FC = () => {
 			<InputModeProvider>
 				<AudioProvider>
 					<ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-						<Stack initialRouteName="index">
-							<Stack.Screen name="index" options={{ headerShown: false }} />
+                    <Stack>
+                        <Stack.Screen name="index" options={{ headerShown: false }} />
 							<Stack.Screen name="new-game" options={{ headerShown: false }} />
 							<Stack.Screen name="game" options={{ headerShown: false }} />
 							<Stack.Screen name="+not-found" />

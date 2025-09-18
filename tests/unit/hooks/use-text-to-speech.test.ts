@@ -1,23 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock Apple Speech API
-const mockAppleSpeech = {
-	apple: {
-		speechModel: vi.fn().mockReturnValue('apple-speech-model'),
-	},
-	AppleSpeech: {
-		getVoices: vi.fn().mockResolvedValue([
-			{
-				identifier: 'com.apple.voice.compact.en-US.Samantha',
-				name: 'Samantha',
-				language: 'en-US',
-				quality: 'default',
-				isPersonalVoice: false,
-				isNoveltyVoice: false,
-			},
-		]),
-	},
-};
+	const mockAppleSpeech = {
+		apple: {
+			 speechModel: vi.fn(() => 'apple-speech-model'),
+		},
+		AppleSpeech: {
+			 getVoices: vi.fn().mockResolvedValue([
+				{
+					 identifier: 'com.apple.voice.compact.en-US.Samantha',
+					 name: 'Samantha',
+					 language: 'en-US',
+					 quality: 'default',
+					 isPersonalVoice: false,
+					 isNoveltyVoice: false,
+				},
+			]),
+		},
+	};
 
 // Mock AI Speech Generation
 const mockAISpeech = {
@@ -30,11 +30,28 @@ const mockAISpeech = {
 };
 
 describe('useTextToSpeech hook', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		vi.doMock('@react-native-ai/apple', () => mockAppleSpeech);
-		vi.doMock('ai', () => mockAISpeech);
-	});
+		beforeEach(() => {
+			vi.clearAllMocks();
+			// Reinitialize mock implementations after clearing
+			mockAppleSpeech.apple.speechModel = vi.fn(() => 'apple-speech-model');
+			mockAppleSpeech.AppleSpeech.getVoices = vi.fn().mockResolvedValue([
+				{
+					 identifier: 'com.apple.voice.compact.en-US.Samantha',
+					 name: 'Samantha',
+					 language: 'en-US',
+					 quality: 'default',
+					 isPersonalVoice: false,
+					 isNoveltyVoice: false,
+				},
+			]);
+			vi.doMock('@react-native-ai/apple', () => mockAppleSpeech);
+			mockAISpeech.experimental_generateSpeech = vi.fn().mockResolvedValue({
+				audio: {
+					uint8Array: new Uint8Array(1024),
+					base64: 'base64-encoded-audio',
+				},
+			});
+		});
 
 	afterEach(() => {
 		vi.restoreAllMocks();

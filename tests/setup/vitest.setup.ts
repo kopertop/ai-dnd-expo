@@ -49,20 +49,18 @@ vi.mock('react-native', () => ({
 // Mock Apple Speech API
 vi.mock('@react-native-ai/apple', () => ({
 	apple: {
-		speechModel: vi.fn().mockReturnValue('apple-speech-model'),
+		speechModel: () => 'apple-speech-model',
 	},
 	AppleSpeech: {
-		getVoices: vi.fn().mockResolvedValue([
-			{
-				identifier: 'com.apple.voice.compact.en-US.Samantha',
-				name: 'Samantha',
-				language: 'en-US',
-				quality: 'default',
-				isPersonalVoice: false,
-				isNoveltyVoice: false,
-			},
-		]),
-		generate: vi.fn().mockResolvedValue(new ArrayBuffer(1024)),
+		getVoices: async () => [{
+			identifier: 'com.apple.voice.compact.en-US.Samantha',
+			name: 'Samantha',
+			language: 'en-US',
+			quality: 'default',
+			isPersonalVoice: false,
+			isNoveltyVoice: false,
+		}],
+		generate: async () => new ArrayBuffer(1024),
 	},
 }));
 
