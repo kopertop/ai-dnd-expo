@@ -56,6 +56,6 @@ Capture the output.
 
 /opt/homebrew/bin/opencode --model ollama/gpt-oss:120b run "${PROMPT}"
 
-git add .
-git diff --staged | gemini -p "Generate a concise and informative commit message for the following changes:" | git commit -F -
-git push
+#git add .
+#git diff --staged | gemini -p "Generate a concise and informative commit message for the following changes:" | git commit -F -
+#git push
