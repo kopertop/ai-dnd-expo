@@ -4,7 +4,37 @@ import { Buffer } from 'buffer'; // for base64 conversion
 import { Platform } from 'react-native';
 import { Audio } from 'expo-av'; // eslint-disable-line import/no-unresolved
 
-import { TTSOptions, TTSVoice, TextToSpeechResult } from './use-text-to-speech'; // reuse types from stub
+// Re-declare types to avoid circular import with generic hook
+export interface TTSOptions {
+  language?: string;
+  pitch?: number;
+  rate?: number;
+  voice?: string;
+  onStart?: () => void;
+  onDone?: () => void;
+  onStopped?: () => void;
+  onError?: (error: string) => void;
+}
+
+export interface TTSVoice {
+  identifier: string;
+  name: string;
+  language: string;
+  quality: 'default' | 'enhanced' | 'premium';
+  isPersonalVoice?: boolean;
+  isNoveltyVoice?: boolean;
+}
+
+export interface TextToSpeechResult {
+  isSpeaking: boolean;
+  availableVoices: TTSVoice[];
+  speak: (text: string, options?: TTSOptions) => Promise<void>;
+  stop: () => void;
+  pause: () => void;
+  resume: () => void;
+  isAvailable: boolean;
+}
+
 
 export const useTextToSpeech = (): TextToSpeechResult => {
   const [isSpeaking, setIsSpeaking] = useState(false);

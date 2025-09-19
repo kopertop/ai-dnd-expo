@@ -9,7 +9,7 @@ vi.mock('@/stores/settings-store', () => ({
   useSettingsStore: () => ({ voice: undefined }),
 }));
 
-import { useTextToSpeech } from '@/hooks/use-text-to-speech';
+import { useTextToSpeech } from '@/hooks/use-text-to-speech.stub';
 
 describe('useTextToSpeech fallback (stub) on non-iOS', () => {
   it('should report unavailable TTS', () => {

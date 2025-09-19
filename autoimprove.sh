@@ -54,7 +54,13 @@ Capture the output.
 🎉 ALL DONE – Apple TTS feature implemented and fully tested."
 
 
-/opt/homebrew/bin/opencode --model ollama/gpt-oss:120b run "${PROMPT}"
+while :; do
+	/opt/homebrew/bin/opencode --model ollama/gpt-oss:120b run "${PROMPT}"
+	echo "==============================================================="
+	echo "|   WAITING 900 SECONDS FOR NEXT LOOP                         |"
+	echo "==============================================================="
+	sleep 900
+done
 
 #git add .
 #git diff --staged | gemini -p "Generate a concise and informative commit message for the following changes:" | git commit -F -
