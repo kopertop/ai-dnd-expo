@@ -1,8 +1,9 @@
 // iOS specific Text-to-Speech hook using Apple AI SDK and expo-av
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { Buffer } from 'buffer'; // for base64 conversion
-import { Platform } from 'react-native';
 import { Audio } from 'expo-av'; // eslint-disable-line import/no-unresolved
+import { useSettingsStore } from '@/stores/use-settings-store';
+import { kokoroProvider } from '@/services/ai/providers/kokoro';
 
 // Re-declare types to avoid circular import with generic hook
 export interface TTSOptions {

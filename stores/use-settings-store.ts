@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export interface VoiceSettings {
+  onDeviceTTS: boolean;
 	voiceEnabled: boolean;
 	ttsEnabled: boolean;
 	sttEnabled: boolean;
@@ -32,6 +33,7 @@ interface SettingsState {
 }
 
 const defaultVoiceSettings: VoiceSettings = {
+  onDeviceTTS: false,
 	voiceEnabled: true,
 	ttsEnabled: true,
 	sttEnabled: true,
