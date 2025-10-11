@@ -45,7 +45,7 @@ An open-source platform for playing Dungeons and Dragons online with AI assistan
 ## 🏗️ Development
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js 22+ (LTS)
 - Expo CLI
 - For mobile development: iOS Simulator (macOS) or Android Studio
 
@@ -139,3 +139,53 @@ MIT License - see [LICENSE](./LICENSE) for details.
 ## 🎲 Let's Play!
 
 Ready to embark on your AI-assisted D&D adventure? Install the app and let the AI guide you through epic quests, memorable characters, and unforgettable stories.
+
+## 🚀 Automated TestFlight Releases
+
+Pushes to the `main` branch automatically trigger the **Release iOS to TestFlight** GitHub Action. The workflow installs dependencies, builds the iOS binary with the Expo Application Services (EAS) production profile, and submits the build to TestFlight.
+
+### 1. Create the required credentials
+
+1. **Expo access token** – Generate a long-lived token from your Expo account settings (`https://expo.dev/accounts/<account>/settings/access-tokens>`).
+2. **App Store Connect API key (recommended)** – Create an API key with *App Manager* access in App Store Connect, then download the `.p8` file. Combine the key details into JSON and base64-encode it so it can be stored as a secret:
+   ```bash
+   cat <<'JSON' > asc-api-key.json
+   {
+     "keyId": "<KEY_ID>",
+     "issuerId": "<ISSUER_ID>",
+     "key": "$(tr -d '\n' < AuthKey_<KEY_ID>.p8)"
+   }
+   JSON
+
+   base64 asc-api-key.json | pbcopy  # macOS example
+   ```
+   > You can alternatively provide an **App Store Connect app-specific password** if you cannot use an API key.
+3. **Team and App identifiers** – Note your Apple Developer Team ID (available in the Apple Developer portal) and the App Store Connect App ID (the numeric ID shown on the app’s App Information page).
+
+### 2. Add GitHub Action secrets
+
+Store the following secrets in **Settings → Secrets and variables → Actions**:
+
+| Secret name | Required | Description |
+| --- | --- | --- |
+| `EXPO_TOKEN` | ✅ | Expo access token used by the workflow to authenticate with EAS. |
+| `EXPO_APP_STORE_CONNECT_API_KEY` | ✅ (recommended) | Base64-encoded App Store Connect API key JSON as shown above. |
+| `EXPO_APPLE_APP_SPECIFIC_PASSWORD` | ⚠️ (optional) | App-specific password for Apple ID. Only needed if you are not providing an API key. |
+| `APPLE_TEAM_ID` | ✅ | Apple Developer Team ID used for signing. |
+| `APPLE_ASC_APP_ID` | ✅ | Numeric App Store Connect App ID injected into `eas.json` before submission. |
+
+The workflow fails fast if any required secret is missing. Provide either the API key **or** an app-specific password to allow Expo to authenticate with App Store Connect.
+
+### 3. (Optional) Mirror credentials in Expo
+
+If you also want to run the same release build from your local machine or directly from Expo, mirror the secrets into the Expo project:
+
+```bash
+eas secret:create --name EXPO_APP_STORE_CONNECT_API_KEY --scope project --type string --value "$(base64 asc-api-key.json)"
+eas secret:create --name APPLE_TEAM_ID --scope project --type string --value "<TEAM_ID>"
+eas secret:create --name APPLE_ASC_APP_ID --scope project --type string --value "<APP_ID>"
+```
+
+### 4. Triggering a release
+
+Once the secrets are configured, every push to `main` will build and submit the iOS production profile to TestFlight automatically. Track build and submission progress in the GitHub Actions run log or in the [Expo EAS dashboard](https://expo.dev/accounts) for deeper visibility.
