@@ -4,7 +4,7 @@
 
 ```typescript
 // Problematic approach:
-- Pixi.js (web-focused) 
+- Pixi.js (web-focused)
 - expo-gl (low-level WebGL)
 - Custom adapter layer (ExpoGLAdapter)
 - Manual shader programming (SimpleGLRenderer)
@@ -13,8 +13,9 @@
 ```
 
 **Issues:**
+
 - ❌ CanvasRenderer not implemented errors
-- ❌ Complex WebGL adapter maintenance 
+- ❌ Complex WebGL adapter maintenance
 - ❌ Different code paths for web vs mobile
 - ❌ Manual shader and buffer management
 - ❌ Performance bottlenecks
@@ -32,6 +33,7 @@
 ```
 
 **Benefits:**
+
 - ✅ Native performance on all platforms
 - ✅ Single codebase for web + mobile
 - ✅ Declarative, React-like API
@@ -42,6 +44,7 @@
 ## Architecture Comparison
 
 ### Old Architecture (Pixi.js + expo-gl):
+
 ```
 GameCanvas
 ├── Web: Pixi.js + DOM
@@ -52,6 +55,7 @@ GameCanvas
 ```
 
 ### New Architecture (React Native Skia):
+
 ```
 GameCanvas
 ├── Web: Skia (CanvasKit)
@@ -62,6 +66,7 @@ GameCanvas
 ## Key Code Patterns
 
 ### Skia Game Loop Pattern:
+
 ```typescript
 // Animation with Skia
 const playerX = useValue(0);
@@ -75,7 +80,7 @@ runTiming(playerX, newX, {
 
 // Touch handling
 const touchHandler = useTouchHandler({
-  onEnd: (touchInfo) => {
+  onEnd: touchInfo => {
     const worldX = Math.floor(touchInfo.x / TILE_SIZE);
     movePlayer({ x: worldX, y: worldY });
   },
@@ -83,6 +88,7 @@ const touchHandler = useTouchHandler({
 ```
 
 ### Rendering Pattern:
+
 ```typescript
 <Canvas style={{ flex: 1 }} onTouch={touchHandler}>
   <Group transform={[{ translateX: cameraX }]}>
@@ -103,6 +109,7 @@ const touchHandler = useTouchHandler({
 ## Performance Benefits
 
 ### Skia Advantages:
+
 1. **Native rendering** - No JavaScript bridge for graphics
 2. **GPU acceleration** - Hardware-accelerated by default
 3. **Efficient memory** - Optimized for mobile constraints
@@ -110,6 +117,7 @@ const touchHandler = useTouchHandler({
 5. **Battery efficient** - Optimized power consumption
 
 ### Game-Specific Features:
+
 1. **Touch handling** - Built-in gesture recognition
 2. **Animation system** - Smooth transitions and easing
 3. **Coordinate transforms** - Camera movement and scaling
@@ -119,6 +127,7 @@ const touchHandler = useTouchHandler({
 ## Migration Path
 
 ### Steps to Complete Migration:
+
 1. ✅ Install React Native Skia
 2. ✅ Create SkiaGameCanvas component
 3. ✅ Implement tile rendering with Rect components
@@ -128,6 +137,7 @@ const touchHandler = useTouchHandler({
 7. ✅ Implement camera following with Group transforms
 
 ### Next Steps:
+
 1. Add gesture handling for pan/zoom
 2. Implement sprite animations
 3. Add particle effects
@@ -137,6 +147,7 @@ const touchHandler = useTouchHandler({
 ## Conclusion
 
 React Native Skia provides the proper foundation for mobile game development:
+
 - **Native performance** without complex workarounds
 - **Simple, declarative API** that feels natural in React
 - **Cross-platform consistency** across iOS, Android, and Web

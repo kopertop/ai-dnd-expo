@@ -2,9 +2,39 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ],
+      "@/assets/*": [
+        "./assets/*"
+      ],
+      "@/components/*": [
+        "./components/*"
+      ],
+      "@/constants/*": [
+        "./constants/*"
+      ],
+      "@/contexts/*": [
+        "./contexts/*"
+      ],
+      "@/hooks/*": [
+        "./hooks/*"
+      ],
+      "@/styles/*": [
+        "./styles/*"
+      ],
+      "@/types/*": [
+        "./types/*"
+      ],
+      "@/utils/*": [
+        "./utils/*"
+      ]
     }
   },
   "include": [
@@ -12,5 +42,14 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "tests/**/*",
+    "ai-training/llama.cpp/**/*",
+    "components/cactus.ts",
+    "hooks/use-cactus-dungeon-master.ts",
+    "services/ai/providers/cactus-*.ts",
+    "services/ai/agents/cactus-*.ts"
   ]
 }

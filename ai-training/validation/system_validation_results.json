@@ -1,0 +1,31 @@
+{
+	"system_info": {
+		"python_version": "3.11.13",
+		"ram_gb": 24.0,
+		"disk_free_gb": 309.83,
+		"gpu": {
+			"available": true,
+			"type": "MPS",
+			"memory_gb": 24.0
+		},
+		"platform": {
+			"platform": "Darwin",
+			"architecture": "arm64",
+			"processor": "arm"
+		}
+	},
+	"requirements": {
+		"python_compatible": true,
+		"memory_sufficient": true,
+		"disk_space_sufficient": true,
+		"gpu_memory_sufficient": true,
+		"platform_supported": true
+	},
+	"recommendations": [
+		"Consider upgrading system RAM to 32GB+ for optimal training performance",
+		"macOS detected: Ensure Xcode Command Line Tools are installed",
+		"Apple Silicon detected: MPS acceleration will be used for training"
+	],
+	"warnings": ["System has 24.0GB RAM. 32GB+ recommended for optimal training performance"],
+	"errors": []
+}

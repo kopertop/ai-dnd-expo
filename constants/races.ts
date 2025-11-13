@@ -1,5 +1,4 @@
-
-import { RaceOption } from '../types/race-option';
+import { RaceOption } from '@/types/race-option';
 
 export const RACES: RaceOption[] = [
 	{
@@ -80,3 +79,11 @@ export const RACES: RaceOption[] = [
 		isCustom: true,
 	},
 ];
+
+export const RaceByID: Record<string, RaceOption> = RACES.reduce(
+	(acc, race) => {
+		acc[race.id] = race;
+		return acc;
+	},
+	{} as Record<string, RaceOption>,
+);

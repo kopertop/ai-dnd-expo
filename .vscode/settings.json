@@ -1,7 +1,68 @@
 {
-  "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit",
-    "source.organizeImports": "explicit",
-    "source.sortMembers": "explicit"
-  }
+	"editor.codeActionsOnSave": {
+		"source.fixAll.eslint": "explicit",
+		"source.organizeImports": "explicit"
+	},
+	"editor.formatOnSave": false,
+	"editor.insertSpaces": false,
+	"editor.tabSize": 3,
+	"editor.detectIndentation": false,
+	"[javascript]": {
+		"editor.defaultFormatter": "dbaeumer.vscode-eslint"
+	},
+	"[javascriptreact]": {
+		"editor.defaultFormatter": "dbaeumer.vscode-eslint"
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "vscode.typescript-language-features"
+	},
+	"[typescriptreact]": {
+		"editor.defaultFormatter": "dbaeumer.vscode-eslint"
+	},
+	"[json]": {
+		"editor.defaultFormatter": "vscode.json-language-features"
+	},
+
+	"kiroAgent.trustedCommands": [
+		"npm run typecheck",
+		"npm run lint *",
+		"npx tsc --noEmit *",
+		"npm run test",
+		"npm run test:*",
+		"npm run test *",
+		"npm run format",
+		"npm run format:check",
+		"npm run test:services -- --run",
+		"npm run test:coverage -- --run",
+		"git add .",
+		"git diff *",
+		"git diff",
+		"git status",
+		"git add *",
+		"git log *",
+		"npm test *",
+		"find *",
+		"npx eslint *",
+		"export PAGER=cat && git diff --cached --stat",
+		"npm run test:coverage",
+		"npm run test:services:coverage",
+		"npx vitest *",
+		"npm run test -- --config vitest.services.config.ts tests/unit/services/ai/providers/local-dm-provider.test.ts -t \"should build D&D-specific prompts with context\"",
+		"npm run typecheck -- --skipLibCheck",
+		"npm run typecheck -- --skipLibCheck --skipTests",
+		"grep *",
+		"ls *",
+		"npm list *",
+		"npm run check",
+		"python *",
+		"python3.11 *",
+		"pip3.11 *",
+		"python3 *"
+	],
+	"[markdown]": {
+		"editor.defaultFormatter": "yzhang.markdown-all-in-one"
+	},
+	"[jsonc]": {
+		"editor.defaultFormatter": "vscode.json-language-features"
+	}
 }

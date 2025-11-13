@@ -1,10 +1,10 @@
-import { 
-	WorldMap, 
-	Region, 
-	MapTile, 
-	PointOfInterest, 
-	BiomeType, 
-	TerrainType, 
+import {
+	WorldMap,
+	Region,
+	MapTile,
+	PointOfInterest,
+	BiomeType,
+	TerrainType,
 	Position,
 	PlayerPosition,
 	GameWorldState,
@@ -35,9 +35,18 @@ class SeededRandom {
 // Noise generation for terrain
 class SimplexNoise {
 	private grad3 = [
-		[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],
-		[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],
-		[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1],
+		[1, 1, 0],
+		[-1, 1, 0],
+		[1, -1, 0],
+		[-1, -1, 0],
+		[1, 0, 1],
+		[-1, 0, 1],
+		[1, 0, -1],
+		[-1, 0, -1],
+		[0, 1, 1],
+		[0, -1, 1],
+		[0, 1, -1],
+		[0, -1, -1],
 	];
 	private p: number[] = [];
 	private perm: number[] = [];
@@ -68,53 +77,58 @@ class SimplexNoise {
 		const Y0 = j - t;
 		const x0 = xin - X0;
 		const y0 = yin - Y0;
-    
+
 		let i1, j1;
-		if (x0 > y0) { i1 = 1; j1 = 0; }
-		else { i1 = 0; j1 = 1; }
-    
+		if (x0 > y0) {
+			i1 = 1;
+			j1 = 0;
+		} else {
+			i1 = 0;
+			j1 = 1;
+		}
+
 		const x1 = x0 - i1 + G2;
 		const y1 = y0 - j1 + G2;
 		const x2 = x0 - 1 + 2 * G2;
 		const y2 = y0 - 1 + 2 * G2;
-    
+
 		const ii = i & 255;
 		const jj = j & 255;
 		const gi0 = this.perm[ii + this.perm[jj]] % 12;
 		const gi1 = this.perm[ii + i1 + this.perm[jj + j1]] % 12;
 		const gi2 = this.perm[ii + 1 + this.perm[jj + 1]] % 12;
-    
+
 		let t0 = 0.5 - x0 * x0 - y0 * y0;
 		if (t0 < 0) n0 = 0;
 		else {
 			t0 *= t0;
 			n0 = t0 * t0 * this.dot(this.grad3[gi0], x0, y0);
 		}
-    
+
 		let t1 = 0.5 - x1 * x1 - y1 * y1;
 		if (t1 < 0) n1 = 0;
 		else {
 			t1 *= t1;
 			n1 = t1 * t1 * this.dot(this.grad3[gi1], x1, y1);
 		}
-    
+
 		let t2 = 0.5 - x2 * x2 - y2 * y2;
 		if (t2 < 0) n2 = 0;
 		else {
 			t2 *= t2;
 			n2 = t2 * t2 * this.dot(this.grad3[gi2], x2, y2);
 		}
-    
+
 		return 70 * (n0 + n1 + n2);
 	}
 }
 
 export interface WorldGenerationConfig {
-  worldName: string;
-  startingArea: string;
-  seed: number;
-  worldSize: { width: number; height: number };
-  regionSize: { width: number; height: number };
+	worldName: string;
+	startingArea: string;
+	seed: number;
+	worldSize: { width: number; height: number };
+	regionSize: { width: number; height: number };
 }
 
 export class WorldGenerator {
@@ -127,10 +141,9 @@ export class WorldGenerator {
 	}
 
 	generateWorld(): GameWorldState {
-    
 		const worldMap = this.createWorldMap();
 		const playerPosition = this.createInitialPlayerPosition(worldMap);
-    
+
 		const gameWorldState: GameWorldState = {
 			worldMap,
 			playerPosition,
@@ -154,7 +167,7 @@ export class WorldGenerator {
 		const { worldSize, regionSize } = this.config;
 		const regionsX = Math.ceil(worldSize.width / regionSize.width);
 		const regionsY = Math.ceil(worldSize.height / regionSize.height);
-    
+
 		const regions: Region[] = [];
 		let startingRegionId = '';
 
@@ -163,7 +176,7 @@ export class WorldGenerator {
 			for (let ry = 0; ry < regionsY; ry++) {
 				const region = this.generateRegion(rx, ry, regionSize);
 				regions.push(region);
-        
+
 				// Mark center region as starting region
 				if (rx === Math.floor(regionsX / 2) && ry === Math.floor(regionsY / 2)) {
 					startingRegionId = region.id;
@@ -184,15 +197,19 @@ export class WorldGenerator {
 		};
 	}
 
-	private generateRegion(regionX: number, regionY: number, regionSize: { width: number; height: number }): Region {
+	private generateRegion(
+		regionX: number,
+		regionY: number,
+		regionSize: { width: number; height: number },
+	): Region {
 		const regionId = `region-${regionX}-${regionY}`;
 		const biome = this.getBiomeForStartingArea(this.config.startingArea);
-    
+
 		const bounds = {
 			topLeft: { x: regionX * regionSize.width, y: regionY * regionSize.height },
-			bottomRight: { 
-				x: (regionX + 1) * regionSize.width - 1, 
-				y: (regionY + 1) * regionSize.height - 1, 
+			bottomRight: {
+				x: (regionX + 1) * regionSize.width - 1,
+				y: (regionY + 1) * regionSize.height - 1,
 			},
 		};
 
@@ -211,9 +228,12 @@ export class WorldGenerator {
 		};
 	}
 
-	private generateRegionTiles(bounds: { topLeft: Position; bottomRight: Position }, biome: BiomeType): MapTile[] {
+	private generateRegionTiles(
+		bounds: { topLeft: Position; bottomRight: Position },
+		biome: BiomeType,
+	): MapTile[] {
 		const tiles: MapTile[] = [];
-    
+
 		for (let x = bounds.topLeft.x; x <= bounds.bottomRight.x; x++) {
 			for (let y = bounds.topLeft.y; y <= bounds.bottomRight.y; y++) {
 				const tile = this.generateTile(x, y, biome);
@@ -226,10 +246,13 @@ export class WorldGenerator {
 
 	private generateTile(x: number, y: number, biome: BiomeType): MapTile {
 		const noiseScale = 0.1;
-		const elevation = Math.max(0, Math.min(10, Math.floor((this.noise.noise(x * noiseScale, y * noiseScale) + 1) * 5)));
-    
+		const elevation = Math.max(
+			0,
+			Math.min(10, Math.floor((this.noise.noise(x * noiseScale, y * noiseScale) + 1) * 5)),
+		);
+
 		const terrain = this.getTerrainForBiome(biome, elevation, x, y);
-    
+
 		return {
 			id: this.getTileId({ x, y }),
 			position: { x, y },
@@ -241,36 +264,41 @@ export class WorldGenerator {
 		};
 	}
 
-	private getTerrainForBiome(biome: BiomeType, elevation: number, x: number, y: number): TerrainType {
+	private getTerrainForBiome(
+		biome: BiomeType,
+		elevation: number,
+		x: number,
+		y: number,
+	): TerrainType {
 		const noise = this.noise.noise(x * 0.05, y * 0.05);
-    
+
 		switch (biome) {
-		case 'temperate_forest':
-			if (elevation > 7) return 'mountain';
-			if (elevation < 2) return 'water';
-			if (noise > 0.3) return 'forest';
-			return 'grass';
-        
-		case 'desert':
-			if (elevation > 8) return 'mountain';
-			if (elevation < 1) return 'water';
-			if (noise > 0.2) return 'sand';
-			return 'desert';
-        
-		case 'mountain':
-			if (elevation < 3) return 'grass';
-			if (elevation > 8) return 'snow';
-			if (noise > 0.4) return 'stone';
-			return 'mountain';
-        
-		case 'coastal':
-			if (elevation < 3) return 'water';
-			if (elevation > 6) return 'mountain';
-			if (noise > 0.2) return 'sand';
-			return 'grass';
-        
-		default:
-			return 'grass';
+			case 'temperate_forest':
+				if (elevation > 7) return 'mountain';
+				if (elevation < 2) return 'water';
+				if (noise > 0.3) return 'forest';
+				return 'grass';
+
+			case 'desert':
+				if (elevation > 8) return 'mountain';
+				if (elevation < 1) return 'water';
+				if (noise > 0.2) return 'sand';
+				return 'desert';
+
+			case 'mountain':
+				if (elevation < 3) return 'grass';
+				if (elevation > 8) return 'snow';
+				if (noise > 0.4) return 'stone';
+				return 'mountain';
+
+			case 'coastal':
+				if (elevation < 3) return 'water';
+				if (elevation > 6) return 'mountain';
+				if (noise > 0.2) return 'sand';
+				return 'grass';
+
+			default:
+				return 'grass';
 		}
 	}
 
@@ -280,13 +308,14 @@ export class WorldGenerator {
 
 	private generatePOIs(bounds: { topLeft: Position; bottomRight: Position }): PointOfInterest[] {
 		const pois: PointOfInterest[] = [];
-		const regionArea = (bounds.bottomRight.x - bounds.topLeft.x) * (bounds.bottomRight.y - bounds.topLeft.y);
+		const regionArea =
+			(bounds.bottomRight.x - bounds.topLeft.x) * (bounds.bottomRight.y - bounds.topLeft.y);
 		const poiCount = Math.floor(regionArea / 400); // Roughly 1 POI per 400 tiles
 
 		for (let i = 0; i < poiCount; i++) {
 			const x = this.random.range(bounds.topLeft.x, bounds.bottomRight.x);
 			const y = this.random.range(bounds.topLeft.y, bounds.bottomRight.y);
-      
+
 			const poi: PointOfInterest = {
 				id: `poi-${x}-${y}`,
 				name: this.generatePOIName(),
@@ -294,7 +323,7 @@ export class WorldGenerator {
 				position: { x, y },
 				discovered: false,
 			};
-      
+
 			pois.push(poi);
 		}
 
@@ -304,13 +333,13 @@ export class WorldGenerator {
 	private getBiomeForStartingArea(startingArea: string): BiomeType {
 		const areaMap: Record<string, BiomeType> = {
 			'Whispering Woods': 'temperate_forest',
-			'Sunscorch Desert': 'desert', 
+			'Sunscorch Desert': 'desert',
 			'Ironpeak Mountains': 'mountain',
 			'Saltwind Coast': 'coastal',
 			'Golden Plains': 'plains',
 			'Mistral Swamps': 'swampland',
 		};
-    
+
 		return areaMap[startingArea] || 'temperate_forest';
 	}
 
@@ -341,17 +370,26 @@ export class WorldGenerator {
 
 		const prefix = this.random.choice(prefixes[biome]);
 		const suffix = this.random.choice(suffixes[biome]);
-    
+
 		return `${prefix} ${suffix}`;
 	}
 
 	private generatePOIName(): string {
 		const names = [
-			'Ancient Ruins', 'Trader\'s Rest', 'Hidden Shrine', 'Bandit Camp',
-			'Crystal Cave', 'Forgotten Temple', 'Merchant\'s Guild', 'Old Watchtower',
-			'Sacred Grove', 'Abandoned Mine', 'Mystic Pool', 'Hunter\'s Lodge',
+			'Ancient Ruins',
+			"Trader's Rest",
+			'Hidden Shrine',
+			'Bandit Camp',
+			'Crystal Cave',
+			'Forgotten Temple',
+			"Merchant's Guild",
+			'Old Watchtower',
+			'Sacred Grove',
+			'Abandoned Mine',
+			'Mystic Pool',
+			"Hunter's Lodge",
 		];
-    
+
 		return this.random.choice(names);
 	}
 
@@ -362,13 +400,18 @@ export class WorldGenerator {
 		}
 
 		// Find a walkable tile in the center of the starting region
-		const centerX = Math.floor((startingRegion.bounds.topLeft.x + startingRegion.bounds.bottomRight.x) / 2);
-		const centerY = Math.floor((startingRegion.bounds.topLeft.y + startingRegion.bounds.bottomRight.y) / 2);
-    
-		const walkableTile = startingRegion.tiles.find(tile => 
-			tile.walkable && 
-      Math.abs(tile.position.x - centerX) <= 5 && 
-      Math.abs(tile.position.y - centerY) <= 5,
+		const centerX = Math.floor(
+			(startingRegion.bounds.topLeft.x + startingRegion.bounds.bottomRight.x) / 2,
+		);
+		const centerY = Math.floor(
+			(startingRegion.bounds.topLeft.y + startingRegion.bounds.bottomRight.y) / 2,
+		);
+
+		const walkableTile = startingRegion.tiles.find(
+			tile =>
+				tile.walkable &&
+				Math.abs(tile.position.x - centerX) <= 5 &&
+				Math.abs(tile.position.y - centerY) <= 5,
 		);
 
 		const position = walkableTile ? walkableTile.position : { x: centerX, y: centerY };
@@ -387,14 +430,17 @@ export class WorldGenerator {
 }
 
 // Utility function to generate a world based on game state
-export const generateWorldForGameState = (gameWorld: string, startingArea: string): GameWorldState => {
+export const generateWorldForGameState = (
+	gameWorld: string,
+	startingArea: string,
+): GameWorldState => {
 	const seed = Math.floor(Math.random() * 1000000);
-  
+
 	const config: WorldGenerationConfig = {
 		worldName: gameWorld,
 		startingArea,
 		seed,
-		worldSize: { width: 100, height: 100 }, // Reduced from 200x200 for mobile performance 
+		worldSize: { width: 100, height: 100 }, // Reduced from 200x200 for mobile performance
 		regionSize: { width: 25, height: 25 }, // Reduced from 50x50 for mobile performance
 	};
 

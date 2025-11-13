@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import { Feather } from '@expo/vector-icons';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
@@ -10,14 +11,17 @@ import 'react-native-reanimated';
 
 import { AudioProvider, useAudio } from '@/hooks/use-audio-player';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { InputModeProvider } from '@/hooks/use-input-mode';
 
 const AudioButton: React.FC = () => {
 	const { player, togglePlayPause } = useAudio();
 
 	return (
-		<View pointerEvents="box-none" style={styles.soundButtonContainer}>
+		<View style={[styles.soundButtonContainer, { pointerEvents: 'box-none' }]}>
 			<TouchableOpacity
-				accessibilityLabel={player.playing ? 'Mute background music' : 'Unmute background music'}
+				accessibilityLabel={
+					player.playing ? 'Mute background music' : 'Unmute background music'
+				}
 				onPress={togglePlayPause}
 				style={styles.soundButton}
 			>
@@ -44,22 +48,25 @@ const RootLayout: React.FC = () => {
 
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
-			<AudioProvider>
-				<ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-					<Stack initialRouteName="index">
-						<Stack.Screen name="index" options={{ headerShown: false }} />
-						<Stack.Screen name="new-game" options={{ headerShown: false }} />
-						<Stack.Screen name="+not-found" />
-					</Stack>
-					<StatusBar style="auto" />
-					{/* Only show sound button on web */}
-					{Platform.OS === 'web' && (
-						<View pointerEvents="box-none" style={styles.soundButtonContainer}>
-							<AudioButton />
-						</View>
-					)}
-				</ThemeProvider>
-			</AudioProvider>
+			<InputModeProvider>
+				<AudioProvider>
+					<ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+						<Stack initialRouteName="index">
+							<Stack.Screen name="index" options={{ headerShown: false }} />
+							<Stack.Screen name="new-game" options={{ headerShown: false }} />
+							<Stack.Screen name="game" options={{ headerShown: false }} />
+							<Stack.Screen name="+not-found" />
+						</Stack>
+						<StatusBar style="auto" />
+						{/* Only show sound button on web */}
+						{Platform.OS === 'web' && (
+							<View style={[styles.soundButtonContainer, { pointerEvents: 'box-none' }]}>
+								<AudioButton />
+							</View>
+						)}
+					</ThemeProvider>
+				</AudioProvider>
+			</InputModeProvider>
 		</GestureHandlerRootView>
 	);
 };

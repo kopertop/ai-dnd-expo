@@ -1,60 +1,28 @@
 {
   "cli": {
-    "version": ">= 5.0.0"
+    "version": ">= 16.3.1",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_ENVIRONMENT": "development"
-      },
+      "environment": "development",
       "ios": {
-        "resourceClass": "m-medium"
-      },
-      "android": {
-        "resourceClass": "medium"
+        "simulator": true
       }
     },
-    "staging": {
+    "preview": {
       "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_ENVIRONMENT": "staging"
-      },
-      "channel": "staging",
-      "ios": {
-        "resourceClass": "m-medium"
-      },
-      "android": {
-        "resourceClass": "medium"
-      }
+      "environment": "preview"
     },
     "production": {
-      "env": {
-        "EXPO_PUBLIC_ENVIRONMENT": "production"
-      },
-      "channel": "production",
-      "ios": {
-        "resourceClass": "m-medium"
-      },
-      "android": {
-        "resourceClass": "medium"
-      }
+      "autoIncrement": true,
+      "environment": "production"
     }
   },
   "submit": {
-    "staging": {
-      "android": {
-        "track": "internal"
-      },
-      "ios": {
-        "appleTeamId": "T2H2YPQXA9"
-      }
-    },
     "production": {
-      "android": {
-        "track": "production"
-      },
       "ios": {
         "appleTeamId": "T2H2YPQXA9",
         "ascAppId": null

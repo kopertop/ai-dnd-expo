@@ -1,5 +1,5 @@
-
-import { ClassOption } from '../types/class-option';
+// Import all class images
+import { ClassOption } from '@/types/class-option';
 
 export const CLASSES: ClassOption[] = [
 	{
@@ -85,7 +85,7 @@ export const CLASSES: ClassOption[] = [
 	{
 		id: 'druid',
 		name: 'Druid',
-		description: 'Nature\'s guardians who can shapeshift and command beasts.',
+		description: "Nature's guardians who can shapeshift and command beasts.",
 		image: require('../assets/images/classes/druid.png'),
 		primaryStats: ['WIS'],
 		secondaryStats: ['CON', 'DEX'],

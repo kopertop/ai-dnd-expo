@@ -1,17 +1,34 @@
 import Feather from '@expo/vector-icons/Feather';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+	Animated,
+	Easing,
+	Image,
+	ScrollView,
+	StyleSheet,
+	Text,
+	TextInput,
+	TouchableOpacity,
+	View,
+} from 'react-native';
 
-import { Colors } from '../constants/colors';
-import { ABILITY_COLORS, SKILL_LIST } from '../constants/skills';
 import { newGameStyles } from '../styles/new-game.styles';
-import { ClassOption } from '../types/class-option';
-import { RaceOption } from '../types/race-option';
-import { PartialStatBlock, STAT_KEYS, StatBlock, StatKey } from '../types/stats';
 
+import { Colors } from '@/constants/colors';
+import { ABILITY_COLORS, SKILL_LIST } from '@/constants/skills';
+import { ClassOption } from '@/types/class-option';
+import { RaceOption } from '@/types/race-option';
+import { PartialStatBlock, STAT_KEYS, StatBlock, StatKey } from '@/types/stats';
 
 const POINT_BUY_COST: Record<number, number> = {
-	8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9,
+	8: 0,
+	9: 1,
+	10: 2,
+	11: 3,
+	12: 4,
+	13: 5,
+	14: 7,
+	15: 9,
 };
 const MIN_STAT = 8;
 const MAX_STAT = 15;
@@ -29,7 +46,12 @@ interface CharacterReviewProps {
 	baseStats: StatBlock; // before racial bonuses
 	racialBonuses: PartialStatBlock;
 	onBack: () => void;
-	onFinish: (finalData: { name: string; description: string; stats: StatBlock; skills: string[] }) => void;
+	onFinish: (finalData: {
+		name: string;
+		description: string;
+		stats: StatBlock;
+		skills: string[];
+	}) => void;
 	skills: string[];
 }
 
@@ -49,7 +71,11 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 	const [description, setDescription] = useState(initialDescription);
 	const pointsUsed = getPointBuyTotal(editableStats);
 	const pointsRemaining = POINT_BUY_TOTAL - pointsUsed;
-	const [invalidFields, setInvalidFields] = useState<{ name: boolean; description: boolean; points: boolean }>({ name: false, description: false, points: false });
+	const [invalidFields, setInvalidFields] = useState<{
+		name: boolean;
+		description: boolean;
+		points: boolean;
+	}>({ name: false, description: false, points: false });
 
 	// Animated values for pulsing
 	const namePulse = useRef(new Animated.Value(0)).current;
@@ -82,7 +108,8 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 	}, [race, classOption, baseStats]);
 
 	const pulseAnim = (field: 'name' | 'description' | 'points') => {
-		const anim = field === 'name' ? namePulse : field === 'description' ? descPulse : pointsPulse;
+		const anim =
+			field === 'name' ? namePulse : field === 'description' ? descPulse : pointsPulse;
 		anim.setValue(0);
 		Animated.timing(anim, {
 			toValue: 1,
@@ -95,7 +122,8 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 	};
 
 	const isPrimary = classOption.primaryStats.includes.bind(classOption.primaryStats);
-	const isSecondary = classOption.secondaryStats?.includes.bind(classOption.secondaryStats) ?? (() => false);
+	const isSecondary =
+		classOption.secondaryStats?.includes.bind(classOption.secondaryStats) ?? (() => false);
 
 	const handleChange = (key: StatKey, delta: number) => {
 		const newValue = editableStats[key] + delta;
@@ -123,11 +151,13 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 	// Reset error on change
 	const handleNameChange = (val: string) => {
 		setName(val);
-		if (invalidFields.name && val.trim().length > 0) setInvalidFields(f => ({ ...f, name: false }));
+		if (invalidFields.name && val.trim().length > 0)
+			setInvalidFields(f => ({ ...f, name: false }));
 	};
 	const handleDescChange = (val: string) => {
 		setDescription(val);
-		if (invalidFields.description && val.trim().length > 0) setInvalidFields(f => ({ ...f, description: false }));
+		if (invalidFields.description && val.trim().length > 0)
+			setInvalidFields(f => ({ ...f, description: false }));
 	};
 
 	const nameBg = namePulse.interpolate({
@@ -144,18 +174,13 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 	});
 
 	return (
-		<ScrollView contentContainerStyle={[
-			newGameStyles.scrollViewContent,
-			styles.container,
-		]}>
+		<ScrollView contentContainerStyle={[newGameStyles.scrollViewContent, styles.container]}>
 			<Text style={newGameStyles.title}>Review Character Sheet</Text>
 			<View style={styles.centerWrapper}>
 				<View style={styles.sheetRow}>
 					<View style={styles.portraitCol}>
 						<View style={styles.portraitBox}>
-							{race.image && (
-								<Image source={race.image} style={styles.portrait} />
-							)}
+							{race.image && <Image source={race.image} style={styles.portrait} />}
 						</View>
 					</View>
 					<View style={styles.leftCol}>
@@ -164,10 +189,15 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 							<Text style={styles.infoText}>/ {race.name}</Text>
 							<Text style={styles.infoText}>/ Level 1</Text>
 						</View>
-						<Animated.View style={[styles.animatedSection, { backgroundColor: nameBg }]}>
+						<Animated.View
+							style={[styles.animatedSection, { backgroundColor: nameBg }]}
+						>
 							<View>
 								<TextInput
-									style={[styles.nameInput, invalidFields.name && styles.inputError]}
+									style={[
+										styles.nameInput,
+										invalidFields.name && styles.inputError,
+									]}
 									placeholder="Character Name"
 									value={name}
 									onChangeText={handleNameChange}
@@ -175,7 +205,9 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 								/>
 							</View>
 						</Animated.View>
-						<Animated.View style={[styles.animatedSection, { backgroundColor: descBg }]}>
+						<Animated.View
+							style={[styles.animatedSection, { backgroundColor: descBg }]}
+						>
 							<View>
 								<TextInput
 									style={[
@@ -203,7 +235,18 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 									const skill = SKILL_LIST.find(s => s.id === skillId);
 									if (!skill) return null;
 									return (
-										<View key={skill.id} style={[styles.skillPill, { backgroundColor: ABILITY_COLORS[skill.ability as keyof typeof ABILITY_COLORS] || '#ccc' }] }>
+										<View
+											key={skill.id}
+											style={[
+												styles.skillPill,
+												{
+													backgroundColor:
+														ABILITY_COLORS[
+															skill.ability as keyof typeof ABILITY_COLORS
+														] || '#ccc',
+												},
+											]}
+										>
 											<Text style={styles.skillPillText}>{skill.name}</Text>
 										</View>
 									);
@@ -212,47 +255,96 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 						</View>
 					</View>
 					<View style={styles.statBlockCol}>
-						<Animated.View style={[styles.animatedSection, { backgroundColor: pointsBg }]}>
-							<Text style={[styles.pointsText, invalidFields.points && styles.inputError]}>
+						<Animated.View
+							style={[styles.animatedSection, { backgroundColor: pointsBg }]}
+						>
+							<Text
+								style={[
+									styles.pointsText,
+									invalidFields.points && styles.inputError,
+								]}
+							>
 								Points Left: {pointsRemaining}
 							</Text>
 						</Animated.View>
 						<View style={styles.statGrid}>
-							{([
-								['STR', 'DEX', 'CON'],
-								['INT', 'WIS', 'CHA'],
-							] as StatKey[][]).map((keys) => (
+							{(
+								[
+									['STR', 'DEX', 'CON'],
+									['INT', 'WIS', 'CHA'],
+								] as StatKey[][]
+							).map(keys => (
 								<View key={keys.join(',')} style={styles.statRowGrid}>
-									{keys.map((key) => (
-										<View key={key} style={[styles.statBox, isPrimary(key) && styles.primaryStatBox, isSecondary(key) && styles.secondaryStatBox]}>
+									{keys.map(key => (
+										<View
+											key={key}
+											style={[
+												styles.statBox,
+												isPrimary(key) && styles.primaryStatBox,
+												isSecondary(key) && styles.secondaryStatBox,
+											]}
+										>
 											<Text style={styles.statLabel}>{key}</Text>
 											<View style={styles.statArrowsRow}>
 												<TouchableOpacity
 													onPress={() => handleChange(key, 1)}
-													disabled={editableStats[key] >= MAX_STAT || getPointBuyTotal({ ...editableStats, [key]: editableStats[key] + 1 }) > POINT_BUY_TOTAL}
+													disabled={
+														editableStats[key] >= MAX_STAT ||
+														getPointBuyTotal({
+															...editableStats,
+															[key]: editableStats[key] + 1,
+														}) > POINT_BUY_TOTAL
+													}
 													style={styles.arrowBtn}
 												>
-													<Feather name="chevron-up" size={22} color={editableStats[key] >= MAX_STAT || getPointBuyTotal({ ...editableStats, [key]: editableStats[key] + 1 }) > POINT_BUY_TOTAL ? '#ccc' : '#8B2323'} />
+													<Feather
+														name="chevron-up"
+														size={22}
+														color={
+															editableStats[key] >= MAX_STAT ||
+															getPointBuyTotal({
+																...editableStats,
+																[key]: editableStats[key] + 1,
+															}) > POINT_BUY_TOTAL
+																? '#ccc'
+																: '#8B2323'
+														}
+													/>
 												</TouchableOpacity>
-												<Text style={styles.statValue}>{editableStats[key]}</Text>
+												<Text style={styles.statValue}>
+													{editableStats[key]}
+												</Text>
 												<TouchableOpacity
 													onPress={() => handleChange(key, -1)}
 													disabled={editableStats[key] <= MIN_STAT}
 													style={styles.arrowBtn}
 												>
-													<Feather name="chevron-down" size={22} color={editableStats[key] <= MIN_STAT ? '#ccc' : '#8B2323'} />
+													<Feather
+														name="chevron-down"
+														size={22}
+														color={
+															editableStats[key] <= MIN_STAT
+																? '#ccc'
+																: '#8B2323'
+														}
+													/>
 												</TouchableOpacity>
 											</View>
-											<Text style={styles.racialBonus}>{racialBonuses[key] ? `+${racialBonuses[key]}` : ''}</Text>
+											<Text style={styles.racialBonus}>
+												{racialBonuses[key] ? `+${racialBonuses[key]}` : ''}
+											</Text>
 											<Text style={styles.statTotal}>{getTotal(key)}</Text>
-											{isPrimary(key) && <Text style={styles.textPrimary}>PRIMARY</Text>}
-											{!isPrimary(key) && isSecondary(key) && <Text style={styles.textSecondary}>SECONDARY</Text>}
+											{isPrimary(key) && (
+												<Text style={styles.textPrimary}>PRIMARY</Text>
+											)}
+											{!isPrimary(key) && isSecondary(key) && (
+												<Text style={styles.textSecondary}>SECONDARY</Text>
+											)}
 										</View>
 									))}
 								</View>
 							))}
 						</View>
-
 					</View>
 				</View>
 			</View>

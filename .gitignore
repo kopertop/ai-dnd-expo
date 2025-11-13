@@ -6,11 +6,16 @@ node_modules/
 # Local Configs
 *.local.json
 
+# Generated config files
+app.json
+
 # Expo
 .expo/
 dist/
 web-build/
 expo-env.d.ts
+.projectId.json
+app.json
 
 # Native
 .kotlin/
@@ -20,6 +25,11 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+
+# Native build directories
+ios/
+android/
+build-*.ipa
 
 # Metro
 .metro-health-check*
@@ -74,3 +84,10 @@ coverage/
 
 # OS
 Thumbs.db
+
+# Models files are huge and downloaded at build time
+assets/models/
+ai-training/models/
+ai-training/venv/
+ai-training/trained_models/
+ai-training/logs/

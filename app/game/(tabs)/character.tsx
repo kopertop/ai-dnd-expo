@@ -1,0 +1,57 @@
+import React from 'react';
+import { ActivityIndicator, StyleSheet, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { CharacterSheetView } from '@/components/character-sheet-view';
+import { ThemedText } from '@/components/themed-text';
+import { useGameState } from '@/hooks/use-game-state';
+
+const CharacterTab: React.FC = () => {
+	const { loading, gameState } = useGameState();
+
+	if (loading) {
+		return (
+			<SafeAreaView style={styles.container} edges={['left', 'right']}>
+				<ActivityIndicator size="large" color="#C9B037" />
+				<ThemedText>
+					<Text>Loading character...</Text>
+				</ThemedText>
+			</SafeAreaView>
+		);
+	}
+
+	if (!gameState) {
+		return (
+			<SafeAreaView style={styles.container} edges={['left', 'right']}>
+				<ThemedText type="title">
+					<Text>No saved game found.</Text>
+				</ThemedText>
+				<ThemedText style={{ marginTop: 8 }}>
+					<Text>Please start a new game from the main menu.</Text>
+				</ThemedText>
+			</SafeAreaView>
+		);
+	}
+
+	return (
+		<SafeAreaView style={styles.characterContainer} edges={['left', 'right']}>
+			<CharacterSheetView />
+		</SafeAreaView>
+	);
+};
+
+export default CharacterTab;
+
+const styles = StyleSheet.create({
+	container: {
+		flex: 1,
+		alignItems: 'center',
+		justifyContent: 'center',
+		padding: 20,
+		backgroundColor: '#F9F6EF',
+	},
+	characterContainer: {
+		flex: 1,
+		backgroundColor: '#F9F6EF',
+	},
+});

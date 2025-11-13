@@ -1,0 +1,65 @@
+{
+	"testCharacter": {
+		"id": "test-character-1",
+		"name": "Thorin Ironforge",
+		"race": "dwarf",
+		"class": "fighter",
+		"level": 3,
+		"stats": {
+			"strength": 16,
+			"dexterity": 12,
+			"constitution": 15,
+			"intelligence": 10,
+			"wisdom": 13,
+			"charisma": 8
+		},
+		"skills": ["athletics", "intimidation", "perception"],
+		"background": "A sturdy dwarf warrior with a heart of gold and an axe to match.",
+		"hitPoints": 28,
+		"maxHitPoints": 28,
+		"armorClass": 18,
+		"proficiencyBonus": 2
+	},
+	"testWizard": {
+		"id": "test-character-2",
+		"name": "Elara Moonwhisper",
+		"race": "elf",
+		"class": "wizard",
+		"level": 2,
+		"stats": {
+			"strength": 8,
+			"dexterity": 14,
+			"constitution": 12,
+			"intelligence": 16,
+			"wisdom": 13,
+			"charisma": 11
+		},
+		"skills": ["arcana", "history", "investigation"],
+		"background": "A wise elf scholar seeking ancient knowledge and magical secrets.",
+		"hitPoints": 14,
+		"maxHitPoints": 14,
+		"armorClass": 12,
+		"proficiencyBonus": 2
+	},
+	"testRogue": {
+		"id": "test-character-3",
+		"name": "Shadow Quickfingers",
+		"race": "halfling",
+		"class": "rogue",
+		"level": 1,
+		"stats": {
+			"strength": 10,
+			"dexterity": 16,
+			"constitution": 13,
+			"intelligence": 12,
+			"wisdom": 14,
+			"charisma": 15
+		},
+		"skills": ["stealth", "sleight-of-hand", "perception", "deception"],
+		"background": "A nimble halfling with quick fingers and an even quicker wit.",
+		"hitPoints": 9,
+		"maxHitPoints": 9,
+		"armorClass": 14,
+		"proficiencyBonus": 2
+	}
+}

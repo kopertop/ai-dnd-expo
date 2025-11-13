@@ -107,10 +107,12 @@ export const GameWorldStateSchema = z.object({
 		hour: z.number().min(0).max(23).default(8), // 8 AM start
 		timeScale: z.number().default(1), // Real time to game time ratio
 	}),
-	weather: z.object({
-		type: z.enum(['clear', 'cloudy', 'rain', 'storm', 'snow', 'fog']).default('clear'),
-		intensity: z.number().min(0).max(1).default(0.5),
-	}).optional(),
+	weather: z
+		.object({
+			type: z.enum(['clear', 'cloudy', 'rain', 'storm', 'snow', 'fog']).default('clear'),
+			intensity: z.number().min(0).max(1).default(0.5),
+		})
+		.optional(),
 });
 
 // Type exports
@@ -141,11 +143,14 @@ export const addPositions = (pos1: Position, pos2: Position): Position => ({
 	y: pos1.y + pos2.y,
 });
 
-export const isWithinBounds = (position: Position, bounds: { topLeft: Position; bottomRight: Position }): boolean => {
+export const isWithinBounds = (
+	position: Position,
+	bounds: { topLeft: Position; bottomRight: Position },
+): boolean => {
 	return (
 		position.x >= bounds.topLeft.x &&
-    position.x <= bounds.bottomRight.x &&
-    position.y >= bounds.topLeft.y &&
-    position.y <= bounds.bottomRight.y
+		position.x <= bounds.bottomRight.x &&
+		position.y >= bounds.topLeft.y &&
+		position.y <= bounds.bottomRight.y
 	);
 };

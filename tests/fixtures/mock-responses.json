@@ -1,0 +1,63 @@
+{
+	"dungeonMasterResponses": {
+		"greeting": {
+			"text": "Welcome, brave adventurer! The tavern is bustling with activity tonight. You notice a mysterious hooded figure sitting alone in the corner, and the barkeep seems eager to share some local gossip. What would you like to do?",
+			"usage": { "totalTokens": 45 }
+		},
+		"exploration": {
+			"text": "As you venture deeper into the forest, the trees grow thicker and the path becomes less defined. You hear the distant sound of running water and notice strange markings carved into the bark of an ancient oak tree. The air feels charged with magical energy.",
+			"usage": { "totalTokens": 52 }
+		},
+		"combat": {
+			"text": "The goblin snarls and raises its rusty scimitar! It lunges forward with surprising speed. Roll a d20 for your attack roll, and tell me what action you'd like to take!",
+			"usage": { "totalTokens": 38 }
+		},
+		"social": {
+			"text": "The merchant's eyes light up with interest. 'Ah, a fellow traveler! I have just the thing you might need.' He pulls out a small, glowing crystal. 'This here is a minor healing potion, crystallized for easy transport. Only 50 gold pieces!'",
+			"usage": { "totalTokens": 48 }
+		},
+		"fallback": {
+			"text": "The Dungeon Master pauses thoughtfully, considering the situation... (AI service temporarily unavailable - please try again)",
+			"usage": { "totalTokens": 0 }
+		}
+	},
+	"npcResponses": {
+		"shopkeeper": {
+			"text": "Welcome to my humble shop! I've got potions, weapons, and all manner of adventuring gear. What catches your eye today?",
+			"usage": { "totalTokens": 28 }
+		},
+		"guard": {
+			"text": "Hold there, traveler! These roads have been dangerous lately. Bandits and worse have been spotted. Do you have business in town?",
+			"usage": { "totalTokens": 32 }
+		},
+		"innkeeper": {
+			"text": "Welcome to the Silver Stag Inn! We have the finest ale this side of the mountains and comfortable beds for weary travelers. Will you be staying the night?",
+			"usage": { "totalTokens": 35 }
+		},
+		"sage": {
+			"text": "Ah, a seeker of knowledge! I have spent many years studying the ancient texts. What mysteries would you have me help unravel?",
+			"usage": { "totalTokens": 30 }
+		},
+		"fallback": {
+			"text": "The character seems lost in thought and doesn't respond immediately...",
+			"usage": { "totalTokens": 0 }
+		}
+	},
+	"errorResponses": {
+		"serviceUnavailable": {
+			"error": "AI service is currently unavailable",
+			"fallbackMessage": "The magical energies seem disrupted. Please try again in a moment.",
+			"retryAfter": 5000
+		},
+		"rateLimited": {
+			"error": "Too many requests",
+			"fallbackMessage": "The mystical forces need a moment to recharge. Please wait before continuing.",
+			"retryAfter": 10000
+		},
+		"invalidInput": {
+			"error": "Invalid input provided",
+			"fallbackMessage": "The magical incantation seems unclear. Could you rephrase your request?",
+			"retryAfter": 0
+		}
+	}
+}

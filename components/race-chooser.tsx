@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { RACES } from '../constants/races';
-import { CARD_GAP, cardGridStyles, getCardsPerRow, getContainerWidth, SCREEN_WIDTH } from '../styles/card-grid.styles';
+import {
+	CARD_GAP,
+	cardGridStyles,
+	getCardsPerRow,
+	getContainerWidth,
+	SCREEN_WIDTH,
+} from '../styles/card-grid.styles';
 import { newGameStyles } from '../styles/new-game.styles';
-import { RaceOption } from '../types/race-option';
+
+import { RACES } from '@/constants/races';
+import { RaceOption } from '@/types/race-option';
 
 interface RaceChooserProps {
 	onSelect: (race: RaceOption) => void;
@@ -66,20 +73,27 @@ export const RaceChooser: React.FC<RaceChooserProps> = ({ onSelect }) => {
 						multiline
 						numberOfLines={3}
 					/>
-					<TouchableOpacity style={newGameStyles.submitButton} onPress={handleCustomSubmit}>
+					<TouchableOpacity
+						style={newGameStyles.submitButton}
+						onPress={handleCustomSubmit}
+					>
 						<Text style={newGameStyles.submitButtonText}>Create Race</Text>
 					</TouchableOpacity>
 				</View>
 			) : (
 				<View style={styles.cardContainer}>
-					{allRaces.map((race) => (
+					{allRaces.map(race => (
 						<TouchableOpacity
 							key={race.id}
 							style={[styles.card, { width: cardWidth, height: cardHeight }]}
 							onPress={() => handleSelect(race)}
 						>
 							<View style={styles.imageWrapper}>
-								<Image source={race.image} style={[styles.image, { width: '100%', height: '100%' }]} resizeMode="cover" />
+								<Image
+									source={race.image}
+									style={[styles.image, { width: '100%', height: '100%' }]}
+									resizeMode="cover"
+								/>
 								<View style={styles.overlay}>
 									<Text style={styles.cardTitle}>{race.name}</Text>
 									<Text style={styles.cardDesc}>{race.description}</Text>

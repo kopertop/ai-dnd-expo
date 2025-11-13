@@ -17,6 +17,7 @@ The project uses **Expo Application Services (EAS)** for building and deploying 
 ### Prerequisites
 
 1. **EAS CLI Installation**
+
    ```bash
    npm install -g eas-cli
    ```
@@ -48,18 +49,21 @@ Add these secrets to your GitHub repository:
 ## 🏗️ Build Profiles
 
 ### Development Profile
+
 - **Purpose**: Local development and testing
 - **Distribution**: Internal only
 - **Development Client**: Enabled
 - **Command**: `eas build --profile development`
 
 ### Staging Profile
+
 - **Purpose**: Internal testing and QA
 - **Distribution**: Internal testers
 - **Updates**: Enabled via `staging` branch
 - **Command**: `eas build --profile staging`
 
 ### Production Profile
+
 - **Purpose**: App store releases
 - **Distribution**: App stores
 - **Updates**: Enabled via `production` branch
@@ -69,7 +73,7 @@ Add these secrets to your GitHub repository:
 
 ### Automated Workflows
 
-1. **Pull Request**: 
+1. **Pull Request**:
    - Run tests and linting
    - Build development version
    - No deployment
@@ -106,16 +110,19 @@ Use the deployment script for manual deployments:
 ## 📱 Platform-Specific Builds
 
 ### iOS Builds
+
 - Requires Apple Developer account
 - Code signing handled by EAS
 - TestFlight for staging distribution
 
 ### Android Builds
+
 - Google Play Console integration
 - Internal testing track for staging
 - Production track for releases
 
 ### Web Builds
+
 - Automatic deployment to Expo hosting
 - CDN distribution
 - PWA capabilities
@@ -123,15 +130,18 @@ Use the deployment script for manual deployments:
 ## 🔄 Over-the-Air Updates
 
 ### EAS Update
+
 - Instant updates for JavaScript/TypeScript changes
 - No app store review required
 - Automatic rollback on errors
 
 ### Update Channels
+
 - `staging`: Updates for staging builds
 - `production`: Updates for production builds
 
 ### Publishing Updates
+
 ```bash
 # Staging update
 eas update --branch staging --message "Feature update"
@@ -143,11 +153,13 @@ eas update --branch production --message "Bug fix"
 ## 🔐 Environment Configuration
 
 ### Environment Files
+
 - `.env.development`: Development configuration
 - `.env.staging`: Staging configuration
 - `.env.production`: Production configuration
 
 ### Environment Variables
+
 - `EXPO_PUBLIC_*`: Client-side variables
 - Server-side secrets managed securely
 - Feature flags for gradual rollouts
@@ -155,12 +167,14 @@ eas update --branch production --message "Bug fix"
 ## 🧪 Testing Strategy
 
 ### Pre-deployment Testing
+
 1. **Unit Tests**: Automated via Jest
 2. **Type Checking**: TypeScript compilation
 3. **Linting**: ESLint validation
 4. **Integration Tests**: API and component testing
 
 ### Post-deployment Testing
+
 1. **Smoke Tests**: Basic functionality
 2. **Regression Tests**: Critical user flows
 3. **Performance Tests**: Load and response times
@@ -169,11 +183,13 @@ eas update --branch production --message "Bug fix"
 ## 📊 Monitoring & Analytics
 
 ### Build Monitoring
+
 - EAS Build dashboard
 - GitHub Actions logs
 - Slack/Discord notifications
 
 ### App Performance
+
 - Crash reporting (Sentry)
 - Performance metrics
 - User analytics
@@ -181,11 +197,13 @@ eas update --branch production --message "Bug fix"
 ## 🚨 Emergency Procedures
 
 ### Rollback Process
+
 1. **Immediate**: Publish previous working update
 2. **Critical**: Revert to previous app store version
 3. **Communication**: Notify team and users
 
 ### Hotfix Deployment
+
 1. Create hotfix branch from main
 2. Make minimal necessary changes
 3. Fast-track through CI/CD
@@ -211,6 +229,7 @@ eas update --branch production --message "Bug fix"
    - Ensure proper permissions
 
 ### Debug Commands
+
 ```bash
 # Check build status
 eas build:list
@@ -228,6 +247,7 @@ eas build:view [BUILD_ID]
 ## 📋 Deployment Checklist
 
 ### Pre-deployment
+
 - [ ] All tests passing
 - [ ] Environment variables configured
 - [ ] Build profiles tested
@@ -235,12 +255,14 @@ eas build:view [BUILD_ID]
 - [ ] Release notes prepared
 
 ### During Deployment
+
 - [ ] Monitor build progress
 - [ ] Check for errors/warnings
 - [ ] Verify successful completion
 - [ ] Test deployment in staging
 
 ### Post-deployment
+
 - [ ] Verify app functionality
 - [ ] Monitor crash reports
 - [ ] Check performance metrics
@@ -249,12 +271,14 @@ eas build:view [BUILD_ID]
 ## 🤝 Team Workflow
 
 ### Roles & Responsibilities
+
 - **Developers**: Feature development and testing
 - **QA**: Staging environment testing
 - **DevOps**: CI/CD maintenance and monitoring
 - **Product**: Production deployment approval
 
 ### Communication
+
 - Deployment notifications in team chat
 - Status updates in project management
 - Incident reports for failures
@@ -268,4 +292,4 @@ eas build:view [BUILD_ID]
 
 ---
 
-*Last updated: [Date]* | *Next review: [Date]*
+_Last updated: [Date]_ | _Next review: [Date]_

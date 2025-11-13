@@ -1,14 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 
+import { SettingsModal } from '@/components/settings-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
 const IndexScreen: React.FC = () => {
 	const [hasSavedGame, setHasSavedGame] = useState(false);
 	const [loading, setLoading] = useState(true);
+	const [isSettingsVisible, setSettingsVisible] = useState(false);
 
 	useEffect(() => {
 		const checkSavedGame = async () => {
@@ -25,21 +27,58 @@ const IndexScreen: React.FC = () => {
 
 	return (
 		<>
-			<Stack.Screen options={{ title: 'Home' }} />
+			<Stack.Screen
+				options={{
+					title: 'Home',
+					headerShown: false,
+				}}
+			/>
 			<ThemedView style={styles.container}>
-				<ThemedText type="title">
-					<Text>Welcome to the AI D&D Platform</Text>
-				</ThemedText>
+				<ThemedText type="title">Welcome to the AI D&D Platform</ThemedText>
 				<Link href="/new-game" style={styles.link}>
-					<ThemedText type="link">
-						<Text>Start a new game</Text>
-					</ThemedText>
+					<ThemedText type="link">Start a new game</ThemedText>
 				</Link>
+				<TouchableOpacity
+					style={styles.multiplayerBtn}
+					onPress={() => router.push('/host-game')}
+				>
+					<ThemedText style={styles.multiplayerBtnText}>Host Game</ThemedText>
+				</TouchableOpacity>
+				<TouchableOpacity
+					style={styles.multiplayerBtn}
+					onPress={() => router.push('/join-game')}
+				>
+					<ThemedText style={styles.multiplayerBtnText}>Join Game</ThemedText>
+				</TouchableOpacity>
 				{!loading && hasSavedGame && (
-					<TouchableOpacity style={styles.continueBtn} onPress={() => router.push({ pathname: '/game' as any })}>
-						<Text style={styles.continueBtnText}>Continue Game</Text>
+					<TouchableOpacity
+						style={styles.continueBtn}
+						onPress={() => router.push('/game')}
+					>
+						<ThemedText style={styles.continueBtnText}>Continue Game</ThemedText>
 					</TouchableOpacity>
 				)}
+
+				{/* Settings button */}
+				<TouchableOpacity
+					style={styles.settingsBtn}
+					onPress={() => setSettingsVisible(true)}
+				>
+					<ThemedText style={styles.settingsBtnText}>Settings</ThemedText>
+				</TouchableOpacity>
+
+				{/* Licenses & Credits button */}
+				<TouchableOpacity
+					style={styles.licensesBtn}
+					onPress={() => router.push('/licenses')}
+				>
+					<ThemedText style={styles.licensesBtnText}>Licenses & Credits</ThemedText>
+				</TouchableOpacity>
+
+				<SettingsModal
+					visible={isSettingsVisible}
+					onClose={() => setSettingsVisible(false)}
+				/>
 			</ThemedView>
 		</>
 	);
@@ -70,5 +109,44 @@ const styles = StyleSheet.create({
 		color: '#3B2F1B',
 		fontWeight: 'bold',
 		fontSize: 18,
+	},
+	multiplayerBtn: {
+		marginTop: 15,
+		backgroundColor: '#8B6914',
+		paddingVertical: 15,
+		paddingHorizontal: 32,
+		borderRadius: 8,
+		alignItems: 'center',
+	},
+	multiplayerBtnText: {
+		color: '#F5E6D3',
+		fontWeight: 'bold',
+		fontSize: 18,
+	},
+	licensesBtn: {
+		marginTop: 30,
+		backgroundColor: '#E2D3B3',
+		paddingVertical: 12,
+		paddingHorizontal: 32,
+		borderRadius: 8,
+		alignItems: 'center',
+	},
+	licensesBtnText: {
+		color: '#3B2F1B',
+		fontWeight: 'bold',
+		fontSize: 16,
+	},
+	settingsBtn: {
+		marginTop: 20,
+		backgroundColor: '#E2D3B3',
+		paddingVertical: 12,
+		paddingHorizontal: 32,
+		borderRadius: 8,
+		alignItems: 'center',
+	},
+	settingsBtnText: {
+		color: '#3B2F1B',
+		fontWeight: 'bold',
+		fontSize: 16,
 	},
 });

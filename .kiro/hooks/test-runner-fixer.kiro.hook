@@ -1,0 +1,22 @@
+{
+  "enabled": true,
+  "name": "Test Runner & Fixer",
+  "description": "Automatically runs all tests when code files change and attempts to fix any test failures by analyzing errors and updating code accordingly",
+  "version": "1",
+  "when": {
+    "type": "userTriggered",
+    "patterns": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.js",
+      "**/*.jsx",
+      "package.json",
+      "tsconfig.json",
+      "vitest.config.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Code files have been modified. Please run all tests using `npm test` and analyze any failures. If tests fail, examine the error messages and fix the underlying issues in the code. Focus on:\n\n1. Running the full test suite\n2. Identifying failing tests and their error messages\n3. Fixing TypeScript compilation errors\n4. Resolving import/export issues\n5. Updating test expectations if needed\n6. Ensuring all tests pass before completing\n\nAfter fixing issues, run the tests again to confirm everything passes. Also run `npm run typecheck` and `npm run lint` to ensure code quality standards are met."
+  }
+}

@@ -18,11 +18,7 @@ type Props = PropsWithChildren<{
 	headerBackgroundColor: { dark: string; light: string };
 }>;
 
-const ParallaxScrollView: React.FC<Props> = ({
-	children,
-	headerImage,
-	headerBackgroundColor,
-}) => {
+const ParallaxScrollView: React.FC<Props> = ({ children, headerImage, headerBackgroundColor }) => {
 	const colorScheme = useColorScheme() ?? 'light';
 	const scrollRef = useAnimatedRef<Animated.ScrollView>();
 	const scrollOffset = useScrollViewOffset(scrollRef);
@@ -38,7 +34,11 @@ const ParallaxScrollView: React.FC<Props> = ({
 					),
 				},
 				{
-					scale: interpolate(scrollOffset.value, [-HEADER_HEIGHT, 0, HEADER_HEIGHT], [2, 1, 1]),
+					scale: interpolate(
+						scrollOffset.value,
+						[-HEADER_HEIGHT, 0, HEADER_HEIGHT],
+						[2, 1, 1],
+					),
 				},
 			],
 		};
@@ -50,13 +50,15 @@ const ParallaxScrollView: React.FC<Props> = ({
 				ref={scrollRef}
 				scrollEventThrottle={16}
 				scrollIndicatorInsets={{ bottom }}
-				contentContainerStyle={{ paddingBottom: bottom }}>
+				contentContainerStyle={{ paddingBottom: bottom }}
+			>
 				<Animated.View
 					style={[
 						styles.header,
 						{ backgroundColor: headerBackgroundColor[colorScheme] },
 						headerAnimatedStyle,
-					]}>
+					]}
+				>
 					{headerImage}
 				</Animated.View>
 				<ThemedView style={styles.content}>{children}</ThemedView>

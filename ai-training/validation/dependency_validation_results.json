@@ -1,0 +1,25 @@
+{
+	"dependencies": {
+		"torch": true,
+		"transformers": true,
+		"transformers_pytorch": true,
+		"peft": true,
+		"gguf": true,
+		"llama_cpp": true
+	},
+	"versions": {
+		"torch": "2.7.1",
+		"transformers": "4.53.3",
+		"peft": "0.16.0",
+		"gguf": "unknown",
+		"llama_cpp": "0.3.14"
+	},
+	"gpu_support": {
+		"cuda": false,
+		"mps": true,
+		"cuda_device_count": 0
+	},
+	"warnings": ["peft version 0.16.0 is below recommended minimum 0.4.0"],
+	"errors": [],
+	"recommendations": []
+}

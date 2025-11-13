@@ -2,13 +2,13 @@ import React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface ConfirmModalProps {
-  visible: boolean;
-  title: string;
-  message: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  confirmLabel?: string;
-  cancelLabel?: string;
+	visible: boolean;
+	title: string;
+	message: string;
+	onConfirm: () => void;
+	onCancel: () => void;
+	confirmLabel?: string;
+	cancelLabel?: string;
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -20,12 +20,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 	confirmLabel = 'Confirm',
 	cancelLabel = 'Cancel',
 }) => (
-	<Modal
-		visible={visible}
-		transparent
-		animationType="fade"
-		onRequestClose={onCancel}
-	>
+	<Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
 		<View style={styles.overlay}>
 			<View style={styles.modalBox}>
 				<Text style={styles.title}>{title}</Text>
