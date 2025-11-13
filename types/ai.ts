@@ -45,7 +45,7 @@ export interface AIProviderHealth {
 	error?: string;
 }
 
-export type AIProviderType = 'ollama' | 'cactus' | 'local' | 'fallback';
+export type AIProviderType = 'ollama' | 'local' | 'fallback';
 
 export interface AIProviderConfig {
 	type: AIProviderType;

@@ -26,7 +26,7 @@ export interface UseEnhancedDungeonMasterReturn {
 	dmVoice: ReturnType<typeof useDMVoice>;
 	replaceWelcomeMessage: (newContent: string) => void;
 	serviceStatus: {
-		cactus: { available: boolean; latency?: number };
+		primary: { available: boolean; latency?: number };
 		local: {
 			available: boolean;
 			resourceUsage?: import('../services/ai/providers/local-dm-provider').ResourceUsage;
@@ -42,18 +42,18 @@ export interface UseEnhancedDungeonMasterReturn {
 		error: string | null;
 		resourceUsage?: import('../services/ai/providers/local-dm-provider').ResourceUsage;
 	};
-	switchProvider: (providerType: 'local' | 'cactus') => Promise<boolean>;
+	switchProvider: (providerType: 'local' | 'ollama') => Promise<boolean>;
 	getProviderRecommendation: () => {
-		recommended: 'local' | 'cactus' | 'fallback';
+		recommended: 'local' | 'ollama' | 'fallback';
 		reason: string;
 		confidence: number;
 	};
-	currentProvider: 'local' | 'cactus' | 'fallback';
+	currentProvider: 'local' | 'ollama' | 'fallback';
 	providerPreferences: {
 		preferLocal: boolean;
 		setPreferLocal: (prefer: boolean) => void;
-		fallbackChain: ('local' | 'cactus' | 'rule-based')[];
-		setFallbackChain: (chain: ('local' | 'cactus' | 'rule-based')[]) => void;
+		fallbackChain: ('local' | 'ollama' | 'rule-based')[];
+		setFallbackChain: (chain: ('local' | 'ollama' | 'rule-based')[]) => void;
 	};
 }
 
@@ -62,7 +62,6 @@ export interface EnhancedDungeonMasterConfig {
 	playerCharacter: Character | null;
 	autoSave?: boolean;
 	enableVoice?: boolean;
-	cactusApiKey?: string;
 }
 
 export const useEnhancedDungeonMaster = (
@@ -72,19 +71,19 @@ export const useEnhancedDungeonMaster = (
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [serviceStatus, setServiceStatus] = useState<{
-		cactus: { available: boolean; latency?: number };
+		primary: { available: boolean; latency?: number };
 		local: {
 			available: boolean;
 			resourceUsage?: import('../services/ai/providers/local-dm-provider').ResourceUsage;
-				};
+		};
 		cache: { size: number; hitRate: number };
 		overall: 'healthy' | 'degraded' | 'offline';
-				}>({
-					cactus: { available: false },
-					local: { available: false },
-					cache: { size: 0, hitRate: 0 },
-					overall: 'offline',
-				});
+	}>({
+		primary: { available: false },
+		local: { available: false },
+		cache: { size: 0, hitRate: 0 },
+		overall: 'offline',
+	});
 
 	// New state for local provider functionality
 	const [localProviderStatus, setLocalProviderStatus] = useState<{
@@ -98,13 +97,13 @@ export const useEnhancedDungeonMaster = (
 				error: null,
 			});
 
-	const [currentProvider, setCurrentProvider] = useState<'local' | 'cactus' | 'fallback'>(
+	const [currentProvider, setCurrentProvider] = useState<'local' | 'ollama' | 'fallback'>(
 		'fallback',
 	);
 	const [preferLocal, setPreferLocal] = useState<boolean>(true); // Default to prefer local for privacy
-	const [fallbackChain, setFallbackChain] = useState<('local' | 'cactus' | 'rule-based')[]>([
+	const [fallbackChain, setFallbackChain] = useState<('local' | 'ollama' | 'rule-based')[]>([
 		'local',
-		'cactus',
+		'ollama',
 		'rule-based',
 	]);
 	const [gameContextId] = useState<string>(
@@ -161,10 +160,6 @@ export const useEnhancedDungeonMaster = (
 			try {
 				const aiConfig = {
 					...DefaultAIConfig,
-					cactus: {
-						...DefaultAIConfig.cactus,
-						apiKey: config.cactusApiKey || process.env.EXPO_PUBLIC_CACTUS_API_KEY || '',
-					},
 					providerSelection: {
 						...DefaultAIConfig.providerSelection,
 						preferLocal,
@@ -194,7 +189,7 @@ export const useEnhancedDungeonMaster = (
 		};
 
 		initializeAIService();
-	}, [config.cactusApiKey, preferLocal, fallbackChain, updateLocalProviderStatus]);
+	}, [preferLocal, fallbackChain, updateLocalProviderStatus]);
 
 	// Periodic status monitoring
 	useEffect(() => {
@@ -393,7 +388,7 @@ export const useEnhancedDungeonMaster = (
 	// Provider switching functionality
 	// Requirement 4.1: Support local provider selection
 	const switchProvider = useCallback(
-		async (providerType: 'local' | 'cactus'): Promise<boolean> => {
+		async (providerType: 'local' | 'ollama'): Promise<boolean> => {
 			if (!aiServiceRef.current) {
 				return false;
 			}
@@ -406,7 +401,7 @@ export const useEnhancedDungeonMaster = (
 				);
 
 				if (result.success) {
-					setCurrentProvider(result.newProvider as 'local' | 'cactus' | 'fallback');
+					setCurrentProvider(result.newProvider as 'local' | 'ollama' | 'fallback');
 
 					// Update preferences based on successful switch
 					if (providerType === 'local') {
@@ -580,23 +575,14 @@ export const useEnhancedDungeonMaster = (
 export const useEnhancedDungeonMasterAgent = (
 	worldState: GameWorldState | null,
 	playerCharacter: Character | null,
-	cactusApiKey?: string,
 ) => {
 	const aiServiceRef = useRef<AIServiceManager | null>(null);
 
 	useEffect(() => {
 		if (worldState && playerCharacter) {
-			const aiConfig = {
-				...DefaultAIConfig,
-				cactus: {
-					...DefaultAIConfig.cactus,
-					apiKey: cactusApiKey || process.env.EXPO_PUBLIC_CACTUS_API_KEY || '',
-				},
-			};
-
-			aiServiceRef.current = new AIServiceManager(aiConfig);
+			aiServiceRef.current = new AIServiceManager(DefaultAIConfig);
 		}
-	}, [worldState, playerCharacter, cactusApiKey]);
+	}, [worldState, playerCharacter]);
 
 	const processAction = useCallback(
 		async (action: string) => {

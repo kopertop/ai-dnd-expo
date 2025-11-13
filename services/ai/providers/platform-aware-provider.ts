@@ -3,7 +3,7 @@
  * 
  * Dynamically loads the appropriate AI provider based on platform
  * Web: Uses Ollama provider
- * Native: Uses Cactus or local providers
+ * Native: Falls back to lightweight rule-based provider
  */
 
 import { Platform } from 'react-native';
@@ -15,16 +15,6 @@ export interface PlatformAwareProviderConfig {
 	ollamaBaseUrl?: string;
 	ollamaModel?: string;
 	ollamaTimeout?: number;
-	
-	// Cactus config (native)
-	cactusModelUrl?: string;
-	cactusApiKey?: string;
-	
-	// Local config (native)
-	localModelPath?: string;
-	
-	// Fallback
-	preferLocal?: boolean;
 }
 
 export interface PlatformAwareProviderInterface {
@@ -41,12 +31,12 @@ export interface PlatformAwareProviderInterface {
 	) => Promise<string>;
 	healthCheck: () => Promise<boolean>;
 	rewind: () => void;
-	getProviderType: () => 'ollama' | 'cactus' | 'local' | 'fallback';
+	getProviderType: () => 'ollama' | 'local' | 'fallback';
 }
 
 export class PlatformAwareProvider implements PlatformAwareProviderInterface {
 	private provider: OllamaProviderInterface | any = null;
-	private providerType: 'ollama' | 'cactus' | 'local' | 'fallback' = 'fallback';
+	private providerType: 'ollama' | 'local' | 'fallback' = 'fallback';
 	private config: PlatformAwareProviderConfig;
 
 	isInitialized: boolean = false;
@@ -69,64 +59,9 @@ export class PlatformAwareProvider implements PlatformAwareProviderInterface {
 			});
 			this.providerType = 'ollama';
 		} else {
-			// Native platform: Try to load Cactus or local provider
-			try {
-				// Dynamic import to avoid bundling on web
-				const { createCactusProviderSimple } = await import('./cactus-provider-simple');
-				const cactusProvider = createCactusProviderSimple(
-					this.config.cactusModelUrl,
-					this.config.cactusApiKey,
-				);
-				// Wrap cactus provider to match our interface
-				this.provider = {
-					isInitialized: false,
-					initialize: async (onProgress?: (progress: number) => void) => {
-						const result = await cactusProvider.initialize(onProgress);
-						this.provider.isInitialized = result;
-						return result;
-					},
-					completion: async (messages: AIMessage[], params?: AICompletionParams) => {
-						return await cactusProvider.completion(messages, {
-							temperature: params?.temperature,
-							top_p: params?.top_p,
-							n_predict: params?.n_predict || params?.num_predict,
-							stop: params?.stop,
-						});
-					},
-					streamingCompletion: async (
-						messages: AIMessage[],
-						params?: AICompletionParams,
-						onToken?: (token: string) => void,
-					) => {
-						// Cactus provider doesn't have streaming, so simulate it
-						const response = await cactusProvider.completion(messages, {
-							temperature: params?.temperature,
-							top_p: params?.top_p,
-							n_predict: params?.n_predict || params?.num_predict,
-							stop: params?.stop,
-						});
-						if (onToken) {
-							for (const word of response.split(' ')) {
-								onToken(word + ' ');
-								await new Promise(resolve => setTimeout(resolve, 10));
-							}
-						}
-						return response;
-					},
-					healthCheck: async () => {
-						return cactusProvider.isInitialized;
-					},
-					rewind: () => {
-						cactusProvider.rewind();
-					},
-				};
-				this.providerType = 'cactus';
-			} catch (error) {
-				console.warn('Failed to load Cactus provider, using fallback:', error);
-				// Fallback to rule-based provider
-				this.provider = this.createFallbackProvider();
-				this.providerType = 'fallback';
-			}
+			// Native platform (and default): use fallback provider
+			this.provider = this.createFallbackProvider();
+			this.providerType = 'fallback';
 		}
 	}
 
@@ -268,7 +203,7 @@ export class PlatformAwareProvider implements PlatformAwareProviderInterface {
 	/**
 	 * Get the current provider type
 	 */
-	getProviderType(): 'ollama' | 'cactus' | 'local' | 'fallback' {
+	getProviderType(): 'ollama' | 'local' | 'fallback' {
 		return this.providerType;
 	}
 }

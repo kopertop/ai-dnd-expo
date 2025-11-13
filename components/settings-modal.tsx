@@ -1,6 +1,14 @@
-import { Slider, Switch } from '@expo/ui/swift-ui';
 import React, { useEffect, useState } from 'react';
-import { Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import {
+	Modal,
+	Platform,
+	ScrollView,
+	StyleSheet,
+	Switch as RNSwitch,
+	Text,
+	TouchableOpacity,
+	View,
+} from 'react-native';
 
 import { useSettingsStore } from '../stores/settings-store';
 
@@ -8,7 +16,93 @@ import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 import { TTSVoice, useTextToSpeech } from '@/hooks/use-text-to-speech';
-import { useEnhancedDungeonMaster } from '@/hooks/use-enhanced-dungeon-master';
+
+let ModalSwiftSwitch: any = null;
+let ModalSwiftSlider: any = null;
+
+if (Platform.OS !== 'web') {
+	try {
+		const swiftUI = require('@expo/ui/swift-ui');
+		ModalSwiftSwitch = swiftUI.Switch;
+		ModalSwiftSlider = swiftUI.Slider;
+	} catch (error) {
+		console.warn('Failed to load @expo/ui/swift-ui:', error);
+	}
+}
+
+const ModalAdaptiveSwitch = ({
+	value,
+	onValueChange,
+	color = '#2196F3',
+}: {
+	value: boolean;
+	onValueChange: (value: boolean) => void;
+	color?: string;
+}) => {
+	if (Platform.OS !== 'web' && ModalSwiftSwitch) {
+		return (
+			<ModalSwiftSwitch
+				value={value}
+				onValueChange={onValueChange}
+				color={color}
+				label=""
+				variant="switch"
+			/>
+		);
+	}
+
+	return (
+		<RNSwitch
+			value={value}
+			onValueChange={onValueChange}
+			trackColor={{ true: color, false: '#CCCCCC' }}
+			thumbColor={value ? color : '#f4f3f4'}
+		/>
+	);
+};
+
+const ModalWebSlider = ({
+	value,
+	onValueChange,
+	style,
+}: {
+	value: number;
+	onValueChange: (value: number) => void;
+	style?: any;
+}) => (
+	<View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }, style]}>
+		<TouchableOpacity
+			onPress={() => onValueChange(Math.max(0, Number((value - 0.05).toFixed(2))))}
+			style={styles.webSliderButton}
+		>
+			<Text style={styles.webSliderButtonText}>-</Text>
+		</TouchableOpacity>
+		<View style={styles.webSliderTrack}>
+			<View style={[styles.webSliderFill, { width: `${Math.min(100, Math.max(0, value * 100))}%` }]} />
+		</View>
+		<TouchableOpacity
+			onPress={() => onValueChange(Math.min(1, Number((value + 0.05).toFixed(2))))}
+			style={styles.webSliderButton}
+		>
+			<Text style={styles.webSliderButtonText}>+</Text>
+		</TouchableOpacity>
+	</View>
+);
+
+const ModalAdaptiveSlider = ({
+	value,
+	onValueChange,
+	style,
+}: {
+	value: number;
+	onValueChange: (value: number) => void;
+	style?: any;
+}) => {
+	if (Platform.OS !== 'web' && ModalSwiftSlider) {
+		return <ModalSwiftSlider style={style} value={value} onValueChange={onValueChange} />;
+	}
+	return <ModalWebSlider style={style} value={value} onValueChange={onValueChange} />;
+};
 
 interface SettingsModalProps {
 	visible: boolean;
@@ -27,7 +121,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 
 	const { availableVoices, ttsProvider } = useTextToSpeech();
 	const [selectedVoice, setSelectedVoice] = useState<TTSVoice | null>(null);
-	const { localProviderStatus, currentProvider } = useEnhancedDungeonMaster();
+	const currentProviderLabel = 'Open a game session to view provider details';
+	const localProviderLabel = 'Open a game session to view provider status';
 
 	// Find the currently selected voice
 	useEffect(() => {
@@ -60,7 +155,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 						<View style={styles.settingItem}>
 							<ThemedText>Music Volume</ThemedText>
 							<View style={styles.volumeSliderContainer}>
-								<Slider
+								<ModalAdaptiveSlider
 									style={styles.volumeSlider}
 									value={musicVolume}
 									onValueChange={isMusicMuted ? undefined : handleVolumeChange}
@@ -73,12 +168,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 
 						<View style={styles.settingItem}>
 							<ThemedText>Mute Music</ThemedText>
-							<Switch
+							<ModalAdaptiveSwitch
 								value={!isMusicMuted}
 								onValueChange={value => setMusicMuted(!value)}
 								color="#2196F3"
-								label=""
-								variant="switch"
 							/>
 						</View>
 
@@ -89,49 +182,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 
 						<View style={styles.settingItem}>
 							<ThemedText>Text-to-Speech</ThemedText>
-							<Switch
+							<ModalAdaptiveSwitch
 								value={voiceSettings.ttsEnabled}
 								onValueChange={value =>
 									handleVoiceSettingChange('ttsEnabled', value)
 								}
 								color="#2196F3"
-								label=""
-								variant="switch"
 							/>
 						</View>
 
 						{Platform.OS !== 'web' && (
 							<View style={styles.settingItem}>
 								<ThemedText>Speech-to-Text</ThemedText>
-								<Switch
+								<ModalAdaptiveSwitch
 									value={voiceSettings.sttEnabled}
 									onValueChange={value =>
 										handleVoiceSettingChange('sttEnabled', value)
 									}
 									color="#2196F3"
-									label=""
-									variant="switch"
 								/>
 							</View>
 						)}
 
 						<View style={styles.settingItem}>
 							<ThemedText>Auto-speak DM Messages</ThemedText>
-							<Switch
+							<ModalAdaptiveSwitch
 								value={voiceSettings.autoSpeak}
 								onValueChange={value =>
 									handleVoiceSettingChange('autoSpeak', value)
 								}
 								color="#2196F3"
-								label=""
-								variant="switch"
 							/>
 						</View>
 
 						<View style={styles.settingItem}>
 							<ThemedText>Speech Volume</ThemedText>
 							<View style={styles.volumeSliderContainer}>
-								<Slider
+								<ModalAdaptiveSlider
 									style={styles.volumeSlider}
 									value={voiceSettings.volume}
 									onValueChange={value =>
@@ -147,7 +234,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 						<View style={styles.settingItem}>
 							<ThemedText>Speech Rate</ThemedText>
 							<View style={styles.volumeSliderContainer}>
-								<Slider
+								<ModalAdaptiveSlider
 									style={styles.volumeSlider}
 									value={voiceSettings.speechRate}
 									onValueChange={value =>
@@ -177,17 +264,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 
 						<View style={styles.settingItem}>
 							<ThemedText>Current Provider</ThemedText>
-							<ThemedText style={styles.statusText}>
-								{currentProvider || 'Unknown'}
-							</ThemedText>
+							<ThemedText style={styles.statusText}>{currentProviderLabel}</ThemedText>
 						</View>
 
 						{Platform.OS === 'web' && (
 							<View style={styles.settingItem}>
 								<ThemedText>Ollama Status</ThemedText>
-								<ThemedText style={styles.statusText}>
-									{localProviderStatus?.available ? '✅ Connected' : '❌ Disconnected'}
-								</ThemedText>
+								<ThemedText style={styles.statusText}>{localProviderLabel}</ThemedText>
 							</View>
 						)}
 
@@ -285,6 +368,29 @@ const styles = StyleSheet.create({
 		color: '#2196F3',
 		fontWeight: 'bold',
 		fontSize: 16,
+	},
+	webSliderTrack: {
+		flex: 1,
+		height: 6,
+		borderRadius: 3,
+		backgroundColor: '#E0E0E0',
+		overflow: 'hidden',
+	},
+	webSliderFill: {
+		height: '100%',
+		borderRadius: 3,
+		backgroundColor: '#2196F3',
+	},
+	webSliderButton: {
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		borderRadius: 6,
+		backgroundColor: '#2196F3',
+	},
+	webSliderButtonText: {
+		color: '#FFFFFF',
+		fontSize: 16,
+		fontWeight: 'bold',
 	},
 	closeButton: {
 		marginTop: 20,

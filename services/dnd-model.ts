@@ -1,8 +1,8 @@
-import type { CactusOAICompatibleMessage } from 'cactus-react-native';
-import { CactusVLM } from 'cactus-react-native';
 import * as FileSystem from 'expo-file-system';
 
-export type DnDMessage = CactusOAICompatibleMessage & {
+export type DnDMessage = {
+	role: 'user' | 'assistant' | 'system';
+	content: string;
 	context?: {
 		role?: string;
 		world?: string;
@@ -22,7 +22,6 @@ export type ToolCall = {
 const stopWords = ['<|end_of_text|>', '<|endoftext|>', '</s>', '<end_of_utterance>'];
 
 class DnDModelManager {
-	private vlm: CactusVLM | null = null;
 	private isInitialized = false;
 	private modelConfig: any = null;
 

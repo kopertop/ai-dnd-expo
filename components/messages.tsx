@@ -1,8 +1,12 @@
 import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import type { Message } from './cactus';
+export interface ChatMessage {
+	role: 'user' | 'assistant';
+	content: string;
+	images?: string[];
+}
 
-export const MessageBubble = ({ message }: { message: Message }) => (
+export const MessageBubble = ({ message }: { message: ChatMessage }) => (
 	<View
 		style={{
 			backgroundColor: message.role === 'user' ? '#007AFF' : '#EEEEEE',

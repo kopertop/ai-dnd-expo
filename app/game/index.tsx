@@ -4,7 +4,7 @@ import { View } from 'react-native';
 
 import { ResponsiveGameContainer } from '@/components/responsive-game-container';
 import { ThemedText } from '@/components/themed-text';
-import { useCactusDungeonMaster } from '@/hooks/use-cactus-dungeon-master';
+import { useEnhancedDungeonMaster } from '@/hooks/use-enhanced-dungeon-master';
 import { useGameState } from '@/hooks/use-game-state';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { generateWorldForGameState } from '@/services/world-generator';
@@ -23,11 +23,10 @@ const GameScreen: React.FC = () => {
 	const playerCharacter = gameState
 		? gameState.characters.find(c => c.id === gameState.playerCharacterId)
 		: null;
-	const dmAgent = useCactusDungeonMaster({
+	const dmAgent = useEnhancedDungeonMaster({
 		worldState,
 		playerCharacter: playerCharacter || null,
-		autoInitialize: true,
-		modelUrl: '../assets/models/gemma-3n-E2B-it-Q4_K_S.gguf', // Use local GGUF model
+		enableVoice: false,
 	});
 
 	// Debounced save to prevent excessive saves on frequent player moves
@@ -93,7 +92,7 @@ const GameScreen: React.FC = () => {
 			gameState &&
 			playerCharacter &&
 			!hasInitialized &&
-			dmAgent.messages.length === 1 &&
+			dmAgent.messages.length <= 1 &&
 			!dmAgent.isLoading
 		) {
 			console.log('🎭 Generating custom DM greeting...');

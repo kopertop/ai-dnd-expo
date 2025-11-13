@@ -47,7 +47,8 @@
     "deploy:production": "./scripts/deploy.sh deploy production",
     "submit:staging": "./scripts/deploy.sh submit staging",
     "submit:production": "./scripts/deploy.sh submit production",
-    "postversion": "perl -i -pe \"s/buildNumber: '(\\\\d+)'/sprintf(\\\"buildNumber: '%d'\\\", \\$1 + 1)/e\" app.ts"
+    "postversion": "perl -i -pe \"s/buildNumber: '(\\\\d+)'/sprintf(\\\"buildNumber: '%d'\\\", \\$1 + 1)/e\" app.ts",
+    "postinstall": "node ./scripts/postinstall/apply-patches.js"
   },
   "dependencies": {
     "@expo/ui": "~0.2.0-beta.7",
@@ -59,10 +60,10 @@
     "@react-navigation/native": "^7.1.6",
     "@shopify/react-native-skia": "2.2.12",
     "buffer": "^6.0.3",
-    "cactus-react-native": "0.2.1",
     "expo": "^54.0.0",
     "expo-asset": "~12.0.9",
     "expo-audio": "~1.0.14",
+    "expo-av": "~16.0.7",
     "expo-blur": "~15.0.7",
     "expo-constants": "~18.0.10",
     "expo-dev-client": "~6.0.17",
@@ -106,6 +107,7 @@
     "@typescript-eslint/eslint-plugin": "^8.29.1",
     "@vitejs/plugin-react": "^4.6.0",
     "@vitest/coverage-v8": "^3.2.4",
+    "babel-plugin-transform-import-meta": "^2.3.3",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "eslint-plugin-import": "^2.31.0",

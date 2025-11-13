@@ -1,8 +1,17 @@
-import { Slider, Switch } from '@expo/ui/swift-ui';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import {
+	Alert,
+	Modal,
+	Platform,
+	ScrollView,
+	StyleSheet,
+	Text,
+	Switch as RNSwitch,
+	TouchableOpacity,
+	View,
+} from 'react-native';
 
 import { useSettingsStore } from '../stores/settings-store';
 
@@ -11,6 +20,94 @@ import { ThemedView } from './themed-view';
 
 import { useGameState } from '@/hooks/use-game-state';
 import { TTSVoice, useTextToSpeech } from '@/hooks/use-text-to-speech';
+
+let SwiftUISwitch: any = null;
+let SwiftUISlider: any = null;
+
+if (Platform.OS !== 'web') {
+	try {
+		const swiftUI = require('@expo/ui/swift-ui');
+		SwiftUISwitch = swiftUI.Switch;
+		SwiftUISlider = swiftUI.Slider;
+	} catch (error) {
+		console.warn('Failed to load @expo/ui/swift-ui:', error);
+	}
+}
+
+const AdaptiveSwitch = ({
+	value,
+	onValueChange,
+	color = '#2196F3',
+}: {
+	value: boolean;
+	onValueChange: (value: boolean) => void;
+	color?: string;
+}) => {
+	if (Platform.OS !== 'web' && SwiftUISwitch) {
+		return (
+			<SwiftUISwitch
+				value={value}
+				onValueChange={onValueChange}
+				color={color}
+				label=""
+				variant="switch"
+			/>
+		);
+	}
+
+	return (
+		<RNSwitch
+			value={value}
+			onValueChange={onValueChange}
+			trackColor={{ true: color, false: '#CCCCCC' }}
+			thumbColor={value ? color : '#f4f3f4'}
+		/>
+	);
+};
+
+const WebSlider = ({
+	value,
+	onValueChange,
+	style,
+}: {
+	value: number;
+	onValueChange: (value: number) => void;
+	style?: any;
+}) => (
+	<View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }, style]}>
+		<TouchableOpacity
+			onPress={() => onValueChange(Math.max(0, Number((value - 0.05).toFixed(2))))}
+			style={styles.webSliderButton}
+		>
+			<Text style={styles.webSliderButtonText}>-</Text>
+		</TouchableOpacity>
+		<View style={styles.webSliderTrack}>
+			<View style={[styles.webSliderFill, { width: `${Math.min(100, Math.max(0, value * 100))}%` }]} />
+		</View>
+		<TouchableOpacity
+			onPress={() => onValueChange(Math.min(1, Number((value + 0.05).toFixed(2))))}
+			style={styles.webSliderButton}
+		>
+			<Text style={styles.webSliderButtonText}>+</Text>
+		</TouchableOpacity>
+	</View>
+);
+
+const AdaptiveSlider = ({
+	value,
+	onValueChange,
+	style,
+}: {
+	value: number;
+	onValueChange: (value: number) => void;
+	style?: any;
+}) => {
+	if (Platform.OS !== 'web' && SwiftUISlider) {
+		return <SwiftUISlider style={style} value={value} onValueChange={onValueChange} />;
+	}
+
+	return <WebSlider style={style} value={value} onValueChange={onValueChange} />;
+};
 
 export const SettingsView: React.FC = () => {
 	const {
@@ -137,12 +234,10 @@ export const SettingsView: React.FC = () => {
 
 					<View style={styles.settingItem}>
 						<ThemedText>Mute Music</ThemedText>
-						<Switch
+						<AdaptiveSwitch
 							value={!isMusicMuted}
 							onValueChange={value => setMusicMuted(!value)}
 							color="#2196F3"
-							label=""
-							variant="switch"
 						/>
 					</View>
 				</View>
@@ -155,41 +250,35 @@ export const SettingsView: React.FC = () => {
 
 					<View style={styles.settingItem}>
 						<ThemedText>Text-to-Speech</ThemedText>
-						<Switch
+						<AdaptiveSwitch
 							value={voiceSettings.ttsEnabled}
 							onValueChange={value => handleVoiceSettingChange('ttsEnabled', value)}
 							color="#2196F3"
-							label=""
-							variant="switch"
 						/>
 					</View>
 
 					<View style={styles.settingItem}>
 						<ThemedText>Speech-to-Text</ThemedText>
-						<Switch
+						<AdaptiveSwitch
 							value={voiceSettings.sttEnabled}
 							onValueChange={value => handleVoiceSettingChange('sttEnabled', value)}
 							color="#2196F3"
-							label=""
-							variant="switch"
 						/>
 					</View>
 
 					<View style={styles.settingItem}>
 						<ThemedText>Auto-speak DM Messages</ThemedText>
-						<Switch
+						<AdaptiveSwitch
 							value={voiceSettings.autoSpeak}
 							onValueChange={value => handleVoiceSettingChange('autoSpeak', value)}
 							color="#2196F3"
-							label=""
-							variant="switch"
 						/>
 					</View>
 
 					<View style={styles.settingItem}>
 						<ThemedText>Speech Volume</ThemedText>
 						<View style={styles.volumeSliderContainer}>
-							<Slider
+							<AdaptiveSlider
 								style={styles.volumeSlider}
 								value={voiceSettings.volume}
 								onValueChange={value => handleVoiceSettingChange('volume', value)}
@@ -203,7 +292,7 @@ export const SettingsView: React.FC = () => {
 					<View style={styles.settingItem}>
 						<ThemedText>Speech Rate</ThemedText>
 						<View style={styles.volumeSliderContainer}>
-							<Slider
+							<AdaptiveSlider
 								style={styles.volumeSlider}
 								value={voiceSettings.speechRate}
 								onValueChange={value =>
@@ -471,6 +560,29 @@ const styles = StyleSheet.create({
 	checkmark: {
 		fontSize: 18,
 		color: '#C9B037',
+		fontWeight: 'bold',
+	},
+	webSliderTrack: {
+		flex: 1,
+		height: 6,
+		borderRadius: 3,
+		backgroundColor: '#E0E0E0',
+		overflow: 'hidden',
+	},
+	webSliderFill: {
+		height: '100%',
+		borderRadius: 3,
+		backgroundColor: '#2196F3',
+	},
+	webSliderButton: {
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		borderRadius: 6,
+		backgroundColor: '#2196F3',
+	},
+	webSliderButtonText: {
+		color: '#FFFFFF',
+		fontSize: 16,
 		fontWeight: 'bold',
 	},
 	saveAndQuitButton: {

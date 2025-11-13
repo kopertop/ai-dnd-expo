@@ -46,6 +46,10 @@
   "exclude": [
     "node_modules",
     "tests/**/*",
-    "ai-training/llama.cpp/**/*"
+    "ai-training/llama.cpp/**/*",
+    "components/cactus.ts",
+    "hooks/use-cactus-dungeon-master.ts",
+    "services/ai/providers/cactus-*.ts",
+    "services/ai/agents/cactus-*.ts"
   ]
 }

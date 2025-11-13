@@ -4,14 +4,6 @@
  * Provides empty implementations of native-only modules for web platform
  */
 
-// Stub for cactus-react-native
-export const CactusLM = {
-	init: async () => {
-		console.warn('CactusLM is not available on web platform');
-		return { lm: null, error: 'Not available on web' };
-	},
-};
-
 // Stub for onnxruntime-react-native
 export const InferenceSession = {
 	create: async () => {
@@ -39,12 +31,19 @@ export const useSpeechRecognitionEvent = () => {
 	// No-op hook for web
 };
 
+// Stub for expo-modules-core requireNativeViewManager
+export const requireNativeViewManager = (viewName) => {
+	console.warn(`Native view manager "${viewName}" is not available on web platform`);
+	// Return a no-op component for web
+	return () => null;
+};
+
 // Default export
 export default {
-	CactusLM,
 	InferenceSession,
 	Tensor,
 	ExpoSpeechRecognitionModule,
 	useSpeechRecognitionEvent,
+	requireNativeViewManager,
 };
 
