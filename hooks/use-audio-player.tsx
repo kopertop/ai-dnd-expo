@@ -1,11 +1,12 @@
+import type { useAudioPlayer } from 'expo-audio';
 import React, {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
 } from 'react';
 import { Platform } from 'react-native';
 
