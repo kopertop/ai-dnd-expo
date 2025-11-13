@@ -36,17 +36,54 @@ An open-source platform for playing Dungeons and Dragons online with AI assistan
    npm install
    ```
 
-2. **Start the development server**
+2. **Configure environment variables** (optional, for web platform)
+
+   Create a `.env` file in the root directory:
+
+   ```env
+   # Ollama Configuration (for web platform)
+   EXPO_PUBLIC_OLLAMA_BASE_URL=http://localhost:11434
+   EXPO_PUBLIC_OLLAMA_MODEL=llama3.2
+
+   # Kokoro TTS Configuration (optional)
+   EXPO_PUBLIC_TTS_BASE_URL=http://localhost:5000
+
+   # Google OAuth (for authentication)
+   EXPO_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
+   EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB=your-google-client-id-web
+
+   # Apple OAuth (for authentication)
+   EXPO_PUBLIC_APPLE_CLIENT_ID=your-apple-client-id
+   ```
+
+3. **Start the development server**
 
    ```bash
    npx expo start
    ```
 
-3. **Choose your platform**
+4. **Choose your platform**
    - Press `i` for iOS simulator
    - Press `a` for Android emulator
-   - Press `w` for web browser
+   - Press `w` for web browser (runs at http://localhost:8081)
    - Scan QR code with Expo Go app
+
+### Web Platform Setup
+
+For web platform, you'll need:
+
+1. **Ollama Server** (for AI inference):
+   ```bash
+   # Install Ollama from https://ollama.ai
+   # Then pull a model:
+   ollama pull llama3.2
+   ```
+
+2. **Kokoro TTS Server** (optional, for TTS):
+   ```bash
+   # Follow Kokoro TTS setup instructions
+   # Default endpoint: http://localhost:5000
+   ```
 
 ## 🏗️ Development
 
@@ -84,10 +121,17 @@ ai-dnd-expo/
 
 ### Core AI Services
 
-- **Resemble.ai**: Voice synthesis for character dialogue
-- **Flux.dev**: Image generation for characters and scenes
-- **OpenAI/Anthropic**: Conversation and gameplay logic
+- **Ollama** (Web): Local AI inference server for web platform
+- **Cactus Compute** (Native): On-device AI inference for mobile platforms
+- **Kokoro TTS**: Text-to-speech synthesis (web and native)
+- **Expo Speech** (Native): Device TTS fallback for mobile platforms
 - **Custom AI**: Game rule enforcement and story generation
+
+### Platform-Specific AI Providers
+
+- **Web**: Uses Ollama API for AI inference, Kokoro TTS for voice synthesis
+- **Native (iOS/Android)**: Uses Cactus Compute or local ONNX models, Expo Speech or Kokoro TTS for voice
+- **Fallback**: Rule-based responses when AI providers are unavailable
 
 ### AI Agent Types
 

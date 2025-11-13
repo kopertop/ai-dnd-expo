@@ -8,6 +8,61 @@ import { CharacterType, VoiceProfile } from '@/types/voice';
  */
 export class VoiceProfileService {
 	private static profiles: VoiceProfile[] = [
+		// Kokoro TTS voices (web and native)
+		{
+			id: 'kokoro-warrior-deep',
+			name: 'kokoro-warrior-deep',
+			displayName: 'Kokoro Deep Warrior',
+			engine: 'kokoro',
+			engineVoiceId: 'warrior-deep',
+			language: 'en-US',
+			characteristics: {
+				gender: 'male',
+				age: 'adult',
+				pitch: 0.7,
+				rate: 0.5,
+				quality: 'high',
+			},
+			suitableFor: ['player', 'npc', 'companion'],
+			personality: ['brave', 'strong', 'authoritative', 'warrior', 'fighter', 'paladin'],
+			isAssigned: false,
+		},
+		{
+			id: 'kokoro-scholar-wise',
+			name: 'kokoro-scholar-wise',
+			displayName: 'Kokoro Wise Scholar',
+			engine: 'kokoro',
+			engineVoiceId: 'scholar-wise',
+			language: 'en-US',
+			characteristics: {
+				gender: 'male',
+				age: 'elderly',
+				pitch: 0.9,
+				rate: 0.4,
+				quality: 'high',
+			},
+			suitableFor: ['player', 'npc', 'companion'],
+			personality: ['wise', 'intelligent', 'scholarly', 'wizard', 'cleric', 'sage'],
+			isAssigned: false,
+		},
+		{
+			id: 'kokoro-mage-mystical',
+			name: 'kokoro-mage-mystical',
+			displayName: 'Kokoro Mystical Mage',
+			engine: 'kokoro',
+			engineVoiceId: 'mage-mystical',
+			language: 'en-US',
+			characteristics: {
+				gender: 'neutral',
+				age: 'adult',
+				pitch: 0.8,
+				rate: 0.5,
+				quality: 'high',
+			},
+			suitableFor: ['player', 'npc', 'companion'],
+			personality: ['mystical', 'magical', 'arcane', 'wizard', 'sorcerer', 'warlock'],
+			isAssigned: false,
+		},
 		// Male voices for various character types
 		{
 			id: 'male-warrior-deep',

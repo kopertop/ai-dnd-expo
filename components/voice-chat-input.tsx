@@ -1,6 +1,6 @@
 import { FontAwesome } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { Animated, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { VoiceErrorHandler } from './voice-error-handler';
 import { VoiceStatus, VoiceStatusIndicator } from './voice-status-indicator';
@@ -187,16 +187,17 @@ export const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
 					blurOnSubmit={true}
 				/>
 
-				{/* Voice button */}
-				<Animated.View
-					style={[
-						styles.micButtonContainer,
-						{
-							transform: [{ scale: recognizing ? pulseAnim : 1 }],
-						},
-					]}
-				>
-					<TouchableOpacity
+				{/* Voice button - only on native platforms */}
+				{Platform.OS !== 'web' && isSupported && (
+					<Animated.View
+						style={[
+							styles.micButtonContainer,
+							{
+								transform: [{ scale: recognizing ? pulseAnim : 1 }],
+							},
+						]}
+					>
+						<TouchableOpacity
 						style={[
 							styles.micButton,
 							{ backgroundColor: getMicButtonColor() },
@@ -218,7 +219,8 @@ export const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
 							color={getMicIconColor()}
 						/>
 					</TouchableOpacity>
-				</Animated.View>
+					</Animated.View>
+				)}
 
 				{/* Send button */}
 				<TouchableOpacity

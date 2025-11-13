@@ -1,6 +1,6 @@
 import { Slider, Switch } from '@expo/ui/swift-ui';
 import React, { useEffect, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { useSettingsStore } from '../stores/settings-store';
 
@@ -8,6 +8,7 @@ import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 import { TTSVoice, useTextToSpeech } from '@/hooks/use-text-to-speech';
+import { useEnhancedDungeonMaster } from '@/hooks/use-enhanced-dungeon-master';
 
 interface SettingsModalProps {
 	visible: boolean;
@@ -24,8 +25,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 		updateVoiceSettings,
 	} = useSettingsStore();
 
-	const { availableVoices } = useTextToSpeech();
+	const { availableVoices, ttsProvider } = useTextToSpeech();
 	const [selectedVoice, setSelectedVoice] = useState<TTSVoice | null>(null);
+	const { localProviderStatus, currentProvider } = useEnhancedDungeonMaster();
 
 	// Find the currently selected voice
 	useEffect(() => {
@@ -98,18 +100,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 							/>
 						</View>
 
-						<View style={styles.settingItem}>
-							<ThemedText>Speech-to-Text</ThemedText>
-							<Switch
-								value={voiceSettings.sttEnabled}
-								onValueChange={value =>
-									handleVoiceSettingChange('sttEnabled', value)
-								}
-								color="#2196F3"
-								label=""
-								variant="switch"
-							/>
-						</View>
+						{Platform.OS !== 'web' && (
+							<View style={styles.settingItem}>
+								<ThemedText>Speech-to-Text</ThemedText>
+								<Switch
+									value={voiceSettings.sttEnabled}
+									onValueChange={value =>
+										handleVoiceSettingChange('sttEnabled', value)
+									}
+									color="#2196F3"
+									label=""
+									variant="switch"
+								/>
+							</View>
+						)}
 
 						<View style={styles.settingItem}>
 							<ThemedText>Auto-speak DM Messages</ThemedText>
@@ -165,6 +169,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 								</ThemedText>
 							</View>
 						)}
+
+						{/* AI Provider Status */}
+						<ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+							AI Provider Status
+						</ThemedText>
+
+						<View style={styles.settingItem}>
+							<ThemedText>Current Provider</ThemedText>
+							<ThemedText style={styles.statusText}>
+								{currentProvider || 'Unknown'}
+							</ThemedText>
+						</View>
+
+						{Platform.OS === 'web' && (
+							<View style={styles.settingItem}>
+								<ThemedText>Ollama Status</ThemedText>
+								<ThemedText style={styles.statusText}>
+									{localProviderStatus?.available ? '✅ Connected' : '❌ Disconnected'}
+								</ThemedText>
+							</View>
+						)}
+
+						{/* TTS Provider Status */}
+						<ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+							TTS Provider
+						</ThemedText>
+
+						<View style={styles.settingItem}>
+							<ThemedText>Provider</ThemedText>
+							<ThemedText style={styles.statusText}>
+								{ttsProvider === 'kokoro' ? '🎤 Kokoro' : ttsProvider === 'expo-speech' ? '📱 Device' : '❌ None'}
+							</ThemedText>
+						</View>
 					</ScrollView>
 
 					<TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -235,6 +272,12 @@ const styles = StyleSheet.create({
 	voiceText: {
 		fontSize: 14,
 		color: '#666',
+		maxWidth: 150,
+		textAlign: 'right',
+	},
+	statusText: {
+		fontSize: 14,
+		fontWeight: 'bold',
 		maxWidth: 150,
 		textAlign: 'right',
 	},

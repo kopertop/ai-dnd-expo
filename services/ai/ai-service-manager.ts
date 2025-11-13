@@ -2,10 +2,11 @@
  * AI Service Manager for D&D Platform
  *
  * Manages multiple AI providers with fallback strategies
- * Integrates Cactus + Gemma3 as primary, with local fallbacks
+ * Integrates Ollama (web), Cactus (native), and local fallbacks
  */
 
-import { CactusAIProvider, DnDSystemPrompts } from './providers/cactus-ai-provider';
+import { Platform } from 'react-native';
+import { createPlatformAwareProvider, PlatformAwareProviderInterface } from './providers/platform-aware-provider';
 import {
 	DefaultLocalDMConfig,
 	LocalDMModelConfigs,
@@ -14,6 +15,12 @@ import {
 } from './providers/local-dm-provider';
 
 export interface AIServiceConfig {
+	ollama: {
+		enabled: boolean;
+		baseUrl?: string;
+		model?: string;
+		timeout?: number;
+	};
 	cactus: {
 		enabled: boolean;
 		modelPath: string;
@@ -37,7 +44,7 @@ export interface AIServiceConfig {
 	};
 	providerSelection: {
 		preferLocal: boolean;
-		fallbackChain: ('local' | 'cactus' | 'rule-based')[];
+		fallbackChain: ('ollama' | 'local' | 'cactus' | 'rule-based')[];
 		healthCheckInterval: number; // ms
 	};
 }
@@ -45,7 +52,7 @@ export interface AIServiceConfig {
 export interface AIResponse {
 	text: string;
 	confidence: number;
-	source: 'cactus' | 'local' | 'fallback';
+	source: 'ollama' | 'cactus' | 'local' | 'fallback';
 	toolCommands: Array<{ type: string; params: string }>;
 	processingTime: number;
 	contextId?: string; // For state synchronization
@@ -63,7 +70,7 @@ export interface GameContextState {
 	playerRace: string;
 	currentScene: string;
 	gameHistory: string[];
-	lastProvider: 'cactus' | 'local' | 'fallback';
+	lastProvider: 'ollama' | 'cactus' | 'local' | 'fallback';
 	timestamp: number;
 	sessionData?: {
 		conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
@@ -73,54 +80,120 @@ export interface GameContextState {
 }
 
 export class AIServiceManager {
-	private cactusProvider: CactusAIProvider | null = null;
+	private platformProvider: PlatformAwareProviderInterface | null = null;
+	private cactusProvider: any | null = null;
 	private localDMProvider: LocalDMProvider | null = null;
 	private config: AIServiceConfig;
 	private responseCache = new Map<string, AIResponse>();
 	private isHealthy = false;
+	private isOllamaReady = false;
 	private isLocalReady = false;
 	private healthCheckInterval: ReturnType<typeof setInterval> | null = null;
 	private providerHealthStatus = {
+		ollama: { healthy: false, lastCheck: 0, consecutiveFailures: 0 },
 		cactus: { healthy: false, lastCheck: 0, consecutiveFailures: 0 },
 		local: { healthy: false, lastCheck: 0, consecutiveFailures: 0 },
 	};
 	private gameContextStates = new Map<string, GameContextState>();
 	private currentContextId: string | null = null;
+	private isOnline = true;
 
 	constructor(config: AIServiceConfig) {
 		this.config = config;
-		this.initializeCactusProvider();
-		if (config.local.enabled) {
+		this.initializePlatformProvider();
+		if (Platform.OS !== 'web' && config.local.enabled) {
 			this.initializeLocalDMProvider();
 		}
+		this.checkNetworkStatus();
 		this.startHealthMonitoring();
 	}
 
 	/**
-	 * Initialize Cactus provider with error handling
+	 * Initialize platform-aware provider (Ollama for web, Cactus for native)
 	 */
-	private async initializeCactusProvider(): Promise<void> {
-		if (!this.config.cactus.enabled) {
-			return;
-		}
-
+	private async initializePlatformProvider(): Promise<void> {
 		try {
-			this.cactusProvider = new CactusAIProvider({
-				modelPath: this.config.cactus.modelPath,
-				contextSize: this.config.cactus.contextSize || 2048,
-				maxTokens: 150,
-				temperature: 0.7,
-				timeout: this.config.performance.timeout,
-			});
+			if (Platform.OS === 'web') {
+				// Web: Use Ollama
+				if (!this.config.ollama.enabled) {
+					return;
+				}
 
-			// Initialize the model
-			this.isHealthy = await this.cactusProvider.initialize();
-			if (!this.isHealthy) {
-				console.warn('🌵 Cactus provider failed to initialize');
+				this.platformProvider = createPlatformAwareProvider({
+					ollamaBaseUrl: this.config.ollama.baseUrl,
+					ollamaModel: this.config.ollama.model,
+					ollamaTimeout: this.config.ollama.timeout || this.config.performance.timeout,
+				});
+
+				this.isOllamaReady = await this.platformProvider.initialize();
+				this.isHealthy = this.isOllamaReady;
+			} else {
+				// Native: Try Cactus
+				if (!this.config.cactus.enabled) {
+					return;
+				}
+
+				try {
+					// Dynamic import to avoid bundling on web
+					const { CactusAIProvider } = await import('./providers/cactus-ai-provider');
+					this.cactusProvider = new CactusAIProvider({
+						modelPath: this.config.cactus.modelPath,
+						contextSize: this.config.cactus.contextSize || 2048,
+						maxTokens: 150,
+						temperature: 0.7,
+						timeout: this.config.performance.timeout,
+					});
+
+					this.isHealthy = await this.cactusProvider.initialize();
+				} catch (error) {
+					console.warn('Failed to load Cactus provider:', error);
+					// Fallback to platform-aware provider
+					this.platformProvider = createPlatformAwareProvider({
+						cactusModelUrl: this.config.cactus.modelPath,
+						cactusApiKey: this.config.cactus.apiKey,
+					});
+					this.isHealthy = await this.platformProvider.initialize();
+				}
 			}
 		} catch (error) {
-			console.error('Failed to initialize Cactus provider:', error);
+			console.error('Failed to initialize platform provider:', error);
 			this.isHealthy = false;
+			this.isOllamaReady = false;
+		}
+	}
+
+	/**
+	 * Check network status
+	 */
+	private async checkNetworkStatus(): Promise<void> {
+		try {
+			if (Platform.OS === 'web') {
+				// Web: Use navigator.onLine
+				this.isOnline = navigator.onLine;
+				
+				// Listen for online/offline events
+				if (typeof window !== 'undefined') {
+					window.addEventListener('online', () => {
+						this.isOnline = true;
+					});
+					window.addEventListener('offline', () => {
+						this.isOnline = false;
+					});
+				}
+			} else {
+				// Native: Try to use expo-network if available
+				try {
+					const Network = await import('expo-network');
+					const networkState = await Network.getNetworkStateAsync();
+					this.isOnline = networkState.isConnected ?? true;
+				} catch {
+					// Fallback: assume online
+					this.isOnline = true;
+				}
+			}
+		} catch (error) {
+			console.warn('Failed to check network status:', error);
+			this.isOnline = true; // Default to online
 		}
 	}
 
@@ -157,7 +230,7 @@ export class AIServiceManager {
 
 	/**
 	 * Generate D&D response with intelligent fallback chain
-	 * Requirement 4.1, 4.2, 6.1: Seamless fallback chain: local → cloud → rule-based
+	 * Requirement 4.1, 4.2, 6.1: Seamless fallback chain: ollama/local → cactus → rule-based
 	 */
 	async generateDnDResponse(
 		prompt: string,
@@ -180,8 +253,19 @@ export class AIServiceManager {
 			}
 		}
 
-		// Execute fallback chain based on configuration
-		const fallbackChain = this.config.providerSelection.fallbackChain;
+		// Adjust fallback chain based on platform and network status
+		let fallbackChain = [...this.config.providerSelection.fallbackChain];
+		
+		// If offline, prioritize local/fallback providers
+		if (!this.isOnline) {
+			fallbackChain = fallbackChain.filter(p => p === 'local' || p === 'rule-based');
+		}
+
+		// If web, ensure ollama is in chain
+		if (Platform.OS === 'web' && !fallbackChain.includes('ollama')) {
+			fallbackChain.unshift('ollama');
+		}
+
 		let lastError: Error | null = null;
 
 		for (const providerType of fallbackChain) {
@@ -196,7 +280,9 @@ export class AIServiceManager {
 				console.warn(`🔄 Provider ${providerType} failed, trying next in chain:`, error);
 
 				// Update provider health status
-				if (providerType === 'cactus') {
+				if (providerType === 'ollama') {
+					this.isOllamaReady = false;
+				} else if (providerType === 'cactus') {
 					this.isHealthy = false;
 				} else if (providerType === 'local') {
 					this.isLocalReady = false;
@@ -212,7 +298,7 @@ export class AIServiceManager {
 	 * Try a specific provider type
 	 */
 	private async tryProvider(
-		providerType: 'local' | 'cactus' | 'rule-based',
+		providerType: 'ollama' | 'local' | 'cactus' | 'rule-based',
 		prompt: string,
 		context: {
 			playerName: string;
@@ -224,6 +310,8 @@ export class AIServiceManager {
 		startTime: number,
 	): Promise<AIResponse | null> {
 		switch (providerType) {
+			case 'ollama':
+				return await this.tryOllamaProvider(prompt, context, startTime);
 			case 'local':
 				return await this.tryLocalProvider(prompt, context, startTime);
 			case 'cactus':
@@ -233,6 +321,106 @@ export class AIServiceManager {
 			default:
 				throw new Error(`Unknown provider type: ${providerType}`);
 		}
+	}
+
+	/**
+	 * Try Ollama Provider (web)
+	 */
+	private async tryOllamaProvider(
+		prompt: string,
+		context: {
+			playerName: string;
+			playerClass: string;
+			playerRace: string;
+			currentScene: string;
+			gameHistory: string[];
+		},
+		startTime: number,
+	): Promise<AIResponse | null> {
+		if (!this.platformProvider || !this.isOllamaReady || !this.config.ollama.enabled) {
+			return null;
+		}
+
+		try {
+			const systemPrompt = `You are an expert Dungeons & Dragons Dungeon Master.
+Your task is to respond to player actions in a D&D game, maintaining narrative consistency and applying game rules correctly.
+Provide engaging, descriptive responses that advance the story and create an immersive experience.
+
+Game Context:
+- Player Character: ${context.playerName}, a ${context.playerRace} ${context.playerClass}
+- Current Scene: ${context.currentScene}
+
+When appropriate, include tool commands in your response using the following format:
+- [ROLL:1d20+5] for dice rolls
+- [DAMAGE:2d6+3] for damage calculations
+- [HEAL:1d8+2] for healing
+
+Keep your responses concise, engaging, and true to D&D 5e rules.`;
+
+			const messages = [
+				{ role: 'system' as const, content: systemPrompt },
+				...context.gameHistory.slice(-6).map((msg, i) => ({
+					role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
+					content: msg,
+				})),
+				{ role: 'user' as const, content: prompt },
+			];
+
+			const response = await this.platformProvider.completion(messages, {
+				temperature: 0.7,
+				num_predict: 512,
+			});
+
+			// Extract tool commands
+			const toolCommands = this.extractToolCommands(response);
+			const cleanText = this.removeToolCommands(response);
+
+			return {
+				text: cleanText,
+				confidence: 0.9,
+				source: 'ollama',
+				toolCommands,
+				processingTime: Date.now() - startTime,
+				metadata: {
+					modelUsed: this.config.ollama.model || 'llama3.2',
+					provider: 'ollama',
+				},
+			};
+		} catch (error) {
+			console.error('Ollama provider failed:', error);
+			return null;
+		}
+	}
+
+	/**
+	 * Extract tool commands from response
+	 */
+	private extractToolCommands(text: string): Array<{ type: string; params: string }> {
+		const commands: Array<{ type: string; params: string }> = [];
+		const regex = /\[(\w+):([^\]]+)\]/g;
+		let match;
+
+		while ((match = regex.exec(text)) !== null) {
+			const type = match[1].toLowerCase();
+			const params = match[2].trim();
+
+			if (
+				['roll', 'update', 'damage', 'heal', 'status', 'inventory', 'skill_check'].includes(
+					type,
+				)
+			) {
+				commands.push({ type, params });
+			}
+		}
+
+		return commands;
+	}
+
+	/**
+	 * Remove tool commands from display text
+	 */
+	private removeToolCommands(text: string): string {
+		return text.replace(/\[(\w+):([^\]]+)\]/g, '').trim();
 	}
 
 	/**
@@ -290,28 +478,74 @@ export class AIServiceManager {
 		},
 		startTime: number,
 	): Promise<AIResponse | null> {
-		if (!this.cactusProvider || !this.isHealthy || !this.config.cactus.enabled) {
+		if (Platform.OS === 'web') {
+			// Cactus not available on web
 			return null;
 		}
 
-		const response = await this.tryWithRetry(async () => {
-			if (!this.cactusProvider) {
-				throw new Error('Cactus provider not available');
-			}
-			return await this.cactusProvider.generateDnDResponse({
-				prompt,
-				context,
-				systemPrompt: DnDSystemPrompts.DUNGEON_MASTER,
-			});
-		});
+		if (!this.cactusProvider && !this.platformProvider) {
+			return null;
+		}
 
-		return {
-			text: response.text,
-			confidence: 0.9,
-			source: 'cactus',
-			toolCommands: response.metadata?.toolCommands || [],
-			processingTime: Date.now() - startTime,
-		};
+		try {
+			// Use platform provider if available, otherwise cactus provider
+			const provider = this.platformProvider || this.cactusProvider;
+			if (!provider) {
+				return null;
+			}
+
+			// Try to use platform provider's completion method
+			if (this.platformProvider && typeof this.platformProvider.completion === 'function') {
+				const systemPrompt = `You are an expert Dungeons & Dragons Dungeon Master.
+Your task is to respond to player actions in a D&D game, maintaining narrative consistency and applying game rules correctly.
+
+Game Context:
+- Player Character: ${context.playerName}, a ${context.playerRace} ${context.playerClass}
+- Current Scene: ${context.currentScene}`;
+
+				const messages = [
+					{ role: 'system' as const, content: systemPrompt },
+					{ role: 'user' as const, content: prompt },
+				];
+
+				const response = await this.platformProvider.completion(messages, {
+					temperature: 0.7,
+					n_predict: 512,
+				});
+
+				const toolCommands = this.extractToolCommands(response);
+				const cleanText = this.removeToolCommands(response);
+
+				return {
+					text: cleanText,
+					confidence: 0.9,
+					source: 'cactus',
+					toolCommands,
+					processingTime: Date.now() - startTime,
+				};
+			}
+
+			// Fallback to old cactus provider if it exists
+			if (this.cactusProvider && typeof (this.cactusProvider as any).generateDnDResponse === 'function') {
+				const response = await (this.cactusProvider as any).generateDnDResponse({
+					prompt,
+					context,
+				});
+
+				return {
+					text: response.text,
+					confidence: 0.9,
+					source: 'cactus',
+					toolCommands: response.metadata?.toolCommands || [],
+					processingTime: Date.now() - startTime,
+				};
+			}
+
+			return null;
+		} catch (error) {
+			console.error('Cactus provider failed:', error);
+			return null;
+		}
 	}
 
 	/**
@@ -536,6 +770,7 @@ export class AIServiceManager {
 	 * Get detailed status of all AI providers
 	 */
 	getDetailedStatus(): {
+		ollama: { initialized: boolean; healthy: boolean };
 		cactus: { initialized: boolean; healthy: boolean };
 		local: {
 			initialized: boolean;
@@ -543,10 +778,15 @@ export class AIServiceManager {
 			status?: import('./providers/local-dm-provider').ProviderStatus;
 		};
 		fallback: { enabled: boolean };
+		network: { isOnline: boolean };
 		} {
 		return {
+			ollama: {
+				initialized: !!this.platformProvider && Platform.OS === 'web',
+				healthy: this.isOllamaReady,
+			},
 			cactus: {
-				initialized: !!this.cactusProvider,
+				initialized: !!this.cactusProvider || (!!this.platformProvider && Platform.OS !== 'web'),
 				healthy: this.isHealthy,
 			},
 			local: {
@@ -556,6 +796,9 @@ export class AIServiceManager {
 			},
 			fallback: {
 				enabled: this.config.fallback.enabled,
+			},
+			network: {
+				isOnline: this.isOnline,
 			},
 		};
 	}
@@ -583,10 +826,38 @@ export class AIServiceManager {
 	private async performHealthChecks(): Promise<void> {
 		const now = Date.now();
 
-		// Check Cactus provider health
-		if (this.cactusProvider && this.config.cactus.enabled) {
+		// Check network status
+		await this.checkNetworkStatus();
+
+		// Check Ollama provider health (web)
+		if (Platform.OS === 'web' && this.platformProvider && this.config.ollama.enabled) {
 			try {
-				const isHealthy = await this.cactusProvider.healthCheck();
+				const isHealthy = await this.platformProvider.healthCheck();
+				this.providerHealthStatus.ollama.healthy = isHealthy;
+				this.providerHealthStatus.ollama.lastCheck = now;
+
+				if (isHealthy) {
+					this.providerHealthStatus.ollama.consecutiveFailures = 0;
+					this.isOllamaReady = true;
+				} else {
+					this.providerHealthStatus.ollama.consecutiveFailures++;
+					if (this.providerHealthStatus.ollama.consecutiveFailures >= 3) {
+						this.isOllamaReady = false;
+					}
+				}
+			} catch (error) {
+				this.providerHealthStatus.ollama.healthy = false;
+				this.providerHealthStatus.ollama.consecutiveFailures++;
+				this.isOllamaReady = false;
+			}
+		}
+
+		// Check Cactus provider health (native)
+		if (Platform.OS !== 'web' && this.cactusProvider && this.config.cactus.enabled) {
+			try {
+				const isHealthy = typeof this.cactusProvider.healthCheck === 'function'
+					? await this.cactusProvider.healthCheck()
+					: this.isHealthy;
 				this.providerHealthStatus.cactus.healthy = isHealthy;
 				this.providerHealthStatus.cactus.lastCheck = now;
 
@@ -607,7 +878,7 @@ export class AIServiceManager {
 		}
 
 		// Check Local DM provider health
-		if (this.localDMProvider && this.config.local.enabled) {
+		if (Platform.OS !== 'web' && this.localDMProvider && this.config.local.enabled) {
 			try {
 				const isHealthy = await this.localDMProvider.healthCheck();
 				this.providerHealthStatus.local.healthy = isHealthy;
@@ -634,22 +905,31 @@ export class AIServiceManager {
 	 * Get optimal provider based on current health and configuration
 	 * Requirement 4.1: Prioritize local when available
 	 */
-	getOptimalProvider(): 'local' | 'cactus' | 'fallback' {
+	getOptimalProvider(): 'ollama' | 'local' | 'cactus' | 'fallback' {
 		// If preferLocal is set and local is healthy, use local
 		if (
 			this.config.providerSelection.preferLocal &&
 			this.isLocalReady &&
-			this.config.local.enabled
+			this.config.local.enabled &&
+			Platform.OS !== 'web'
 		) {
 			return 'local';
 		}
 
+		// Web: prefer Ollama
+		if (Platform.OS === 'web' && this.isOllamaReady && this.config.ollama.enabled) {
+			return 'ollama';
+		}
+
 		// Otherwise, use the first healthy provider in the fallback chain
 		for (const provider of this.config.providerSelection.fallbackChain) {
-			if (provider === 'local' && this.isLocalReady && this.config.local.enabled) {
+			if (provider === 'ollama' && this.isOllamaReady && this.config.ollama.enabled) {
+				return 'ollama';
+			}
+			if (provider === 'local' && this.isLocalReady && this.config.local.enabled && Platform.OS !== 'web') {
 				return 'local';
 			}
-			if (provider === 'cactus' && this.isHealthy && this.config.cactus.enabled) {
+			if (provider === 'cactus' && this.isHealthy && this.config.cactus.enabled && Platform.OS !== 'web') {
 				return 'cactus';
 			}
 			if (provider === 'rule-based') {
@@ -707,13 +987,16 @@ export class AIServiceManager {
 	 * Get comprehensive provider health status
 	 */
 	getProviderHealthStatus(): {
+		ollama: { healthy: boolean; lastCheck: number; consecutiveFailures: number };
 		cactus: { healthy: boolean; lastCheck: number; consecutiveFailures: number };
 		local: { healthy: boolean; lastCheck: number; consecutiveFailures: number };
-		optimal: 'local' | 'cactus' | 'fallback';
+		optimal: 'ollama' | 'local' | 'cactus' | 'fallback';
+		network: { isOnline: boolean };
 		} {
 		return {
 			...this.providerHealthStatus,
 			optimal: this.getOptimalProvider(),
+			network: { isOnline: this.isOnline },
 		};
 	}
 
@@ -783,7 +1066,7 @@ export class AIServiceManager {
 	 * Requirement 4.2: State synchronization between local and cloud providers
 	 */
 	async switchProviderWithContext(
-		newProviderType: 'local' | 'cactus',
+		newProviderType: 'ollama' | 'local' | 'cactus',
 		contextId?: string,
 	): Promise<{ success: boolean; newProvider: string; contextPreserved: boolean }> {
 		try {
@@ -810,7 +1093,9 @@ export class AIServiceManager {
 					fallbackChain:
 						newProviderType === 'local'
 							? ['local', 'cactus', 'rule-based']
-							: ['cactus', 'local', 'rule-based'],
+							: newProviderType === 'ollama'
+								? ['ollama', 'rule-based']
+								: ['cactus', 'local', 'rule-based'],
 				},
 			};
 
@@ -936,7 +1221,7 @@ export class AIServiceManager {
 	 * Get provider switching recommendations based on context
 	 */
 	getProviderRecommendation(contextId: string): {
-		recommended: 'local' | 'cactus' | 'fallback';
+		recommended: 'ollama' | 'local' | 'cactus' | 'fallback';
 		reason: string;
 		confidence: number;
 	} {
@@ -944,29 +1229,42 @@ export class AIServiceManager {
 		const healthStatus = this.getProviderHealthStatus();
 
 		// Default recommendation
-		let recommended: 'local' | 'cactus' | 'fallback' = 'fallback';
+		let recommended: 'ollama' | 'local' | 'cactus' | 'fallback' = 'fallback';
 		let reason = 'No providers available';
 		let confidence = 0.5;
 
-		// Prefer local if healthy and configured
-		if (healthStatus.local.healthy && this.config.local.enabled) {
-			recommended = 'local';
-			reason = 'Local provider is healthy and provides privacy benefits';
-			confidence = 0.9;
-		}
-		// Fall back to cactus if local is not available
-		else if (healthStatus.cactus.healthy && this.config.cactus.enabled) {
-			recommended = 'cactus';
-			reason = 'Cactus provider is healthy, local provider unavailable';
-			confidence = 0.8;
+		// Web: prefer Ollama
+		if (Platform.OS === 'web') {
+			if (healthStatus.ollama.healthy && this.config.ollama.enabled) {
+				recommended = 'ollama';
+				reason = 'Ollama provider is healthy and available';
+				confidence = 0.9;
+			} else {
+				recommended = 'fallback';
+				reason = 'Ollama not available, using rule-based fallback';
+				confidence = 0.6;
+			}
+		} else {
+			// Native: prefer local if healthy and configured
+			if (healthStatus.local.healthy && this.config.local.enabled) {
+				recommended = 'local';
+				reason = 'Local provider is healthy and provides privacy benefits';
+				confidence = 0.9;
+			}
+			// Fall back to cactus if local is not available
+			else if (healthStatus.cactus.healthy && this.config.cactus.enabled) {
+				recommended = 'cactus';
+				reason = 'Cactus provider is healthy, local provider unavailable';
+				confidence = 0.8;
+			}
 		}
 
 		// Consider context-specific factors
 		if (context) {
 			const conversationLength = context.sessionData?.conversationHistory?.length || 0;
 
-			// For long conversations, prefer local for consistency
-			if (conversationLength > 10 && healthStatus.local.healthy) {
+			// For long conversations, prefer local for consistency (native only)
+			if (Platform.OS !== 'web' && conversationLength > 10 && healthStatus.local.healthy) {
 				recommended = 'local';
 				reason = 'Long conversation benefits from local consistency';
 				confidence = Math.min(confidence + 0.1, 1.0);
@@ -997,8 +1295,14 @@ export class AIServiceManager {
 			this.localDMProvider = null;
 		}
 
+		if (this.platformProvider && typeof this.platformProvider.rewind === 'function') {
+			this.platformProvider.rewind();
+		}
+
 		this.cactusProvider = null;
+		this.platformProvider = null;
 		this.isHealthy = false;
+		this.isOllamaReady = false;
 		this.isLocalReady = false;
 	}
 }
@@ -1007,6 +1311,12 @@ export class AIServiceManager {
  * Default configuration for production use
  */
 export const DefaultAIConfig: AIServiceConfig = {
+	ollama: {
+		enabled: true,
+		baseUrl: process.env.EXPO_PUBLIC_OLLAMA_BASE_URL || 'http://localhost:11434',
+		model: process.env.EXPO_PUBLIC_OLLAMA_MODEL || 'llama3.2',
+		timeout: 30000,
+	},
 	cactus: {
 		enabled: true,
 		modelPath: '../assets/models/gemma-3n-E2B-it-Q4_K_S.gguf', // Use local GGUF model
@@ -1029,7 +1339,9 @@ export const DefaultAIConfig: AIServiceConfig = {
 	},
 	providerSelection: {
 		preferLocal: true, // Prefer local for privacy and offline capability
-		fallbackChain: ['local', 'cactus', 'rule-based'],
+		fallbackChain: Platform.OS === 'web' 
+			? ['ollama', 'rule-based']
+			: ['local', 'cactus', 'rule-based'],
 		healthCheckInterval: 30000, // Check provider health every 30 seconds
 	},
 };

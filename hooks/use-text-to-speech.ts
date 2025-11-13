@@ -1,7 +1,9 @@
+import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
+import { createKokoroTTSClient, KokoroTTSClient } from '@/services/tts/kokoro-client';
 import { useSettingsStore } from '@/stores/settings-store';
 
 export interface TTSOptions {
@@ -30,16 +32,20 @@ export interface TextToSpeechResult {
 	pause: () => void;
 	resume: () => void;
 	isAvailable: boolean;
+	ttsProvider: 'kokoro' | 'expo-speech' | 'none';
 }
 
 /**
- * Hook for Text-to-Speech functionality using Expo Speech
+ * Hook for Text-to-Speech functionality using Expo Speech or Kokoro TTS
  */
 export const useTextToSpeech = (): TextToSpeechResult => {
 	const [isSpeaking, setIsSpeaking] = useState(false);
 	const [availableVoices, setAvailableVoices] = useState<TTSVoice[]>([]);
 	const [isAvailable, setIsAvailable] = useState(false);
+	const [ttsProvider, setTtsProvider] = useState<'kokoro' | 'expo-speech' | 'none'>('none');
 	const { voice: voiceSettings } = useSettingsStore();
+	const kokoroClient = useRef<KokoroTTSClient | null>(null);
+	const currentSound = useRef<Audio.Sound | null>(null);
 
 	/**
 	 * Check if TTS is available and load voices
@@ -47,28 +53,71 @@ export const useTextToSpeech = (): TextToSpeechResult => {
 	useEffect(() => {
 		const checkAvailability = async () => {
 			try {
-				// Check if Speech API is available
-				setIsAvailable(true);
+				// Try Kokoro first if configured
+				const kokoroBaseUrl = process.env.EXPO_PUBLIC_TTS_BASE_URL;
+				if (kokoroBaseUrl) {
+					try {
+						kokoroClient.current = createKokoroTTSClient({ baseUrl: kokoroBaseUrl });
+						setTtsProvider('kokoro');
+						setIsAvailable(true);
+						// Kokoro voices would come from the API
+						setAvailableVoices([
+							{ identifier: 'default', name: 'Default', language: 'en-US', quality: 'high' },
+						]);
+						return;
+					} catch (error) {
+						console.warn('Kokoro TTS not available, falling back to expo-speech:', error);
+					}
+				}
 
-				// Get available voices
-				const voices = await Speech.getAvailableVoicesAsync();
-				const formattedVoices: TTSVoice[] = voices.map(voice => ({
-					identifier: voice.identifier,
-					name: voice.name,
-					language: voice.language,
-					quality: voice.quality,
-				}));
-				// console.log('formattedVoices', formattedVoices);
+				// Fallback to expo-speech
+				if (Platform.OS !== 'web') {
+					// Check if Speech API is available
+					setIsAvailable(true);
+					setTtsProvider('expo-speech');
 
-				setAvailableVoices(formattedVoices);
+					// Get available voices
+					const voices = await Speech.getAvailableVoicesAsync();
+					const formattedVoices: TTSVoice[] = voices.map(voice => ({
+						identifier: voice.identifier,
+						name: voice.name,
+						language: voice.language,
+						quality: voice.quality,
+					}));
+
+					setAvailableVoices(formattedVoices);
+				} else {
+					// Web: Only Kokoro is available
+					setIsAvailable(false);
+					setTtsProvider('none');
+				}
 			} catch (error) {
 				console.error('TTS not available:', error);
 				setIsAvailable(false);
+				setTtsProvider('none');
 			}
 		};
 
 		checkAvailability();
 	}, []);
+
+	/**
+	 * Stop current speech
+	 */
+	const stop = useCallback(async () => {
+		if (ttsProvider === 'kokoro' && currentSound.current) {
+			try {
+				await currentSound.current.stopAsync();
+				await currentSound.current.unloadAsync();
+				currentSound.current = null;
+			} catch (error) {
+				console.error('Failed to stop Kokoro audio:', error);
+			}
+		} else if (ttsProvider === 'expo-speech') {
+			Speech.stop();
+		}
+		setIsSpeaking(false);
+	}, [ttsProvider]);
 
 	/**
 	 * Speak text with optional configuration
@@ -82,39 +131,78 @@ export const useTextToSpeech = (): TextToSpeechResult => {
 			try {
 				// Stop any current speech
 				if (isSpeaking) {
-					Speech.stop();
+					await stop();
 				}
 
 				setIsSpeaking(true);
+				options.onStart?.();
 
-				// Configure speech options
-				const speechOptions: Speech.SpeechOptions = {
-					language: options.language || getDMVoiceLanguage(),
-					pitch: options.pitch || getDMVoicePitch(),
-					rate: options.rate || getDMVoiceRate(),
-					voice: options.voice || getDMVoiceIdentifier(voiceSettings.selectedVoiceId),
-					onStart: () => {
-						setIsSpeaking(true);
-						options.onStart?.();
-					},
-					onDone: () => {
+				if (ttsProvider === 'kokoro' && kokoroClient.current) {
+					// Use Kokoro TTS
+					try {
+						const cleanText = cleanTextForTTS(text);
+						const audioResult = await kokoroClient.current.synthesize({
+							text: cleanText,
+							voice: options.voice || 'default',
+							speed: options.rate ? 1.0 / options.rate : 1.0, // Convert rate to speed
+							pitch: options.pitch || 1.0,
+						});
+
+						// Play audio using expo-av
+						const { sound } = await Audio.Sound.createAsync(
+							{ uri: audioResult.uri },
+							{ shouldPlay: true },
+						);
+
+						currentSound.current = sound;
+
+						// Set up playback status listener
+						sound.setOnPlaybackStatusUpdate((status) => {
+							if (status.isLoaded) {
+								if (status.didJustFinish) {
+									setIsSpeaking(false);
+									options.onDone?.();
+									sound.unloadAsync();
+									currentSound.current = null;
+								}
+							}
+						});
+					} catch (error) {
 						setIsSpeaking(false);
-						options.onDone?.();
-					},
-					onStopped: () => {
-						setIsSpeaking(false);
-						options.onStopped?.();
-					},
-					onError: (error: any) => {
-						setIsSpeaking(false);
-						const errorMessage =
-							error?.error || error?.message || 'Speech synthesis failed';
-						console.error('TTS Error:', errorMessage);
+						const errorMessage = error instanceof Error ? error.message : 'Kokoro TTS failed';
+						console.error('Kokoro TTS Error:', errorMessage);
 						options.onError?.(errorMessage);
-					},
-				};
+					}
+				} else if (ttsProvider === 'expo-speech') {
+					// Use expo-speech
+					const speechOptions: Speech.SpeechOptions = {
+						language: options.language || getDMVoiceLanguage(),
+						pitch: options.pitch || getDMVoicePitch(),
+						rate: options.rate || getDMVoiceRate(),
+						voice: options.voice || getDMVoiceIdentifier(voiceSettings.selectedVoiceId),
+						onStart: () => {
+							setIsSpeaking(true);
+							options.onStart?.();
+						},
+						onDone: () => {
+							setIsSpeaking(false);
+							options.onDone?.();
+						},
+						onStopped: () => {
+							setIsSpeaking(false);
+							options.onStopped?.();
+						},
+						onError: (error: any) => {
+							setIsSpeaking(false);
+							const errorMessage =
+								error?.error || error?.message || 'Speech synthesis failed';
+							console.error('TTS Error:', errorMessage);
+							options.onError?.(errorMessage);
+						},
+					};
 
-				await Speech.speak(text, speechOptions);
+					await Speech.speak(text, speechOptions);
+				}
 			} catch (error) {
 				setIsSpeaking(false);
 				const errorMessage = error instanceof Error ? error.message : 'Unknown TTS error';
@@ -122,16 +210,8 @@ export const useTextToSpeech = (): TextToSpeechResult => {
 				options.onError?.(errorMessage);
 			}
 		},
-		[isAvailable, isSpeaking],
+		[isAvailable, isSpeaking, ttsProvider, voiceSettings.selectedVoiceId, stop],
 	);
-
-	/**
-	 * Stop current speech
-	 */
-	const stop = useCallback(() => {
-		Speech.stop();
-		setIsSpeaking(false);
-	}, []);
 
 	/**
 	 * Pause current speech
@@ -159,6 +239,7 @@ export const useTextToSpeech = (): TextToSpeechResult => {
 		pause,
 		resume,
 		isAvailable,
+		ttsProvider,
 	};
 };
 
