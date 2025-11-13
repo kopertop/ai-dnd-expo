@@ -1,11 +1,11 @@
 import React, {
-	createContext,
-	useCallback,
-	useContext,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
 } from 'react';
 import { Platform } from 'react-native';
 
@@ -26,7 +26,7 @@ let useNativeAudioPlayer: ((source: string) => ReturnType<any>) | null = null;
 
 if (Platform.OS !== 'web') {
 	try {
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 		const expoAudio = require('expo-audio');
 		useNativeAudioPlayer = expoAudio.useAudioPlayer;
 	} catch (error) {
@@ -166,13 +166,13 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 				console.warn('Audio cleanup failed:', error);
 			}
 		};
-		// eslint-disable-next-line react-hooks/exhaustive-deps
+
 	}, []); // Only run once on mount
 
 	// Handle mute/unmute and volume changes - use refs to prevent infinite loops
 	useEffect(() => {
 		if (isUpdatingRef.current) return;
-		
+
 		const currentPlayer = playerRef.current;
 		if (!currentPlayer || !isInitializedRef.current) return;
 
