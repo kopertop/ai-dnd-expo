@@ -6,13 +6,14 @@
  */
 
 import { Platform } from 'react-native';
-import { createPlatformAwareProvider, PlatformAwareProviderInterface } from './providers/platform-aware-provider';
+
 import {
 	DefaultLocalDMConfig,
 	LocalDMModelConfigs,
 	LocalDMProvider,
 	ResourceUsage,
 } from './providers/local-dm-provider';
+import { createPlatformAwareProvider, PlatformAwareProviderInterface } from './providers/platform-aware-provider';
 
 export interface AIServiceConfig {
 	ollama: {
