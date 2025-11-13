@@ -24,6 +24,7 @@ interface SettingsStore extends UserSettings {
 	// Actions
 	setMusicVolume: (volume: number) => void;
 	setMusicMuted: (muted: boolean) => void;
+	toggleMusicMuted: () => void;
 	updateSettings: (settings: Partial<UserSettings>) => void;
 	updateVoiceSettings: (settings: Partial<VoiceSettings>) => void;
 }
@@ -47,6 +48,10 @@ export const useSettingsStore = create<SettingsStore>()(
 			// Actions
 			setMusicVolume: (volume: number) => set({ musicVolume: volume }),
 			setMusicMuted: (muted: boolean) => set({ isMusicMuted: muted }),
+			toggleMusicMuted: () =>
+				set(state => ({
+					isMusicMuted: !state.isMusicMuted,
+				})),
 			updateSettings: (newSettings: Partial<UserSettings>) => set(newSettings),
 			updateVoiceSettings: (voiceSettings: Partial<VoiceSettings>) =>
 				set(state => ({

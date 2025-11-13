@@ -17,7 +17,7 @@ const AudioButton: React.FC = () => {
 	const { player, togglePlayPause } = useAudio();
 
 	return (
-		<View pointerEvents="box-none" style={styles.soundButtonContainer}>
+		<View style={[styles.soundButtonContainer, { pointerEvents: 'box-none' }]}>
 			<TouchableOpacity
 				accessibilityLabel={
 					player.playing ? 'Mute background music' : 'Unmute background music'
@@ -60,7 +60,7 @@ const RootLayout: React.FC = () => {
 						<StatusBar style="auto" />
 						{/* Only show sound button on web */}
 						{Platform.OS === 'web' && (
-							<View pointerEvents="box-none" style={styles.soundButtonContainer}>
+							<View style={[styles.soundButtonContainer, { pointerEvents: 'box-none' }]}>
 								<AudioButton />
 							</View>
 						)}

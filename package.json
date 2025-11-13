@@ -21,6 +21,8 @@
     "train:deploy": "python3.11 ai-training/deploy_to_cactus.py",
     "train:test": "python3.11 ai-training/test_deployed_model.py",
     "start": "expo start",
+    "start:full": "./scripts/start-dev.sh",
+    "start:worker": "cd workers && bun run dev",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",

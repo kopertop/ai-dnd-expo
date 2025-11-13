@@ -38,6 +38,18 @@ const IndexScreen: React.FC = () => {
 				<Link href="/new-game" style={styles.link}>
 					<ThemedText type="link">Start a new game</ThemedText>
 				</Link>
+				<TouchableOpacity
+					style={styles.multiplayerBtn}
+					onPress={() => router.push('/host-game')}
+				>
+					<ThemedText style={styles.multiplayerBtnText}>Host Game</ThemedText>
+				</TouchableOpacity>
+				<TouchableOpacity
+					style={styles.multiplayerBtn}
+					onPress={() => router.push('/join-game')}
+				>
+					<ThemedText style={styles.multiplayerBtnText}>Join Game</ThemedText>
+				</TouchableOpacity>
 				{!loading && hasSavedGame && (
 					<TouchableOpacity
 						style={styles.continueBtn}
@@ -95,6 +107,19 @@ const styles = StyleSheet.create({
 	},
 	continueBtnText: {
 		color: '#3B2F1B',
+		fontWeight: 'bold',
+		fontSize: 18,
+	},
+	multiplayerBtn: {
+		marginTop: 15,
+		backgroundColor: '#8B6914',
+		paddingVertical: 15,
+		paddingHorizontal: 32,
+		borderRadius: 8,
+		alignItems: 'center',
+	},
+	multiplayerBtnText: {
+		color: '#F5E6D3',
 		fontWeight: 'bold',
 		fontSize: 18,
 	},
