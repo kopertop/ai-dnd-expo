@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, {
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from 'react';
 import { Platform } from 'react-native';
 
 import audioSource from '../assets/audio/background.mp3';
@@ -28,73 +36,84 @@ if (Platform.OS !== 'web') {
 
 const useWebAudioPlayer = (source: string) => {
 	const audioRef = useRef<HTMLAudioElement | null>(null);
-	const [playing, setPlaying] = useState(false);
-	const [loop, setLoop] = useState(true);
-	const [volume, setVolume] = useState(1);
+	const playingRef = useRef(false);
+	const loopRef = useRef(true);
+	const volumeRef = useRef(1);
 
 	useEffect(() => {
 		if (typeof window === 'undefined' || typeof Audio === 'undefined') {
 			return;
 		}
 		audioRef.current = new Audio(source);
-		audioRef.current.loop = loop;
-		audioRef.current.volume = volume;
+		audioRef.current.loop = loopRef.current;
+		audioRef.current.volume = volumeRef.current;
+
+		// Listen to play/pause events to track playing state
+		const handlePlay = () => {
+			playingRef.current = true;
+		};
+		const handlePause = () => {
+			playingRef.current = false;
+		};
+
+		audioRef.current.addEventListener('play', handlePlay);
+		audioRef.current.addEventListener('pause', handlePause);
 
 		return () => {
+			audioRef.current?.removeEventListener('play', handlePlay);
+			audioRef.current?.removeEventListener('pause', handlePause);
 			audioRef.current?.pause();
 			audioRef.current = null;
 		};
 	}, [source]);
 
-	useEffect(() => {
-		if (audioRef.current) {
-			audioRef.current.loop = loop;
-		}
-	}, [loop]);
-
-	useEffect(() => {
-		if (audioRef.current) {
-			audioRef.current.volume = volume;
-		}
-	}, [volume]);
-
-	const play = async () => {
+	const play = useCallback(async () => {
 		if (!audioRef.current) {
 			return;
 		}
 		try {
 			await audioRef.current.play();
-			setPlaying(true);
 		} catch (error) {
 			console.warn('Web audio play failed:', error);
 		}
-	};
+	}, []);
 
-	const pause = () => {
+	const pause = useCallback(() => {
 		if (!audioRef.current) {
 			return;
 		}
 		audioRef.current.pause();
-		setPlaying(false);
-	};
+	}, []);
 
-	return {
-		playing,
-		get loop() {
-			return loop;
-		},
-		set loop(value: boolean) {
-			setLoop(value);
-		},
-		get volume() {
-			return volume;
-		},
-		set volume(value: number) {
-			setVolume(value);
-		},
-		play,
-		pause,
-	} as ReturnType<any>;
+	// Return a stable object that doesn't change on every render
+	return useMemo(
+		() => ({
+			get playing() {
+				return playingRef.current;
+			},
+			get loop() {
+				return loopRef.current;
+			},
+			set loop(value: boolean) {
+				loopRef.current = value;
+				if (audioRef.current) {
+					audioRef.current.loop = value;
+				}
+			},
+			get volume() {
+				return volumeRef.current;
+			},
+			set volume(value: number) {
+				volumeRef.current = value;
+				if (audioRef.current) {
+					audioRef.current.volume = value;
+				}
+			},
+			play,
+			pause,
+		}),
+		[play, pause],
+	);
 };
 
 const useConditionalAudioPlayer = (source: string) => {
@@ -106,39 +125,33 @@ const useConditionalAudioPlayer = (source: string) => {
 
 export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	const [isPlaying, setIsPlaying] = useState(false);
+	const isMusicMuted = useSettingsStore(state => state.isMusicMuted);
+	const musicVolume = useSettingsStore(state => state.musicVolume);
+	const toggleMusicMuted = useSettingsStore(state => state.toggleMusicMuted);
+
 	const player = useConditionalAudioPlayer(audioSource);
-	const { isMusicMuted, musicVolume } = useSettingsStore();
+	const playerRef = useRef<ReturnType<typeof useConditionalAudioPlayer> | null>(null);
+	const isInitializedRef = useRef(false);
+	const previousMutedRef = useRef<boolean | null>(null);
+	const previousVolumeRef = useRef<number | null>(null);
+	const isUpdatingRef = useRef(false);
 
-	useEffect(() => {
-		if (player.playing) {
-			setIsPlaying(true);
-		} else {
-			setIsPlaying(false);
-		}
-	}, [player.playing]);
+	// Store player in ref only once, keep it stable
+	if (!playerRef.current) {
+		playerRef.current = player;
+	}
 
+	// Set up the player once on mount
 	useEffect(() => {
-		if (player) {
-			console.log('Setting Music Player Settings', isMusicMuted);
-			if (isMusicMuted) {
-				player.pause();
-			} else {
-				player.play();
-			}
-		}
-	}, [isMusicMuted, player]);
-
-	// Set up the player once
-	useEffect(() => {
-		if (!player) return;
+		if (isInitializedRef.current || !playerRef.current) return;
+		isInitializedRef.current = true;
 
 		try {
-			player.loop = true;
+			playerRef.current.loop = true;
 
 			// Auto-play on mobile (non-web)
 			if (Platform.OS !== 'web') {
-				player.play();
-				setIsPlaying(true);
+				playerRef.current.play();
 			}
 		} catch (error) {
 			console.warn('Audio setup failed:', error);
@@ -146,63 +159,120 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
 		return () => {
 			try {
-				if (player && typeof player.pause === 'function') {
-					player.pause();
-					setIsPlaying(false);
+				if (playerRef.current && typeof playerRef.current.pause === 'function') {
+					playerRef.current.pause();
 				}
 			} catch (error) {
 				console.warn('Audio cleanup failed:', error);
 			}
 		};
-	}, [player]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []); // Only run once on mount
 
+	// Handle mute/unmute and volume changes - use refs to prevent infinite loops
 	useEffect(() => {
-		if (player) {
-			if (isMusicMuted) {
-				player.pause();
-			} else {
-				player.volume = musicVolume;
-				if (!player.playing) {
-					player.play();
-				}
-			}
-		}
-	}, [isMusicMuted, musicVolume, player]);
+		if (isUpdatingRef.current) return;
+		
+		const currentPlayer = playerRef.current;
+		if (!currentPlayer || !isInitializedRef.current) return;
 
-	const togglePlayPause = async () => {
-		try {
-			if (player.playing) {
-				player.pause();
+		// Only update if values actually changed
+		if (previousMutedRef.current !== isMusicMuted) {
+			isUpdatingRef.current = true;
+			previousMutedRef.current = isMusicMuted;
+			if (isMusicMuted) {
+				currentPlayer.pause();
 				setIsPlaying(false);
 			} else {
-				await player.play();
+				// Always try to play when unmuting (browser will handle if already playing)
+				currentPlayer.play().catch(error => {
+					console.warn('Audio play failed:', error);
+				});
 				setIsPlaying(true);
 			}
-		} catch (error) {
-			console.warn('Audio toggle failed:', error);
+			isUpdatingRef.current = false;
 		}
-	};
 
-	const play = async () => {
+		// Only update volume if it actually changed and not muted
+		if (previousVolumeRef.current !== musicVolume && !isMusicMuted) {
+			previousVolumeRef.current = musicVolume;
+			currentPlayer.volume = musicVolume;
+		}
+	}, [isMusicMuted, musicVolume]);
+
+	const togglePlayPause = useCallback(async () => {
+		toggleMusicMuted();
+	}, [toggleMusicMuted]);
+
+	const play = useCallback(async () => {
+		if (isUpdatingRef.current) return;
 		try {
-			await player.play();
+			isUpdatingRef.current = true;
+			await playerRef.current?.play();
 			setIsPlaying(true);
+			isUpdatingRef.current = false;
 		} catch (error) {
+			isUpdatingRef.current = false;
 			console.warn('Audio play failed:', error);
 		}
-	};
+	}, []);
 
-	const pause = () => {
+	const pause = useCallback(() => {
+		if (isUpdatingRef.current) return;
 		try {
-			player.pause();
+			isUpdatingRef.current = true;
+			playerRef.current?.pause();
 			setIsPlaying(false);
+			isUpdatingRef.current = false;
 		} catch (error) {
+			isUpdatingRef.current = false;
 			console.warn('Audio pause failed:', error);
 		}
-	};
+	}, []);
+
+	// Create a stable player object - remove playing getter to avoid dependency on isPlaying
+	const stablePlayer = useMemo(
+		() => ({
+			get loop() {
+				return playerRef.current?.loop ?? false;
+			},
+			set loop(value: boolean) {
+				if (playerRef.current) {
+					playerRef.current.loop = value;
+				}
+			},
+			get volume() {
+				return playerRef.current?.volume ?? 0;
+			},
+			set volume(value: number) {
+				if (playerRef.current) {
+					playerRef.current.volume = value;
+				}
+			},
+			play: async () => {
+				await play();
+			},
+			pause: () => {
+				pause();
+			},
+		}),
+		[play, pause],
+	);
+
+	// Memoize the context value to prevent unnecessary re-renders
+	const contextValue = useMemo(
+		() => ({
+			player: stablePlayer,
+			togglePlayPause,
+			play,
+			pause,
+			isPlaying,
+		}),
+		[stablePlayer, togglePlayPause, play, pause, isPlaying],
+	);
 
 	return (
-		<AudioContext.Provider value={{ player, togglePlayPause, play, pause, isPlaying }}>
+		<AudioContext.Provider value={contextValue}>
 			{children}
 		</AudioContext.Provider>
 	);
@@ -215,3 +285,5 @@ export const useAudio = (): AudioContextType => {
 	}
 	return context;
 };
+
+

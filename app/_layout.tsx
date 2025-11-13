@@ -14,21 +14,21 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { InputModeProvider } from '@/hooks/use-input-mode';
 
 const AudioButton: React.FC = () => {
-	const { player, togglePlayPause } = useAudio();
+	const { isPlaying, togglePlayPause } = useAudio();
 
 	return (
 		<View pointerEvents="box-none" style={styles.soundButtonContainer}>
 			<TouchableOpacity
 				accessibilityLabel={
-					player.playing ? 'Mute background music' : 'Unmute background music'
+					isPlaying ? 'Mute background music' : 'Unmute background music'
 				}
 				onPress={togglePlayPause}
 				style={styles.soundButton}
 			>
 				<Feather
-					name={player.playing ? 'volume-2' : 'volume-x'}
+					name={isPlaying ? 'volume-2' : 'volume-x'}
 					size={28}
-					color={player.playing ? '#4caf50' : '#f44336'}
+					color={isPlaying ? '#4caf50' : '#f44336'}
 				/>
 			</TouchableOpacity>
 		</View>
