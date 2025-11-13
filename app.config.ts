@@ -18,6 +18,8 @@ const config: { expo: ExpoConfig } = {
 			typedRoutes: true,
 		},
 		plugins: [
+			'expo-font',
+			'expo-web-browser',
 			'expo-router',
 			[
 				'expo-splash-screen',
