@@ -5,3 +5,16 @@ OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.2
 ADMIN_EMAILS=kopertop@gmail.com,cmoyer@newstex.com
 
+# Better Auth Configuration
+# Generate a secure random string for AUTH_SECRET (e.g., using: openssl rand -base64 32)
+AUTH_SECRET=your-secret-key-here-change-this-in-production
+AUTH_URL=http://localhost:8787
+
+# Google OAuth (optional - leave empty if not using)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Apple Sign-In (optional - leave empty if not using)
+APPLE_CLIENT_ID=
+APPLE_CLIENT_SECRET=
+

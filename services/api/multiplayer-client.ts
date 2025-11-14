@@ -1,15 +1,16 @@
 import {
-	CreateGameRequest,
-	GameSessionResponse,
-	GameStateResponse,
-	JoinGameRequest,
-	PlayerActionRequest,
-	DMActionRequest,
-	ErrorResponse,
+    CreateGameRequest,
+    DMActionRequest,
+    ErrorResponse,
+    GameSessionResponse,
+    GameStateResponse,
+    JoinGameRequest,
+    PlayerActionRequest,
 } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { Quest } from '@/types/quest';
+// Note: Better-auth uses cookies for session management, which are automatically sent with fetch requests
 
 // Determine API base URL:
 // 1. If EXPO_PUBLIC_MULTIPLAYER_API_URL is set, use it (for explicit Worker URL)
@@ -21,23 +22,23 @@ const getApiBaseUrl = (): string => {
 	if (explicitUrl) {
 		return explicitUrl;
 	}
-	
+
 	// Check if we're in a browser environment
 	if (typeof window !== 'undefined') {
 		// Check if we're on localhost (local development)
-		const isLocalhost = window.location.hostname === 'localhost' || 
+		const isLocalhost = window.location.hostname === 'localhost' ||
 		                   window.location.hostname === '127.0.0.1' ||
 		                   window.location.hostname === '';
-		
+
 		if (isLocalhost) {
 			// Local development - use full localhost URL
 			return 'http://localhost:8787';
 		}
-		
+
 		// Production - use relative URLs so Cloudflare Pages routes /api/* to Worker
 		return '';
 	}
-	
+
 	// Node/Expo dev server - use localhost
 	return 'http://localhost:8787';
 };
@@ -52,14 +53,23 @@ export class MultiplayerClient {
 	}
 
 	/**
+	 * Get auth headers
+	 * Better-auth uses cookies for session management, which are automatically sent with requests
+	 */
+	private getAuthHeaders(): Record<string, string> {
+		return {
+			'Content-Type': 'application/json',
+		};
+	}
+
+	/**
 	 * Create a new game session (host)
 	 */
 	async createGame(request: CreateGameRequest & { hostCharacter: Character }): Promise<GameSessionResponse> {
+		const headers = this.getAuthHeaders();
 		const response = await fetch(`${this.baseUrl}/api/games`, {
 			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
+			headers,
 			body: JSON.stringify(request),
 		});
 
@@ -75,11 +85,10 @@ export class MultiplayerClient {
 	 * Get game session info by invite code
 	 */
 	async getGameSession(inviteCode: string): Promise<GameSessionResponse> {
+		const headers = this.getAuthHeaders();
 		const response = await fetch(`${this.baseUrl}/api/games/${inviteCode}`, {
 			method: 'GET',
-			headers: {
-				'Content-Type': 'application/json',
-			},
+			headers,
 		});
 
 		if (!response.ok) {
@@ -94,13 +103,12 @@ export class MultiplayerClient {
 	 * Join a game with a character
 	 */
 	async joinGame(request: JoinGameRequest): Promise<GameSessionResponse> {
+		const headers = this.getAuthHeaders();
 		const response = await fetch(
 			`${this.baseUrl}/api/games/${request.inviteCode}/join`,
 			{
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers,
 				body: JSON.stringify({
 					character: request.character,
 					playerId: request.playerId,
@@ -120,13 +128,12 @@ export class MultiplayerClient {
 	 * Poll game state (fallback when WebSocket unavailable)
 	 */
 	async pollGameState(inviteCode: string): Promise<GameStateResponse> {
+		const headers = this.getAuthHeaders();
 		const response = await fetch(
 			`${this.baseUrl}/api/games/${inviteCode}/state`,
 			{
 				method: 'GET',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers,
 			},
 		);
 
@@ -145,13 +152,12 @@ export class MultiplayerClient {
 		inviteCode: string,
 		request: PlayerActionRequest & { playerId: string },
 	): Promise<void> {
+		const headers = this.getAuthHeaders();
 		const response = await fetch(
 			`${this.baseUrl}/api/games/${inviteCode}/action`,
 			{
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers,
 				body: JSON.stringify(request),
 			},
 		);
@@ -169,13 +175,12 @@ export class MultiplayerClient {
 		inviteCode: string,
 		request: DMActionRequest & { hostId: string },
 	): Promise<GameStateResponse> {
+		const headers = this.getAuthHeaders();
 		const response = await fetch(
 			`${this.baseUrl}/api/games/${inviteCode}/dm-action`,
 			{
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers,
 				body: JSON.stringify(request),
 			},
 		);
@@ -196,13 +201,12 @@ export class MultiplayerClient {
 		hostId: string,
 		gameState: MultiplayerGameState,
 	): Promise<GameStateResponse> {
+		const headers = this.getAuthHeaders();
 		const response = await fetch(
 			`${this.baseUrl}/api/games/${inviteCode}/start`,
 			{
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers,
 				body: JSON.stringify({
 					hostId,
 					gameState,
@@ -222,11 +226,10 @@ export class MultiplayerClient {
 	 * Get available quests
 	 */
 	async getQuests(): Promise<Quest[]> {
+		const headers = this.getAuthHeaders();
 		const response = await fetch(`${this.baseUrl}/api/quests`, {
 			method: 'GET',
-			headers: {
-				'Content-Type': 'application/json',
-			},
+			headers,
 		});
 
 		if (!response.ok) {

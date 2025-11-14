@@ -19,6 +19,11 @@ binding = "QUESTS"
 id = "quests_namespace"
 preview_id = "quests_preview"
 
+[[kv_namespaces]]
+binding = "AUTH_SESSIONS"
+id = "auth_sessions_namespace"
+preview_id = "auth_sessions_preview"
+
 [vars]
 OLLAMA_BASE_URL = "http://localhost:11434"
 OLLAMA_MODEL = "llama3.2"
