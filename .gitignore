@@ -93,3 +93,7 @@ ai-training/models/
 ai-training/venv/
 ai-training/trained_models/
 ai-training/logs/
+
+# Wrangler
+workers/.wrangler
+.wrangler

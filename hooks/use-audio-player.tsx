@@ -5,7 +5,6 @@ import React, {
 	useEffect,
 	useMemo,
 	useRef,
-	useState,
 } from 'react';
 import { Platform } from 'react-native';
 
@@ -175,10 +174,9 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 	const player = useMemo(() => playerRaw, [playerRaw]);
 	playerRef.current = player;
 	
-	// Derive isPlaying directly from player.playing
-	// Note: This won't trigger re-renders when playing state changes,
-	// but components can access player.playing directly if they need reactive updates
-	const isPlaying = player?.playing ?? false;
+	// Derive isPlaying from isMusicMuted - when music is not muted, it's playing
+	// This is reactive because isMusicMuted comes from the Zustand store
+	const isPlaying = !isMusicMuted;
 
 	// Set up the player once on mount
 	useEffect(() => {
@@ -245,7 +243,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 		try {
 			await playerRef.current?.play();
 		} catch (error) {
-			isUpdatingRef.current = false;
 			console.warn('Audio play failed:', error);
 		}
 	}, []);
@@ -254,24 +251,21 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 		try {
 			playerRef.current?.pause();
 		} catch (error) {
-			isUpdatingRef.current = false;
 			console.warn('Audio pause failed:', error);
 		}
 	}, []);
 
 	// Memoize the context value to prevent unnecessary re-renders
-	// Note: isPlaying is derived from player.playing, so components can access it directly
-	// We don't include isPlaying in dependencies to avoid infinite loops
-	// Components can access player.playing directly for reactive updates
+	// isPlaying is derived from isMusicMuted, which is reactive from the Zustand store
 	const contextValue = useMemo(
 		() => ({
 			player,
 			togglePlayPause,
 			play,
 			pause,
-			isPlaying: player?.playing ?? false, // Derive inline to avoid dependency
+			isPlaying: !isMusicMuted, // When music is not muted, it's playing
 		}),
-		[player, togglePlayPause, play, pause],
+		[player, togglePlayPause, play, pause, isMusicMuted],
 	);
 
 	return (
