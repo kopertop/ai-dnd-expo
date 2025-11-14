@@ -1,10 +1,12 @@
 /**
  * Better Auth Client
- * 
+ *
  * Client-side authentication using better-auth with Cloudflare plugin
  */
 
 // Import from TypeScript wrapper files that handle Metro bundler compatibility
+import { magicLinkClient } from 'better-auth/client/plugins';
+
 import { createAuthClient } from './better-auth-client-wrapper';
 import { cloudflareClient } from './better-auth-cloudflare-client-wrapper';
 
@@ -14,28 +16,28 @@ const getAuthBaseUrl = (): string => {
 	if (explicitUrl) {
 		return explicitUrl;
 	}
-	
+
 	// Check if we're in a browser environment
 	if (typeof window !== 'undefined') {
 		// Check if we're on localhost (local development)
-		const isLocalhost = window.location.hostname === 'localhost' || 
+		const isLocalhost = window.location.hostname === 'localhost' ||
 		                   window.location.hostname === '127.0.0.1' ||
 		                   window.location.hostname === '';
-		
+
 		if (isLocalhost) {
 			// Local development - use full localhost URL
 			return 'http://localhost:8787';
 		}
-		
+
 		// Production - use relative URLs
 		return '';
 	}
-	
+
 	// Node/Expo dev server - use localhost
 	return 'http://localhost:8787';
 };
 
-const AUTH_BASE_URL = getAuthBaseUrl();
+export const AUTH_BASE_URL = getAuthBaseUrl();
 
 /**
  * Better Auth client instance
@@ -43,7 +45,7 @@ const AUTH_BASE_URL = getAuthBaseUrl();
 export const authClient = createAuthClient({
 	baseURL: AUTH_BASE_URL,
 	basePath: '/api/auth',
-	plugins: [cloudflareClient()],
+	plugins: [cloudflareClient(), magicLinkClient()],
 });
 
 export default authClient;

@@ -39,6 +39,7 @@
     "test:services:coverage": "vitest run --coverage --config vitest.services.config.ts",
     "test:all": "bun run test && bun run test:services",
     "test:all:coverage": "bun run test:coverage && bun run test:services:coverage",
+    "test:e2e": "playwright test",
     "type-check": "tsc --noEmit",
     "build:ios": "EXPO_NO_DOTENV=1 eas build --platform ios --profile production --local",
     "build:development": "eas build --profile development",
@@ -105,7 +106,9 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@cloudflare/workers-types": "^4.20241106.0",
     "@eslint/compat": "^1.2.8",
+    "@playwright/test": "^1.49.0",
     "@testing-library/react-native": "^13.2.0",
     "@types/react": "~19.1.10",
     "@typescript-eslint/eslint-plugin": "^8.29.1",

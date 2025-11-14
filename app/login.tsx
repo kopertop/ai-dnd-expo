@@ -25,6 +25,8 @@ const LoginScreen: React.FC = () => {
 	const {
 		isLoading,
 		error,
+		providers,
+		fetchProviders,
 		signInWithGoogle,
 		signInWithApple,
 		signInWithEmail,
@@ -36,6 +38,10 @@ const LoginScreen: React.FC = () => {
 	// useEffect(() => {
 	// 	initialize();
 	// }, []);
+
+	useEffect(() => {
+		void fetchProviders();
+	}, [fetchProviders]);
 
 	useEffect(() => {
 		// Redirect if already authenticated (but wait for loading to complete)
@@ -101,23 +107,25 @@ const LoginScreen: React.FC = () => {
 				</ThemedText>
 
 				{/* Google Sign In */}
-				<TouchableOpacity
-					style={[styles.button, styles.googleButton]}
-					onPress={handleGoogleSignIn}
-					disabled={isLoading}
-				>
-					{isLoading ? (
-						<ActivityIndicator color="#fff" />
-					) : (
-						<>
-							<Feather name="mail" size={20} color="#fff" style={styles.buttonIcon} />
-							<ThemedText style={styles.googleButtonText}>Sign in with Google</ThemedText>
-						</>
-					)}
-				</TouchableOpacity>
+				{providers.google && (
+					<TouchableOpacity
+						style={[styles.button, styles.googleButton]}
+						onPress={handleGoogleSignIn}
+						disabled={isLoading}
+					>
+						{isLoading ? (
+							<ActivityIndicator color="#fff" />
+						) : (
+							<>
+								<Feather name="mail" size={20} color="#fff" style={styles.buttonIcon} />
+								<ThemedText style={styles.googleButtonText}>Sign in with Google</ThemedText>
+							</>
+						)}
+					</TouchableOpacity>
+				)}
 
 				{/* Apple Sign In (iOS and Web only) */}
-				{(Platform.OS === 'ios' || Platform.OS === 'web') && (
+				{providers.apple && (Platform.OS === 'ios' || Platform.OS === 'web') && (
 					<TouchableOpacity
 						style={[styles.button, styles.appleButton]}
 						onPress={handleAppleSignIn}
@@ -158,6 +166,8 @@ const LoginScreen: React.FC = () => {
 					style={[styles.button, styles.emailButton]}
 					onPress={handleEmailSignIn}
 					disabled={isLoading || !email.trim()}
+					testID="send-magic-link-button"
+					accessibilityRole="button"
 				>
 					{isLoading ? (
 						<ActivityIndicator color="#3B2F1B" />

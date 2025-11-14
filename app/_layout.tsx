@@ -4,11 +4,19 @@ import { useFonts } from 'expo-font';
 import { router, Stack, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import {
+	ActivityIndicator,
+	Image,
+	Platform,
+	StyleSheet,
+	TouchableOpacity,
+	View,
+} from 'react-native';
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
+import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AudioProvider, useAudio } from '@/hooks/use-audio-player';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -19,20 +27,77 @@ const AudioButton: React.FC = () => {
 	const { isPlaying, togglePlayPause } = useAudio();
 
 	return (
-		<View style={[styles.soundButtonContainer, { pointerEvents: 'box-none' }]}>
-			<TouchableOpacity
-				accessibilityLabel={
-					isPlaying ? 'Mute background music' : 'Unmute background music'
-				}
-				onPress={togglePlayPause}
-				style={styles.soundButton}
-			>
-				<Feather
-					name={isPlaying ? 'volume-2' : 'volume-x'}
-					size={28}
-					color={isPlaying ? '#4caf50' : '#f44336'}
-				/>
-			</TouchableOpacity>
+		<TouchableOpacity
+			accessibilityLabel={
+				isPlaying ? 'Mute background music' : 'Unmute background music'
+			}
+			onPress={togglePlayPause}
+			style={styles.soundButton}
+		>
+			<Feather
+				name={isPlaying ? 'volume-2' : 'volume-x'}
+				size={28}
+				color={isPlaying ? '#4caf50' : '#f44336'}
+			/>
+		</TouchableOpacity>
+	);
+};
+
+const UserMenu: React.FC = () => {
+	const { user, signOut } = useAuthStore();
+	const [isMenuVisible, setMenuVisible] = React.useState(false);
+
+	useEffect(() => {
+		if (!user && isMenuVisible) {
+			setMenuVisible(false);
+		}
+	}, [user, isMenuVisible]);
+
+	if (!user) {
+		return null;
+	}
+
+	const displayName = user.name || user.email;
+	const avatarSource = user.image ? { uri: user.image } : null;
+
+	const handleSignOut = async () => {
+		try {
+			await signOut();
+		} finally {
+			setMenuVisible(false);
+		}
+	};
+
+	return (
+		<View style={[styles.userMenuContainer, { pointerEvents: 'box-none' }]}>
+			<View style={{ pointerEvents: 'auto', alignItems: 'flex-end' }}>
+				<TouchableOpacity
+					accessibilityLabel="Open account menu"
+					style={styles.avatarButton}
+					onPress={() => setMenuVisible((prev) => !prev)}
+				>
+					{avatarSource ? (
+						<Image source={avatarSource} style={styles.avatarImage} />
+					) : (
+						<View style={styles.avatarFallback}>
+							<Feather name="user" size={20} color="#3B2F1B" />
+						</View>
+					)}
+				</TouchableOpacity>
+				{isMenuVisible && (
+					<View style={styles.userMenuDropdown}>
+						<ThemedText style={styles.userNameText} numberOfLines={1}>
+							{displayName}
+						</ThemedText>
+						<TouchableOpacity
+							style={styles.signOutButton}
+							onPress={handleSignOut}
+						>
+							<ThemedText style={styles.signOutText}>Sign out</ThemedText>
+						</TouchableOpacity>
+					</View>
+				)}
+			</View>
 		</View>
 	);
 };
@@ -134,6 +199,7 @@ const RootLayout: React.FC = () => {
 								<Stack.Screen name="+not-found" />
 							</Stack>
 							<StatusBar style="auto" />
+							<UserMenu />
 							{/* Only show sound button on web */}
 							{Platform.OS === 'web' && (
 								<View style={[styles.soundButtonContainer, { pointerEvents: 'box-none' }]}>
@@ -159,6 +225,57 @@ const styles = StyleSheet.create({
 		padding: 8,
 		alignItems: 'center',
 		justifyContent: 'center',
+	},
+	userMenuContainer: {
+		position: 'absolute',
+		top: Platform.OS === 'web' ? 24 : 36,
+		right: 16,
+		zIndex: 1100,
+	},
+	avatarButton: {
+		backgroundColor: '#F5E6D3',
+		borderRadius: 999,
+		padding: 2,
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+	},
+	avatarImage: {
+		width: 40,
+		height: 40,
+		borderRadius: 20,
+	},
+	avatarFallback: {
+		width: 40,
+		height: 40,
+		borderRadius: 20,
+		alignItems: 'center',
+		justifyContent: 'center',
+		backgroundColor: '#E2D3B3',
+	},
+	userMenuDropdown: {
+		marginTop: 8,
+		minWidth: 160,
+		backgroundColor: '#FFFFFF',
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+		borderRadius: 10,
+		shadowColor: '#000',
+		shadowOpacity: 0.15,
+		shadowOffset: { width: 0, height: 4 },
+		shadowRadius: 8,
+		elevation: 4,
+	},
+	userNameText: {
+		fontWeight: '600',
+		marginBottom: 12,
+		maxWidth: 180,
+	},
+	signOutButton: {
+		paddingVertical: 6,
+	},
+	signOutText: {
+		color: '#C0392B',
+		fontWeight: '600',
 	},
 });
 export default RootLayout;

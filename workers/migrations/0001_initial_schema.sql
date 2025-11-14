@@ -11,11 +11,12 @@ CREATE TABLE IF NOT EXISTS games (
     starting_area TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'waiting', -- waiting, active, completed, cancelled
     created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    INDEX idx_invite_code (invite_code),
-    INDEX idx_host_id (host_id),
-    INDEX idx_status (status)
+    updated_at INTEGER NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_games_invite_code ON games(invite_code);
+CREATE INDEX IF NOT EXISTS idx_games_host_id ON games(host_id);
+CREATE INDEX IF NOT EXISTS idx_games_status ON games(status);
 
 -- Characters table: stores player characters (can be reused across games)
 CREATE TABLE IF NOT EXISTS characters (
@@ -36,10 +37,11 @@ CREATE TABLE IF NOT EXISTS characters (
     action_points INTEGER NOT NULL DEFAULT 3,
     max_action_points INTEGER NOT NULL DEFAULT 3,
     created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    INDEX idx_player_id (player_id),
-    INDEX idx_player_email (player_email)
+    updated_at INTEGER NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_characters_player_id ON characters(player_id);
+CREATE INDEX IF NOT EXISTS idx_characters_player_email ON characters(player_email);
 
 -- Players table: links players to games with their characters
 CREATE TABLE IF NOT EXISTS game_players (
@@ -51,11 +53,12 @@ CREATE TABLE IF NOT EXISTS game_players (
     character_name TEXT NOT NULL,
     joined_at INTEGER NOT NULL,
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY (character_id) REFERENCES characters(id),
-    INDEX idx_game_id (game_id),
-    INDEX idx_player_id (player_id),
-    INDEX idx_character_id (character_id)
+    FOREIGN KEY (character_id) REFERENCES characters(id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_game_players_game_id ON game_players(game_id);
+CREATE INDEX IF NOT EXISTS idx_game_players_player_id ON game_players(player_id);
+CREATE INDEX IF NOT EXISTS idx_game_players_character_id ON game_players(character_id);
 
 -- Game state table: stores the current state of active games
 CREATE TABLE IF NOT EXISTS game_states (
