@@ -252,8 +252,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 													)}
 													{tooltipSkill === item.id && (
 														<View
-															style={styles.tooltipOverlay}
-															pointerEvents="none"
+															style={[styles.tooltipOverlay, { pointerEvents: 'none' }]}
 														>
 															<View
 																style={styles.tooltipOverIconBg}
@@ -541,8 +540,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 												/>
 												{tooltipSkill === skill.id && (
 													<View
-														style={styles.tooltipOverlay}
-														pointerEvents="none"
+														style={[styles.tooltipOverlay, { pointerEvents: 'none' }]}
 													>
 														<View style={styles.tooltipOverIconBg} />
 														<View style={styles.tooltipOverIconLabel}>

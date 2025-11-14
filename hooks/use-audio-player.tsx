@@ -1,4 +1,3 @@
-import type { useAudioPlayer } from 'expo-audio';
 import React, {
 	createContext,
 	useCallback,
@@ -35,38 +34,70 @@ if (Platform.OS !== 'web') {
 	}
 }
 
-const useWebAudioPlayer = (source: string) => {
+const useWebAudioPlayer = (source: string, onPlayingChange?: (playing: boolean) => void) => {
 	const audioRef = useRef<HTMLAudioElement | null>(null);
 	const playingRef = useRef(false);
 	const loopRef = useRef(true);
 	const volumeRef = useRef(1);
+	const onPlayingChangeRef = useRef(onPlayingChange);
+	const isInitializedRef = useRef(false);
+
+	// Keep the callback ref up to date without causing effect re-runs
+	useEffect(() => {
+		onPlayingChangeRef.current = onPlayingChange;
+	}, [onPlayingChange]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined' || typeof Audio === 'undefined') {
 			return;
 		}
+		
+		// Clean up previous audio element if it exists
+		if (audioRef.current) {
+			audioRef.current.pause();
+			audioRef.current = null;
+		}
+		
+		isInitializedRef.current = false;
 		audioRef.current = new Audio(source);
 		audioRef.current.loop = loopRef.current;
 		audioRef.current.volume = volumeRef.current;
 
 		// Listen to play/pause events to track playing state
+		// Use a flag to prevent callbacks during initialization
 		const handlePlay = () => {
 			playingRef.current = true;
+			// Only call callback after initialization to prevent loops
+			if (isInitializedRef.current) {
+				onPlayingChangeRef.current?.(true);
+			}
 		};
 		const handlePause = () => {
 			playingRef.current = false;
+			// Only call callback after initialization to prevent loops
+			if (isInitializedRef.current) {
+				onPlayingChangeRef.current?.(false);
+			}
 		};
 
 		audioRef.current.addEventListener('play', handlePlay);
 		audioRef.current.addEventListener('pause', handlePause);
+		
+		// Mark as initialized after a brief delay to allow setup to complete
+		// This prevents initial play events from triggering callbacks
+		const initTimeout = setTimeout(() => {
+			isInitializedRef.current = true;
+		}, 100);
 
 		return () => {
+			clearTimeout(initTimeout);
 			audioRef.current?.removeEventListener('play', handlePlay);
 			audioRef.current?.removeEventListener('pause', handlePause);
 			audioRef.current?.pause();
 			audioRef.current = null;
+			isInitializedRef.current = false;
 		};
-	}, [source]);
+	}, [source]); // Only depend on source, not onPlayingChange
 
 	const play = useCallback(async () => {
 		if (!audioRef.current) {
@@ -117,34 +148,41 @@ const useWebAudioPlayer = (source: string) => {
 	);
 };
 
-const useConditionalAudioPlayer = (source: string) => {
+const useConditionalAudioPlayer = (source: string, onPlayingChange?: (playing: boolean) => void) => {
 	if (Platform.OS === 'web' || !useNativeAudioPlayer) {
-		return useWebAudioPlayer(source);
+		return useWebAudioPlayer(source, onPlayingChange);
 	}
 	return useNativeAudioPlayer(source);
 };
 
 export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-	const [isPlaying, setIsPlaying] = useState(false);
+	// Use separate selectors to avoid creating new objects on every render
 	const isMusicMuted = useSettingsStore(state => state.isMusicMuted);
 	const musicVolume = useSettingsStore(state => state.musicVolume);
 	const toggleMusicMuted = useSettingsStore(state => state.toggleMusicMuted);
 
-	const player = useConditionalAudioPlayer(audioSource);
 	const playerRef = useRef<ReturnType<typeof useConditionalAudioPlayer> | null>(null);
 	const isInitializedRef = useRef(false);
 	const previousMutedRef = useRef<boolean | null>(null);
 	const previousVolumeRef = useRef<number | null>(null);
-	const isUpdatingRef = useRef(false);
 
-	// Store player in ref only once, keep it stable
-	if (!playerRef.current) {
-		playerRef.current = player;
-	}
+	// Don't use callback or polling - just derive isPlaying directly
+	// This avoids all state update mechanisms that could cause infinite loops
+	const playerRaw = useConditionalAudioPlayer(audioSource);
+	
+	// Memoize player to ensure it's stable across renders
+	// This prevents the player from being recreated on every render
+	const player = useMemo(() => playerRaw, [playerRaw]);
+	playerRef.current = player;
+	
+	// Derive isPlaying directly from player.playing
+	// Note: This won't trigger re-renders when playing state changes,
+	// but components can access player.playing directly if they need reactive updates
+	const isPlaying = player?.playing ?? false;
 
 	// Set up the player once on mount
 	useEffect(() => {
-		if (isInitializedRef.current || !playerRef.current) return;
+		if (isInitializedRef.current || !player) return;
 		isInitializedRef.current = true;
 
 		try {
@@ -152,7 +190,9 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
 			// Auto-play on mobile (non-web)
 			if (Platform.OS !== 'web') {
-				playerRef.current.play();
+				player.play().catch(error => {
+					console.warn('Audio auto-play failed:', error);
+				});
 			}
 		} catch (error) {
 			console.warn('Audio setup failed:', error);
@@ -167,31 +207,27 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 				console.warn('Audio cleanup failed:', error);
 			}
 		};
-
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []); // Only run once on mount
 
 	// Handle mute/unmute and volume changes - use refs to prevent infinite loops
 	useEffect(() => {
-		if (isUpdatingRef.current) return;
-
 		const currentPlayer = playerRef.current;
 		if (!currentPlayer || !isInitializedRef.current) return;
 
 		// Only update if values actually changed
 		if (previousMutedRef.current !== isMusicMuted) {
-			isUpdatingRef.current = true;
 			previousMutedRef.current = isMusicMuted;
 			if (isMusicMuted) {
 				currentPlayer.pause();
-				setIsPlaying(false);
 			} else {
-				// Always try to play when unmuting (browser will handle if already playing)
-				currentPlayer.play().catch(error => {
-					console.warn('Audio play failed:', error);
-				});
-				setIsPlaying(true);
+				// Only play if not already playing
+				if (!currentPlayer.playing) {
+					currentPlayer.play().catch(error => {
+						console.warn('Audio play failed:', error);
+					});
+				}
 			}
-			isUpdatingRef.current = false;
 		}
 
 		// Only update volume if it actually changed and not muted
@@ -206,12 +242,8 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 	}, [toggleMusicMuted]);
 
 	const play = useCallback(async () => {
-		if (isUpdatingRef.current) return;
 		try {
-			isUpdatingRef.current = true;
 			await playerRef.current?.play();
-			setIsPlaying(true);
-			isUpdatingRef.current = false;
 		} catch (error) {
 			isUpdatingRef.current = false;
 			console.warn('Audio play failed:', error);
@@ -219,57 +251,27 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 	}, []);
 
 	const pause = useCallback(() => {
-		if (isUpdatingRef.current) return;
 		try {
-			isUpdatingRef.current = true;
 			playerRef.current?.pause();
-			setIsPlaying(false);
-			isUpdatingRef.current = false;
 		} catch (error) {
 			isUpdatingRef.current = false;
 			console.warn('Audio pause failed:', error);
 		}
 	}, []);
 
-	// Create a stable player object - remove playing getter to avoid dependency on isPlaying
-	const stablePlayer = useMemo(
-		() => ({
-			get loop() {
-				return playerRef.current?.loop ?? false;
-			},
-			set loop(value: boolean) {
-				if (playerRef.current) {
-					playerRef.current.loop = value;
-				}
-			},
-			get volume() {
-				return playerRef.current?.volume ?? 0;
-			},
-			set volume(value: number) {
-				if (playerRef.current) {
-					playerRef.current.volume = value;
-				}
-			},
-			play: async () => {
-				await play();
-			},
-			pause: () => {
-				pause();
-			},
-		}),
-		[play, pause],
-	);
-
 	// Memoize the context value to prevent unnecessary re-renders
+	// Note: isPlaying is derived from player.playing, so components can access it directly
+	// We don't include isPlaying in dependencies to avoid infinite loops
+	// Components can access player.playing directly for reactive updates
 	const contextValue = useMemo(
 		() => ({
-			player: stablePlayer,
+			player,
 			togglePlayPause,
 			play,
 			pause,
-			isPlaying,
+			isPlaying: player?.playing ?? false, // Derive inline to avoid dependency
 		}),
-		[stablePlayer, togglePlayPause, play, pause, isPlaying],
+		[player, togglePlayPause, play, pause],
 	);
 
 	return (
