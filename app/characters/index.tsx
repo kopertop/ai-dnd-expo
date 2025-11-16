@@ -88,22 +88,30 @@ const CharacterManagerScreen: React.FC = () => {
 		setForm(character);
 	};
 
-	const handleDelete = async (character: Character) => {
+	const deleteCharacter = useCallback(
+		async (character: Character) => {
+			try {
+				await multiplayerClient.deleteCharacter(character.id);
+				setCharacters(prev => prev.filter(existing => existing.id !== character.id));
+				if (editing?.id === character.id) {
+					resetForm();
+				}
+				await loadCharacters();
+			} catch (error) {
+				Alert.alert('Error', error instanceof Error ? error.message : 'Delete failed');
+			}
+		},
+		[editing?.id, loadCharacters],
+	);
+
+	const handleDelete = (character: Character) => {
 		Alert.alert('Delete Character', `Delete ${character.name}?`, [
 			{ text: 'Cancel', style: 'cancel' },
 			{
 				text: 'Delete',
 				style: 'destructive',
-				onPress: async () => {
-					try {
-						await multiplayerClient.deleteCharacter(character.id);
-						if (editing?.id === character.id) {
-							resetForm();
-						}
-						await loadCharacters();
-					} catch (error) {
-						Alert.alert('Error', error instanceof Error ? error.message : 'Delete failed');
-					}
+				onPress: () => {
+					void deleteCharacter(character);
 				},
 			},
 		]);
