@@ -61,6 +61,7 @@ export class MultiplayerClient {
 		const response = await fetch(this.buildUrl('/api/games'), {
 			method: 'POST',
 			headers,
+			credentials: 'include',
 			body: JSON.stringify(request),
 		});
 
@@ -80,6 +81,7 @@ export class MultiplayerClient {
 		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}`), {
 			method: 'GET',
 			headers,
+			credentials: 'include',
 		});
 
 		if (!response.ok) {
@@ -100,6 +102,7 @@ export class MultiplayerClient {
 			{
 				method: 'POST',
 				headers,
+				credentials: 'include',
 				body: JSON.stringify({
 					character: request.character,
 					playerId: request.playerId,
@@ -126,6 +129,7 @@ export class MultiplayerClient {
 			{
 				method: 'GET',
 				headers,
+				credentials: 'include',
 			},
 		);
 
@@ -150,6 +154,7 @@ export class MultiplayerClient {
 			{
 				method: 'POST',
 				headers,
+				credentials: 'include',
 				body: JSON.stringify(request),
 			},
 		);
@@ -173,6 +178,7 @@ export class MultiplayerClient {
 			{
 				method: 'POST',
 				headers,
+				credentials: 'include',
 				body: JSON.stringify(request),
 			},
 		);
@@ -199,6 +205,7 @@ export class MultiplayerClient {
 			{
 				method: 'POST',
 				headers,
+				credentials: 'include',
 				body: JSON.stringify({
 					hostId,
 					gameState,
@@ -222,6 +229,7 @@ export class MultiplayerClient {
 		const response = await fetch(this.buildUrl('/api/quests'), {
 			method: 'GET',
 			headers,
+			credentials: 'include',
 		});
 
 		if (!response.ok) {
@@ -238,6 +246,7 @@ export class MultiplayerClient {
 		const response = await fetch(this.buildUrl('/api/games/me'), {
 			method: 'GET',
 			headers,
+			credentials: 'include',
 		});
 
 		if (!response.ok) {
@@ -253,6 +262,7 @@ export class MultiplayerClient {
 		const response = await fetch(this.buildUrl('/api/games/me/characters'), {
 			method: 'GET',
 			headers,
+			credentials: 'include',
 		});
 
 		if (!response.ok) {
