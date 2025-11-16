@@ -2,39 +2,7 @@ import {
 	WebSocketMessage,
 } from '@/types/api/websocket-messages';
 
-// Determine API base URL (same logic as multiplayer-client.ts):
-// 1. If EXPO_PUBLIC_MULTIPLAYER_API_URL is set, use it (for explicit Worker URL)
-// 2. If running in browser on localhost, use http://localhost:8787 (local dev)
-// 3. If running in browser on production, use relative URLs (for Cloudflare Pages routing)
-// 4. Otherwise (Node/Expo), use localhost for local development
-const getApiBaseUrl = (): string => {
-	const explicitUrl = process.env.EXPO_PUBLIC_MULTIPLAYER_API_URL;
-	if (explicitUrl) {
-		return explicitUrl;
-	}
-	
-	// Check if we're in a browser environment
-	if (typeof window !== 'undefined') {
-		// Check if we're on localhost (local development)
-		const isLocalhost = window.location.hostname === 'localhost' || 
-		                   window.location.hostname === '127.0.0.1' ||
-		                   window.location.hostname === '';
-		
-		if (isLocalhost) {
-			// Local development - use full localhost URL
-			return 'http://localhost:8787';
-		}
-		
-		// Production - use relative URLs so Cloudflare Pages routes /api/* to Worker
-		// Return empty string, will be converted to WebSocket URL in connect()
-		return '';
-	}
-	
-	// Node/Expo dev server - use localhost
-	return 'http://localhost:8787';
-};
-
-const API_BASE_URL = getApiBaseUrl();
+import { API_BASE_URL } from '@/services/config/api-base-url';
 
 export type WebSocketMessageHandler = (message: WebSocketMessage) => void;
 

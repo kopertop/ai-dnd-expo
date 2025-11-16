@@ -1,11 +1,10 @@
 # Authentication Setup Guide
 
-This guide walks you through setting up Google OAuth and Apple Sign-In for the Better Auth implementation.
+This guide walks you through setting up Google OAuth for web and Apple Sign-In for iOS. Apple Sign-In is required for App Store review whenever other third-party providers are offered on iOS.
 
 ## Prerequisites
 
 - A Google Cloud Console account (for Google OAuth)
-- An Apple Developer account (for Apple Sign-In)
 - Access to your Cloudflare Workers environment variables
 
 ## Google OAuth Setup
@@ -47,70 +46,25 @@ wrangler secret put GOOGLE_CLIENT_ID
 wrangler secret put GOOGLE_CLIENT_SECRET
 ```
 
-## Apple Sign-In Setup
+## Apple Sign-In (iOS only)
 
-### Step 1: Create a Services ID
+Even though the in-app login surface is web-based, Apple requires that the "Sign in with Apple" option be offered on iOS. Complete the following steps:
 
-1. Go to the [Apple Developer Portal](https://developer.apple.com/account/resources/identifiers/list/serviceId)
-2. Click the **+** button to create a new Services ID
-3. Enter a description (e.g., "AI D&D Sign In")
-4. Enter a unique identifier (e.g., `com.yourcompany.aidnd`)
-5. Click **Continue** and then **Register**
-
-### Step 2: Configure Sign In with Apple
-
-1. Select the Services ID you just created
-2. Check **Sign In with Apple**
-3. Click **Configure**
-4. Select your primary App ID
-5. Add your domain and return URLs:
-   - For local development: `http://localhost:8787/api/auth/callback/apple`
-   - For production: `https://your-domain.com/api/auth/callback/apple`
-6. Click **Save**
-
-### Step 3: Create a Key
-
-1. Go to [Keys](https://developer.apple.com/account/resources/authkeys/list) in the Apple Developer Portal
-2. Click the **+** button to create a new key
-3. Give it a name (e.g., "AI D&D Sign In Key")
-4. Check **Sign In with Apple**
-5. Click **Configure** and select your primary App ID
-6. Click **Save**, then **Continue**, then **Register**
-7. **Download the `.p8` key file** (you can only download it once!)
-8. Note the **Key ID** shown on the page
-
-### Step 4: Get Your Team ID
-
-1. Go to [Membership](https://developer.apple.com/account/#/membership/) in the Apple Developer Portal
-2. Find your **Team ID** (it's a 10-character string)
-
-### Step 5: Generate Client Secret
-
-Apple requires a JWT (JSON Web Token) as the client secret. You can generate this using:
-
-1. The Better Auth documentation's recommended tool: [https://bal.so/apple-gen-secret](https://bal.so/apple-gen-secret)
-2. Or use a script/library to generate it programmatically
-
-You'll need:
-- **Service ID** (from Step 1)
-- **Team ID** (from Step 4)
-- **Key ID** (from Step 3)
-- **Private Key** (the `.p8` file content from Step 3)
-
-The generated JWT is your `APPLE_CLIENT_SECRET`.
-
-### Step 6: Add Credentials to Environment
-
-Add the credentials to your `workers/.dev.vars` file:
+1. Create a Services ID in the [Apple Developer portal](https://developer.apple.com/account/resources/identifiers/list/serviceId) for web authentication (e.g., `com.example.aidnd.auth`).
+2. Configure the Services ID for Sign in with Apple and add the callback URLs:
+   - Local: `http://localhost:8787/api/auth/callback/apple`
+   - Production: `https://your-domain.com/api/auth/callback/apple`
+3. Generate a private key (.p8) for Sign in with Apple and note the Key ID and Team ID.
+4. Create a JWT client secret using the Service ID, Team ID, Key ID, and private key. (You can use [Apple’s documentation](https://developer.apple.com/documentation/sign_in_with_apple/generate_and_validate_tokens) or third-party helpers.)
+5. Add the credentials to `workers/.dev.vars`:
 
 ```env
-APPLE_CLIENT_ID=your-service-id-here
-APPLE_CLIENT_SECRET=your-generated-jwt-here
+APPLE_CLIENT_ID=com.example.aidnd.auth
+APPLE_CLIENT_SECRET=your-generated-jwt
 ```
 
-**Note:** The `APPLE_CLIENT_SECRET` is a JWT token, not the raw `.p8` file. Better Auth handles the JWT generation internally, but you may need to provide the raw key depending on the library version.
+6. In production, store the secrets in Cloudflare:
 
-For production, add these as secrets in Cloudflare Workers:
 ```bash
 wrangler secret put APPLE_CLIENT_ID
 wrangler secret put APPLE_CLIENT_SECRET
@@ -122,9 +76,8 @@ After adding the credentials:
 
 1. Restart your Cloudflare Workers dev server (`wrangler dev`)
 2. Test the authentication flows:
-   - Magic link should work without additional setup
    - Google sign-in should redirect to Google's consent screen
-   - Apple sign-in should redirect to Apple's sign-in screen
+   - On an iOS device or simulator, the Sign in with Apple button should appear and complete successfully
 
 ## Troubleshooting
 
@@ -134,19 +87,11 @@ After adding the credentials:
 - **"invalid_client"**: Verify your Client ID and Secret are correct
 - **OAuth consent screen**: Make sure you've completed the consent screen setup and added test users if needed
 
-### Apple Sign-In Issues
-
-- **"invalid_client"**: Verify your Service ID, Team ID, and Key ID are correct
-- **"invalid_grant"**: The JWT client secret may have expired (they expire after a certain time). You may need to regenerate it
-- **Redirect URI mismatch**: Ensure the return URL in Apple Developer Portal matches your callback URL exactly
-
 ## Production Considerations
 
-1. **HTTPS Required**: Both Google and Apple require HTTPS in production. Make sure your production domain has a valid SSL certificate.
+1. **HTTPS Required**: Google requires HTTPS in production. Make sure your production domain has a valid SSL certificate.
 
-2. **Domain Verification**: Apple may require domain verification. Follow Apple's instructions if prompted.
+2. **Environment Variables**: Never commit `.dev.vars` to version control. Use Cloudflare Workers secrets for production.
 
-3. **Environment Variables**: Never commit `.dev.vars` to version control. Use Cloudflare Workers secrets for production.
-
-4. **Callback URLs**: Update the callback URLs in both Google and Apple configurations to use your production domain.
+3. **Callback URLs**: Update the callback URLs in Google configuration to use your production domain.
 

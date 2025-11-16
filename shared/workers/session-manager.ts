@@ -1,4 +1,6 @@
-import type { Env } from './env';
+export interface HasGameSessionNamespace {
+	GAME_SESSION: DurableObjectNamespace;
+}
 
 /**
  * Generate a unique 6-character alphanumeric invite code
@@ -15,7 +17,7 @@ export function generateInviteCode(): string {
 /**
  * Get or create a Durable Object ID for a game session
  */
-export function getSessionId(env: Env, inviteCode: string): DurableObjectId {
+export function getSessionId(env: HasGameSessionNamespace, inviteCode: string): DurableObjectId {
 	// Use invite code as the ID name for easy lookup
 	return env.GAME_SESSION.idFromName(inviteCode);
 }
@@ -23,8 +25,12 @@ export function getSessionId(env: Env, inviteCode: string): DurableObjectId {
 /**
  * Get the Durable Object stub for a game session
  */
-export function getSessionStub(env: Env, inviteCode: string): DurableObjectStub {
+export function getSessionStub<T = unknown>(
+	env: HasGameSessionNamespace,
+	inviteCode: string,
+): DurableObjectStub<T> {
 	const id = getSessionId(env, inviteCode);
 	return env.GAME_SESSION.get(id);
 }
+
 

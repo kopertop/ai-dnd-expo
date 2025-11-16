@@ -54,7 +54,7 @@ ADMIN_EMAILS=kopertop@gmail.com,cmoyer@newstex.com
 
 ### Frontend (.env in project root)
 ```env
-EXPO_PUBLIC_MULTIPLAYER_API_URL=http://localhost:8787
+EXPO_PUBLIC_API_BASE_URL=http://localhost:8787
 ```
 
 ### Worker (workers/.dev.vars)
@@ -73,7 +73,7 @@ ADMIN_EMAILS=kopertop@gmail.com,cmoyer@newstex.com
 
 ### API connection errors
 - Ensure worker is running on port 8787
-- Check `EXPO_PUBLIC_MULTIPLAYER_API_URL` matches worker URL
+- Check `EXPO_PUBLIC_API_BASE_URL` matches worker URL
 - Verify CORS is enabled (already configured in worker)
 
 ### Ollama connection issues

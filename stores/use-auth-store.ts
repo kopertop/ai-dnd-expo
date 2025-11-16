@@ -4,6 +4,7 @@
  * Manages authentication state and user session using better-auth
  */
 
+import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -60,7 +61,6 @@ interface AuthState {
 	isLoading: boolean;
 	error: string | null;
 	providers: {
-		magicLink: boolean;
 		google: boolean;
 		apple: boolean;
 	};
@@ -70,7 +70,6 @@ interface AuthState {
 	fetchProviders: () => Promise<void>;
 	signInWithGoogle: () => Promise<void>;
 	signInWithApple: () => Promise<void>;
-	signInWithEmail: (email: string) => Promise<void>;
 	signOut: () => Promise<void>;
 	refreshSession: () => Promise<void>;
 }
@@ -86,9 +85,8 @@ export const useAuthStore = create<AuthState>()(
 			isLoading: false,
 			error: null,
 			providers: {
-				magicLink: true,
 				google: false,
-				apple: false,
+				apple: Platform.OS === 'ios',
 			},
 
 			initialize: async () => {
@@ -156,9 +154,10 @@ export const useAuthStore = create<AuthState>()(
 
 					set({
 						providers: {
-							magicLink: data?.magicLink ?? true,
-							google: Boolean(data?.google),
-							apple: Boolean(data?.apple),
+							google: Boolean(data?.google ?? data?.socialProviders?.google ?? true),
+							apple: Boolean(
+								data?.apple ?? data?.socialProviders?.apple ?? Platform.OS === 'ios',
+							),
 						},
 					});
 				} catch (error) {
@@ -166,7 +165,8 @@ export const useAuthStore = create<AuthState>()(
 					set((state) => ({
 						providers: {
 							...state.providers,
-							magicLink: true,
+							google: true,
+							apple: Platform.OS === 'ios',
 						},
 					}));
 				}
@@ -217,27 +217,6 @@ export const useAuthStore = create<AuthState>()(
 					throw error;
 				} finally {
 					set({ isLoading: false });
-				}
-			},
-
-			signInWithEmail: async (email: string) => {
-				set({ isLoading: true, error: null });
-				try {
-					const result = await authClient.signIn.magicLink({
-						email: email.trim(),
-						callbackURL: getCallbackURL(),
-						errorCallbackURL: getErrorCallbackURL(),
-					});
-					console.log('Magic link sign-in response:', result);
-					// Magic link sent - user will click link in email
-					set({ isLoading: false });
-				} catch (error) {
-					console.error('Email sign-in failed:', error);
-					set({
-						isLoading: false,
-						error: error instanceof Error ? error.message : 'Failed to send magic link',
-					});
-					throw error;
 				}
 			},
 

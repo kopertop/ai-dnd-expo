@@ -1,27 +1,19 @@
 /**
  * Login Page
  *
- * Provides authentication options: Google, Apple, and Email magic link
+ * Provides Google and Apple (iOS) authentication via Better Auth
  */
 
 import { Feather } from '@expo/vector-icons';
 import { Stack, router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import {
-	ActivityIndicator,
-	Alert,
-	Platform,
-	StyleSheet,
-	TextInput,
-	TouchableOpacity,
-} from 'react-native';
+import React, { useEffect } from 'react';
+import { ActivityIndicator, Alert, Platform, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuthStore } from '@/stores/use-auth-store';
 
 const LoginScreen: React.FC = () => {
-	const [email, setEmail] = useState('');
 	const {
 		isLoading,
 		error,
@@ -29,8 +21,6 @@ const LoginScreen: React.FC = () => {
 		fetchProviders,
 		signInWithGoogle,
 		signInWithApple,
-		signInWithEmail,
-		initialize,
 		isAuthenticated,
 	} = useAuthStore();
 
@@ -73,23 +63,6 @@ const LoginScreen: React.FC = () => {
 		}
 	};
 
-	const handleEmailSignIn = async () => {
-		if (!email.trim()) {
-			Alert.alert('Email Required', 'Please enter your email address');
-			return;
-		}
-
-		try {
-			await signInWithEmail(email.trim());
-			Alert.alert(
-				'Magic Link Sent',
-				'Check your email for a sign-in link. Click the link to complete authentication.',
-			);
-		} catch (err) {
-			// Error already handled in store
-		}
-	};
-
 	return (
 		<>
 			<Stack.Screen
@@ -124,8 +97,8 @@ const LoginScreen: React.FC = () => {
 					</TouchableOpacity>
 				)}
 
-				{/* Apple Sign In (iOS and Web only) */}
-				{providers.apple && (Platform.OS === 'ios' || Platform.OS === 'web') && (
+				{/* Apple Sign In (required on iOS) */}
+				{Platform.OS === 'ios' && providers.apple && (
 					<TouchableOpacity
 						style={[styles.button, styles.appleButton]}
 						onPress={handleAppleSignIn}
@@ -142,42 +115,6 @@ const LoginScreen: React.FC = () => {
 					</TouchableOpacity>
 				)}
 
-				{/* Divider */}
-				<ThemedView style={styles.dividerContainer}>
-					<ThemedView style={styles.dividerLine} />
-					<ThemedText style={styles.dividerText}>OR</ThemedText>
-					<ThemedView style={styles.dividerLine} />
-				</ThemedView>
-
-				{/* Email Magic Link */}
-				<TextInput
-					style={styles.emailInput}
-					placeholder="Enter your email"
-					placeholderTextColor="#9ca3af"
-					value={email}
-					onChangeText={setEmail}
-					keyboardType="email-address"
-					autoCapitalize="none"
-					autoCorrect={false}
-					editable={!isLoading}
-				/>
-
-				<TouchableOpacity
-					style={[styles.button, styles.emailButton]}
-					onPress={handleEmailSignIn}
-					disabled={isLoading || !email.trim()}
-					testID="send-magic-link-button"
-					accessibilityRole="button"
-				>
-					{isLoading ? (
-						<ActivityIndicator color="#3B2F1B" />
-					) : (
-						<>
-							<Feather name="send" size={20} color="#3B2F1B" style={styles.buttonIcon} />
-							<ThemedText style={styles.emailButtonText}>Send Magic Link</ThemedText>
-						</>
-					)}
-				</TouchableOpacity>
 			</ThemedView>
 		</>
 	);
@@ -230,44 +167,8 @@ const styles = StyleSheet.create({
 		fontWeight: 'bold',
 		fontSize: 16,
 	},
-	emailButton: {
-		backgroundColor: '#C9B037',
-	},
-	emailButtonText: {
-		color: '#3B2F1B',
-		fontWeight: 'bold',
-		fontSize: 16,
-	},
 	buttonIcon: {
 		marginRight: 10,
-	},
-	dividerContainer: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		width: '100%',
-		marginVertical: 20,
-	},
-	dividerLine: {
-		flex: 1,
-		height: 1,
-		backgroundColor: '#e2e8f0',
-	},
-	dividerText: {
-		marginHorizontal: 15,
-		opacity: 0.5,
-		fontSize: 14,
-	},
-	emailInput: {
-		width: '100%',
-		paddingVertical: 15,
-		paddingHorizontal: 20,
-		borderRadius: 8,
-		borderWidth: 1,
-		borderColor: '#e2e8f0',
-		marginBottom: 15,
-		fontSize: 16,
-		backgroundColor: '#f8fafc',
-		color: '#11181C',
 	},
 });
 

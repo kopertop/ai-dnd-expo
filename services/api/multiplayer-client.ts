@@ -10,46 +10,36 @@ import {
 import { Character } from '@/types/character';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { Quest } from '@/types/quest';
+
+import { API_BASE_URL, buildApiUrl } from '@/services/config/api-base-url';
 // Note: Better-auth uses cookies for session management, which are automatically sent with fetch requests
-
-// Determine API base URL:
-// 1. If EXPO_PUBLIC_MULTIPLAYER_API_URL is set, use it (for explicit Worker URL)
-// 2. If running in browser on localhost, use http://localhost:8787 (local dev)
-// 3. If running in browser on production, use relative URLs (for Cloudflare Pages routing)
-// 4. Otherwise (Node/Expo), use localhost for local development
-const getApiBaseUrl = (): string => {
-	const explicitUrl = process.env.EXPO_PUBLIC_MULTIPLAYER_API_URL;
-	if (explicitUrl) {
-		return explicitUrl;
-	}
-
-	// Check if we're in a browser environment
-	if (typeof window !== 'undefined') {
-		// Check if we're on localhost (local development)
-		const isLocalhost = window.location.hostname === 'localhost' ||
-		                   window.location.hostname === '127.0.0.1' ||
-		                   window.location.hostname === '';
-
-		if (isLocalhost) {
-			// Local development - use full localhost URL
-			return 'http://localhost:8787';
-		}
-
-		// Production - use relative URLs so Cloudflare Pages routes /api/* to Worker
-		return '';
-	}
-
-	// Node/Expo dev server - use localhost
-	return 'http://localhost:8787';
-};
-
-const API_BASE_URL = getApiBaseUrl();
 
 export class MultiplayerClient {
 	private baseUrl: string;
 
 	constructor(baseUrl: string = API_BASE_URL) {
 		this.baseUrl = baseUrl;
+	}
+
+	private buildUrl(path: string): string {
+		if (!path.startsWith('/')) {
+			throw new Error(`API paths must start with '/'. Received: ${path}`);
+		}
+
+		// Use shared builder when relying on global base URL
+		if (this.baseUrl === API_BASE_URL) {
+			return buildApiUrl(path);
+		}
+
+		if (!this.baseUrl) {
+			return path;
+		}
+
+		const normalizedBase = this.baseUrl.endsWith('/')
+			? this.baseUrl.slice(0, -1)
+			: this.baseUrl;
+
+		return `${normalizedBase}${path}`;
 	}
 
 	/**
@@ -67,7 +57,7 @@ export class MultiplayerClient {
 	 */
 	async createGame(request: CreateGameRequest & { hostCharacter: Character }): Promise<GameSessionResponse> {
 		const headers = this.getAuthHeaders();
-		const response = await fetch(`${this.baseUrl}/api/games`, {
+		const response = await fetch(this.buildUrl('/api/games'), {
 			method: 'POST',
 			headers,
 			body: JSON.stringify(request),
@@ -86,7 +76,7 @@ export class MultiplayerClient {
 	 */
 	async getGameSession(inviteCode: string): Promise<GameSessionResponse> {
 		const headers = this.getAuthHeaders();
-		const response = await fetch(`${this.baseUrl}/api/games/${inviteCode}`, {
+		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}`), {
 			method: 'GET',
 			headers,
 		});
@@ -105,7 +95,7 @@ export class MultiplayerClient {
 	async joinGame(request: JoinGameRequest): Promise<GameSessionResponse> {
 		const headers = this.getAuthHeaders();
 		const response = await fetch(
-			`${this.baseUrl}/api/games/${request.inviteCode}/join`,
+			this.buildUrl(`/api/games/${request.inviteCode}/join`),
 			{
 				method: 'POST',
 				headers,
@@ -130,7 +120,7 @@ export class MultiplayerClient {
 	async pollGameState(inviteCode: string): Promise<GameSessionResponse> {
 		const headers = this.getAuthHeaders();
 		const response = await fetch(
-			`${this.baseUrl}/api/games/${inviteCode}/state`,
+			this.buildUrl(`/api/games/${inviteCode}/state`),
 			{
 				method: 'GET',
 				headers,
@@ -154,7 +144,7 @@ export class MultiplayerClient {
 	): Promise<void> {
 		const headers = this.getAuthHeaders();
 		const response = await fetch(
-			`${this.baseUrl}/api/games/${inviteCode}/action`,
+			this.buildUrl(`/api/games/${inviteCode}/action`),
 			{
 				method: 'POST',
 				headers,
@@ -177,7 +167,7 @@ export class MultiplayerClient {
 	): Promise<GameStateResponse> {
 		const headers = this.getAuthHeaders();
 		const response = await fetch(
-			`${this.baseUrl}/api/games/${inviteCode}/dm-action`,
+			this.buildUrl(`/api/games/${inviteCode}/dm-action`),
 			{
 				method: 'POST',
 				headers,
@@ -203,7 +193,7 @@ export class MultiplayerClient {
 	): Promise<GameStateResponse> {
 		const headers = this.getAuthHeaders();
 		const response = await fetch(
-			`${this.baseUrl}/api/games/${inviteCode}/start`,
+			this.buildUrl(`/api/games/${inviteCode}/start`),
 			{
 				method: 'POST',
 				headers,
@@ -227,7 +217,7 @@ export class MultiplayerClient {
 	 */
 	async getQuests(): Promise<Quest[]> {
 		const headers = this.getAuthHeaders();
-		const response = await fetch(`${this.baseUrl}/api/quests`, {
+		const response = await fetch(this.buildUrl('/api/quests'), {
 			method: 'GET',
 			headers,
 		});

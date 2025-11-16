@@ -1,7 +1,7 @@
 /**
  * Auth Callback Page
  *
- * Handles OAuth callbacks and magic link verification
+ * Handles OAuth callbacks from Better Auth
  */
 
 import { Stack, router, useLocalSearchParams } from 'expo-router';

@@ -107,6 +107,7 @@ export class Database {
 			character.description || null,
 			character.stats,
 			character.skills,
+			character.inventory,
 			character.equipped,
 			character.health,
 			character.max_health,
@@ -201,4 +202,5 @@ export class Database {
 		return result || null;
 	}
 }
+
 

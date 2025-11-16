@@ -170,10 +170,10 @@ export default defineConfig([
 				{
 					groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
 					'newlines-between': 'always',
-
+					// Let TypeScript's organize imports (and editors) manage the exact alphabetical sort so
+					// ESLint only enforces grouping — this avoids conflicts between the two algorithms.
 					alphabetize: {
-						order: 'asc',
-						caseInsensitive: true,
+						order: 'ignore',
 					},
 				},
 			],
