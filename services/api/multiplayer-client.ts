@@ -5,6 +5,7 @@ import {
 	GameSessionResponse,
 	GameStateResponse,
 	JoinGameRequest,
+	MyGamesResponse,
 	PlayerActionRequest,
 } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
@@ -102,6 +103,7 @@ export class MultiplayerClient {
 				body: JSON.stringify({
 					character: request.character,
 					playerId: request.playerId,
+					playerEmail: request.playerEmail,
 				}),
 			},
 		);
@@ -229,6 +231,37 @@ export class MultiplayerClient {
 
 		const data = await response.json();
 		return data.quests || [];
+	}
+
+	async getMyGames(): Promise<MyGamesResponse> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl('/api/games/me'), {
+			method: 'GET',
+			headers,
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to load games');
+		}
+
+		return response.json();
+	}
+
+	async getMyCharacters(): Promise<Character[]> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl('/api/games/me/characters'), {
+			method: 'GET',
+			headers,
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to load characters');
+		}
+
+		const data = await response.json();
+		return data.characters || [];
 	}
 }
 

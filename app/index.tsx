@@ -1,17 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Link, Stack, router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
-import { SettingsModal } from '@/components/settings-modal';
+import { AppFooter } from '@/components/app-footer';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
 const IndexScreen: React.FC = () => {
 	const [hasSavedGame, setHasSavedGame] = useState(false);
 	const [loading, setLoading] = useState(true);
-	const [isSettingsVisible, setSettingsVisible] = useState(false);
-
 	useEffect(() => {
 		const checkSavedGame = async () => {
 			try {
@@ -26,18 +24,20 @@ const IndexScreen: React.FC = () => {
 	}, []);
 
 	return (
-		<>
+		<ThemedView style={styles.container}>
 			<Stack.Screen
 				options={{
 					title: 'Home',
 					headerShown: false,
 				}}
 			/>
-			<ThemedView style={styles.container}>
-				<ThemedText type="title">Welcome to the AI D&D Platform</ThemedText>
-				<Link href="/new-game" style={styles.link}>
-					<ThemedText type="link">Start a new game</ThemedText>
-				</Link>
+			<View style={styles.content}>
+				<ThemedText type="title" style={styles.welcome}>
+					Welcome to the AI D&D Platform
+				</ThemedText>
+				<ThemedText style={styles.subtitle}>
+					Host a multiplayer session for your party, or join an existing adventure with your character.
+				</ThemedText>
 				<TouchableOpacity
 					style={styles.multiplayerBtn}
 					onPress={() => router.push('/host-game')}
@@ -55,32 +55,12 @@ const IndexScreen: React.FC = () => {
 						style={styles.continueBtn}
 						onPress={() => router.push('/game')}
 					>
-						<ThemedText style={styles.continueBtnText}>Continue Game</ThemedText>
+						<ThemedText style={styles.continueBtnText}>Continue Solo Adventure</ThemedText>
 					</TouchableOpacity>
 				)}
-
-				{/* Settings button */}
-				<TouchableOpacity
-					style={styles.settingsBtn}
-					onPress={() => setSettingsVisible(true)}
-				>
-					<ThemedText style={styles.settingsBtnText}>Settings</ThemedText>
-				</TouchableOpacity>
-
-				{/* Licenses & Credits button */}
-				<TouchableOpacity
-					style={styles.licensesBtn}
-					onPress={() => router.push('/licenses')}
-				>
-					<ThemedText style={styles.licensesBtnText}>Licenses & Credits</ThemedText>
-				</TouchableOpacity>
-
-				<SettingsModal
-					visible={isSettingsVisible}
-					onClose={() => setSettingsVisible(false)}
-				/>
-			</ThemedView>
-		</>
+			</View>
+			<AppFooter />
+		</ThemedView>
 	);
 };
 IndexScreen.displayName = 'Home';
@@ -89,26 +69,22 @@ export default IndexScreen;
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
+	},
+	content: {
+		flex: 1,
 		alignItems: 'center',
 		justifyContent: 'center',
 		padding: 20,
+		gap: 16,
 	},
-	link: {
-		marginTop: 15,
-		paddingVertical: 15,
+	welcome: {
+		textAlign: 'center',
 	},
-	continueBtn: {
-		marginTop: 20,
-		backgroundColor: '#C9B037',
-		paddingVertical: 15,
-		paddingHorizontal: 32,
-		borderRadius: 8,
-		alignItems: 'center',
-	},
-	continueBtnText: {
-		color: '#3B2F1B',
-		fontWeight: 'bold',
-		fontSize: 18,
+	subtitle: {
+		textAlign: 'center',
+		color: '#6B5B3D',
+		fontSize: 16,
+		paddingHorizontal: 24,
 	},
 	multiplayerBtn: {
 		marginTop: 15,
@@ -123,28 +99,15 @@ const styles = StyleSheet.create({
 		fontWeight: 'bold',
 		fontSize: 18,
 	},
-	licensesBtn: {
-		marginTop: 30,
-		backgroundColor: '#E2D3B3',
-		paddingVertical: 12,
+	continueBtn: {
+		marginTop: 10,
+		backgroundColor: '#C9B037',
+		paddingVertical: 15,
 		paddingHorizontal: 32,
 		borderRadius: 8,
 		alignItems: 'center',
 	},
-	licensesBtnText: {
-		color: '#3B2F1B',
-		fontWeight: 'bold',
-		fontSize: 16,
-	},
-	settingsBtn: {
-		marginTop: 20,
-		backgroundColor: '#E2D3B3',
-		paddingVertical: 12,
-		paddingHorizontal: 32,
-		borderRadius: 8,
-		alignItems: 'center',
-	},
-	settingsBtnText: {
+	continueBtnText: {
 		color: '#3B2F1B',
 		fontWeight: 'bold',
 		fontSize: 16,

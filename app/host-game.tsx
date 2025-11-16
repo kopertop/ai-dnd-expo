@@ -1,6 +1,7 @@
 import { Stack, router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+	ActivityIndicator,
 	Alert,
 	ScrollView,
 	StyleSheet,
@@ -9,7 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { EmailInput } from '@/components/email-input';
+import { AppFooter } from '@/components/app-footer';
 import { InviteCodeDisplay } from '@/components/invite-code-display';
 import { LocationChooser } from '@/components/location-chooser';
 import { PlayerList } from '@/components/player-list';
@@ -18,39 +19,78 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WorldChooser } from '@/components/world-chooser';
 import { useGameState } from '@/hooks/use-game-state';
-import { useScreenSize } from '@/hooks/use-screen-size';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
-import { GameSessionResponse } from '@/types/api/multiplayer-api';
+import { useAuthStore } from '@/stores/use-auth-store';
+import { GameSessionResponse, HostedGameSummary } from '@/types/api/multiplayer-api';
 import { LocationOption } from '@/types/location-option';
 import { Quest } from '@/types/quest';
 import { WorldOption } from '@/types/world-option';
 
-type HostStep = 'email' | 'quest' | 'world' | 'location' | 'character' | 'waiting' | 'ready';
+type HostStep = 'quest' | 'world' | 'location' | 'ready' | 'waiting';
+
+const createAdHocWorldOption = (name: string): WorldOption => ({
+	id: `saved-world-${name}`,
+	name,
+	description: `Adventure in ${name}`,
+	image: {} as any,
+});
+
+const createAdHocLocationOption = (name: string): LocationOption => ({
+	id: `saved-location-${name}`,
+	name,
+	description: `Begin at ${name}`,
+	image: {} as any,
+});
 
 const HostGameScreen: React.FC = () => {
-	const [currentStep, setCurrentStep] = useState<HostStep>('email');
-	const [hostEmail, setHostEmail] = useState<string>('');
+	const [currentStep, setCurrentStep] = useState<HostStep>('quest');
 	const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
 	const [selectedWorld, setSelectedWorld] = useState<WorldOption | null>(null);
 	const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
 	const [session, setSession] = useState<GameSessionResponse | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [hostId, setHostId] = useState<string | null>(null);
-	const { isMobile } = useScreenSize();
+	const [hostedGames, setHostedGames] = useState<HostedGameSummary[]>([]);
+	const [gamesLoading, setGamesLoading] = useState(true);
+	const [gamesError, setGamesError] = useState<string | null>(null);
+	const [resumingGame, setResumingGame] = useState(false);
 	const insets = useSafeAreaInsets();
 	const { gameState } = useGameState();
+	const { user } = useAuthStore();
+	const hostId = user?.id ?? null;
+	const hostEmail = user?.email ?? null;
+	const resumableGames = useMemo(
+		() => [...hostedGames].sort((a, b) => b.updatedAt - a.updatedAt),
+		[hostedGames],
+	);
 
-	// Generate host ID on mount
+	const loadHostedGames = useCallback(async () => {
+		if (!user?.id && !user?.email) {
+			setHostedGames([]);
+			setGamesLoading(false);
+			return;
+		}
+
+		setGamesError(null);
+		setGamesLoading(true);
+		try {
+			const overview = await multiplayerClient.getMyGames();
+			const resumable = (overview.hostedGames || []).filter(game =>
+				game.status === 'waiting' || game.status === 'active',
+			);
+			setHostedGames(resumable);
+		} catch (error) {
+			console.error('Failed to load hosted games:', error);
+			setGamesError(error instanceof Error ? error.message : 'Failed to load hosted games');
+		} finally {
+			setGamesLoading(false);
+		}
+	}, [user?.id, user?.email]);
+
 	useEffect(() => {
-		// Simple ID generator that works across all platforms
-		const generateHostId = () => {
-			const timestamp = Date.now().toString(36);
-			const random = Math.random().toString(36).substring(2, 15);
-			const id = `host-${timestamp}-${random}`.substring(0, 32);
-			setHostId(id);
-		};
-		generateHostId();
-	}, []);
+		if (user) {
+			loadHostedGames();
+		}
+	}, [user, loadHostedGames]);
 
 	// Poll for players when in waiting state
 	useEffect(() => {
@@ -70,14 +110,6 @@ const HostGameScreen: React.FC = () => {
 		}
 	}, [currentStep, session?.inviteCode]);
 
-	const handleEmailSubmit = () => {
-		if (!hostEmail || !hostEmail.includes('@')) {
-			Alert.alert('Error', 'Please enter a valid email address');
-			return;
-		}
-		setCurrentStep('quest');
-	};
-
 	const handleQuestSelect = (quest: Quest) => {
 		setSelectedQuest(quest);
 		setCurrentStep('world');
@@ -90,7 +122,7 @@ const HostGameScreen: React.FC = () => {
 
 	const handleLocationSelect = async (location: LocationOption) => {
 		setSelectedLocation(location);
-		setCurrentStep('character');
+		setCurrentStep('ready');
 	};
 
 	const handleCreateGame = async () => {
@@ -109,7 +141,7 @@ const HostGameScreen: React.FC = () => {
 				id: `host-char-${Date.now()}`,
 				level: 1,
 				race: 'Human',
-				name: 'Game Master',
+				name: user?.name ? `${user.name} (DM)` : 'Game Master',
 				class: 'DM',
 				description: 'The Dungeon Master',
 				stats: {
@@ -138,12 +170,13 @@ const HostGameScreen: React.FC = () => {
 				world: selectedWorld.name,
 				startingArea: selectedLocation.name,
 				hostId,
-				hostEmail,
+				hostEmail: hostEmail ?? undefined,
 				hostCharacter,
 			});
 
 			setSession(newSession);
 			setCurrentStep('waiting');
+			loadHostedGames().catch(() => undefined);
 		} catch (error) {
 			Alert.alert(
 				'Error',
@@ -155,7 +188,14 @@ const HostGameScreen: React.FC = () => {
 	};
 
 	const handleStartGame = async () => {
-		if (!session || !hostId) return;
+		if (!session) {
+			return;
+		}
+
+		if (!hostId) {
+			Alert.alert('Error', 'Missing host identity. Please re-authenticate and try again.');
+			return;
+		}
 
 		setLoading(true);
 		try {
@@ -199,6 +239,7 @@ const HostGameScreen: React.FC = () => {
 
 			await multiplayerClient.startGame(session.inviteCode, hostId, initialGameState);
 			router.replace(`/multiplayer-game?inviteCode=${session.inviteCode}&hostId=${hostId}`);
+			loadHostedGames().catch(() => undefined);
 		} catch (error) {
 			Alert.alert(
 				'Error',
@@ -209,28 +250,132 @@ const HostGameScreen: React.FC = () => {
 		}
 	};
 
+	const handleResumeHostedGame = useCallback(
+		async (game: HostedGameSummary) => {
+			if (!hostId) {
+				Alert.alert('Error', 'Missing host identity. Please re-authenticate and try again.');
+				return;
+			}
+
+			setResumingGame(true);
+			try {
+				const existingSession = await multiplayerClient.getGameSession(game.inviteCode);
+				if (existingSession.status === 'waiting') {
+					setSelectedQuest(existingSession.quest);
+					setSelectedWorld(createAdHocWorldOption(game.world));
+					setSelectedLocation(createAdHocLocationOption(game.startingArea));
+					setSession(existingSession);
+					setCurrentStep('waiting');
+				} else if (existingSession.status === 'active') {
+					router.replace(`/multiplayer-game?inviteCode=${game.inviteCode}&hostId=${hostId}`);
+				} else {
+					Alert.alert(
+						'Unavailable',
+						`This game is ${existingSession.status}. Start a new session instead.`,
+					);
+				}
+			} catch (error) {
+				Alert.alert(
+					'Error',
+					error instanceof Error ? error.message : 'Failed to resume game',
+				);
+			} finally {
+				setResumingGame(false);
+			}
+		},
+		[hostId],
+	);
+
+	const renderHostedGames = useCallback(() => {
+		if (gamesLoading) {
+			return (
+				<View style={styles.loadingContainer}>
+					<ActivityIndicator size="small" color="#8B6914" />
+					<ThemedText style={styles.loadingText}>Loading hosted games...</ThemedText>
+				</View>
+			);
+		}
+
+		if (gamesError) {
+			return (
+				<View style={styles.errorBox}>
+					<ThemedText style={styles.errorText}>{gamesError}</ThemedText>
+					<TouchableOpacity
+						style={[styles.button, styles.refreshButton]}
+						onPress={() => loadHostedGames().catch(() => undefined)}
+					>
+						<ThemedText style={styles.buttonText}>Retry</ThemedText>
+					</TouchableOpacity>
+				</View>
+			);
+		}
+
+		if (resumableGames.length === 0) {
+			return (
+				<View style={styles.emptyStateBox}>
+					<ThemedText style={styles.emptyStateText}>No hosted games yet.</ThemedText>
+					<ThemedText style={styles.emptyStateSubtext}>
+						Start a new adventure to generate an invite code.
+					</ThemedText>
+				</View>
+			);
+		}
+
+		return resumableGames.map(game => (
+			<View key={game.id} style={styles.gameCard}>
+				<View style={styles.gameCardHeader}>
+					<ThemedText style={styles.gameTitle}>{game.quest.name}</ThemedText>
+					<View
+						style={[
+							styles.statusBadge,
+							game.status === 'active'
+								? styles.statusActive
+								: game.status === 'waiting'
+									? styles.statusWaiting
+									: styles.statusIdle,
+						]}
+					>
+						<ThemedText style={styles.statusText}>{game.status.toUpperCase()}</ThemedText>
+					</View>
+				</View>
+				<ThemedText style={styles.gameMeta}>Invite Code: {game.inviteCode}</ThemedText>
+				<ThemedText style={styles.gameMeta}>
+					World: {game.world} • Start: {game.startingArea}
+				</ThemedText>
+				<ThemedText style={styles.gameMeta}>
+					Updated {new Date(game.updatedAt).toLocaleString()}
+				</ThemedText>
+				<TouchableOpacity
+					style={[
+						styles.button,
+						styles.resumeButton,
+						(resumingGame || loading) && styles.buttonDisabled,
+					]}
+					onPress={() => handleResumeHostedGame(game)}
+					disabled={resumingGame || loading}
+				>
+					<ThemedText style={styles.buttonText}>
+						{resumingGame
+							? 'Opening...'
+							: game.status === 'active'
+								? 'Rejoin Game'
+								: 'Open Lobby'}
+					</ThemedText>
+				</TouchableOpacity>
+			</View>
+		));
+	}, [
+		gamesLoading,
+		gamesError,
+		loadHostedGames,
+		resumableGames,
+		resumingGame,
+		loading,
+		handleResumeHostedGame,
+	]);
+
 	const renderStepContent = () => {
 		switch (currentStep) {
-			case 'email':
-				return (
-					<View style={styles.chooserContainer}>
-						<ThemedText type="title" style={styles.stepTitle}>
-							Enter Your Email
-						</ThemedText>
-						<EmailInput
-							value={hostEmail}
-							onChangeText={setHostEmail}
-							autoFocus={true}
-						/>
-						<TouchableOpacity
-							style={[styles.button, (!hostEmail || !hostEmail.includes('@')) && styles.buttonDisabled]}
-							onPress={handleEmailSubmit}
-							disabled={!hostEmail || !hostEmail.includes('@')}
-						>
-							<ThemedText style={styles.buttonText}>Continue</ThemedText>
-						</TouchableOpacity>
-					</View>
-				);
 			case 'quest':
 				return (
 					<QuestSelector
@@ -256,7 +401,7 @@ const HostGameScreen: React.FC = () => {
 						<LocationChooser onSelect={handleLocationSelect} />
 					</View>
 				);
-			case 'character':
+			case 'ready':
 				return (
 					<View style={styles.readyContainer}>
 						<ThemedText type="title" style={styles.stepTitle}>
@@ -298,7 +443,7 @@ const HostGameScreen: React.FC = () => {
 										styles.button,
 										styles.startButton,
 										(loading || session.players.length === 0) &&
-											styles.buttonDisabled,
+										styles.buttonDisabled,
 									]}
 									onPress={handleStartGame}
 									disabled={loading || session.players.length === 0}
@@ -316,6 +461,24 @@ const HostGameScreen: React.FC = () => {
 		}
 	};
 
+	if (!user) {
+		return (
+			<ThemedView style={styles.container}>
+				<Stack.Screen
+					options={{
+						title: 'Host Game',
+						headerShown: true,
+					}}
+				/>
+				<View style={styles.loaderFallback}>
+					<ActivityIndicator size="large" color="#8B6914" />
+					<ThemedText style={styles.loadingText}>Loading your profile...</ThemedText>
+				</View>
+				<AppFooter />
+			</ThemedView>
+		);
+	}
+
 	return (
 		<ThemedView style={styles.container}>
 			<Stack.Screen
@@ -328,11 +491,35 @@ const HostGameScreen: React.FC = () => {
 				style={styles.scrollView}
 				contentContainerStyle={[
 					styles.scrollContent,
-					{ paddingTop: insets.top + 20 },
+					{ paddingTop: insets.top + 20, paddingBottom: 160 },
 				]}
 			>
-				{renderStepContent()}
+				<View style={styles.section}>
+					<View style={styles.sectionHeader}>
+						<ThemedText type="title" style={styles.sectionTitle}>
+							Continue Hosting
+						</ThemedText>
+						<TouchableOpacity
+							style={[styles.secondaryButton, gamesLoading && styles.buttonDisabled]}
+							onPress={() => loadHostedGames().catch(() => undefined)}
+							disabled={gamesLoading}
+						>
+							<ThemedText style={styles.secondaryButtonText}>
+								{gamesLoading ? 'Refreshing...' : 'Refresh'}
+							</ThemedText>
+						</TouchableOpacity>
+					</View>
+					<View style={styles.gameList}>{renderHostedGames()}</View>
+				</View>
+
+				<View style={styles.section}>
+					<ThemedText type="title" style={styles.sectionTitle}>
+						Start a New Game
+					</ThemedText>
+					{renderStepContent()}
+				</View>
 			</ScrollView>
+			<AppFooter />
 		</ThemedView>
 	);
 };
@@ -346,6 +533,19 @@ const styles = StyleSheet.create({
 	},
 	scrollContent: {
 		paddingBottom: 40,
+		gap: 24,
+	},
+	section: {
+		paddingHorizontal: 20,
+	},
+	sectionHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		marginBottom: 12,
+	},
+	sectionTitle: {
+		textAlign: 'left',
 	},
 	chooserContainer: {
 		flex: 1,
@@ -382,6 +582,17 @@ const styles = StyleSheet.create({
 		backgroundColor: '#8B6914',
 		marginTop: 30,
 	},
+	secondaryButton: {
+		paddingHorizontal: 16,
+		paddingVertical: 8,
+		borderRadius: 999,
+		borderWidth: 1,
+		borderColor: '#8B6914',
+	},
+	secondaryButtonText: {
+		color: '#8B6914',
+		fontWeight: '600',
+	},
 	buttonText: {
 		color: '#3B2F1B',
 		fontWeight: 'bold',
@@ -393,6 +604,108 @@ const styles = StyleSheet.create({
 	},
 	spacer: {
 		height: 30,
+	},
+	gameList: {
+		gap: 16,
+	},
+	gameCard: {
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+		borderRadius: 16,
+		padding: 16,
+		backgroundColor: '#FFF9EF',
+	},
+	gameCardHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		marginBottom: 8,
+	},
+	gameTitle: {
+		fontSize: 18,
+		fontWeight: '600',
+		color: '#3B2F1B',
+		flexShrink: 1,
+		marginRight: 12,
+	},
+	statusBadge: {
+		borderRadius: 999,
+		paddingHorizontal: 12,
+		paddingVertical: 4,
+	},
+	statusText: {
+		fontSize: 12,
+		fontWeight: '700',
+		color: '#FFFFFF',
+	},
+	statusActive: {
+		backgroundColor: '#2E7D32',
+	},
+	statusWaiting: {
+		backgroundColor: '#D97706',
+	},
+	statusIdle: {
+		backgroundColor: '#6B7280',
+	},
+	gameMeta: {
+		fontSize: 14,
+		color: '#5A4A3A',
+		marginBottom: 4,
+	},
+	resumeButton: {
+		marginTop: 12,
+	},
+	emptyStateBox: {
+		padding: 20,
+		borderRadius: 16,
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+		backgroundColor: '#FBF4E3',
+		alignItems: 'center',
+	},
+	emptyStateText: {
+		fontSize: 18,
+		fontWeight: '600',
+		color: '#3B2F1B',
+		marginBottom: 8,
+		textAlign: 'center',
+	},
+	emptyStateSubtext: {
+		fontSize: 14,
+		color: '#6B5B3D',
+		textAlign: 'center',
+	},
+	loadingContainer: {
+		alignItems: 'center',
+		justifyContent: 'center',
+		paddingVertical: 20,
+		gap: 12,
+	},
+	loadingText: {
+		color: '#6B5B3D',
+	},
+	errorBox: {
+		padding: 20,
+		borderRadius: 16,
+		borderWidth: 1,
+		borderColor: '#F2C94C',
+		backgroundColor: '#FFF7E1',
+		alignItems: 'center',
+		gap: 12,
+	},
+	errorText: {
+		color: '#B91C1C',
+		fontWeight: '600',
+		textAlign: 'center',
+	},
+	refreshButton: {
+		backgroundColor: '#8B6914',
+	},
+	loaderFallback: {
+		flex: 1,
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: 12,
 	},
 });
 

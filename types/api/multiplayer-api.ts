@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { CharacterSchema } from '@/types/character';
-import { MultiplayerGameStateSchema } from '@/types/multiplayer-game';
+import { GameSessionStatusSchema, MultiplayerGameStateSchema } from '@/types/multiplayer-game';
 import { QuestSchema } from '@/types/quest';
 
 // Request types
@@ -37,7 +37,7 @@ export const DMActionRequestSchema = z.object({
 export const GameSessionResponseSchema = z.object({
 	sessionId: z.string(),
 	inviteCode: z.string(),
-	status: z.enum(['waiting', 'active', 'completed', 'cancelled']),
+	status: GameSessionStatusSchema,
 	hostId: z.string(),
 	quest: QuestSchema,
 	players: z.array(
@@ -60,6 +60,36 @@ export const ErrorResponseSchema = z.object({
 	details: z.record(z.unknown()).optional(),
 });
 
+export const GameSummarySchema = z.object({
+	id: z.string(),
+	inviteCode: z.string(),
+	status: GameSessionStatusSchema,
+	hostId: z.string(),
+	hostEmail: z.string().nullable().optional(),
+	world: z.string(),
+	startingArea: z.string(),
+	quest: QuestSchema,
+	createdAt: z.number(),
+	updatedAt: z.number(),
+});
+
+export const HostedGameSummarySchema = GameSummarySchema.extend({});
+
+export const JoinedGameSummarySchema = GameSummarySchema.extend({
+	characterId: z.string().optional(),
+	characterName: z.string().optional(),
+	joinedAt: z.number().optional(),
+});
+
+export const MyGamesResponseSchema = z.object({
+	hostedGames: z.array(HostedGameSummarySchema),
+	joinedGames: z.array(JoinedGameSummarySchema),
+});
+
+export const CharacterListResponseSchema = z.object({
+	characters: z.array(CharacterSchema),
+});
+
 // Type exports
 export type CreateGameRequest = z.infer<typeof CreateGameRequestSchema>;
 export type JoinGameRequest = z.infer<typeof JoinGameRequestSchema>;
@@ -68,4 +98,9 @@ export type DMActionRequest = z.infer<typeof DMActionRequestSchema>;
 export type GameSessionResponse = z.infer<typeof GameSessionResponseSchema>;
 export type GameStateResponse = z.infer<typeof GameStateResponseSchema>;
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+export type GameSummary = z.infer<typeof GameSummarySchema>;
+export type HostedGameSummary = z.infer<typeof HostedGameSummarySchema>;
+export type JoinedGameSummary = z.infer<typeof JoinedGameSummarySchema>;
+export type MyGamesResponse = z.infer<typeof MyGamesResponseSchema>;
+export type CharacterListResponse = z.infer<typeof CharacterListResponseSchema>;
 

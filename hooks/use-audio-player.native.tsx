@@ -1,6 +1,5 @@
-import { useMemo } from 'react';
-
 import { useAudioPlayer as useExpoAudioPlayer } from 'expo-audio';
+import { useMemo } from 'react';
 
 import audioSource from '../assets/audio/background.mp3';
 

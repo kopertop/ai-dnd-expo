@@ -84,6 +84,36 @@ export class Database {
 		return result || null;
 	}
 
+	async getGameById(gameId: string): Promise<GameRow | null> {
+		const result = await this.db.prepare(
+			'SELECT * FROM games WHERE id = ?',
+		).bind(gameId).first<GameRow>();
+		return result || null;
+	}
+
+	async getGamesHostedByUser(hostId?: string, hostEmail?: string | null): Promise<GameRow[]> {
+		const clauses: string[] = [];
+		const values: (string)[] = [];
+
+		if (hostId) {
+			clauses.push('host_id = ?');
+			values.push(hostId);
+		}
+
+		if (hostEmail) {
+			clauses.push('host_email = ?');
+			values.push(hostEmail);
+		}
+
+		if (clauses.length === 0) {
+			return [];
+		}
+
+		const query = `SELECT * FROM games WHERE ${clauses.map(clause => `(${clause})`).join(' OR ')} ORDER BY updated_at DESC`;
+		const result = await this.db.prepare(query).bind(...values).all<GameRow>();
+		return result.results || [];
+	}
+
 	async updateGameStatus(gameId: string, status: GameRow['status']): Promise<void> {
 		await this.db.prepare(
 			'UPDATE games SET status = ?, updated_at = ? WHERE id = ?',
@@ -139,6 +169,29 @@ export class Database {
 		return result.results || [];
 	}
 
+	async getCharactersByPlayerIdentity(playerId?: string, playerEmail?: string | null): Promise<CharacterRow[]> {
+		const clauses: string[] = [];
+		const values: (string)[] = [];
+
+		if (playerId) {
+			clauses.push('player_id = ?');
+			values.push(playerId);
+		}
+
+		if (playerEmail) {
+			clauses.push('player_email = ?');
+			values.push(playerEmail);
+		}
+
+		if (clauses.length === 0) {
+			return [];
+		}
+
+		const query = `SELECT * FROM characters WHERE ${clauses.map(clause => `(${clause})`).join(' OR ')} ORDER BY updated_at DESC`;
+		const result = await this.db.prepare(query).bind(...values).all<CharacterRow>();
+		return result.results || [];
+	}
+
 	async updateCharacter(characterId: string, updates: Partial<CharacterRow>): Promise<void> {
 		const fields: string[] = [];
 		const values: any[] = [];
@@ -183,6 +236,35 @@ export class Database {
 		const result = await this.db.prepare(
 			'SELECT * FROM game_players WHERE game_id = ? ORDER BY joined_at ASC',
 		).bind(gameId).all<GamePlayerRow>();
+		return result.results || [];
+	}
+
+	async removePlayerFromGame(gameId: string, playerId: string): Promise<void> {
+		await this.db.prepare(
+			'DELETE FROM game_players WHERE game_id = ? AND player_id = ?',
+		).bind(gameId, playerId).run();
+	}
+
+	async getGameMembershipsForPlayer(playerId?: string, playerEmail?: string | null): Promise<GamePlayerRow[]> {
+		const clauses: string[] = [];
+		const values: (string)[] = [];
+
+		if (playerId) {
+			clauses.push('player_id = ?');
+			values.push(playerId);
+		}
+
+		if (playerEmail) {
+			clauses.push('player_email = ?');
+			values.push(playerEmail);
+		}
+
+		if (clauses.length === 0) {
+			return [];
+		}
+
+		const query = `SELECT * FROM game_players WHERE ${clauses.map(clause => `(${clause})`).join(' OR ')} ORDER BY joined_at DESC`;
+		const result = await this.db.prepare(query).bind(...values).all<GamePlayerRow>();
 		return result.results || [];
 	}
 
