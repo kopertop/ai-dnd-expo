@@ -42,20 +42,23 @@ export interface QuestObjective {
 }
 
 export interface MultiplayerGameState {
-	sessionId: string;
-	inviteCode: string;
-	hostId: string;
-	quest: Quest;
-	players: PlayerInfo[];
-	characters: Character[];
-	playerCharacterId: string; // For backward compatibility, but we track all players
-	gameWorld: string;
-	startingArea: string;
-	worldState?: any;
-	status: 'waiting' | 'active' | 'completed' | 'cancelled';
-	createdAt: number;
-	lastUpdated: number;
-	messages: GameMessage[];
+        sessionId: string;
+        inviteCode: string;
+        hostId: string;
+        quest: Quest;
+        players: PlayerInfo[];
+        characters: Character[];
+        playerCharacterId: string; // For backward compatibility, but we track all players
+        gameWorld: string;
+        startingArea: string;
+        worldState?: any;
+        status: 'waiting' | 'active' | 'completed' | 'cancelled';
+        createdAt: number;
+        lastUpdated: number;
+        messages: GameMessage[];
+        mapState?: MapState | null;
+        npcStates?: NpcState[];
+        activityLog?: ActivityLogEntry[];
 }
 
 export interface Character {
@@ -97,9 +100,73 @@ export interface GameMessage {
 }
 
 export interface WebSocketConnection {
-	playerId: string;
-	characterId: string;
-	ws: WebSocket;
+        playerId: string;
+        characterId: string;
+        ws: WebSocket;
+}
+
+export interface MapState {
+        id: string;
+        name: string;
+        width: number;
+        height: number;
+        terrain?: TerrainCell[][];
+        fog?: boolean[][];
+        tokens: MapToken[];
+        updatedAt: number;
+}
+
+export interface TerrainCell {
+        terrain: string;
+        fogged?: boolean;
+        elevation?: number;
+        difficult?: boolean;
+}
+
+export type MapTokenType = 'player' | 'npc' | 'object';
+
+export interface MapToken {
+        id: string;
+        type: MapTokenType;
+        entityId?: string;
+        label: string;
+        x: number;
+        y: number;
+        zIndex?: number;
+        color?: string;
+        icon?: string;
+        metadata?: Record<string, unknown>;
+}
+
+export type NpcAlignment = 'hostile' | 'friendly' | 'vendor';
+
+export interface NpcDefinition {
+        id: string;
+        name: string;
+        alignment: NpcAlignment;
+        description?: string;
+        maxHealth: number;
+        armorClass?: number;
+        attack?: string;
+        stats?: Record<string, unknown>;
+        icon?: string;
+        color?: string;
+        metadata?: Record<string, unknown>;
+}
+
+export interface NpcState extends NpcDefinition {
+        currentHealth: number;
+        statusEffects?: string[];
+        tokenId?: string;
+}
+
+export interface ActivityLogEntry {
+        id: string;
+        type: 'log' | 'dice' | 'system';
+        message: string;
+        timestamp: number;
+        actor?: string;
+        details?: Record<string, unknown>;
 }
 
 

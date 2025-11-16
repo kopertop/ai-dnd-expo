@@ -44,16 +44,22 @@ const IndexScreen: React.FC = () => {
 				>
 					<ThemedText style={styles.multiplayerBtnText}>Host Game</ThemedText>
 				</TouchableOpacity>
-				<TouchableOpacity
-					style={styles.multiplayerBtn}
-					onPress={() => router.push('/join-game')}
-				>
-					<ThemedText style={styles.multiplayerBtnText}>Join Game</ThemedText>
-				</TouchableOpacity>
-				{!loading && hasSavedGame && (
-					<TouchableOpacity
-						style={styles.continueBtn}
-						onPress={() => router.push('/game')}
+                                <TouchableOpacity
+                                        style={styles.multiplayerBtn}
+                                        onPress={() => router.push('/join-game')}
+                                >
+                                        <ThemedText style={styles.multiplayerBtnText}>Join Game</ThemedText>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                        style={styles.secondaryBtn}
+                                        onPress={() => router.push('/characters')}
+                                >
+                                        <ThemedText style={styles.secondaryBtnText}>My Characters</ThemedText>
+                                </TouchableOpacity>
+                                {!loading && hasSavedGame && (
+                                        <TouchableOpacity
+                                                style={styles.continueBtn}
+                                                onPress={() => router.push('/game')}
 					>
 						<ThemedText style={styles.continueBtnText}>Continue Solo Adventure</ThemedText>
 					</TouchableOpacity>
@@ -94,11 +100,24 @@ const styles = StyleSheet.create({
 		borderRadius: 8,
 		alignItems: 'center',
 	},
-	multiplayerBtnText: {
-		color: '#F5E6D3',
-		fontWeight: 'bold',
-		fontSize: 18,
-	},
+        multiplayerBtnText: {
+                color: '#F5E6D3',
+                fontWeight: 'bold',
+                fontSize: 18,
+        },
+        secondaryBtn: {
+                marginTop: 8,
+                borderWidth: 1,
+                borderColor: '#8B6914',
+                paddingVertical: 12,
+                paddingHorizontal: 28,
+                borderRadius: 8,
+        },
+        secondaryBtnText: {
+                color: '#8B6914',
+                fontWeight: '600',
+                fontSize: 16,
+        },
 	continueBtn: {
 		marginTop: 10,
 		backgroundColor: '#C9B037',

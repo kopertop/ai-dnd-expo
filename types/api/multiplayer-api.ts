@@ -2,18 +2,24 @@ import { z } from 'zod';
 
 import { CharacterSchema } from '@/types/character';
 import { GameSessionStatusSchema, MultiplayerGameStateSchema } from '@/types/multiplayer-game';
+import {
+        MapStateSchema,
+        MapTokenSchema,
+        NpcDefinitionSchema,
+} from '@/types/multiplayer-map';
 import { QuestSchema } from '@/types/quest';
 
 // Request types
 export const CreateGameRequestSchema = z.object({
-	questId: z.string().optional(), // Optional if quest object is provided
-	quest: QuestSchema.optional(), // Quest object can be provided directly
-	world: z.string(),
-	startingArea: z.string(),
-	hostId: z.string(),
-	hostEmail: z.string().email().optional(), // Email for character persistence
+        questId: z.string().optional(), // Optional if quest object is provided
+        quest: QuestSchema.optional(), // Quest object can be provided directly
+        world: z.string(),
+        startingArea: z.string(),
+        hostId: z.string(),
+        hostEmail: z.string().email().optional(), // Email for character persistence
+        mapId: z.string().optional(),
 }).refine(data => data.questId || data.quest, {
-	message: 'Either questId or quest object must be provided',
+        message: 'Either questId or quest object must be provided',
 });
 
 export const JoinGameRequestSchema = z.object({
@@ -87,7 +93,42 @@ export const MyGamesResponseSchema = z.object({
 });
 
 export const CharacterListResponseSchema = z.object({
-	characters: z.array(CharacterSchema),
+        characters: z.array(CharacterSchema),
+});
+
+export const CharacterUpsertRequestSchema = CharacterSchema.extend({
+        playerId: z.string().optional(),
+        playerEmail: z.string().email().optional(),
+});
+
+export const MapStateResponseSchema = MapStateSchema;
+
+export const MapStateUpdateRequestSchema = z.object({
+        id: z.string(),
+        terrain: MapStateSchema.shape.terrain.optional(),
+        fog: MapStateSchema.shape.fog.optional(),
+        tokens: MapStateSchema.shape.tokens.optional(),
+        name: z.string().optional(),
+});
+
+export const MapTokenMutationRequestSchema = z.object({
+        action: z.enum(['create', 'update', 'delete']),
+        token: MapTokenSchema.partial().extend({ id: z.string().optional() }).optional(),
+        tokenId: z.string().optional(),
+});
+
+export const MapTokenListResponseSchema = z.object({
+        tokens: z.array(MapTokenSchema),
+});
+
+export const NpcDefinitionListResponseSchema = z.object({
+        npcs: z.array(NpcDefinitionSchema),
+});
+
+export const NpcPlacementRequestSchema = z.object({
+        npcId: z.string(),
+        position: z.object({ x: z.number().nonnegative(), y: z.number().nonnegative() }),
+        label: z.string().optional(),
 });
 
 // Type exports
@@ -103,4 +144,11 @@ export type HostedGameSummary = z.infer<typeof HostedGameSummarySchema>;
 export type JoinedGameSummary = z.infer<typeof JoinedGameSummarySchema>;
 export type MyGamesResponse = z.infer<typeof MyGamesResponseSchema>;
 export type CharacterListResponse = z.infer<typeof CharacterListResponseSchema>;
+export type CharacterUpsertRequest = z.infer<typeof CharacterUpsertRequestSchema>;
+export type MapStateResponse = z.infer<typeof MapStateResponseSchema>;
+export type MapStateUpdateRequest = z.infer<typeof MapStateUpdateRequestSchema>;
+export type MapTokenMutationRequest = z.infer<typeof MapTokenMutationRequestSchema>;
+export type MapTokenListResponse = z.infer<typeof MapTokenListResponseSchema>;
+export type NpcDefinitionListResponse = z.infer<typeof NpcDefinitionListResponseSchema>;
+export type NpcPlacementRequest = z.infer<typeof NpcPlacementRequestSchema>;
 

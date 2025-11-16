@@ -1,8 +1,9 @@
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 
-import { CharacterRow, Database, GameRow } from '../../../shared/workers/db';
+import { CharacterRow, Database, GameRow, MapRow, NpcRow } from '../../../shared/workers/db';
 import { generateInviteCode, getSessionId, getSessionStub } from '../../../shared/workers/session-manager';
+import type { MapState, NpcDefinition } from '../../../shared/workers/types';
 import { Character, Quest } from '../../../shared/workers/types';
 import type { CloudflareBindings } from '../env';
 
@@ -13,13 +14,13 @@ type Variables = {
 type GamesContext = { Bindings: CloudflareBindings; Variables: Variables };
 
 interface CreateGameBody {
-	questId?: string;
-	quest?: Quest;
-	world: string;
-	startingArea: string;
-	hostId?: string;
-	hostEmail?: string;
-	hostCharacter?: Character;
+        questId?: string;
+        quest?: Quest;
+        world: string;
+        startingArea: string;
+        hostId?: string;
+        hostEmail?: string;
+        mapId?: string;
 }
 
 interface JoinGameBody {
@@ -66,8 +67,8 @@ const serializeCharacter = (
 });
 
 const deserializeCharacter = (row: CharacterRow): Character => ({
-	id: row.id,
-	level: row.level,
+        id: row.id,
+        level: row.level,
 	race: row.race,
 	name: row.name,
 	class: row.class,
@@ -79,11 +80,67 @@ const deserializeCharacter = (row: CharacterRow): Character => ({
 	health: row.health,
 	maxHealth: row.max_health,
 	actionPoints: row.action_points,
-	maxActionPoints: row.max_action_points,
+        maxActionPoints: row.max_action_points,
 });
 
+const mapRowToState = (row: MapRow | null): MapState | null => {
+        if (!row) {
+                return null;
+        }
+
+        const safeParse = <T>(value: string | null, fallback: T): T => {
+                if (!value) return fallback;
+                try {
+                        return JSON.parse(value) as T;
+                } catch {
+                        return fallback;
+                }
+        };
+
+        return {
+                id: row.id,
+                name: row.name,
+                width: row.width,
+                height: row.height,
+                terrain: safeParse(row.terrain, []),
+                fog: safeParse(row.fog, []),
+                tokens: [],
+                updatedAt: Date.now(),
+        } satisfies MapState;
+};
+
+const npcRowsToDefinitions = (rows: NpcRow[]): NpcDefinition[] => {
+        const safeParse = (value: string | null) => {
+                if (!value) return undefined;
+                try {
+                        return JSON.parse(value);
+                } catch {
+                        return undefined;
+                }
+        };
+
+        return rows.map(row => {
+                const stats = safeParse(row.stats);
+                const abilities = safeParse(row.abilities);
+                const metadata = safeParse(row.metadata);
+                return {
+                        id: row.id,
+                        name: row.name,
+                        alignment: (row.alignment as NpcDefinition['alignment']) ?? 'friendly',
+                        description: row.description ?? undefined,
+                        maxHealth: stats?.maxHealth ?? 10,
+                        armorClass: stats?.armorClass,
+                        attack: abilities?.attack,
+                        stats,
+                        icon: row.icon ?? undefined,
+                        color: row.color ?? metadata?.color,
+                        metadata,
+                } satisfies NpcDefinition;
+        });
+};
+
 const parseQuestData = (questJson: string): Quest => {
-	try {
+        try {
 		const parsed = JSON.parse(questJson);
 		return {
 			...parsed,
@@ -97,7 +154,7 @@ const parseQuestData = (questJson: string): Quest => {
 };
 
 const toGameSummary = (game: GameRow) => ({
-	id: game.id,
+        id: game.id,
 	inviteCode: game.invite_code,
 	status: game.status,
 	hostId: game.host_id,
@@ -106,8 +163,11 @@ const toGameSummary = (game: GameRow) => ({
 	startingArea: game.starting_area,
 	quest: parseQuestData(game.quest_data),
 	createdAt: game.created_at,
-	updatedAt: game.updated_at,
+        updatedAt: game.updated_at,
 });
+
+const characterBelongsToUser = (row: CharacterRow, user: Variables['user']) =>
+        (!!user?.id && row.player_id === user.id) || (!!user?.email && row.player_email === user.email);
 
 games.post('/', async (c) => {
 	const user = c.get('user');
@@ -115,10 +175,10 @@ games.post('/', async (c) => {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
 
-	const body = (await c.req.json()) as CreateGameBody;
-	const { questId, quest, world, startingArea, hostId, hostEmail, hostCharacter } = body;
-	const resolvedHostId = hostId ?? user.id;
-	const resolvedHostEmail = hostEmail ?? user.email ?? undefined;
+        const body = (await c.req.json()) as CreateGameBody;
+        const { questId, quest, world, startingArea, hostId, hostEmail, mapId } = body;
+        const resolvedHostId = hostId ?? user.id;
+        const resolvedHostEmail = hostEmail ?? user.email ?? undefined;
 
 	if (!resolvedHostId) {
 		return c.json({ error: 'Host identity is required' }, 400);
@@ -147,26 +207,7 @@ games.post('/', async (c) => {
 	const sessionId = getSessionId(c.env, inviteCode);
 	const sessionStub = c.env.GAME_SESSION.get(sessionId);
 
-	const initResponse = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, '/initialize', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				inviteCode,
-				hostId,
-				quest: questData,
-				world,
-				startingArea,
-			}),
-		}),
-	);
-
-	if (!initResponse.ok) {
-		const details = await initResponse.text();
-		return c.json({ error: 'Failed to initialize game session', details }, 500);
-	}
-
-	const gameId = sessionId.toString();
+        const gameId = sessionId.toString();
 	const persistedQuest = {
 		...questData,
 		objectives: questData.objectives ?? [],
@@ -174,9 +215,9 @@ games.post('/', async (c) => {
 		createdBy: questData.createdBy ?? (resolvedHostEmail || user.email || 'host'),
 	};
 
-	await db.createGame({
-		id: gameId,
-		invite_code: inviteCode,
+        await db.createGame({
+                id: gameId,
+                invite_code: inviteCode,
 		host_id: resolvedHostId,
 		host_email: resolvedHostEmail || user.email || null,
 		quest_id: persistedQuest.id,
@@ -184,47 +225,34 @@ games.post('/', async (c) => {
 		world,
 		starting_area: startingArea,
 		status: 'waiting',
-	});
+        });
 
-	if (hostCharacter) {
-		const serializedCharacter = serializeCharacter(
-			hostCharacter,
-			resolvedHostId,
-			resolvedHostEmail || user.email || null,
-		);
+        const availableMaps = await db.getMaps();
+        const selectedMapState = mapRowToState(
+                availableMaps.find(map => map.id === mapId) ?? availableMaps[0] ?? null,
+        );
+        const npcDefinitions = npcRowsToDefinitions(await db.getNpcDefinitions());
 
-		const existingCharacter = await db.getCharacterById(hostCharacter.id);
-		if (existingCharacter) {
-			await db.updateCharacter(hostCharacter.id, serializedCharacter);
-		} else {
-			await db.createCharacter(serializedCharacter);
-		}
+        const initResponse = await sessionStub.fetch(
+                buildDurableRequest(c.req.raw, '/initialize', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                                inviteCode,
+                                hostId: resolvedHostId,
+                                quest: questData,
+                                world,
+                                startingArea,
+                                mapState: selectedMapState ?? undefined,
+                                npcDefinitions,
+                        }),
+                }),
+        );
 
-		await db.addPlayerToGame({
-			game_id: gameId,
-			player_id: resolvedHostId,
-			player_email: resolvedHostEmail || user.email || null,
-			character_id: hostCharacter.id,
-			character_name: hostCharacter.name,
-			joined_at: Date.now(),
-		});
-
-		const joinResponse = await sessionStub.fetch(
-			buildDurableRequest(c.req.raw, '/join', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					character: hostCharacter,
-					playerId: hostId,
-				}),
-			}),
-		);
-
-		if (!joinResponse.ok) {
-			const details = await joinResponse.text();
-			return c.json({ error: 'Failed to register host in session', details }, 500);
-		}
-	}
+        if (!initResponse.ok) {
+                const details = await initResponse.text();
+                return c.json({ error: 'Failed to initialize game session', details }, 500);
+        }
 
 	const stateResponse = await sessionStub.fetch(
 		buildDurableRequest(c.req.raw, '/state'),
@@ -280,13 +308,13 @@ games.get('/me', async (c) => {
 });
 
 games.get('/me/characters', async (c) => {
-	const user = c.get('user');
-	if (!user) {
-		return c.json({ error: 'Unauthorized' }, 401);
-	}
+        const user = c.get('user');
+        if (!user) {
+                return c.json({ error: 'Unauthorized' }, 401);
+        }
 
-	const db = new Database(c.env.DATABASE);
-	const characterRows = await db.getCharactersByPlayerIdentity(user.id, user.email);
+        const db = new Database(c.env.DATABASE);
+        const characterRows = await db.getCharactersByPlayerIdentity(user.id, user.email);
 
 	// Use map to de-duplicate characters that match both ID and email
 	const deduped = new Map<string, Character>();
@@ -294,7 +322,73 @@ games.get('/me/characters', async (c) => {
 		deduped.set(row.id, deserializeCharacter(row));
 	}
 
-	return c.json({ characters: Array.from(deduped.values()) });
+        return c.json({ characters: Array.from(deduped.values()) });
+});
+
+games.post('/me/characters', async (c) => {
+        const user = c.get('user');
+        if (!user) {
+                return c.json({ error: 'Unauthorized' }, 401);
+        }
+
+        const db = new Database(c.env.DATABASE);
+        const character = (await c.req.json()) as Character;
+        const ownerId = user.id ?? user.email;
+        if (!ownerId) {
+                return c.json({ error: 'Missing user identity' }, 400);
+        }
+        const serializedCharacter = serializeCharacter(character, ownerId, user.email ?? null);
+        const existing = await db.getCharacterById(character.id);
+        if (existing) {
+                        await db.updateCharacter(character.id, serializedCharacter);
+        } else {
+                        await db.createCharacter(serializedCharacter);
+        }
+        const created = await db.getCharacterById(character.id);
+        return c.json({ character: created ? deserializeCharacter(created) : character });
+});
+
+games.put('/me/characters/:id', async (c) => {
+        const user = c.get('user');
+        if (!user) {
+                return c.json({ error: 'Unauthorized' }, 401);
+        }
+        const characterId = c.req.param('id');
+        const db = new Database(c.env.DATABASE);
+        const existing = await db.getCharacterById(characterId);
+        if (!existing) {
+                return c.json({ error: 'Character not found' }, 404);
+        }
+        if (!characterBelongsToUser(existing, user)) {
+                return c.json({ error: 'Forbidden' }, 403);
+        }
+        const body = (await c.req.json()) as Character;
+        const ownerId = existing.player_id || user.id || user.email;
+        if (!ownerId) {
+                return c.json({ error: 'Missing user identity' }, 400);
+        }
+        const serializedCharacter = serializeCharacter(body, ownerId, existing.player_email || user.email || null);
+        await db.updateCharacter(characterId, serializedCharacter);
+        const updated = await db.getCharacterById(characterId);
+        return c.json({ character: updated ? deserializeCharacter(updated) : body });
+});
+
+games.delete('/me/characters/:id', async (c) => {
+        const user = c.get('user');
+        if (!user) {
+                return c.json({ error: 'Unauthorized' }, 401);
+        }
+        const characterId = c.req.param('id');
+        const db = new Database(c.env.DATABASE);
+        const existing = await db.getCharacterById(characterId);
+        if (!existing) {
+                return c.json({ error: 'Character not found' }, 404);
+        }
+        if (!characterBelongsToUser(existing, user)) {
+                return c.json({ error: 'Forbidden' }, 403);
+        }
+        await db.deleteCharacter(characterId);
+        return c.json({ ok: true });
 });
 
 games.get('/:inviteCode', async (c) => {
@@ -383,8 +477,8 @@ games.post('/:inviteCode/join', async (c) => {
 });
 
 games.get('/:inviteCode/state', async (c) => {
-	const inviteCode = c.req.param('inviteCode');
-	const sessionStub = getSessionStub(c.env, inviteCode);
+        const inviteCode = c.req.param('inviteCode');
+        const sessionStub = getSessionStub(c.env, inviteCode);
 
 	const stateResponse = await sessionStub.fetch(
 		buildDurableRequest(c.req.raw, '/state'),
@@ -395,22 +489,88 @@ games.get('/:inviteCode/state', async (c) => {
 		return c.json({ error: 'Failed to fetch game state', details }, stateResponse.status);
 	}
 
-	return c.json(await stateResponse.json());
+        return c.json(await stateResponse.json());
 });
 
-const forwardJsonRequest = async (c: Context<GamesContext>, path: string) => {
-	const body = await c.req.text();
-	const sessionStub = getSessionStub(c.env, c.req.param('inviteCode'));
+games.get('/:inviteCode/map', async (c) => {
+        return forwardJsonRequest(c, '/map', { method: 'GET', body: null });
+});
 
-	const response = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, path, {
-			method: c.req.method,
-			headers: {
-				'Content-Type': c.req.header('Content-Type') || 'application/json',
-			},
-			body,
-		}),
-	);
+games.patch('/:inviteCode/map', async (c) => {
+        if (!c.get('user')) {
+                return c.json({ error: 'Unauthorized' }, 401);
+        }
+        return forwardJsonRequest(c, '/map', { method: 'PATCH' });
+});
+
+games.get('/:inviteCode/map/tokens', async (c) => {
+        return forwardJsonRequest(c, '/map/tokens', { method: 'GET', body: null });
+});
+
+games.post('/:inviteCode/map/tokens', async (c) => {
+        if (!c.get('user')) {
+                return c.json({ error: 'Unauthorized' }, 401);
+        }
+        return forwardJsonRequest(c, '/map/tokens');
+});
+
+games.delete('/:inviteCode/map/tokens/:tokenId', async (c) => {
+        if (!c.get('user')) {
+                return c.json({ error: 'Unauthorized' }, 401);
+        }
+        const tokenId = c.req.param('tokenId');
+        return forwardJsonRequest(c, '/map/tokens', {
+                method: 'POST',
+                body: JSON.stringify({ action: 'delete', tokenId }),
+        });
+});
+
+games.get('/:inviteCode/npcs', async (c) => {
+        return forwardJsonRequest(c, '/npcs', { method: 'GET', body: null });
+});
+
+games.post('/:inviteCode/npcs', async (c) => {
+        if (!c.get('user')) {
+                return c.json({ error: 'Unauthorized' }, 401);
+        }
+        return forwardJsonRequest(c, '/npcs');
+});
+
+games.post('/:inviteCode/characters/:characterId/:action', async (c) => {
+        if (!c.get('user')) {
+                return c.json({ error: 'Unauthorized' }, 401);
+        }
+        const characterId = c.req.param('characterId');
+        const action = c.req.param('action');
+        return forwardJsonRequest(c, `/characters/${characterId}/${action}`);
+});
+
+const forwardJsonRequest = async (
+        c: Context<GamesContext>,
+        path: string,
+        override?: { method?: string; body?: string | null },
+) => {
+        const sessionStub = getSessionStub(c.env, c.req.param('inviteCode'));
+        const method = override?.method ?? c.req.method;
+        let body: string | undefined;
+        if (override?.body !== undefined) {
+                        body = override.body === null ? undefined : override.body;
+        } else if (method !== 'GET' && method !== 'HEAD') {
+                        body = await c.req.text();
+        }
+
+        const headers: Record<string, string> = {};
+        if (body) {
+                headers['Content-Type'] = c.req.header('Content-Type') || 'application/json';
+        }
+
+        const response = await sessionStub.fetch(
+                buildDurableRequest(c.req.raw, path, {
+                        method,
+                        headers,
+                        body,
+                }),
+        );
 
 	if (!response.ok) {
 		const details = await response.text();

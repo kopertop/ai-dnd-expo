@@ -48,9 +48,52 @@ export interface GamePlayerRow {
 }
 
 export interface GameStateRow {
-	game_id: string;
-	state_data: string; // JSON
-	updated_at: number;
+        game_id: string;
+        state_data: string; // JSON
+        updated_at: number;
+}
+
+export interface MapRow {
+        id: string;
+        name: string;
+        description: string | null;
+        width: number;
+        height: number;
+        terrain: string;
+        fog: string;
+        metadata: string | null;
+        created_at: number;
+        updated_at: number;
+}
+
+export interface NpcRow {
+        id: string;
+        name: string;
+        alignment: string;
+        description: string | null;
+        stats: string;
+        abilities: string;
+        icon: string | null;
+        color: string | null;
+        metadata: string | null;
+        created_at: number;
+        updated_at: number;
+}
+
+export interface MapTokenRow {
+        id: string;
+        map_id: string;
+        type: string;
+        entity_id: string | null;
+        label: string;
+        icon: string | null;
+        color: string | null;
+        x: number;
+        y: number;
+        z_index: number;
+        metadata: string | null;
+        created_at: number;
+        updated_at: number;
 }
 
 export class Database {
@@ -192,11 +235,11 @@ export class Database {
 		return result.results || [];
 	}
 
-	async updateCharacter(characterId: string, updates: Partial<CharacterRow>): Promise<void> {
-		const fields: string[] = [];
-		const values: any[] = [];
-		
-		Object.entries(updates).forEach(([key, value]) => {
+        async updateCharacter(characterId: string, updates: Partial<CharacterRow>): Promise<void> {
+                const fields: string[] = [];
+                const values: any[] = [];
+
+                Object.entries(updates).forEach(([key, value]) => {
 			if (key !== 'id' && value !== undefined) {
 				fields.push(`${key} = ?`);
 				values.push(value);
@@ -209,10 +252,14 @@ export class Database {
 		values.push(Date.now());
 		values.push(characterId);
 		
-		await this.db.prepare(
-			`UPDATE characters SET ${fields.join(', ')} WHERE id = ?`,
-		).bind(...values).run();
-	}
+                await this.db.prepare(
+                        `UPDATE characters SET ${fields.join(', ')} WHERE id = ?`,
+                ).bind(...values).run();
+        }
+
+        async deleteCharacter(characterId: string): Promise<void> {
+                await this.db.prepare('DELETE FROM characters WHERE id = ?').bind(characterId).run();
+        }
 
 	// Game player operations
 	async addPlayerToGame(player: Omit<GamePlayerRow, 'id'>): Promise<string> {
@@ -277,12 +324,77 @@ export class Database {
 		).bind(gameId, stateData, Date.now(), stateData, Date.now()).run();
 	}
 
-	async getGameState(gameId: string): Promise<GameStateRow | null> {
-		const result = await this.db.prepare(
-			'SELECT * FROM game_states WHERE game_id = ?',
-		).bind(gameId).first<GameStateRow>();
-		return result || null;
-	}
+        async getGameState(gameId: string): Promise<GameStateRow | null> {
+                const result = await this.db.prepare(
+                        'SELECT * FROM game_states WHERE game_id = ?',
+                ).bind(gameId).first<GameStateRow>();
+                return result || null;
+        }
+
+        // Map helpers
+        async getMaps(): Promise<MapRow[]> {
+                const result = await this.db.prepare('SELECT * FROM maps ORDER BY name ASC').all<MapRow>();
+                return result.results || [];
+        }
+
+        async getMapById(mapId: string): Promise<MapRow | null> {
+                const result = await this.db.prepare('SELECT * FROM maps WHERE id = ?').bind(mapId).first<MapRow>();
+                return result || null;
+        }
+
+        async getNpcDefinitions(): Promise<NpcRow[]> {
+                const result = await this.db.prepare('SELECT * FROM npcs ORDER BY name ASC').all<NpcRow>();
+                return result.results || [];
+        }
+
+        async getMapTokens(mapId: string): Promise<MapTokenRow[]> {
+                const result = await this.db.prepare(
+                        'SELECT * FROM map_tokens WHERE map_id = ? ORDER BY z_index ASC, created_at ASC',
+                ).bind(mapId).all<MapTokenRow>();
+                return result.results || [];
+        }
+
+        async saveMapToken(token: Omit<MapTokenRow, 'created_at' | 'updated_at'> & { id?: string }): Promise<string> {
+                const now = Date.now();
+                const tokenId = token.id ?? `token_${now}_${Math.random().toString(36).slice(2, 8)}`;
+
+                await this.db.prepare(
+                        `INSERT INTO map_tokens (id, map_id, type, entity_id, label, icon, color, x, y, z_index, metadata, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         ON CONFLICT(id) DO UPDATE SET
+                                map_id = excluded.map_id,
+                                type = excluded.type,
+                                entity_id = excluded.entity_id,
+                                label = excluded.label,
+                                icon = excluded.icon,
+                                color = excluded.color,
+                                x = excluded.x,
+                                y = excluded.y,
+                                z_index = excluded.z_index,
+                                metadata = excluded.metadata,
+                                updated_at = excluded.updated_at`,
+                ).bind(
+                        tokenId,
+                        token.map_id,
+                        token.type,
+                        token.entity_id || null,
+                        token.label,
+                        token.icon || null,
+                        token.color || null,
+                        token.x,
+                        token.y,
+                        token.z_index,
+                        token.metadata || null,
+                        now,
+                        now,
+                ).run();
+
+                return tokenId;
+        }
+
+        async deleteMapToken(tokenId: string): Promise<void> {
+                await this.db.prepare('DELETE FROM map_tokens WHERE id = ?').bind(tokenId).run();
+        }
 }
 
 

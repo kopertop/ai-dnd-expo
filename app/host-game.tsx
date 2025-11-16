@@ -131,48 +131,16 @@ const HostGameScreen: React.FC = () => {
 			return;
 		}
 
-		// Use existing character from game state if available, otherwise create a simple host character
-		let hostCharacter;
-		if (gameState?.characters && gameState.characters.length > 0) {
-			hostCharacter = gameState.characters[0];
-		} else {
-			// Create a simple host character (host will create proper character later)
-			hostCharacter = {
-				id: `host-char-${Date.now()}`,
-				level: 1,
-				race: 'Human',
-				name: user?.name ? `${user.name} (DM)` : 'Game Master',
-				class: 'DM',
-				description: 'The Dungeon Master',
-				stats: {
-					STR: 10,
-					DEX: 10,
-					CON: 10,
-					INT: 10,
-					WIS: 10,
-					CHA: 10,
-				},
-				skills: [],
-				inventory: [],
-				equipped: {},
-				health: 10,
-				maxHealth: 10,
-				actionPoints: 3,
-				maxActionPoints: 3,
-			};
-		}
-
-		setLoading(true);
-		try {
-			const newSession = await multiplayerClient.createGame({
-				questId: selectedQuest.id,
-				quest: selectedQuest, // Send quest object directly
-				world: selectedWorld.name,
-				startingArea: selectedLocation.name,
-				hostId,
-				hostEmail: hostEmail ?? undefined,
-				hostCharacter,
-			});
+                setLoading(true);
+                try {
+                        const newSession = await multiplayerClient.createGame({
+                                questId: selectedQuest.id,
+                                quest: selectedQuest, // Send quest object directly
+                                world: selectedWorld.name,
+                                startingArea: selectedLocation.name,
+                                hostId,
+                                hostEmail: hostEmail ?? undefined,
+                        });
 
 			setSession(newSession);
 			setCurrentStep('waiting');

@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DMControlsPanel } from '@/components/dm-controls-panel';
 import { MultiplayerChat } from '@/components/multiplayer-chat';
 import { PlayerCharacterList } from '@/components/player-character-list';
+import { InteractiveMap } from '@/components/map/InteractiveMap';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { usePollingGameState } from '@/hooks/use-polling-game-state';
@@ -99,8 +100,8 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	};
 
-	const handleSendMessage = useCallback(async (message: string) => {
-		if (!inviteCode || !playerId || !gameState) return;
+        const handleSendMessage = useCallback(async (message: string) => {
+                if (!inviteCode || !playerId || !gameState) return;
 
 		try {
 			// Find player's character ID
@@ -129,8 +130,8 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	}, [inviteCode, playerId, gameState, wsIsConnected]);
 
-	const handleDMAction = useCallback(async (type: string, data: any) => {
-		if (!inviteCode || !hostId || !gameState) return;
+        const handleDMAction = useCallback(async (type: string, data: any) => {
+                if (!inviteCode || !hostId || !gameState) return;
 
 		try {
 			await multiplayerClient.submitDMAction(inviteCode, {
@@ -149,10 +150,45 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	}, [inviteCode, hostId, gameState, wsIsConnected]);
 
-	const handleAIRequest = useCallback(async (prompt: string): Promise<string> => {
-		// For now, return a placeholder. In production, this would call the Ollama API through the worker
-		return 'AI assistance feature coming soon. This will integrate with Ollama for DM help.';
-	}, []);
+        const handleAIRequest = useCallback(async (prompt: string): Promise<string> => {
+                // For now, return a placeholder. In production, this would call the Ollama API through the worker
+                return 'AI assistance feature coming soon. This will integrate with Ollama for DM help.';
+        }, []);
+
+        const handleTileDrop = useCallback(
+                async (x: number, y: number) => {
+                        if (!inviteCode || !isHost) return;
+                        try {
+                                const tokens = await multiplayerClient.mutateToken(inviteCode, {
+                                        action: 'create',
+                                        token: {
+                                                type: 'object',
+                                                label: 'Marker',
+                                                x,
+                                                y,
+                                        },
+                                });
+                                setGameState(current =>
+                                        current && current.mapState
+                                                ? {
+                                                          ...current,
+                                                          mapState: { ...current.mapState, tokens },
+                                                  }
+                                                : current,
+                                );
+                        } catch (error) {
+                                Alert.alert('Error', error instanceof Error ? error.message : 'Failed to place token');
+                        }
+                },
+                [inviteCode, isHost],
+        );
+
+        const handleTokenPress = useCallback((tokenId: string) => {
+                const token = gameState?.mapState?.tokens?.find(t => t.id === tokenId);
+                if (token) {
+                        Alert.alert(token.label || 'Token', `Position (${token.x}, ${token.y})`);
+                }
+        }, [gameState?.mapState?.tokens]);
 
 	if (!gameState) {
 		return (
@@ -195,27 +231,45 @@ const MultiplayerGameScreen: React.FC = () => {
 							characters={gameState.characters}
 							currentPlayerId={currentCharacterId}
 						/>
-						<MultiplayerChat
-							messages={gameState.messages}
-							onSendMessage={handleSendMessage}
-							currentPlayerId={currentCharacterId}
-						/>
-					</ScrollView>
-				) : (
-					// Tablet/Desktop: Side-by-side layout
-					<View style={styles.desktopLayout}>
-						<View style={styles.sidebar}>
-							<PlayerCharacterList
-								characters={gameState.characters}
-								currentPlayerId={currentCharacterId}
-							/>
-						</View>
-						<View style={styles.mainContent}>
-							<MultiplayerChat
-								messages={gameState.messages}
-								onSendMessage={handleSendMessage}
-								currentPlayerId={currentCharacterId}
-							/>
+                                                <View style={styles.mapWrapper}>
+                                                        <InteractiveMap
+                                                                map={gameState.mapState}
+                                                                isEditable={isHost}
+                                                                onTilePress={handleTileDrop}
+                                                                onTokenPress={token => handleTokenPress(token.id)}
+                                                                highlightTokenId={currentCharacterId}
+                                                        />
+                                                </View>
+                                                <MultiplayerChat
+                                                        messages={gameState.messages}
+                                                        onSendMessage={handleSendMessage}
+                                                        currentPlayerId={currentCharacterId}
+                                                />
+                                        </ScrollView>
+                                ) : (
+                                        // Tablet/Desktop: Side-by-side layout
+                                        <View style={styles.desktopLayout}>
+                                                <View style={styles.sidebar}>
+                                                        <PlayerCharacterList
+                                                                characters={gameState.characters}
+                                                                currentPlayerId={currentCharacterId}
+                                                        />
+                                                </View>
+                                                <View style={styles.mainContent}>
+                                                        <View style={styles.mapWrapper}>
+                                                                <InteractiveMap
+                                                                        map={gameState.mapState}
+                                                                        isEditable={isHost}
+                                                                        onTilePress={handleTileDrop}
+                                                                        onTokenPress={token => handleTokenPress(token.id)}
+                                                                        highlightTokenId={currentCharacterId}
+                                                                />
+                                                        </View>
+                                                        <MultiplayerChat
+                                                                messages={gameState.messages}
+                                                                onSendMessage={handleSendMessage}
+                                                                currentPlayerId={currentCharacterId}
+                                                        />
 							{isHost && (
 								<View style={styles.dmPanel}>
 									<DMControlsPanel
@@ -287,20 +341,25 @@ const styles = StyleSheet.create({
 		borderRightWidth: 1,
 		borderRightColor: '#C9B037',
 	},
-	mainContent: {
-		flex: 1,
-	},
-	dmPanel: {
-		width: 350,
-		borderLeftWidth: 1,
-		borderLeftColor: '#C9B037',
-		maxHeight: '100%',
-	},
-	mobileDMPanel: {
-		maxHeight: 300,
-		borderTopWidth: 1,
-		borderTopColor: '#C9B037',
-	},
+        mainContent: {
+                flex: 1,
+                gap: 16,
+        },
+        dmPanel: {
+                width: 350,
+                borderLeftWidth: 1,
+                borderLeftColor: '#C9B037',
+                maxHeight: '100%',
+        },
+        mobileDMPanel: {
+                maxHeight: 300,
+                borderTopWidth: 1,
+                borderTopColor: '#C9B037',
+        },
+        mapWrapper: {
+                alignItems: 'center',
+                padding: 12,
+        },
 });
 
 export default MultiplayerGameScreen;

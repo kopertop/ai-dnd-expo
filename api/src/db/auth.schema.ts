@@ -143,9 +143,72 @@ export const gamePlayers = sqliteTable("game_players", {
 }));
 
 export const gameStates = sqliteTable("game_states", {
-	gameId: text("game_id")
-		.primaryKey()
-		.references(() => games.id, { onDelete: "cascade" }),
-	stateData: text("state_data").notNull(),
-	updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+        gameId: text("game_id")
+                .primaryKey()
+                .references(() => games.id, { onDelete: "cascade" }),
+        stateData: text("state_data").notNull(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });
+
+export const maps = sqliteTable("maps", {
+        id: text("id").primaryKey(),
+        name: text("name").notNull(),
+        description: text("description"),
+        width: integer("width").notNull(),
+        height: integer("height").notNull(),
+        terrain: text("terrain").notNull(),
+        fog: text("fog").notNull(),
+        metadata: text("metadata"),
+        createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const mapTiles = sqliteTable("map_tiles", {
+        id: text("id").primaryKey(),
+        mapId: text("map_id")
+                .notNull()
+                .references(() => maps.id, { onDelete: "cascade" }),
+        x: integer("x").notNull(),
+        y: integer("y").notNull(),
+        terrainType: text("terrain_type").notNull(),
+        elevation: integer("elevation").default(0),
+        isObstacle: integer("is_obstacle", { mode: "boolean" }).default(false).notNull(),
+        hasFog: integer("has_fog", { mode: "boolean" }).default(false).notNull(),
+}, table => ({
+        mapIdx: index("map_tiles_map_id_idx").on(table.mapId),
+}));
+
+export const npcs = sqliteTable("npcs", {
+        id: text("id").primaryKey(),
+        name: text("name").notNull(),
+        alignment: text("alignment").notNull(),
+        description: text("description"),
+        stats: text("stats").notNull(),
+        abilities: text("abilities").notNull(),
+        icon: text("icon"),
+        color: text("color"),
+        metadata: text("metadata"),
+        createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const mapTokens = sqliteTable("map_tokens", {
+        id: text("id").primaryKey(),
+        mapId: text("map_id")
+                .notNull()
+                .references(() => maps.id, { onDelete: "cascade" }),
+        type: text("type").notNull(),
+        entityId: text("entity_id"),
+        label: text("label").notNull(),
+        icon: text("icon"),
+        color: text("color"),
+        x: integer("x").notNull(),
+        y: integer("y").notNull(),
+        zIndex: integer("z_index").default(0).notNull(),
+        metadata: text("metadata"),
+        createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+}, table => ({
+        mapIdIdx: index("map_tokens_map_id_idx").on(table.mapId),
+        tokenTypeIdx: index("map_tokens_type_idx").on(table.type),
+}));
