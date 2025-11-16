@@ -1,0 +1,40 @@
+# For more details on how to configure Wrangler, refer to:
+# https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "ai-dnd"
+main = "src/index.ts"
+compatibility_date = "2025-03-01"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+[placement]
+mode = "smart"
+
+[[d1_databases]]
+binding = "DATABASE"
+database_name = "ai-dnd-db"
+database_id = "44d163b1-a7e0-43eb-8091-8d0093f100f7"
+migrations_dir = "drizzle"
+
+[[durable_objects.bindings]]
+name = "GAME_SESSION"
+class_name = "GameSession"
+
+[[kv_namespaces]]
+binding = "QUESTS"
+id = "quests_namespace"
+preview_id = "quests_preview"
+
+[[kv_namespaces]]
+binding = "AUTH_SESSIONS"
+id = "auth_sessions_namespace"
+preview_id = "auth_sessions_preview"
+
+[vars]
+OLLAMA_BASE_URL = "http://localhost:11434"
+OLLAMA_MODEL = "llama3.2"
+ADMIN_EMAILS = "kopertop@gmail.com,cmoyer@newstex.com"
+AUTH_SECRET = "replace-me-in-production"
+AUTH_URL = "http://localhost:8787"

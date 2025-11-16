@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1749249948625,
+      "tag": "0000_groovy_manta",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1763254201945,
+      "tag": "0001_gifted_madame_web",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1764800000000,
+      "tag": "0002_multiplayer_schema",
+      "breakpoints": true
+    }
+  ]
+}
