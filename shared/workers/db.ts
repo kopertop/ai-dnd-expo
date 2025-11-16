@@ -294,6 +294,10 @@ export class Database {
 		).bind(...values).run();
 	}
 
+	async deleteCharacter(characterId: string): Promise<void> {
+		await this.db.prepare('DELETE FROM characters WHERE id = ?').bind(characterId).run();
+	}
+
 	// Game player operations
 	async addPlayerToGame(player: Omit<GamePlayerRow, 'id'>): Promise<string> {
 		const id = `gp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;

@@ -1,9 +1,10 @@
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 
-import { CharacterRow, Database, GameRow } from '../../../shared/workers/db';
+import { CharacterRow, Database, GameRow, MapRow } from '../../../shared/workers/db';
 import { generateInviteCode, getSessionId, getSessionStub } from '../../../shared/workers/session-manager';
 import { Character, Quest } from '../../../shared/workers/types';
+import { mapStateFromDb, npcFromDb } from '../../../utils/schema-adapters';
 import type { CloudflareBindings } from '../env';
 
 type Variables = {
@@ -49,6 +50,57 @@ const jsonWithStatus = <T>(_: Context<GamesContext>, payload: T, status: number)
                 status,
                 headers: { 'Content-Type': 'application/json' },
         });
+
+const createId = (prefix: string) => {
+	if (globalThis.crypto?.randomUUID) {
+		return `${prefix}_${globalThis.crypto.randomUUID()}`;
+	}
+
+	return `${prefix}_${Math.random().toString(36).slice(2)}`;
+};
+
+const isHostUser = (game: GameRow, user: Variables['user']) => {
+	if (!user) {
+		return false;
+	}
+
+	if (game.host_id && game.host_id === user.id) {
+		return true;
+	}
+
+	if (game.host_email && user.email && game.host_email === user.email) {
+		return true;
+	}
+
+	return false;
+};
+
+const resolveMapRow = async (db: Database, game: GameRow): Promise<MapRow> => {
+	if (game.current_map_id) {
+		const existing = await db.getMapById(game.current_map_id);
+		if (existing) {
+			return existing;
+		}
+	}
+
+	const maps = await db.listMaps();
+	if (!maps.length) {
+		throw new Error('No maps available');
+	}
+
+	const fallback = maps[0];
+	await db.updateGameMap(game.id, fallback.id);
+	return fallback;
+};
+
+const buildMapState = async (db: Database, game: GameRow) => {
+	const mapRow = await resolveMapRow(db, game);
+	const [tiles, tokens] = await Promise.all([
+		db.getMapTiles(mapRow.id),
+		db.listMapTokensForGame(game.id),
+	]);
+	return mapStateFromDb(mapRow, { tiles, tokens });
+};
 
 const serializeCharacter = (
 	character: Character,
@@ -307,6 +359,76 @@ games.get('/me/characters', async (c) => {
 	return c.json({ characters: Array.from(deduped.values()) });
 });
 
+games.post('/me/characters', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const payload = (await c.req.json()) as Character;
+	const characterId = payload.id || createId('char');
+	const db = new Database(c.env.DATABASE);
+	const serialized = serializeCharacter(
+		{ ...payload, id: characterId },
+		user.id,
+		user.email,
+	);
+	await db.createCharacter(serialized);
+	const saved = await db.getCharacterById(characterId);
+	return c.json({ character: saved ? deserializeCharacter(saved) : payload });
+});
+
+games.put('/me/characters/:id', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const characterId = c.req.param('id');
+	const updates = (await c.req.json()) as Partial<Character>;
+	const db = new Database(c.env.DATABASE);
+	const existing = await db.getCharacterById(characterId);
+
+	if (!existing) {
+		return c.json({ error: 'Character not found' }, 404);
+	}
+
+	if (existing.player_id !== user.id && existing.player_email !== user.email) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const serializedUpdate = serializeCharacter(
+		{ ...deserializeCharacter(existing), ...updates, id: characterId },
+		existing.player_id || user.id,
+		existing.player_email || user.email,
+	);
+	await db.updateCharacter(characterId, serializedUpdate);
+	const updated = await db.getCharacterById(characterId);
+	return c.json({ character: updated ? deserializeCharacter(updated) : updates });
+});
+
+games.delete('/me/characters/:id', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const characterId = c.req.param('id');
+	const db = new Database(c.env.DATABASE);
+	const existing = await db.getCharacterById(characterId);
+
+	if (!existing) {
+		return c.json({ error: 'Character not found' }, 404);
+	}
+
+	if (existing.player_id !== user.id && existing.player_email !== user.email) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	await db.deleteCharacter(characterId);
+	return c.json({ ok: true });
+});
+
 games.get('/:inviteCode', async (c) => {
 	const inviteCode = c.req.param('inviteCode');
 	const sessionStub = getSessionStub(c.env, inviteCode);
@@ -406,6 +528,257 @@ games.get('/:inviteCode/state', async (c) => {
         }
 
 	return c.json(await stateResponse.json());
+});
+
+games.get('/:inviteCode/map', async (c) => {
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	try {
+		const mapState = await buildMapState(db, game);
+		return c.json(mapState);
+	} catch (error) {
+		console.error('Failed to build map state:', error);
+		return c.json({ error: 'Failed to load map' }, 500);
+	}
+});
+
+games.patch('/:inviteCode/map', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const payload = (await c.req.json()) as { id?: string };
+
+	if (payload?.id && payload.id !== game.current_map_id) {
+		await db.updateGameMap(game.id, payload.id);
+		game.current_map_id = payload.id;
+	}
+
+	try {
+		const mapState = await buildMapState(db, game);
+		return c.json(mapState);
+	} catch (error) {
+		console.error('Failed to update map state:', error);
+		return c.json({ error: 'Failed to update map' }, 500);
+	}
+});
+
+games.get('/:inviteCode/map/tokens', async (c) => {
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	const mapState = await buildMapState(db, game);
+	return c.json({ tokens: mapState.tokens });
+});
+
+games.post('/:inviteCode/map/tokens', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const body = (await c.req.json()) as {
+		id?: string;
+		mapId?: string;
+		tokenType?: string;
+		label?: string;
+		x: number;
+		y: number;
+		color?: string;
+		characterId?: string;
+		npcId?: string;
+		metadata?: Record<string, unknown>;
+	};
+
+	const mapRow = await resolveMapRow(db, game);
+	const tokenId = body.id || createId('token');
+	await db.saveMapToken({
+		id: tokenId,
+		game_id: game.id,
+		map_id: body.mapId || mapRow.id,
+		character_id: body.characterId || null,
+		npc_id: body.npcId || null,
+		token_type: body.tokenType || 'player',
+		label: body.label || null,
+		x: body.x,
+		y: body.y,
+		facing: 0,
+		color: body.color || null,
+		status: 'idle',
+		is_visible: 1,
+		hit_points: null,
+		max_hit_points: null,
+		metadata: JSON.stringify(body.metadata ?? {}),
+	});
+
+	const mapState = await buildMapState(db, game);
+	return c.json({ tokens: mapState.tokens });
+});
+
+games.delete('/:inviteCode/map/tokens/:tokenId', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const tokenId = c.req.param('tokenId');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	await db.deleteMapToken(tokenId);
+	const mapState = await buildMapState(db, game);
+	return c.json({ tokens: mapState.tokens });
+});
+
+games.get('/:inviteCode/npcs', async (c) => {
+	const db = new Database(c.env.DATABASE);
+	const npcRows = await db.listNpcDefinitions();
+	return c.json({ npcs: npcRows.map(npcFromDb) });
+});
+
+games.post('/:inviteCode/npcs', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const payload = (await c.req.json()) as {
+		npcId: string;
+		x: number;
+		y: number;
+		label?: string;
+	};
+
+	const npc = await db.getNpcBySlug(payload.npcId);
+	if (!npc) {
+		return c.json({ error: 'NPC not found' }, 404);
+	}
+
+	const mapRow = await resolveMapRow(db, game);
+	const npcMetadata = JSON.parse(npc.metadata || '{}');
+	await db.saveMapToken({
+		id: createId('npc'),
+		game_id: game.id,
+		map_id: mapRow.id,
+		character_id: null,
+		npc_id: npc.id,
+		token_type: 'npc',
+		label: payload.label || npc.name,
+		x: payload.x,
+		y: payload.y,
+		facing: 0,
+		color: npcMetadata.color || '#3B2F1B',
+		status: npc.disposition,
+		is_visible: 1,
+		hit_points: npc.base_health,
+		max_hit_points: npc.base_health,
+		metadata: npc.metadata,
+	});
+
+	const mapState = await buildMapState(db, game);
+	return c.json({ tokens: mapState.tokens });
+});
+
+games.post('/:inviteCode/characters/:characterId/:action', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const characterId = c.req.param('characterId');
+	const action = c.req.param('action');
+	const body = (await c.req.json().catch(() => ({}))) as { amount?: number };
+	const amount = typeof body.amount === 'number' ? body.amount : 0;
+
+	const characterRow = await db.getCharacterById(characterId);
+	if (!characterRow) {
+		return c.json({ error: 'Character not found' }, 404);
+	}
+
+	if (action === 'damage') {
+		const nextHealth = Math.max(0, characterRow.health - Math.max(0, amount));
+		await db.updateCharacter(characterId, { health: nextHealth });
+	} else if (action === 'heal') {
+		const nextHealth = Math.min(
+			characterRow.max_health,
+			characterRow.health + Math.max(0, amount),
+		);
+		await db.updateCharacter(characterId, { health: nextHealth });
+	} else {
+		return c.json({ error: 'Unsupported action' }, 400);
+	}
+
+	const updated = await db.getCharacterById(characterId);
+	return c.json({ character: updated ? deserializeCharacter(updated) : null });
 });
 
 const forwardJsonRequest = async (c: Context<GamesContext>, path: string) => {

@@ -4,6 +4,7 @@ import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DMControlsPanel } from '@/components/dm-controls-panel';
+import { InteractiveMap } from '@/components/map/InteractiveMap';
 import { MultiplayerChat } from '@/components/multiplayer-chat';
 import { PlayerCharacterList } from '@/components/player-character-list';
 import { ThemedText } from '@/components/themed-text';
@@ -13,12 +14,14 @@ import { useScreenSize } from '@/hooks/use-screen-size';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { PlayerActionMessage } from '@/types/api/websocket-messages';
+import { MapState } from '@/types/multiplayer-map';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 
 const MultiplayerGameScreen: React.FC = () => {
 	const params = useLocalSearchParams<{ inviteCode: string; hostId?: string; playerId?: string }>();
 	const { inviteCode, hostId, playerId } = params;
 	const [gameState, setGameState] = useState<MultiplayerGameState | null>(null);
+	const [sharedMap, setSharedMap] = useState<MapState | null>(null);
 	const [isHost, setIsHost] = useState(false);
 	const [wsConnected, setWsConnected] = useState(false);
 	const { isMobile } = useScreenSize();
@@ -30,6 +33,19 @@ const MultiplayerGameScreen: React.FC = () => {
 		const player = gameState.players.find(p => p.playerId === playerId);
 		return player?.characterId || '';
 	}, [gameState, playerId]);
+
+	const refreshSharedMap = useCallback(async () => {
+		if (!inviteCode) {
+			return;
+		}
+
+		try {
+			const state = await multiplayerClient.getMapState(inviteCode);
+			setSharedMap(state);
+		} catch (error) {
+			console.error('Failed to refresh shared map:', error);
+		}
+	}, [inviteCode]);
 
 	// Determine if this is the host
 	useEffect(() => {
@@ -78,6 +94,12 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	}, [gameState, polledState]);
 
+	useEffect(() => {
+		if (gameState?.mapState) {
+			setSharedMap(gameState.mapState);
+		}
+	}, [gameState?.mapState]);
+
 	// Load initial game state - only once
 	const loadGameStateRef = useRef(false);
 	useEffect(() => {
@@ -85,7 +107,12 @@ const MultiplayerGameScreen: React.FC = () => {
 			loadGameStateRef.current = true;
 			loadGameState();
 		}
-	}, [inviteCode]);
+		refreshSharedMap().catch(() => undefined);
+		const interval = setInterval(() => {
+			refreshSharedMap().catch(() => undefined);
+		}, 5000);
+		return () => clearInterval(interval);
+	}, [inviteCode, refreshSharedMap]);
 
 	const loadGameState = async () => {
 		try {
@@ -165,6 +192,19 @@ const MultiplayerGameScreen: React.FC = () => {
 
 	const currentCharacterId = gameState.players.find(p => p.playerId === playerId)?.characterId;
 
+	const renderMapSection = () => (
+		<View style={styles.mapContainer}>
+			<ThemedText type="subtitle">Shared Map</ThemedText>
+			{sharedMap ? (
+				<InteractiveMap map={sharedMap} highlightTokenId={currentCharacterId || undefined} />
+			) : (
+				<ThemedText style={styles.mapHint}>
+					Waiting for the DM to configure a map.
+				</ThemedText>
+			)}
+		</View>
+	);
+
 	return (
 		<ThemedView style={styles.container}>
 			<Stack.Screen
@@ -195,6 +235,7 @@ const MultiplayerGameScreen: React.FC = () => {
 							characters={gameState.characters}
 							currentPlayerId={currentCharacterId}
 						/>
+						{renderMapSection()}
 						<MultiplayerChat
 							messages={gameState.messages}
 							onSendMessage={handleSendMessage}
@@ -211,6 +252,7 @@ const MultiplayerGameScreen: React.FC = () => {
 							/>
 						</View>
 						<View style={styles.mainContent}>
+							{renderMapSection()}
 							<MultiplayerChat
 								messages={gameState.messages}
 								onSendMessage={handleSendMessage}
@@ -289,6 +331,18 @@ const styles = StyleSheet.create({
 	},
 	mainContent: {
 		flex: 1,
+	},
+	mapContainer: {
+		borderWidth: 1,
+		borderColor: '#C9B037',
+		borderRadius: 12,
+		padding: 12,
+		marginBottom: 16,
+		backgroundColor: '#FFF9EF',
+		gap: 8,
+	},
+	mapHint: {
+		color: '#6B5B3D',
 	},
 	dmPanel: {
 		width: 350,

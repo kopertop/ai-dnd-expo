@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppFooter } from '@/components/app-footer';
+import { InteractiveMap } from '@/components/map/InteractiveMap';
 import { InviteCodeDisplay } from '@/components/invite-code-display';
 import { LocationChooser } from '@/components/location-chooser';
 import { PlayerList } from '@/components/player-list';
@@ -18,11 +19,11 @@ import { QuestSelector } from '@/components/quest-selector';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WorldChooser } from '@/components/world-chooser';
-import { useGameState } from '@/hooks/use-game-state';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { GameSessionResponse, HostedGameSummary } from '@/types/api/multiplayer-api';
 import { LocationOption } from '@/types/location-option';
+import { MapState, NpcDefinition } from '@/types/multiplayer-map';
 import { Quest } from '@/types/quest';
 import { WorldOption } from '@/types/world-option';
 
@@ -49,12 +50,16 @@ const HostGameScreen: React.FC = () => {
 	const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
 	const [session, setSession] = useState<GameSessionResponse | null>(null);
 	const [loading, setLoading] = useState(false);
+	const [mapState, setMapState] = useState<MapState | null>(null);
+	const [mapLoading, setMapLoading] = useState(false);
+	const [mapError, setMapError] = useState<string | null>(null);
+	const [npcPalette, setNpcPalette] = useState<NpcDefinition[]>([]);
+	const [selectedNpc, setSelectedNpc] = useState<NpcDefinition | null>(null);
 	const [hostedGames, setHostedGames] = useState<HostedGameSummary[]>([]);
 	const [gamesLoading, setGamesLoading] = useState(true);
 	const [gamesError, setGamesError] = useState<string | null>(null);
 	const [resumingGame, setResumingGame] = useState(false);
 	const insets = useSafeAreaInsets();
-	const { gameState } = useGameState();
 	const { user } = useAuthStore();
 	const hostId = user?.id ?? null;
 	const hostEmail = user?.email ?? null;
@@ -86,6 +91,25 @@ const HostGameScreen: React.FC = () => {
 		}
 	}, [user?.id, user?.email]);
 
+	const refreshMapState = useCallback(async () => {
+		if (!session?.inviteCode) {
+			setMapState(null);
+			return;
+		}
+
+		setMapError(null);
+		setMapLoading(true);
+		try {
+			const state = await multiplayerClient.getMapState(session.inviteCode);
+			setMapState(state);
+		} catch (error) {
+			console.error('Failed to load map state:', error);
+			setMapError(error instanceof Error ? error.message : 'Failed to load map');
+		} finally {
+			setMapLoading(false);
+		}
+	}, [session?.inviteCode]);
+
 	useEffect(() => {
 		if (user) {
 			loadHostedGames();
@@ -110,6 +134,23 @@ const HostGameScreen: React.FC = () => {
 		}
 	}, [currentStep, session?.inviteCode]);
 
+	useEffect(() => {
+		if (!session?.inviteCode) {
+			setNpcPalette([]);
+			setMapState(null);
+			return;
+		}
+
+		refreshMapState().catch(() => undefined);
+		multiplayerClient
+			.getNpcDefinitions(session.inviteCode)
+			.then(response => setNpcPalette(response.npcs))
+			.catch(error => {
+				console.error('Failed to load NPC palette:', error);
+				setMapError(prev => prev ?? 'Failed to load NPCs');
+			});
+	}, [session?.inviteCode, refreshMapState]);
+
 	const handleQuestSelect = (quest: Quest) => {
 		setSelectedQuest(quest);
 		setCurrentStep('world');
@@ -125,41 +166,34 @@ const HostGameScreen: React.FC = () => {
 		setCurrentStep('ready');
 	};
 
+	const handleTilePress = useCallback(
+		async (x: number, y: number) => {
+			if (!session?.inviteCode || !selectedNpc) {
+				return;
+			}
+
+			try {
+				await multiplayerClient.placeNpc(session.inviteCode, {
+					npcId: selectedNpc.slug,
+					x,
+					y,
+					label: selectedNpc.name,
+				});
+				await refreshMapState();
+			} catch (error) {
+				Alert.alert(
+					'Placement Failed',
+					error instanceof Error ? error.message : 'Unable to place NPC',
+				);
+			}
+		},
+		[session?.inviteCode, selectedNpc, refreshMapState],
+	);
+
 	const handleCreateGame = async () => {
 		if (!selectedQuest || !selectedWorld || !selectedLocation || !hostId) {
 			Alert.alert('Error', 'Please complete all steps');
 			return;
-		}
-
-		// Use existing character from game state if available, otherwise create a simple host character
-		let hostCharacter;
-		if (gameState?.characters && gameState.characters.length > 0) {
-			hostCharacter = gameState.characters[0];
-		} else {
-			// Create a simple host character (host will create proper character later)
-			hostCharacter = {
-				id: `host-char-${Date.now()}`,
-				level: 1,
-				race: 'Human',
-				name: user?.name ? `${user.name} (DM)` : 'Game Master',
-				class: 'DM',
-				description: 'The Dungeon Master',
-				stats: {
-					STR: 10,
-					DEX: 10,
-					CON: 10,
-					INT: 10,
-					WIS: 10,
-					CHA: 10,
-				},
-				skills: [],
-				inventory: [],
-				equipped: {},
-				health: 10,
-				maxHealth: 10,
-				actionPoints: 3,
-				maxActionPoints: 3,
-			};
 		}
 
 		setLoading(true);
@@ -171,7 +205,6 @@ const HostGameScreen: React.FC = () => {
 				startingArea: selectedLocation.name,
 				hostId,
 				hostEmail: hostEmail ?? undefined,
-				hostCharacter,
 			});
 
 			setSession(newSession);
@@ -235,6 +268,8 @@ const HostGameScreen: React.FC = () => {
 				createdAt: Date.now(),
 				lastUpdated: Date.now(),
 				messages: [],
+				mapState: mapState,
+				activityLog: [],
 			};
 
 			await multiplayerClient.startGame(session.inviteCode, hostId, initialGameState);
@@ -438,12 +473,80 @@ const HostGameScreen: React.FC = () => {
 									players={session.players}
 									characters={session.gameState?.characters}
 								/>
+								<View style={styles.dmWorkspace}>
+									<View style={styles.workspaceHeader}>
+										<ThemedText type="subtitle">Interactive Map</ThemedText>
+										<TouchableOpacity
+											style={styles.mapRefreshButton}
+											onPress={() => refreshMapState().catch(() => undefined)}
+										>
+											<ThemedText style={styles.mapRefreshButtonText}>
+												Refresh
+											</ThemedText>
+										</TouchableOpacity>
+									</View>
+									{mapError && (
+										<ThemedText style={styles.errorText}>{mapError}</ThemedText>
+									)}
+									{mapLoading ? (
+										<View style={styles.loadingContainer}>
+											<ActivityIndicator size="small" color="#8B6914" />
+											<ThemedText style={styles.loadingText}>
+												Loading map...
+											</ThemedText>
+										</View>
+									) : (
+										<InteractiveMap
+											map={mapState}
+											isEditable
+											onTilePress={handleTilePress}
+										/>
+									)}
+									<View style={styles.paletteHeader}>
+										<ThemedText type="subtitle">NPC Palette</ThemedText>
+										<ThemedText style={styles.paletteHint}>
+											Select an NPC, then tap the map to place.
+										</ThemedText>
+									</View>
+									<ScrollView
+										horizontal
+										style={styles.paletteScroll}
+										contentContainerStyle={styles.paletteContent}
+										showsHorizontalScrollIndicator={false}
+									>
+										{npcPalette.length === 0 && (
+											<ThemedText style={styles.emptyStateText}>
+												No NPC definitions available.
+											</ThemedText>
+										)}
+										{npcPalette.map(npc => {
+											const isSelected = selectedNpc?.id === npc.id;
+											return (
+												<TouchableOpacity
+													key={npc.id}
+													style={[
+														styles.npcCard,
+														isSelected && styles.npcCardSelected,
+													]}
+													onPress={() =>
+														setSelectedNpc(isSelected ? null : npc)
+													}
+												>
+													<ThemedText style={styles.npcName}>{npc.name}</ThemedText>
+													<ThemedText style={styles.npcMeta}>
+														{npc.role} • {npc.alignment}
+													</ThemedText>
+												</TouchableOpacity>
+											);
+										})}
+									</ScrollView>
+								</View>
 								<TouchableOpacity
 									style={[
 										styles.button,
 										styles.startButton,
 										(loading || session.players.length === 0) &&
-										styles.buttonDisabled,
+											styles.buttonDisabled,
 									]}
 									onPress={handleStartGame}
 									disabled={loading || session.players.length === 0}
@@ -602,6 +705,30 @@ const styles = StyleSheet.create({
 		flex: 1,
 		padding: 20,
 	},
+	dmWorkspace: {
+		marginTop: 24,
+		padding: 16,
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+		borderRadius: 16,
+		backgroundColor: '#FFF9EF',
+		gap: 12,
+	},
+	workspaceHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	mapRefreshButton: {
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		borderRadius: 8,
+		backgroundColor: '#3B2F1B',
+	},
+	mapRefreshButtonText: {
+		color: '#F5E6D3',
+		fontWeight: '600',
+	},
 	spacer: {
 		height: 30,
 	},
@@ -700,6 +827,41 @@ const styles = StyleSheet.create({
 	},
 	refreshButton: {
 		backgroundColor: '#8B6914',
+	},
+	paletteHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	paletteHint: {
+		color: '#6B5B3D',
+		fontSize: 12,
+	},
+	paletteScroll: {
+		marginTop: 8,
+	},
+	paletteContent: {
+		gap: 12,
+		paddingRight: 12,
+	},
+	npcCard: {
+		padding: 12,
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+		minWidth: 140,
+		backgroundColor: '#FFFFFF',
+	},
+	npcCardSelected: {
+		borderColor: '#8B6914',
+		backgroundColor: '#F5E6D3',
+	},
+	npcName: {
+		fontWeight: '600',
+	},
+	npcMeta: {
+		color: '#6B5B3D',
+		fontSize: 12,
 	},
 	loaderFallback: {
 		flex: 1,

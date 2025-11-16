@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { GameStateSchema } from './game';
+import { ActivityLogEntrySchema, MapStateSchema, NpcStateSchema } from './multiplayer-map';
 import { QuestSchema } from './quest';
 
 export const InviteCodeSchema = z.string().regex(/^[A-Z0-9]{6}$/, 'Invalid invite code format');
@@ -34,6 +35,9 @@ export const MultiplayerGameStateSchema = GameStateSchema.extend({
 	createdAt: z.number(),
 	lastUpdated: z.number(),
 	messages: z.array(GameMessageSchema).default([]),
+	mapState: MapStateSchema.nullable().optional(),
+	npcStates: z.array(NpcStateSchema).optional(),
+	activityLog: z.array(ActivityLogEntrySchema).default([]),
 });
 
 export type MultiplayerGameState = z.infer<typeof MultiplayerGameStateSchema>;
