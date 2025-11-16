@@ -8,7 +8,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 import { ModelCacheManager } from './model-cache-manager';
 import { ModelStorageManager } from './model-storage-manager';

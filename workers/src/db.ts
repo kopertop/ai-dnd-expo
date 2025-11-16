@@ -61,7 +61,7 @@ export class Database {
 		const now = Date.now();
 		await this.db.prepare(
 			`INSERT INTO games (id, invite_code, host_id, host_email, quest_id, quest_data, world, starting_area, status, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		).bind(
 			game.id,
 			game.invite_code,
@@ -73,20 +73,20 @@ export class Database {
 			game.starting_area,
 			game.status,
 			now,
-			now
+			now,
 		).run();
 	}
 
 	async getGameByInviteCode(inviteCode: string): Promise<GameRow | null> {
 		const result = await this.db.prepare(
-			'SELECT * FROM games WHERE invite_code = ?'
+			'SELECT * FROM games WHERE invite_code = ?',
 		).bind(inviteCode).first<GameRow>();
 		return result || null;
 	}
 
 	async updateGameStatus(gameId: string, status: GameRow['status']): Promise<void> {
 		await this.db.prepare(
-			'UPDATE games SET status = ?, updated_at = ? WHERE id = ?'
+			'UPDATE games SET status = ?, updated_at = ? WHERE id = ?',
 		).bind(status, Date.now(), gameId).run();
 	}
 
@@ -95,7 +95,7 @@ export class Database {
 		const now = Date.now();
 		await this.db.prepare(
 			`INSERT INTO characters (id, player_id, player_email, name, level, race, class, description, stats, skills, inventory, equipped, health, max_health, action_points, max_action_points, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		).bind(
 			character.id,
 			character.player_id,
@@ -113,27 +113,27 @@ export class Database {
 			character.action_points,
 			character.max_action_points,
 			now,
-			now
+			now,
 		).run();
 	}
 
 	async getCharacterById(characterId: string): Promise<CharacterRow | null> {
 		const result = await this.db.prepare(
-			'SELECT * FROM characters WHERE id = ?'
+			'SELECT * FROM characters WHERE id = ?',
 		).bind(characterId).first<CharacterRow>();
 		return result || null;
 	}
 
 	async getCharactersByPlayerId(playerId: string): Promise<CharacterRow[]> {
 		const result = await this.db.prepare(
-			'SELECT * FROM characters WHERE player_id = ? ORDER BY updated_at DESC'
+			'SELECT * FROM characters WHERE player_id = ? ORDER BY updated_at DESC',
 		).bind(playerId).all<CharacterRow>();
 		return result.results || [];
 	}
 
 	async getCharactersByEmail(email: string): Promise<CharacterRow[]> {
 		const result = await this.db.prepare(
-			'SELECT * FROM characters WHERE player_email = ? ORDER BY updated_at DESC'
+			'SELECT * FROM characters WHERE player_email = ? ORDER BY updated_at DESC',
 		).bind(email).all<CharacterRow>();
 		return result.results || [];
 	}
@@ -156,7 +156,7 @@ export class Database {
 		values.push(characterId);
 		
 		await this.db.prepare(
-			`UPDATE characters SET ${fields.join(', ')} WHERE id = ?`
+			`UPDATE characters SET ${fields.join(', ')} WHERE id = ?`,
 		).bind(...values).run();
 	}
 
@@ -165,7 +165,7 @@ export class Database {
 		const id = `gp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 		await this.db.prepare(
 			`INSERT INTO game_players (id, game_id, player_id, player_email, character_id, character_name, joined_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?)`
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		).bind(
 			id,
 			player.game_id,
@@ -173,14 +173,14 @@ export class Database {
 			player.player_email || null,
 			player.character_id,
 			player.character_name,
-			player.joined_at
+			player.joined_at,
 		).run();
 		return id;
 	}
 
 	async getGamePlayers(gameId: string): Promise<GamePlayerRow[]> {
 		const result = await this.db.prepare(
-			'SELECT * FROM game_players WHERE game_id = ? ORDER BY joined_at ASC'
+			'SELECT * FROM game_players WHERE game_id = ? ORDER BY joined_at ASC',
 		).bind(gameId).all<GamePlayerRow>();
 		return result.results || [];
 	}
@@ -190,13 +190,13 @@ export class Database {
 		await this.db.prepare(
 			`INSERT INTO game_states (game_id, state_data, updated_at)
 			 VALUES (?, ?, ?)
-			 ON CONFLICT(game_id) DO UPDATE SET state_data = ?, updated_at = ?`
+			 ON CONFLICT(game_id) DO UPDATE SET state_data = ?, updated_at = ?`,
 		).bind(gameId, stateData, Date.now(), stateData, Date.now()).run();
 	}
 
 	async getGameState(gameId: string): Promise<GameStateRow | null> {
 		const result = await this.db.prepare(
-			'SELECT * FROM game_states WHERE game_id = ?'
+			'SELECT * FROM game_states WHERE game_id = ?',
 		).bind(gameId).first<GameStateRow>();
 		return result || null;
 	}

@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
+
 import { predefinedQuests } from '@/constants/quests';
-import { Quest } from '@/types/quest';
 import { useScreenSize } from '@/hooks/use-screen-size';
+import { Quest } from '@/types/quest';
 
 interface QuestSelectorProps {
 	onSelect: (quest: Quest) => void;

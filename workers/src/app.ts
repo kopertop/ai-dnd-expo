@@ -4,17 +4,17 @@
  * Integrates auth routes with game API routes
  */
 
-import type { DurableObjectNamespace } from '@cloudflare/workers-types';
 import { Hono } from 'hono';
 
 import { initAuth } from './auth';
+import type { Env } from './env';
 import { authMiddleware } from './middleware/auth';
 import { corsMiddleware } from './middleware/cors';
 import admin from './routes/admin';
 import games from './routes/games';
 import quests from './routes/quests';
 
-const app = new Hono<{ Bindings: { GAME_SESSION: DurableObjectNamespace; DB: D1Database; QUESTS: KVNamespace; AUTH_SESSIONS?: KVNamespace; OLLAMA_BASE_URL: string; OLLAMA_MODEL: string; ADMIN_EMAILS: string; AUTH_SECRET: string; AUTH_URL?: string; GOOGLE_CLIENT_ID?: string; GOOGLE_CLIENT_SECRET?: string; APPLE_CLIENT_ID?: string; APPLE_CLIENT_SECRET?: string; }; Variables: { user: { id: string; email: string; name?: string | null } | null; session: { id: string; userId: string } | null } }>();
+const app = new Hono<{ Bindings: Env; Variables: { user: { id: string; email: string; name?: string | null } | null; session: { id: string; userId: string } | null } }>();
 
 // Apply CORS middleware to all routes
 app.use('*', corsMiddleware);

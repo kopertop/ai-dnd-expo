@@ -4,6 +4,8 @@
 
 import { Context, Next } from 'hono';
 
+import type { Env } from '../env';
+
 /**
  * Check if an email is an admin
  */

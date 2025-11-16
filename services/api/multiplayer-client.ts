@@ -1,11 +1,11 @@
 import {
-    CreateGameRequest,
-    DMActionRequest,
-    ErrorResponse,
-    GameSessionResponse,
-    GameStateResponse,
-    JoinGameRequest,
-    PlayerActionRequest,
+	CreateGameRequest,
+	DMActionRequest,
+	ErrorResponse,
+	GameSessionResponse,
+	GameStateResponse,
+	JoinGameRequest,
+	PlayerActionRequest,
 } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
@@ -127,7 +127,7 @@ export class MultiplayerClient {
 	/**
 	 * Poll game state (fallback when WebSocket unavailable)
 	 */
-	async pollGameState(inviteCode: string): Promise<GameStateResponse> {
+	async pollGameState(inviteCode: string): Promise<GameSessionResponse> {
 		const headers = this.getAuthHeaders();
 		const response = await fetch(
 			`${this.baseUrl}/api/games/${inviteCode}/state`,

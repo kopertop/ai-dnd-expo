@@ -6,7 +6,7 @@
 
 import { readdir } from 'fs/promises';
 import { join } from 'path';
-import { $ } from 'bun';
+
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..', 'migrations');
 const isRemote = process.argv.includes('--remote');

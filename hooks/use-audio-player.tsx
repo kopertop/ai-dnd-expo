@@ -11,8 +11,16 @@ import { Platform } from 'react-native';
 import audioSource from '../assets/audio/background.mp3';
 import { useSettingsStore } from '../stores/settings-store';
 
+interface AudioPlayer {
+	playing: boolean;
+	loop: boolean;
+	volume: number;
+	play: () => Promise<void>;
+	pause: () => void;
+}
+
 interface AudioContextType {
-	player: ReturnType<typeof useAudioPlayer>;
+	player: AudioPlayer;
 	togglePlayPause: () => Promise<void>;
 	play: () => Promise<void>;
 	pause: () => void;
@@ -21,7 +29,7 @@ interface AudioContextType {
 
 const AudioContext = createContext<AudioContextType | null>(null);
 
-let useNativeAudioPlayer: ((source: string) => ReturnType<any>) | null = null;
+let useNativeAudioPlayer: ((source: string) => AudioPlayer) | null = null;
 
 if (Platform.OS !== 'web') {
 	try {
@@ -184,13 +192,15 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 		isInitializedRef.current = true;
 
 		try {
-			playerRef.current.loop = true;
+			if (playerRef.current) {
+				playerRef.current.loop = true;
 
-			// Auto-play on mobile (non-web)
-			if (Platform.OS !== 'web') {
-				player.play().catch(error => {
-					console.warn('Audio auto-play failed:', error);
-				});
+				// Auto-play on mobile (non-web)
+				if (Platform.OS !== 'web') {
+					playerRef.current.play().catch(error => {
+						console.warn('Audio auto-play failed:', error);
+					});
+				}
 			}
 		} catch (error) {
 			console.warn('Audio setup failed:', error);

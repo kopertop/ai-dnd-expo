@@ -5,9 +5,8 @@
  * Supports caching and offline playback
  */
 
+import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system';
-import { Audio } from 'expo-av';
 
 export interface KokoroTTSOptions {
 	text: string;

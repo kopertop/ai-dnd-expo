@@ -17,13 +17,13 @@ import { QuestSelector } from '@/components/quest-selector';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WorldChooser } from '@/components/world-chooser';
-import { multiplayerClient } from '@/services/api/multiplayer-client';
+import { useGameState } from '@/hooks/use-game-state';
 import { useScreenSize } from '@/hooks/use-screen-size';
+import { multiplayerClient } from '@/services/api/multiplayer-client';
+import { GameSessionResponse } from '@/types/api/multiplayer-api';
 import { LocationOption } from '@/types/location-option';
 import { Quest } from '@/types/quest';
 import { WorldOption } from '@/types/world-option';
-import { GameSessionResponse } from '@/types/api/multiplayer-api';
-import { useGameState } from '@/hooks/use-game-state';
 
 type HostStep = 'email' | 'quest' | 'world' | 'location' | 'character' | 'waiting' | 'ready';
 
@@ -113,12 +113,12 @@ const HostGameScreen: React.FC = () => {
 				class: 'DM',
 				description: 'The Dungeon Master',
 				stats: {
-					strength: 10,
-					dexterity: 10,
-					constitution: 10,
-					intelligence: 10,
-					wisdom: 10,
-					charisma: 10,
+					STR: 10,
+					DEX: 10,
+					CON: 10,
+					INT: 10,
+					WIS: 10,
+					CHA: 10,
 				},
 				skills: [],
 				inventory: [],
@@ -173,12 +173,12 @@ const HostGameScreen: React.FC = () => {
 					name: p.name,
 					class: 'Unknown',
 					stats: {
-						strength: 10,
-						dexterity: 10,
-						constitution: 10,
-						intelligence: 10,
-						wisdom: 10,
-						charisma: 10,
+						STR: 10,
+						DEX: 10,
+						CON: 10,
+						INT: 10,
+						WIS: 10,
+						CHA: 10,
 					},
 					skills: [],
 					inventory: [],

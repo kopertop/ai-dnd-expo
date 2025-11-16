@@ -7,7 +7,9 @@
  */
 
 import { Platform } from 'react-native';
+
 import { createOllamaProvider, OllamaProviderInterface } from './ollama-provider';
+
 import { AIMessage, AICompletionParams } from '@/types/ai';
 
 export interface PlatformAwareProviderConfig {

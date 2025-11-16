@@ -63,12 +63,7 @@ export interface ProviderStatus {
 		tokensPerSecond: number;
 		lastInferenceTime: number;
 	};
-	resourceUsage?: {
-		memory: { used: number; available: number; percentage: number };
-		cpu: { usage: number; temperature: number };
-		battery: { level: number; isCharging: boolean };
-		thermal: { state: 'nominal' | 'fair' | 'serious' | 'critical' };
-	};
+	resourceUsage?: ResourceUsage;
 }
 
 // Local model configuration interfaces

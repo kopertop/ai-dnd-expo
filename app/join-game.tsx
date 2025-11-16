@@ -1,17 +1,16 @@
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmailInput } from '@/components/email-input';
 import { InviteCodeInput } from '@/components/invite-code-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { useScreenSize } from '@/hooks/use-screen-size';
+import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { GameSessionResponse } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
-import NewGameScreen from './new-game';
 
 const JoinGameScreen: React.FC = () => {
 	const [step, setStep] = useState<'code' | 'email' | 'character' | 'waiting'>('code');
@@ -129,7 +128,7 @@ const JoinGameScreen: React.FC = () => {
 					}}
 				/>
 				<ThemedView style={styles.characterContainer}>
-					<ThemedText type="title" style={styles.title}>
+					<ThemedText type="title" style={styles.waitingTitle}>
 						Create Your Character
 					</ThemedText>
 					<ThemedText style={styles.hint}>
@@ -279,7 +278,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'center',
 	},
-	title: {
+	waitingTitle: {
 		marginBottom: 12,
 		color: '#3B2F1B',
 		textAlign: 'center',

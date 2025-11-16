@@ -9,8 +9,9 @@ import {
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
-import { GameMessage } from '@/types/multiplayer-game';
+
 import { useScreenSize } from '@/hooks/use-screen-size';
+import { GameMessage } from '@/types/multiplayer-game';
 
 interface MultiplayerChatProps {
 	messages: GameMessage[];

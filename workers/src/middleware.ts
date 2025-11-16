@@ -1,4 +1,4 @@
-import { Quest } from './types';
+import type { Env } from './env';
 
 /**
  * Check if an email is an admin
@@ -61,13 +61,5 @@ export function handleCORS(request: Request): Response | null {
 		});
 	}
 	return null;
-}
-
-interface Env {
-	GAME_SESSION: DurableObjectNamespace;
-	QUESTS: KVNamespace;
-	OLLAMA_BASE_URL: string;
-	OLLAMA_MODEL: string;
-	ADMIN_EMAILS: string;
 }
 

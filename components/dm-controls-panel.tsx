@@ -9,9 +9,10 @@ import {
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
+
+import { useScreenSize } from '@/hooks/use-screen-size';
 import { Character } from '@/types/character';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
-import { useScreenSize } from '@/hooks/use-screen-size';
 
 interface DMControlsPanelProps {
 	gameState: MultiplayerGameState;

@@ -1,9 +1,9 @@
+import type { Env } from './env';
 import {
 	GameMessage,
 	GameSession as GameSessionType,
 	MultiplayerGameState,
 	PlayerInfo,
-	Quest,
 	WebSocketConnection,
 } from './types';
 
@@ -468,14 +468,5 @@ export class GameSession implements DurableObject {
 			await this.storage.put('state', this.state);
 		}
 	}
-}
-
-interface Env {
-	GAME_SESSION: DurableObjectNamespace<GameSession>;
-	DB: D1Database;
-	QUESTS: KVNamespace;
-	OLLAMA_BASE_URL: string;
-	OLLAMA_MODEL: string;
-	ADMIN_EMAILS: string;
 }
 

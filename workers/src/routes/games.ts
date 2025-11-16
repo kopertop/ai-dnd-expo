@@ -7,6 +7,7 @@
 import { Hono } from 'hono';
 
 import { Database } from '../db';
+import type { Env } from '../env';
 import { requireAuth } from '../middleware/auth';
 import { generateInviteCode, getSessionStub } from '../session-manager';
 import { Quest } from '../types';

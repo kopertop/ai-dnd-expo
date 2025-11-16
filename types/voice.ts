@@ -21,7 +21,7 @@ export const VoiceProfileSchema = z.object({
 	displayName: z.string(),
 
 	// Technical properties
-	engine: z.enum(['platform', 'chatterbox', 'cloud']),
+	engine: z.enum(['platform', 'chatterbox', 'cloud', 'kokoro']),
 	engineVoiceId: z.string(),
 	language: z.string().default('en-US'),
 

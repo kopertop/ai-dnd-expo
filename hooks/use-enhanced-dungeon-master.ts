@@ -75,15 +75,15 @@ export const useEnhancedDungeonMaster = (
 		local: {
 			available: boolean;
 			resourceUsage?: import('../services/ai/providers/local-dm-provider').ResourceUsage;
-		};
+				};
 		cache: { size: number; hitRate: number };
 		overall: 'healthy' | 'degraded' | 'offline';
-	}>({
-		primary: { available: false },
-		local: { available: false },
-		cache: { size: 0, hitRate: 0 },
-		overall: 'offline',
-	});
+				}>({
+					primary: { available: false },
+					local: { available: false },
+					cache: { size: 0, hitRate: 0 },
+					overall: 'offline',
+				});
 
 	// New state for local provider functionality
 	const [localProviderStatus, setLocalProviderStatus] = useState<{

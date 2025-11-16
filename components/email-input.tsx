@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
-import { ThemedView } from './themed-view';
+
 import { useScreenSize } from '@/hooks/use-screen-size';
 
 interface EmailInputProps {

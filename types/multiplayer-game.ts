@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
-import { CharacterSchema } from './character';
-import { GameStateSchema, GameWorldStateSchema } from './game';
+import { GameStateSchema } from './game';
 import { QuestSchema } from './quest';
 
 export const InviteCodeSchema = z.string().regex(/^[A-Z0-9]{6}$/, 'Invalid invite code format');
@@ -15,6 +14,16 @@ export const PlayerInfoSchema = z.object({
 	joinedAt: z.number(),
 });
 
+export const GameMessageSchema = z.object({
+	id: z.string(),
+	content: z.string(),
+	timestamp: z.number(),
+	type: z.enum(['narration', 'dialogue', 'action_result', 'system']),
+	speaker: z.string().optional(),
+	role: z.enum(['user', 'assistant', 'system']).optional(),
+	characterId: z.string().optional(),
+});
+
 export const MultiplayerGameStateSchema = GameStateSchema.extend({
 	hostId: z.string(), // Player ID of the host
 	quest: QuestSchema,
@@ -24,19 +33,11 @@ export const MultiplayerGameStateSchema = GameStateSchema.extend({
 	status: GameSessionStatusSchema,
 	createdAt: z.number(),
 	lastUpdated: z.number(),
-	messages: z.array(
-		z.object({
-			id: z.string(),
-			content: z.string(),
-			timestamp: z.number(),
-			type: z.enum(['narration', 'dialogue', 'action_result', 'system']),
-			speaker: z.string(),
-			characterId: z.string().optional(),
-		}),
-	).default([]),
+	messages: z.array(GameMessageSchema).default([]),
 });
 
 export type MultiplayerGameState = z.infer<typeof MultiplayerGameStateSchema>;
 export type PlayerInfo = z.infer<typeof PlayerInfoSchema>;
 export type GameSessionStatus = z.infer<typeof GameSessionStatusSchema>;
+export type GameMessage = z.infer<typeof GameMessageSchema>;
 

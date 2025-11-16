@@ -1,4 +1,4 @@
-import { Character, MultiplayerGameState } from '../types';
+import { MultiplayerGameState } from '../types';
 
 /**
  * Build AI context for multiplayer games
@@ -49,7 +49,7 @@ export function buildMultiplayerContext(gameState: MultiplayerGameState): {
 			location: gameState.startingArea,
 		},
 		recentMessages: gameState.messages.slice(-10).map(msg => ({
-			speaker: msg.speaker,
+			speaker: msg.speaker ?? 'Dungeon Master',
 			content: msg.content,
 			timestamp: msg.timestamp,
 		})),

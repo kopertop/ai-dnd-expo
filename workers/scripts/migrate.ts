@@ -8,7 +8,7 @@
 
 import { readdir, readFile } from 'fs/promises';
 import { join } from 'path';
-import { $ } from 'bun';
+
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..', 'migrations');
 const isRemote = process.argv.includes('--remote');
@@ -24,7 +24,7 @@ async function getAppliedMigrations(db: any): Promise<Set<string>> {
 	try {
 		// Check if migrations table exists
 		const result = await db.prepare(
-			"SELECT name FROM sqlite_master WHERE type='table' AND name='schema_migrations'"
+			"SELECT name FROM sqlite_master WHERE type='table' AND name='schema_migrations'",
 		).first();
 		
 		if (!result) {
@@ -57,7 +57,7 @@ async function applyMigration(db: any, filename: string, sql: string): Promise<v
 		// Record migration
 		const version = filename.replace('.sql', '');
 		await db.prepare(
-			'INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)'
+			'INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)',
 		).bind(version, Date.now()).run();
 		
 		await db.exec('COMMIT');

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
+import { websocketClient } from '@/services/api/websocket-client';
 import {
 	WebSocketMessage,
-	GameStateUpdateMessage,
 	PlayerJoinedMessage,
 	PlayerLeftMessage,
 	PlayerActionMessage,
@@ -10,7 +10,6 @@ import {
 	ErrorMessage,
 } from '@/types/api/websocket-messages';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
-import { websocketClient } from '@/services/api/websocket-client';
 
 export interface UseWebSocketOptions {
 	inviteCode: string;
@@ -48,7 +47,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
 		onPlayerAction?: (message: PlayerActionMessage) => void;
 		onDMMessage?: (message: DMMessage) => void;
 		onError?: (message: ErrorMessage) => void;
-	}>({});
+			}>({});
 
 	// Update handlers ref when callbacks change
 	useEffect(() => {
@@ -73,35 +72,27 @@ export function useWebSocket(options: UseWebSocketOptions) {
 	const handleMessage = useCallback((message: WebSocketMessage) => {
 		switch (message.type) {
 			case 'game_state_update':
-				if (message.type === 'game_state_update') {
-					handlersRef.current.onGameStateUpdate?.(message.data.gameState);
-				}
+				handlersRef.current.onGameStateUpdate?.(message.data.gameState);
 				break;
 			case 'player_joined':
-				if (message.type === 'player_joined') {
-					handlersRef.current.onPlayerJoined?.(message);
-				}
+				handlersRef.current.onPlayerJoined?.(message);
 				break;
 			case 'player_left':
-				if (message.type === 'player_left') {
-					handlersRef.current.onPlayerLeft?.(message);
-				}
+				handlersRef.current.onPlayerLeft?.(message);
 				break;
 			case 'player_action':
-				if (message.type === 'player_action') {
-					handlersRef.current.onPlayerAction?.(message);
-				}
+				handlersRef.current.onPlayerAction?.(message);
 				break;
 			case 'dm_message':
-				if (message.type === 'dm_message') {
-					handlersRef.current.onDMMessage?.(message);
-				}
+				handlersRef.current.onDMMessage?.(message);
 				break;
 			case 'error':
-				if (message.type === 'error') {
-					handlersRef.current.onError?.(message);
-					setConnectionError(message.data.error);
-				}
+				handlersRef.current.onError?.(message);
+				setConnectionError(message.data.error);
+				break;
+			case 'ping':
+			case 'pong':
+				// Handled within websocket client
 				break;
 		}
 	}, []);

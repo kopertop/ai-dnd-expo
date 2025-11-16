@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
+import { GameSessionResponse } from '@/types/api/multiplayer-api';
+import { MultiplayerGameState } from '@/types/multiplayer-game';
 
 export interface UsePollingGameStateOptions {
 	inviteCode: string;
@@ -37,7 +38,7 @@ export function usePollingGameState(options: UsePollingGameStateOptions) {
 			setIsLoading(true);
 			setError(null);
 
-			const response = await multiplayerClient.pollGameState(inviteCode);
+			const response: GameSessionResponse = await multiplayerClient.pollGameState(inviteCode);
 
 			if (response.gameState) {
 				const stateString = JSON.stringify(response.gameState);

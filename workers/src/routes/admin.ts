@@ -6,6 +6,7 @@
 
 import { Hono } from 'hono';
 
+import type { Env } from '../env';
 import { requireAdmin } from '../middleware/admin';
 import { Quest } from '../types';
 

@@ -1,13 +1,6 @@
 import {
-	GameStateUpdateMessage,
-	PlayerJoinedMessage,
-	PlayerLeftMessage,
-	PlayerActionMessage,
-	DMMessage,
-	ErrorMessage,
 	WebSocketMessage,
 } from '@/types/api/websocket-messages';
-import { MultiplayerGameState } from '@/types/multiplayer-game';
 
 // Determine API base URL (same logic as multiplayer-client.ts):
 // 1. If EXPO_PUBLIC_MULTIPLAYER_API_URL is set, use it (for explicit Worker URL)

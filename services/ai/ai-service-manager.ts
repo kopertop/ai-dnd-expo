@@ -11,6 +11,8 @@ import { createPlatformAwareProvider, PlatformAwareProviderInterface } from './p
 
 type LocalProviderModule = typeof import('./providers/local-dm-provider');
 type ResourceUsage = import('./providers/local-dm-provider').ResourceUsage;
+type LocalProviderInstance = InstanceType<LocalProviderModule['LocalDMProvider']>;
+type LocalProviderStatus = ReturnType<LocalProviderInstance['getStatus']>;
 
 const DEFAULT_LOCAL_MODEL_PATH = '/Documents/AIModels/gemma-3-2b-int8/model.gguf';
 let LocalDMProviderCtor: LocalProviderModule['LocalDMProvider'] | null = null;
@@ -72,7 +74,7 @@ type ProviderType = 'ollama' | 'local' | 'rule-based';
 export class AIServiceManager {
 	private readonly config: AIServiceConfig;
 	private platformProvider: PlatformAwareProviderInterface | null = null;
-	private localProvider: InstanceType<LocalProviderModule['LocalDMProvider']> | null = null;
+	private localProvider: LocalProviderInstance | null = null;
 	private initializePromise: Promise<void> | null = null;
 
 	private isPlatformReady = false;
@@ -94,15 +96,15 @@ export class AIServiceManager {
 
 	private async initializeProviders(): Promise<void> {
 		try {
-				this.platformProvider = createPlatformAwareProvider({
-					ollamaBaseUrl: this.config.ollama.baseUrl,
-					ollamaModel: this.config.ollama.model,
-					ollamaTimeout: this.config.ollama.timeout || this.config.performance.timeout,
-				});
+			this.platformProvider = createPlatformAwareProvider({
+				ollamaBaseUrl: this.config.ollama.baseUrl,
+				ollamaModel: this.config.ollama.model,
+				ollamaTimeout: this.config.ollama.timeout || this.config.performance.timeout,
+			});
 			if (this.config.ollama.enabled) {
 				this.isPlatformReady = await this.platformProvider.initialize();
 			}
-				} catch (error) {
+		} catch (error) {
 			console.warn('Failed to initialize platform provider:', error);
 			this.isPlatformReady = false;
 		}
@@ -115,11 +117,11 @@ export class AIServiceManager {
 				}
 
 				this.localProvider = new LocalDMProviderCtor({
-				modelPath: this.config.local.modelPath,
-				contextSize: 2048,
-				maxTokens: 150,
-				temperature: 0.7,
-				enableResourceMonitoring: true,
+					modelPath: this.config.local.modelPath,
+					contextSize: 2048,
+					maxTokens: 150,
+					temperature: 0.7,
+					enableResourceMonitoring: true,
 					powerSavingMode: this.config.local.powerSavingMode ?? false,
 				});
 				this.isLocalReady = await this.localProvider.initialize();
@@ -307,28 +309,28 @@ export class AIServiceManager {
 			const response = await this.localProvider.generateDnDResponse(
 				prompt,
 				{
-			playerName: context.playerName,
-			playerClass: context.playerClass,
-			playerRace: context.playerRace,
-			currentScene: context.currentScene,
-			gameHistory: context.gameHistory,
+					playerName: context.playerName,
+					playerClass: context.playerClass,
+					playerRace: context.playerRace,
+					currentScene: context.currentScene,
+					gameHistory: context.gameHistory,
 				},
-			this.config.performance.timeout,
-		);
+				this.config.performance.timeout,
+			);
 
 			const duration = Date.now() - startTime;
 			this.lastLocalLatency = duration;
 
-		return {
-			text: response.text,
-			confidence: response.confidence,
-			source: 'local',
-			toolCommands: response.toolCommands,
-			processingTime: response.processingTime,
+			return {
+				text: response.text,
+				confidence: response.confidence,
+				source: 'local',
+				toolCommands: response.toolCommands,
+				processingTime: response.processingTime,
 				metadata: {
 					resourceUsage: this.localProvider.getStatus().resourceUsage,
 				},
-		};
+			};
 		} catch (error) {
 			console.error('Local provider error:', error);
 			this.isLocalReady = false;
@@ -439,7 +441,7 @@ Keep your responses concise, engaging, and true to D&D 5e rules.`;
 			text = `You ready your weapon and launch an attack within ${context.currentScene}.`;
 			toolCommands.push({ type: 'roll', params: '1d20+5' });
 		} else if (normalized.includes('heal') || normalized.includes('potion')) {
-			text = `You take a moment to recover, drawing upon your resources to regain some vitality.`;
+			text = 'You take a moment to recover, drawing upon your resources to regain some vitality.';
 			toolCommands.push({ type: 'heal', params: '1d8+2' });
 		} else if (normalized.includes('search') || normalized.includes('investigate')) {
 			text = `You carefully examine your surroundings, searching for hidden details in ${context.currentScene}.`;
@@ -456,7 +458,7 @@ Keep your responses concise, engaging, and true to D&D 5e rules.`;
 		primary: { available: boolean; latency?: number };
 		local: { available: boolean; latency?: number };
 		cache: { size: number; hitRate: number };
-	} {
+		} {
 		const overall = this.computeOverallStatus();
 		return {
 			overall,
@@ -472,7 +474,7 @@ Keep your responses concise, engaging, and true to D&D 5e rules.`;
 		local: {
 			ready: boolean;
 			initialized: boolean;
-			status?: ReturnType<LocalDMProvider['getStatus']>;
+			status?: LocalProviderStatus;
 		};
 		cache: { hits: number; misses: number };
 		} {
@@ -499,7 +501,7 @@ Keep your responses concise, engaging, and true to D&D 5e rules.`;
 		if (this.isPlatformReady) {
 			return 'ollama';
 		}
-				return 'fallback';
+		return 'fallback';
 	}
 
 	async switchProviderWithContext(
@@ -532,7 +534,7 @@ Keep your responses concise, engaging, and true to D&D 5e rules.`;
 					? 'Remote provider available'
 					: 'Using rule-based fallback';
 
-			return {
+		return {
 			recommended: optimal,
 			reason,
 			confidence: optimal === 'fallback' ? 0.4 : 0.8,
@@ -584,9 +586,9 @@ export const DefaultAIConfig: AIServiceConfig = {
 		timeout: 20000,
 		retryAttempts: 2,
 		cacheResponses: true,
-		},
-		providerSelection: {
-			preferLocal: false,
+	},
+	providerSelection: {
+		preferLocal: false,
 		fallbackChain: ['ollama', 'local', 'rule-based'],
 		healthCheckInterval: 15000,
 	},

@@ -5,10 +5,10 @@
  * Supports offline token storage and session management
  */
 
-import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 // Complete auth session for web
 if (Platform.OS === 'web') {
@@ -23,7 +23,7 @@ export interface AuthUser {
 	provider: 'google' | 'apple';
 }
 
-export interface AuthSession {
+export interface StoredAuthSession {
 	user: AuthUser;
 	accessToken: string;
 	refreshToken?: string;
@@ -40,16 +40,20 @@ export interface AuthClientConfig {
 const AUTH_STORAGE_KEY = '@auth_session';
 const REFRESH_TOKEN_KEY = '@auth_refresh_token';
 
+type InternalAuthClientConfig = Omit<AuthClientConfig, 'redirectUri'> & {
+	redirectUri: string;
+};
+
 export class AuthClient {
-	private config: AuthClientConfig;
-	private currentSession: AuthSession | null = null;
+	private config: InternalAuthClientConfig;
+	private currentSession: StoredAuthSession | null = null;
 
 	constructor(config: AuthClientConfig = {}) {
 		this.config = {
 			googleClientId: config.googleClientId || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
 			googleClientIdWeb: config.googleClientIdWeb || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
 			appleClientId: config.appleClientId || process.env.EXPO_PUBLIC_APPLE_CLIENT_ID,
-			redirectUri: config.redirectUri || AuthSession.makeRedirectUri(),
+			redirectUri: config.redirectUri ?? AuthSession.makeRedirectUri(),
 		};
 		this.loadSession();
 	}
@@ -71,7 +75,7 @@ export class AuthClient {
 	/**
 	 * Save session to storage
 	 */
-	private async saveSession(session: AuthSession): Promise<void> {
+	private async saveSession(session: StoredAuthSession): Promise<void> {
 		try {
 			await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
 			if (session.refreshToken) {
@@ -99,7 +103,7 @@ export class AuthClient {
 	/**
 	 * Sign in with Google
 	 */
-	async signInWithGoogle(): Promise<AuthSession> {
+	async signInWithGoogle(): Promise<StoredAuthSession> {
 		const clientId = Platform.OS === 'web' 
 			? this.config.googleClientIdWeb 
 			: this.config.googleClientId;
@@ -122,15 +126,21 @@ export class AuthClient {
 		});
 
 		try {
-			const result = await request.promptAsync(discovery, {
-				useProxy: Platform.OS !== 'web',
-			});
+			const result = await request.promptAsync(discovery);
 
 			if (result.type === 'success') {
+				const accessToken = result.params.access_token;
+				if (!accessToken) {
+					throw new Error('Google did not return an access token');
+				}
 				// Fetch user info
-				const userInfo = await this.fetchGoogleUserInfo(result.params.access_token);
+				const userInfo = await this.fetchGoogleUserInfo(accessToken);
 
-				const session: AuthSession = {
+				const expiresInSeconds = result.params.expires_in
+					? Number(result.params.expires_in)
+					: undefined;
+
+				const session: StoredAuthSession = {
 					user: {
 						id: userInfo.sub || userInfo.id,
 						email: userInfo.email,
@@ -138,10 +148,8 @@ export class AuthClient {
 						picture: userInfo.picture,
 						provider: 'google',
 					},
-					accessToken: result.params.access_token,
-					expiresAt: result.params.expires_in 
-						? Date.now() + (result.params.expires_in * 1000)
-						: undefined,
+					accessToken,
+					expiresAt: expiresInSeconds ? Date.now() + expiresInSeconds * 1000 : undefined,
 				};
 
 				await this.saveSession(session);
@@ -175,7 +183,7 @@ export class AuthClient {
 	/**
 	 * Sign in with Apple
 	 */
-	async signInWithApple(): Promise<AuthSession> {
+	async signInWithApple(): Promise<StoredAuthSession> {
 		if (Platform.OS !== 'ios' && Platform.OS !== 'web') {
 			throw new Error('Apple Sign-In is only available on iOS and Web');
 		}
@@ -186,7 +194,7 @@ export class AuthClient {
 
 		const request = new AuthSession.AuthRequest({
 			clientId: this.config.appleClientId,
-			scopes: [AuthSession.AppleAuthenticationScope.EMAIL, AuthSession.AppleAuthenticationScope.FULL_NAME],
+			scopes: ['name', 'email'],
 			responseType: AuthSession.ResponseType.Token,
 			redirectUri: this.config.redirectUri,
 		});
@@ -197,25 +205,30 @@ export class AuthClient {
 				tokenEndpoint: 'https://appleid.apple.com/auth/token',
 			};
 
-			const result = await request.promptAsync(discovery, {
-				useProxy: Platform.OS !== 'web',
-			});
+			const result = await request.promptAsync(discovery);
 
 			if (result.type === 'success') {
 				// Apple provides user info in the ID token
 				const userInfo = await this.decodeAppleToken(result.params.id_token);
 
-				const session: AuthSession = {
+				const accessToken = result.params.access_token;
+				if (!accessToken) {
+					throw new Error('Apple did not return an access token');
+				}
+
+				const expiresInSeconds = result.params.expires_in
+					? Number(result.params.expires_in)
+					: undefined;
+
+				const session: StoredAuthSession = {
 					user: {
 						id: userInfo.sub,
 						email: userInfo.email,
 						name: userInfo.name,
 						provider: 'apple',
 					},
-					accessToken: result.params.access_token,
-					expiresAt: result.params.expires_in 
-						? Date.now() + (result.params.expires_in * 1000)
-						: undefined,
+					accessToken,
+					expiresAt: expiresInSeconds ? Date.now() + expiresInSeconds * 1000 : undefined,
 				};
 
 				await this.saveSession(session);
@@ -257,7 +270,7 @@ export class AuthClient {
 	/**
 	 * Get current session
 	 */
-	async getSession(): Promise<AuthSession | null> {
+	async getSession(): Promise<StoredAuthSession | null> {
 		if (this.currentSession) {
 			// Check if session is expired
 			if (this.currentSession.expiresAt && Date.now() > this.currentSession.expiresAt) {

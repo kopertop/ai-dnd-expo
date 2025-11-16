@@ -49,6 +49,7 @@ export const GameSessionResponseSchema = z.object({
 		}),
 	),
 	createdAt: z.number(),
+	gameState: MultiplayerGameStateSchema.optional(),
 });
 
 export const GameStateResponseSchema = MultiplayerGameStateSchema;

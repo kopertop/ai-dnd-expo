@@ -3,8 +3,9 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
-import { Character } from '@/types/character';
+
 import { useScreenSize } from '@/hooks/use-screen-size';
+import { Character } from '@/types/character';
 
 interface PlayerCharacterListProps {
 	characters: Character[];

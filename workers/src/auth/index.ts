@@ -4,29 +4,14 @@
  * Integrates better-auth with Cloudflare D1, KV, and Workers environment
  */
 
-import type { DurableObjectNamespace } from '@cloudflare/workers-types';
+import type { IncomingRequestCfProperties, KVNamespace } from '@cloudflare/workers-types';
 import { betterAuth } from 'better-auth';
-import { withCloudflare } from 'better-auth-cloudflare';
 import { magicLink } from 'better-auth/plugins';
+import { withCloudflare } from 'better-auth-cloudflare';
 import { drizzle } from 'drizzle-orm/d1';
 
 import { schema } from '../db/auth.schema';
-
-interface Env {
-	GAME_SESSION: DurableObjectNamespace;
-	DB: D1Database;
-	QUESTS: KVNamespace;
-	AUTH_SESSIONS?: KVNamespace;
-	OLLAMA_BASE_URL: string;
-	OLLAMA_MODEL: string;
-	ADMIN_EMAILS: string;
-	AUTH_SECRET: string;
-	AUTH_URL?: string;
-	GOOGLE_CLIENT_ID?: string;
-	GOOGLE_CLIENT_SECRET?: string;
-	APPLE_CLIENT_ID?: string;
-	APPLE_CLIENT_SECRET?: string;
-}
+import type { Env } from '../env';
 
 /**
  * Initialize auth instance with Cloudflare adapters
@@ -41,7 +26,7 @@ export async function initAuth(env: Env, cf?: IncomingRequestCfProperties) {
 						schema,
 					},
 				},
-				kv: env.AUTH_SESSIONS,
+				kv: env.AUTH_SESSIONS as KVNamespace | undefined,
 				cf: cf, // Cloudflare context for geolocation/IP detection
 			},
 			{

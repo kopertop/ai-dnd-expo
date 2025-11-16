@@ -6,6 +6,7 @@
 
 import { Hono } from 'hono';
 
+import type { Env } from '../env';
 import { Quest } from '../types';
 
 const quests = new Hono<{ Bindings: Env }>();

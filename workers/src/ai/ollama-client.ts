@@ -1,4 +1,4 @@
-import { Character, MultiplayerGameState } from '../types';
+import { MultiplayerGameState } from '../types';
 
 export interface OllamaMessage {
 	role: 'system' | 'user' | 'assistant';

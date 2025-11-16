@@ -193,7 +193,8 @@ const RootLayout: React.FC = () => {
 							<Stack initialRouteName="index">
 								<Stack.Screen name="index" options={{ headerShown: false }} />
 								<Stack.Screen name="login" options={{ headerShown: false }} />
-								<Stack.Screen name="auth" options={{ headerShown: false }} />
+								<Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+								<Stack.Screen name="auth/error" options={{ headerShown: false }} />
 								<Stack.Screen name="new-game" options={{ headerShown: false }} />
 								<Stack.Screen name="game" options={{ headerShown: false }} />
 								<Stack.Screen name="+not-found" />

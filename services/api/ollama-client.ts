@@ -11,6 +11,7 @@ export interface OllamaMessage {
 }
 
 export interface OllamaCompletionParams {
+	model?: string;
 	temperature?: number;
 	top_p?: number;
 	num_predict?: number;
@@ -19,8 +20,8 @@ export interface OllamaCompletionParams {
 }
 
 export interface OllamaResponse {
-	text: string;
-	done: boolean;
+	text?: string;
+	done?: boolean;
 	model?: string;
 	total_duration?: number;
 	load_duration?: number;
@@ -28,6 +29,11 @@ export interface OllamaResponse {
 	prompt_eval_duration?: number;
 	eval_count?: number;
 	eval_duration?: number;
+	message?: {
+		role: string;
+		content: string;
+	};
+	response?: string;
 }
 
 export interface OllamaStreamChunk {
@@ -255,21 +261,3 @@ export class OllamaClient {
 		}
 	}
 }
-
-// Fix for TypeScript - OllamaResponse might have message property
-interface OllamaResponse {
-	message?: {
-		role: string;
-		content: string;
-	};
-	response?: string;
-	done?: boolean;
-	model?: string;
-	total_duration?: number;
-	load_duration?: number;
-	prompt_eval_count?: number;
-	prompt_eval_duration?: number;
-	eval_count?: number;
-	eval_duration?: number;
-}
-

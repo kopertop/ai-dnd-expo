@@ -4,9 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GameCanvas } from '@/components/game-canvas';
 import { WorldMapFactory } from '@/tests/fixtures/mock-factories';
 import {
-    assertNoConsoleErrors,
-    renderWithProviders,
-    waitForAsyncUpdates,
+	assertNoConsoleErrors,
+	renderWithProviders,
+	waitForAsyncUpdates,
 } from '@/tests/utils/render-helpers';
 
 // Mock the child components

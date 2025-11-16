@@ -3,8 +3,9 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
-import { PlayerInfo } from '@/types/multiplayer-game';
+
 import { useScreenSize } from '@/hooks/use-screen-size';
+import { PlayerInfo } from '@/types/multiplayer-game';
 
 interface PlayerListProps {
 	players: PlayerInfo[];

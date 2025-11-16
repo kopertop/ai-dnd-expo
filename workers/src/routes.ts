@@ -1,7 +1,8 @@
-import { generateInviteCode, getSessionStub } from './session-manager';
-import { corsHeaders, handleCORS, requireAdmin } from './middleware';
-import { Quest } from './types';
 import { Database } from './db';
+import type { Env } from './env';
+import { corsHeaders, handleCORS, requireAdmin } from './middleware';
+import { generateInviteCode, getSessionStub } from './session-manager';
+import { Quest } from './types';
 
 export async function handleRequest(request: Request, env: Env): Promise<Response> {
 	// Handle CORS
@@ -424,14 +425,5 @@ async function handleAdminRoutes(
 
 function getEmailFromRequest(request: Request): string | null {
 	return request.headers.get('X-User-Email');
-}
-
-interface Env {
-	GAME_SESSION: DurableObjectNamespace;
-	DB: D1Database;
-	QUESTS: KVNamespace;
-	OLLAMA_BASE_URL: string;
-	OLLAMA_MODEL: string;
-	ADMIN_EMAILS: string;
 }
 

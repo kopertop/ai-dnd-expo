@@ -78,12 +78,12 @@ export interface Character {
 }
 
 export interface StatBlock {
-	strength: number;
-	dexterity: number;
-	constitution: number;
-	intelligence: number;
-	wisdom: number;
-	charisma: number;
+	STR: number;
+	DEX: number;
+	CON: number;
+	INT: number;
+	WIS: number;
+	CHA: number;
 }
 
 export interface GameMessage {
@@ -91,7 +91,8 @@ export interface GameMessage {
 	content: string;
 	timestamp: number;
 	type: 'narration' | 'dialogue' | 'action_result' | 'system';
-	speaker: string;
+	speaker?: string;
+	role?: 'user' | 'assistant' | 'system';
 	characterId?: string;
 }
 

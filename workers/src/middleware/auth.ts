@@ -4,9 +4,11 @@
  * Extracts and validates auth tokens, attaches user info to context
  */
 
+import type { IncomingRequestCfProperties } from '@cloudflare/workers-types';
 import { Context, Next } from 'hono';
 
 import { initAuth } from '../auth';
+import type { Env } from '../env';
 
 /**
  * Auth context type
@@ -28,14 +30,15 @@ export interface AuthContext {
  */
 export async function authMiddleware(c: Context, next: Next) {
 	// Get Cloudflare context from request
-	const cf = c.req.raw.cf;
+	const rawRequest = c.req.raw as Request & { cf?: IncomingRequestCfProperties };
+	const cf = rawRequest.cf;
 	const auth = await initAuth(c.env as Env, cf);
 
 	try {
 		// Create a request with the original headers for better-auth
-		const session = await auth.api.getSession({
-			headers: c.req.raw.headers,
-		});
+		const session = (await auth.api.getSession({
+			headers: rawRequest.headers,
+		})) as any;
 
 		if (session?.data?.user) {
 			c.set('user', {
