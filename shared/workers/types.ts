@@ -41,21 +41,87 @@ export interface QuestObjective {
 	completedAt?: number;
 }
 
+export type MapTokenType = 'player' | 'npc' | 'object';
+
+export interface MapTileState {
+        x: number;
+        y: number;
+        terrain: string;
+        elevation?: number;
+        isBlocked?: boolean;
+        hasFog?: boolean;
+}
+
+export interface MapTokenState {
+        id: string;
+        label: string;
+        type: MapTokenType;
+        referenceId?: string;
+        characterId?: string;
+        icon?: string;
+        color?: string;
+        x: number;
+        y: number;
+        elevation?: number;
+        hitPoints?: number;
+        maxHitPoints?: number;
+        status?: string[];
+        metadata?: Record<string, unknown>;
+}
+
+export interface MapState {
+        id: string;
+        mapId?: string;
+        name: string;
+        width: number;
+        height: number;
+        gridSize?: number;
+        terrain?: string;
+        fogOfWar?: string;
+        tiles?: MapTileState[];
+        tokens: MapTokenState[];
+        updatedAt: number;
+}
+
+export interface NpcDefinition {
+        id: string;
+        slug: string;
+        name: string;
+        role: 'hostile' | 'friendly' | 'vendor';
+        alignment?: string;
+        description?: string;
+        stats: StatBlock;
+        maxHealth: number;
+        abilities?: string[];
+        metadata?: Record<string, unknown>;
+}
+
+export interface SessionLogEntry {
+        id: string;
+        type: 'narration' | 'action' | 'dice' | 'system';
+        content: string;
+        timestamp: number;
+        actor?: string;
+        characterId?: string;
+}
+
 export interface MultiplayerGameState {
-	sessionId: string;
-	inviteCode: string;
-	hostId: string;
-	quest: Quest;
-	players: PlayerInfo[];
-	characters: Character[];
-	playerCharacterId: string; // For backward compatibility, but we track all players
-	gameWorld: string;
-	startingArea: string;
-	worldState?: any;
-	status: 'waiting' | 'active' | 'completed' | 'cancelled';
-	createdAt: number;
-	lastUpdated: number;
-	messages: GameMessage[];
+        sessionId: string;
+        inviteCode: string;
+        hostId: string;
+        quest: Quest;
+        players: PlayerInfo[];
+        characters: Character[];
+        playerCharacterId: string; // For backward compatibility, but we track all players
+        gameWorld: string;
+        startingArea: string;
+        worldState?: any;
+        status: 'waiting' | 'active' | 'completed' | 'cancelled';
+        createdAt: number;
+        lastUpdated: number;
+        messages: GameMessage[];
+        mapState?: MapState;
+        log?: SessionLogEntry[];
 }
 
 export interface Character {

@@ -50,6 +50,7 @@
     "deploy:production": "./scripts/deploy.sh deploy production",
     "submit:staging": "./scripts/deploy.sh submit staging",
     "submit:production": "./scripts/deploy.sh submit production",
+    "seed:maps": "bunx tsx scripts/seed-maps.ts --execute",
     "postversion": "perl -i -pe \"s/buildNumber: '(\\\\d+)'/sprintf(\\\"buildNumber: '%d'\\\", \\$1 + 1)/e\" app.ts",
     "postinstall": "node ./scripts/postinstall/apply-patches.js"
   },

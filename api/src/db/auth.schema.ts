@@ -142,10 +142,103 @@ export const gamePlayers = sqliteTable("game_players", {
 	playerEmailIdx: index("game_players_player_email_idx").on(table.playerEmail),
 }));
 
+export const maps = sqliteTable("maps", {
+        id: text("id").primaryKey(),
+        slug: text("slug").notNull(),
+        name: text("name").notNull(),
+        description: text("description"),
+        width: integer("width").notNull(),
+        height: integer("height").notNull(),
+        gridSize: integer("grid_size").notNull().default(5),
+        terrain: text("terrain").notNull(),
+        fog: text("fog").notNull(),
+        metadata: text("metadata"),
+        createdAt: integer("created_at", { mode: "timestamp_ms" })
+                .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+                .notNull(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+                .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+                .$onUpdate(() => /* @__PURE__ */ new Date())
+                .notNull(),
+}, table => ({
+        slugIdx: uniqueIndex("maps_slug_unique").on(table.slug),
+}));
+
+export const mapTiles = sqliteTable("map_tiles", {
+        id: integer("id").primaryKey({ autoIncrement: true }),
+        mapId: text("map_id")
+                .notNull()
+                .references(() => maps.id, { onDelete: "cascade" }),
+        x: integer("x").notNull(),
+        y: integer("y").notNull(),
+        terrain: text("terrain").notNull(),
+        elevation: integer("elevation"),
+        isBlocked: integer("is_blocked", { mode: "boolean" }).notNull().default(false),
+        hasFog: integer("has_fog", { mode: "boolean" }).notNull().default(false),
+}, table => ({
+        mapIdx: index("map_tiles_map_id_idx").on(table.mapId),
+        coordinateIdx: uniqueIndex("map_tiles_coordinate_unique").on(table.mapId, table.x, table.y),
+}));
+
+export const npcs = sqliteTable("npcs", {
+        id: text("id").primaryKey(),
+        slug: text("slug").notNull(),
+        name: text("name").notNull(),
+        role: text("role").notNull(),
+        alignment: text("alignment"),
+        description: text("description"),
+        stats: text("stats").notNull(),
+        abilities: text("abilities"),
+        maxHealth: integer("max_health").notNull(),
+        metadata: text("metadata"),
+        createdAt: integer("created_at", { mode: "timestamp_ms" })
+                .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+                .notNull(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+                .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+                .$onUpdate(() => /* @__PURE__ */ new Date())
+                .notNull(),
+}, table => ({
+        slugIdx: uniqueIndex("npcs_slug_unique").on(table.slug),
+        roleIdx: index("npcs_role_idx").on(table.role),
+}));
+
+export const mapTokens = sqliteTable("map_tokens", {
+        id: text("id").primaryKey(),
+        gameId: text("game_id")
+                .notNull()
+                .references(() => games.id, { onDelete: "cascade" }),
+        mapId: text("map_id")
+                .references(() => maps.id, { onDelete: "set null" }),
+        tokenType: text("token_type").notNull(),
+        referenceId: text("reference_id"),
+        label: text("label").notNull(),
+        x: integer("x").notNull(),
+        y: integer("y").notNull(),
+        elevation: integer("elevation"),
+        color: text("color"),
+        icon: text("icon"),
+        metadata: text("metadata"),
+        createdAt: integer("created_at", { mode: "timestamp_ms" })
+                .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+                .notNull(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+                .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+                .$onUpdate(() => /* @__PURE__ */ new Date())
+                .notNull(),
+}, table => ({
+        gameIdx: index("map_tokens_game_idx").on(table.gameId),
+        mapIdx: index("map_tokens_map_idx").on(table.mapId),
+        referenceIdx: index("map_tokens_reference_idx").on(table.referenceId),
+}));
+
 export const gameStates = sqliteTable("game_states", {
-	gameId: text("game_id")
-		.primaryKey()
-		.references(() => games.id, { onDelete: "cascade" }),
-	stateData: text("state_data").notNull(),
-	updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+        gameId: text("game_id")
+                .primaryKey()
+                .references(() => games.id, { onDelete: "cascade" }),
+        stateData: text("state_data").notNull(),
+        activeMapId: text("active_map_id")
+                .references(() => maps.id, { onDelete: "set null" }),
+        mapState: text("map_state"),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });

@@ -48,9 +48,69 @@ export interface GamePlayerRow {
 }
 
 export interface GameStateRow {
-	game_id: string;
-	state_data: string; // JSON
-	updated_at: number;
+        game_id: string;
+        state_data: string; // JSON
+        active_map_id?: string | null;
+        map_state?: string | null;
+        updated_at: number;
+}
+
+export interface MapRow {
+        id: string;
+        slug: string;
+        name: string;
+        description: string | null;
+        width: number;
+        height: number;
+        grid_size: number;
+        terrain: string;
+        fog: string;
+        metadata: string | null;
+        created_at: number;
+        updated_at: number;
+}
+
+export interface MapTileRow {
+        id: number;
+        map_id: string;
+        x: number;
+        y: number;
+        terrain: string;
+        elevation: number | null;
+        is_blocked: number;
+        has_fog: number;
+}
+
+export interface NpcRow {
+        id: string;
+        slug: string;
+        name: string;
+        role: string;
+        alignment: string | null;
+        description: string | null;
+        stats: string;
+        abilities: string | null;
+        max_health: number;
+        metadata: string | null;
+        created_at: number;
+        updated_at: number;
+}
+
+export interface MapTokenRow {
+        id: string;
+        game_id: string;
+        map_id: string | null;
+        token_type: string;
+        reference_id: string | null;
+        label: string;
+        x: number;
+        y: number;
+        elevation: number | null;
+        color: string | null;
+        icon: string | null;
+        metadata: string | null;
+        created_at: number;
+        updated_at: number;
 }
 
 export class Database {
@@ -192,27 +252,31 @@ export class Database {
 		return result.results || [];
 	}
 
-	async updateCharacter(characterId: string, updates: Partial<CharacterRow>): Promise<void> {
-		const fields: string[] = [];
-		const values: any[] = [];
-		
-		Object.entries(updates).forEach(([key, value]) => {
-			if (key !== 'id' && value !== undefined) {
-				fields.push(`${key} = ?`);
-				values.push(value);
-			}
-		});
-		
-		if (fields.length === 0) return;
-		
-		fields.push('updated_at = ?');
-		values.push(Date.now());
-		values.push(characterId);
-		
-		await this.db.prepare(
-			`UPDATE characters SET ${fields.join(', ')} WHERE id = ?`,
-		).bind(...values).run();
-	}
+        async updateCharacter(characterId: string, updates: Partial<CharacterRow>): Promise<void> {
+                const fields: string[] = [];
+                const values: any[] = [];
+
+                Object.entries(updates).forEach(([key, value]) => {
+                        if (key !== 'id' && value !== undefined) {
+                                fields.push(`${key} = ?`);
+                                values.push(value);
+                        }
+                });
+
+                if (fields.length === 0) return;
+
+                fields.push('updated_at = ?');
+                values.push(Date.now());
+                values.push(characterId);
+
+                await this.db.prepare(
+                        `UPDATE characters SET ${fields.join(', ')} WHERE id = ?`,
+                ).bind(...values).run();
+        }
+
+        async deleteCharacter(characterId: string): Promise<void> {
+                await this.db.prepare('DELETE FROM characters WHERE id = ?').bind(characterId).run();
+        }
 
 	// Game player operations
 	async addPlayerToGame(player: Omit<GamePlayerRow, 'id'>): Promise<string> {
@@ -269,20 +333,122 @@ export class Database {
 	}
 
 	// Game state operations
-	async saveGameState(gameId: string, stateData: string): Promise<void> {
-		await this.db.prepare(
-			`INSERT INTO game_states (game_id, state_data, updated_at)
-			 VALUES (?, ?, ?)
-			 ON CONFLICT(game_id) DO UPDATE SET state_data = ?, updated_at = ?`,
-		).bind(gameId, stateData, Date.now(), stateData, Date.now()).run();
-	}
+        async listMaps(): Promise<MapRow[]> {
+                const result = await this.db.prepare('SELECT * FROM maps ORDER BY name ASC').all<MapRow>();
+                return result.results || [];
+        }
 
-	async getGameState(gameId: string): Promise<GameStateRow | null> {
-		const result = await this.db.prepare(
-			'SELECT * FROM game_states WHERE game_id = ?',
-		).bind(gameId).first<GameStateRow>();
-		return result || null;
-	}
+        async getMapById(mapId: string): Promise<MapRow | null> {
+                const result = await this.db.prepare('SELECT * FROM maps WHERE id = ?').bind(mapId).first<MapRow>();
+                return result || null;
+        }
+
+        async getMapTiles(mapId: string): Promise<MapTileRow[]> {
+                const result = await this.db.prepare('SELECT * FROM map_tiles WHERE map_id = ? ORDER BY y ASC, x ASC')
+                        .bind(mapId)
+                        .all<MapTileRow>();
+                return result.results || [];
+        }
+
+        async listNpcDefinitions(): Promise<NpcRow[]> {
+                const result = await this.db.prepare('SELECT * FROM npcs ORDER BY name ASC').all<NpcRow>();
+                return result.results || [];
+        }
+
+        async getMapTokensForGame(gameId: string): Promise<MapTokenRow[]> {
+                const result = await this.db.prepare('SELECT * FROM map_tokens WHERE game_id = ? ORDER BY updated_at ASC')
+                        .bind(gameId)
+                        .all<MapTokenRow>();
+                return result.results || [];
+        }
+
+        async getMapToken(tokenId: string): Promise<MapTokenRow | null> {
+                const result = await this.db.prepare('SELECT * FROM map_tokens WHERE id = ?').bind(tokenId).first<MapTokenRow>();
+                return result || null;
+        }
+
+        async createMapToken(token: Omit<MapTokenRow, 'created_at' | 'updated_at'>): Promise<void> {
+                const now = Date.now();
+                await this.db.prepare(
+                        `INSERT INTO map_tokens (id, game_id, map_id, token_type, reference_id, label, x, y, elevation, color, icon, metadata, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                )
+                        .bind(
+                                token.id,
+                                token.game_id,
+                                token.map_id || null,
+                                token.token_type,
+                                token.reference_id || null,
+                                token.label,
+                                token.x,
+                                token.y,
+                                token.elevation ?? null,
+                                token.color ?? null,
+                                token.icon ?? null,
+                                token.metadata ?? null,
+                                now,
+                                now,
+                        )
+                        .run();
+        }
+
+        async updateMapToken(tokenId: string, updates: Partial<MapTokenRow>): Promise<void> {
+                const fields: string[] = [];
+                const values: any[] = [];
+
+                Object.entries(updates).forEach(([key, value]) => {
+                        if (key !== 'id' && value !== undefined) {
+                                fields.push(`${key} = ?`);
+                                values.push(value);
+                        }
+                });
+
+                if (fields.length === 0) return;
+
+                fields.push('updated_at = ?');
+                values.push(Date.now());
+                values.push(tokenId);
+
+                await this.db.prepare(`UPDATE map_tokens SET ${fields.join(', ')} WHERE id = ?`).bind(...values).run();
+        }
+
+        async deleteMapToken(tokenId: string): Promise<void> {
+                await this.db.prepare('DELETE FROM map_tokens WHERE id = ?').bind(tokenId).run();
+        }
+
+        async saveGameState(
+                gameId: string,
+                stateData: string,
+                options?: { activeMapId?: string | null; mapState?: string | null },
+        ): Promise<void> {
+                const now = Date.now();
+                const activeMapId = options?.activeMapId ?? null;
+                const mapState = options?.mapState ?? null;
+                await this.db.prepare(
+                        `INSERT INTO game_states (game_id, state_data, active_map_id, map_state, updated_at)
+                         VALUES (?, ?, ?, ?, ?)
+                         ON CONFLICT(game_id) DO UPDATE SET state_data = ?, active_map_id = ?, map_state = ?, updated_at = ?`,
+                )
+                        .bind(
+                                gameId,
+                                stateData,
+                                activeMapId,
+                                mapState,
+                                now,
+                                stateData,
+                                activeMapId,
+                                mapState,
+                                now,
+                        )
+                        .run();
+        }
+
+        async getGameState(gameId: string): Promise<GameStateRow | null> {
+                const result = await this.db.prepare(
+                        'SELECT * FROM game_states WHERE game_id = ?',
+                ).bind(gameId).first<GameStateRow>();
+                return result || null;
+        }
 }
 
 
