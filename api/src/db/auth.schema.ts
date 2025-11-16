@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index, uniqueIndex, real } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
 	id: text("id").primaryKey(),
@@ -69,35 +69,98 @@ export const accounts = sqliteTable("accounts", {
 });
 
 export const verifications = sqliteTable("verifications", {
-	id: text("id").primaryKey(),
-	identifier: text("identifier").notNull(),
-	value: text("value").notNull(),
-	expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
-	createdAt: integer("created_at", { mode: "timestamp_ms" })
-		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-		.notNull(),
-	updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-		.$onUpdate(() => /* @__PURE__ */ new Date())
-		.notNull(),
+        id: text("id").primaryKey(),
+        identifier: text("identifier").notNull(),
+        value: text("value").notNull(),
+        expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+        createdAt: integer("created_at", { mode: "timestamp_ms" })
+                .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+                .notNull(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+                .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+                .$onUpdate(() => /* @__PURE__ */ new Date())
+                .notNull(),
 });
 
-export const games = sqliteTable("games", {
-	id: text("id").primaryKey(),
-	inviteCode: text("invite_code").notNull(),
-	hostId: text("host_id").notNull(),
-	hostEmail: text("host_email"),
-	questId: text("quest_id").notNull(),
-	questData: text("quest_data").notNull(),
-	world: text("world").notNull(),
-	startingArea: text("starting_area").notNull(),
-	status: text("status").notNull().default("waiting"),
-	createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
-	updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+export const maps = sqliteTable("maps", {
+        id: text("id").primaryKey(),
+        slug: text("slug").notNull(),
+        name: text("name").notNull(),
+        description: text("description"),
+        width: integer("width").notNull(),
+        height: integer("height").notNull(),
+        defaultTerrain: text("default_terrain").notNull(),
+        fogOfWar: text("fog_of_war").notNull(),
+        terrainLayers: text("terrain_layers").notNull(),
+        metadata: text("metadata").default("{}").notNull(),
+        createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 }, table => ({
-	inviteCodeIdx: uniqueIndex("games_invite_code_unique").on(table.inviteCode),
-	hostIdIdx: index("games_host_id_idx").on(table.hostId),
-	hostEmailIdx: index("games_host_email_idx").on(table.hostEmail),
+        slugIdx: uniqueIndex("maps_slug_unique").on(table.slug),
+}));
+
+export const mapTiles = sqliteTable("map_tiles", {
+        id: text("id").primaryKey(),
+        mapId: text("map_id")
+                .notNull()
+                .references(() => maps.id, { onDelete: "cascade" }),
+        x: integer("x").notNull(),
+        y: integer("y").notNull(),
+        terrainType: text("terrain_type").notNull(),
+        elevation: integer("elevation").default(0).notNull(),
+        isBlocked: integer("is_blocked", { mode: "boolean" }).default(false).notNull(),
+        hasFog: integer("has_fog", { mode: "boolean" }).default(false).notNull(),
+        metadata: text("metadata").default("{}").notNull(),
+}, table => ({
+        mapIdx: index("map_tiles_map_id_idx").on(table.mapId),
+        coordinateIdx: uniqueIndex("map_tiles_map_coordinate_unique").on(
+                table.mapId,
+                table.x,
+                table.y,
+        ),
+}));
+
+export const npcs = sqliteTable("npcs", {
+        id: text("id").primaryKey(),
+        slug: text("slug").notNull(),
+        name: text("name").notNull(),
+        role: text("role").notNull(),
+        alignment: text("alignment").notNull(),
+        disposition: text("disposition").notNull(),
+        description: text("description"),
+        baseHealth: integer("base_health").notNull(),
+        baseArmorClass: integer("base_armor_class").notNull(),
+        challengeRating: real("challenge_rating").notNull(),
+        archetype: text("archetype").notNull(),
+        defaultActions: text("default_actions").notNull(),
+        stats: text("stats").notNull(),
+        abilities: text("abilities").notNull(),
+        lootTable: text("loot_table").notNull(),
+        metadata: text("metadata").default("{}").notNull(),
+        createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+}, table => ({
+        slugIdx: uniqueIndex("npcs_slug_unique").on(table.slug),
+}));
+
+export const games = sqliteTable("games", {
+        id: text("id").primaryKey(),
+        inviteCode: text("invite_code").notNull(),
+        hostId: text("host_id").notNull(),
+        hostEmail: text("host_email"),
+        questId: text("quest_id").notNull(),
+        questData: text("quest_data").notNull(),
+        world: text("world").notNull(),
+        startingArea: text("starting_area").notNull(),
+        status: text("status").notNull().default("waiting"),
+        currentMapId: text("current_map_id").references(() => maps.id, { onDelete: "set null" }),
+        createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+}, table => ({
+        inviteCodeIdx: uniqueIndex("games_invite_code_unique").on(table.inviteCode),
+        hostIdIdx: index("games_host_id_idx").on(table.hostId),
+        hostEmailIdx: index("games_host_email_idx").on(table.hostEmail),
+        currentMapIdx: index("games_current_map_id_idx").on(table.currentMapId),
 }));
 
 export const characters = sqliteTable("characters", {
@@ -143,9 +206,40 @@ export const gamePlayers = sqliteTable("game_players", {
 }));
 
 export const gameStates = sqliteTable("game_states", {
-	gameId: text("game_id")
-		.primaryKey()
-		.references(() => games.id, { onDelete: "cascade" }),
-	stateData: text("state_data").notNull(),
-	updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+        gameId: text("game_id")
+                .primaryKey()
+                .references(() => games.id, { onDelete: "cascade" }),
+        stateData: text("state_data").notNull(),
+        mapState: text("map_state").default("{}").notNull(),
+        logEntries: text("log_entries").default("[]").notNull(),
+        stateVersion: integer("state_version").default(1).notNull(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });
+
+export const mapTokens = sqliteTable("map_tokens", {
+        id: text("id").primaryKey(),
+        gameId: text("game_id").references(() => games.id, { onDelete: "cascade" }),
+        mapId: text("map_id")
+                .notNull()
+                .references(() => maps.id, { onDelete: "cascade" }),
+        characterId: text("character_id").references(() => characters.id, { onDelete: "set null" }),
+        npcId: text("npc_id").references(() => npcs.id, { onDelete: "set null" }),
+        tokenType: text("token_type").notNull(),
+        label: text("label"),
+        x: integer("x").notNull(),
+        y: integer("y").notNull(),
+        facing: integer("facing").default(0).notNull(),
+        color: text("color"),
+        status: text("status").default("idle").notNull(),
+        isVisible: integer("is_visible", { mode: "boolean" }).default(true).notNull(),
+        hitPoints: integer("hit_points"),
+        maxHitPoints: integer("max_hit_points"),
+        metadata: text("metadata").default("{}").notNull(),
+        createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+}, table => ({
+        gameIdx: index("map_tokens_game_id_idx").on(table.gameId),
+        mapIdx: index("map_tokens_map_id_idx").on(table.mapId),
+        characterIdx: index("map_tokens_character_id_idx").on(table.characterId),
+        npcIdx: index("map_tokens_npc_id_idx").on(table.npcId),
+}));
