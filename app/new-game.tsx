@@ -1,4 +1,4 @@
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import {
 	Alert,
@@ -20,12 +20,13 @@ import { RaceChooser } from '@/components/race-chooser';
 import { SkillChooser } from '@/components/skill-chooser';
 import { ThemedView } from '@/components/themed-view';
 import { TraitChooser } from '@/components/trait-chooser';
-import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { WorldChooser } from '@/components/world-chooser';
 import { generateRandomBackground } from '@/constants/backgrounds';
 import { useGameState } from '@/hooks/use-game-state';
 import { useScreenSize } from '@/hooks/use-screen-size';
+import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { ClassOption } from '@/types/class-option';
+import { Character } from '@/types/character';
 import { LocationOption } from '@/types/location-option';
 import { RaceOption } from '@/types/race-option';
 import { Skill } from '@/types/skill';
@@ -36,6 +37,10 @@ import { WorldOption } from '@/types/world-option';
 type WizardStep = 'world' | 'location' | 'race' | 'class' | 'trait' | 'attributes' | 'skills' | 'character';
 
 const NewGameScreen: React.FC = () => {
+	const params = useLocalSearchParams<{ mode?: string }>();
+	const modeParam = Array.isArray(params.mode) ? params.mode[0] : params.mode;
+	const wizardMode = modeParam === 'character' ? 'character' : 'solo';
+	const isCharacterMode = wizardMode === 'character';
 	const [currentStep, setCurrentStep] = useState<WizardStep>('world');
 	const [selectedWorld, setSelectedWorld] = useState<WorldOption | null>(null);
 	const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
@@ -46,8 +51,7 @@ const NewGameScreen: React.FC = () => {
 	const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
 	const [characterName, setCharacterName] = useState('');
 	const [customStory, setCustomStory] = useState('');
-	const [showConfirm, setShowConfirm] = useState(false);
-	const [pendingCharacter, setPendingCharacter] = useState<any>(null);
+	const [isSaving, setIsSaving] = useState(false);
 	const { isMobile } = useScreenSize();
 	const insets = useSafeAreaInsets();
 
@@ -116,92 +120,112 @@ const NewGameScreen: React.FC = () => {
 		setCurrentStep('character');
 	};
 
-	const handleConfirmStart = async () => {
-		if (
-			!pendingCharacter ||
-			!selectedWorld ||
-			!selectedLocation ||
-			!selectedRace ||
-			!selectedClass ||
-			!selectedTrait
-		) {
-			console.error('❌ Missing required data for character creation');
+	const generateCharacterId = () =>
+		`character-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+	const buildCharacterPayload = (): Character => ({
+		id: generateCharacterId(),
+		level: 1,
+		race: selectedRace?.name ?? 'Unknown',
+		name: characterName.trim(),
+		class: selectedClass?.name ?? 'Adventurer',
+		trait: selectedTrait?.name,
+		description: customStory.trim(),
+		stats: selectedAttributes!,
+		skills: selectedSkills.map(skill => skill.id),
+		inventory: [],
+		equipped: {
+			helmet: null,
+			chest: null,
+			arms: null,
+			legs: null,
+			boots: null,
+			mainHand: null,
+			offHand: null,
+			accessory: null,
+		},
+		health: 10,
+		maxHealth: 10,
+		actionPoints: 3,
+		maxActionPoints: 3,
+	});
+
+	const handleFinalizeCharacter = async () => {
+		if (!selectedRace || !selectedClass || !selectedTrait || !selectedAttributes) {
+			Alert.alert('Missing Info', 'Please complete all prior steps before continuing.');
 			return;
 		}
 
-		// Generate unique character ID
-		const characterId = `character-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+		if (!characterName.trim() || !customStory.trim()) {
+			Alert.alert('Missing Info', 'Enter a name and background for your character.');
+			return;
+		}
 
-		// Create proper Character object that matches CharacterSchema
-		const character = {
-			id: characterId,
-			level: 1, // Always start at level 1
-			race: selectedRace.name, // Required field from race selection
-			name: pendingCharacter.name,
-			class: selectedClass.name, // Required field from class selection
-			trait: selectedTrait?.name, // Optional field from trait selection
-			description: pendingCharacter.description || '',
-			stats: pendingCharacter.stats,
-			skills: selectedSkills.map(s => s.id), // Use selectedSkills
-			inventory: [], // Will be populated below
-			equipped: {
-				helmet: null,
-				chest: null,
-				arms: null,
-				legs: null,
-				boots: null,
-				mainHand: null,
-				offHand: null,
-				accessory: null,
-			},
-			health: pendingCharacter.health || 10,
-			maxHealth: pendingCharacter.maxHealth || 10,
-			actionPoints: pendingCharacter.actionPoints || 3,
-			maxActionPoints: pendingCharacter.maxActionPoints || 3,
-		};
+		if (!isCharacterMode && (!selectedWorld || !selectedLocation)) {
+			Alert.alert('Missing Info', 'Select a world and starting location to begin.');
+			return;
+		}
 
-		// Create proper GameState structure
-		const gameState = {
-			characters: [character],
-			playerCharacterId: characterId,
-			gameWorld: selectedWorld.name,
-			startingArea: selectedLocation.name,
-		};
+		const characterPayload = buildCharacterPayload();
+		setIsSaving(true);
 
 		try {
-			// Save the properly structured game state using the new hook
-			await save(gameState);
-			setShowConfirm(false);
-			setPendingCharacter(null);
+			if (isCharacterMode) {
+				await multiplayerClient.createCharacter(characterPayload);
+				Alert.alert(
+					'Character Saved',
+					`${characterPayload.name} has been added to your roster.`,
+					[
+						{
+							text: 'OK',
+							onPress: () => {
+								router.replace('/characters');
+							},
+						},
+					],
+				);
+			} else {
+				const gameState = {
+					characters: [characterPayload],
+					playerCharacterId: characterPayload.id,
+					gameWorld: selectedWorld?.name ?? '',
+					startingArea: selectedLocation?.name ?? '',
+				};
 
-			// Now add items to inventory using the inventory manager
-			// (which can now successfully load the character)
-			await addItem('rations', 2);
-			await addItem('tent', 1);
-			await addItem('healing_potion', 2);
+				await save(gameState);
+				await addItem('rations', 2);
+				await addItem('tent', 1);
+				await addItem('healing_potion', 2);
 
-			// Add class-appropriate gear
-			if (selectedClass.id === 'fighter') {
-				await addItem('sword', 1);
-				await equipItem('sword');
-			}
-			if (selectedClass.id === 'wizard') {
-				await addItem('staff', 1);
-				await equipItem('staff');
-			}
-			if (selectedClass.id === 'rogue') {
-				await addItem('dagger', 1);
-				await equipItem('dagger');
-			}
-			if (selectedClass.id === 'cleric') {
-				await addItem('mace', 1);
-				await equipItem('mace');
-			}
+				if (selectedClass.id === 'fighter') {
+					await addItem('sword', 1);
+					await equipItem('sword');
+				}
+				if (selectedClass.id === 'wizard') {
+					await addItem('staff', 1);
+					await equipItem('staff');
+				}
+				if (selectedClass.id === 'rogue') {
+					await addItem('dagger', 1);
+					await equipItem('dagger');
+				}
+				if (selectedClass.id === 'cleric') {
+					await addItem('mace', 1);
+					await equipItem('mace');
+				}
 
-			router.replace('/game');
+				router.replace('/game');
+			}
 		} catch (error) {
-			console.error('Failed to save game state:', error);
-			Alert.alert('Error', 'Failed to save game state.');
+			console.error('Failed to finalize character:', error);
+			Alert.alert(
+				'Error',
+				isCharacterMode
+					? 'Failed to save your character. Please try again.'
+					: 'Failed to start the game. Please try again.',
+			);
+		} finally {
+			setIsSaving(false);
 		}
 	};
 
@@ -525,105 +549,10 @@ const NewGameScreen: React.FC = () => {
 								]}
 								disabled={!(characterName.trim() && customStory.trim())}
 								onPress={async () => {
-									const characterData = {
-										name: characterName,
-										description: customStory,
-										stats: selectedAttributes,
-										skills: selectedSkills.map(s => s.id),
-									};
-
-									if (
-										!selectedWorld ||
-										!selectedLocation ||
-										!selectedRace ||
-										!selectedClass ||
-										!selectedTrait ||
-										!selectedAttributes
-									) {
-										console.error(
-											'❌ Missing required data for character creation',
-										);
-										Alert.alert(
-											'Error',
-											'Missing required character data. Please go back and complete all steps.',
-										);
+									if (isSaving) {
 										return;
 									}
-
-									try {
-										// Generate unique character ID
-										const characterId = `character-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-										// Create proper Character object that matches CharacterSchema
-										const character = {
-											id: characterId,
-											level: 1, // Always start at level 1
-											race: selectedRace.name, // Required field from race selection
-											name: characterData.name,
-											class: selectedClass.name, // Required field from class selection
-											trait: selectedTrait.name, // Required field from trait selection
-											description: characterData.description || '',
-											stats: characterData.stats,
-											skills: selectedSkills.map(s => s.id), // Use selectedSkills
-											inventory: [], // Will be populated below
-											equipped: {
-												helmet: null,
-												chest: null,
-												arms: null,
-												legs: null,
-												boots: null,
-												mainHand: null,
-												offHand: null,
-												accessory: null,
-											},
-											health: 10, // Default starting health
-											maxHealth: 10,
-											actionPoints: 3, // Default starting action points
-											maxActionPoints: 3,
-										};
-
-										// Create proper GameState structure
-										const gameState = {
-											characters: [character],
-											playerCharacterId: characterId,
-											gameWorld: selectedWorld.name,
-											startingArea: selectedLocation.name,
-										};
-
-										// Save the properly structured game state using the new hook
-										await save(gameState);
-
-										// Now add items to inventory using the inventory manager
-										// (which can now successfully load the character)
-										await addItem('rations', 2);
-										await addItem('tent', 1);
-										await addItem('healing_potion', 2);
-
-										// Add class-appropriate gear
-										if (selectedClass.id === 'fighter') {
-											await addItem('sword', 1);
-											await equipItem('sword');
-										}
-										if (selectedClass.id === 'wizard') {
-											await addItem('staff', 1);
-											await equipItem('staff');
-										}
-										if (selectedClass.id === 'rogue') {
-											await addItem('dagger', 1);
-											await equipItem('dagger');
-										}
-										if (selectedClass.id === 'cleric') {
-											await addItem('mace', 1);
-											await equipItem('mace');
-										}
-										router.replace('/game');
-									} catch (error) {
-										console.error('Failed to save game state:', error);
-										Alert.alert(
-											'Error',
-											'Failed to save game state. Please try again.',
-										);
-									}
+									handleFinalizeCharacter().catch(() => undefined);
 								}}
 							>
 								<Text
@@ -632,7 +561,11 @@ const NewGameScreen: React.FC = () => {
 										isMobile && { fontSize: 18 },
 									]}
 								>
-									Start Game
+									{isSaving
+										? 'Saving...'
+										: isCharacterMode
+											? 'Save Character'
+											: 'Start Game'}
 								</Text>
 							</TouchableOpacity>
 						</View>
@@ -680,15 +613,6 @@ const NewGameScreen: React.FC = () => {
 					{renderStepContent()}
 				</ScrollView>
 			</View>
-			<ConfirmModal
-				visible={showConfirm}
-				title="Start Game?"
-				message="Are you sure you want to start the game with this character? This will save your progress."
-				onConfirm={handleConfirmStart}
-				onCancel={() => setShowConfirm(false)}
-				confirmLabel="Start"
-				cancelLabel="Cancel"
-			/>
 		</ThemedView>
 	);
 };

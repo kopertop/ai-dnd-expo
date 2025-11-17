@@ -180,56 +180,65 @@ const CharacterManagerScreen: React.FC = () => {
 					)}
 				</View>
 				<View style={styles.section}>
-					<ThemedText type="subtitle">{editing ? 'Edit Character' : 'Create Character'}</ThemedText>
-					<View style={styles.form}>
-						<TextInput
-							style={styles.input}
-							value={form.name}
-							onChangeText={text => setForm(prev => ({ ...prev, name: text }))}
-							placeholder="Character name"
-							placeholderTextColor="#9B8B7A"
-						/>
-						<View style={styles.row}>
-							<TextInput
-								style={[styles.input, styles.rowInput]}
-								value={form.race}
-								onChangeText={text => setForm(prev => ({ ...prev, race: text }))}
-								placeholder="Race"
-								placeholderTextColor="#9B8B7A"
-							/>
-							<TextInput
-								style={[styles.input, styles.rowInput]}
-								value={form.class}
-								onChangeText={text => setForm(prev => ({ ...prev, class: text }))}
-								placeholder="Class"
-								placeholderTextColor="#9B8B7A"
-							/>
-						</View>
-						<TextInput
-							style={[styles.input, styles.multiline]}
-							value={form.description ?? ''}
-							onChangeText={text => setForm(prev => ({ ...prev, description: text }))}
-							placeholder="Backstory or description"
-							placeholderTextColor="#9B8B7A"
-							multiline
-						/>
-						<View style={styles.formActions}>
-							{editing && (
-								<TouchableOpacity style={styles.secondaryBtn} onPress={resetForm}>
-									<ThemedText style={styles.secondaryLabel}>Cancel</ThemedText>
-								</TouchableOpacity>
-							)}
-							<TouchableOpacity
-								style={[styles.primaryBtn, (!isFormValid || loading) && styles.primaryBtnDisabled]}
-								disabled={!isFormValid || loading}
-								onPress={handleSave}
-							>
-								<ThemedText style={styles.primaryLabel}>
-									{loading ? 'Saving...' : editing ? 'Save Changes' : 'Create Character'}
-								</ThemedText>
-							</TouchableOpacity>
-						</View>
-					</View>
+					{editing ? (
+						<>
+							<ThemedText type="subtitle">Edit Character</ThemedText>
+							<View style={styles.form}>
+								<TextInput
+									style={styles.input}
+									value={form.name}
+									onChangeText={text => setForm(prev => ({ ...prev, name: text }))}
+									placeholder="Character name"
+									placeholderTextColor="#9B8B7A"
+								/>
+								<View style={styles.row}>
+									<TextInput
+										style={[styles.input, styles.rowInput]}
+										value={form.race}
+										onChangeText={text => setForm(prev => ({ ...prev, race: text }))}
+										placeholder="Race"
+										placeholderTextColor="#9B8B7A"
+									/>
+									<TextInput
+										style={[styles.input, styles.rowInput]}
+										value={form.class}
+										onChangeText={text => setForm(prev => ({ ...prev, class: text }))}
+										placeholder="Class"
+										placeholderTextColor="#9B8B7A"
+									/>
+								</View>
+								<TextInput
+									style={[styles.input, styles.multiline]}
+									value={form.description ?? ''}
+									onChangeText={text => setForm(prev => ({ ...prev, description: text }))}
+									placeholder="Backstory or description"
+									placeholderTextColor="#9B8B7A"
+									multiline
+								/>
+								<View style={styles.formActions}>
+									<TouchableOpacity style={styles.secondaryBtn} onPress={resetForm}>
+										<ThemedText style={styles.secondaryLabel}>Cancel</ThemedText>
+									</TouchableOpacity>
+									<TouchableOpacity
+										style={[styles.primaryBtn, (!isFormValid || loading) && styles.primaryBtnDisabled]}
+										disabled={!isFormValid || loading}
+										onPress={handleSave}
+									>
+										<ThemedText style={styles.primaryLabel}>
+											{loading ? 'Saving...' : 'Save Changes'}
+										</ThemedText>
+									</TouchableOpacity>
+								</View>
+							</View>
+						</>
+					) : (
+						<TouchableOpacity
+							style={[styles.primaryBtn, { alignSelf: 'flex-start' }]}
+							onPress={() => router.push('/new-game?mode=character')}
+						>
+							<ThemedText style={styles.primaryLabel}>Add Character</ThemedText>
+						</TouchableOpacity>
+					)}
 				</View>
 				<TouchableOpacity style={styles.joinBtn} onPress={() => router.push('/join-game')}>
 					<ThemedText style={styles.joinLabel}>Join a Game</ThemedText>
