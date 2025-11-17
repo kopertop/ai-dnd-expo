@@ -175,15 +175,8 @@ const NewGameScreen: React.FC = () => {
 				Alert.alert(
 					'Character Saved',
 					`${characterPayload.name} has been added to your roster.`,
-					[
-						{
-							text: 'OK',
-							onPress: () => {
-								router.replace('/characters');
-							},
-						},
-					],
 				);
+				router.replace('/characters');
 			} else {
 				const gameState = {
 					characters: [characterPayload],
