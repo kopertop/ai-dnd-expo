@@ -42,6 +42,11 @@ function createAuth(env?: CloudflareBindings, cf?: IncomingRequestCfProperties) 
 			'https://localhost:8081',
 			'http://127.0.0.1:8081',
 			'https://127.0.0.1:8081',
+			'https://ai-dnd.kopertop.workers.dev',
+			'https://ai-dnd-web.pages.dev',
+			'https://preview.ai-dnd-web.pages.dev',
+			'https://dev.ai-dnd-web.pages.dev',
+			'https://main.ai-dnd-web.pages.dev',
 		],
 		providers: googleClientId
 			? [
@@ -67,9 +72,9 @@ function createAuth(env?: CloudflareBindings, cf?: IncomingRequestCfProperties) 
 						},
 					}
 					: undefined,
-                                kv: env?.AUTH_SESSIONS
-                                        ? (env.AUTH_SESSIONS as KVNamespace<string>)
-                                        : undefined,
+				kv: env?.AUTH_SESSIONS
+					? (env.AUTH_SESSIONS as KVNamespace<string>)
+					: undefined,
 			},
 			{
 				emailAndPassword: {
