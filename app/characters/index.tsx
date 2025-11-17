@@ -234,7 +234,7 @@ const CharacterManagerScreen: React.FC = () => {
 					) : (
 						<TouchableOpacity
 							style={[styles.primaryBtn, { alignSelf: 'flex-start' }]}
-							onPress={() => router.push('/new-game?mode=character')}
+							onPress={() => router.push('/new-character?mode=character')}
 						>
 							<ThemedText style={styles.primaryLabel}>Add Character</ThemedText>
 						</TouchableOpacity>
