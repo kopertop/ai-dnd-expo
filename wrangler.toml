@@ -12,3 +12,16 @@ name = "ai-dnd-web"
 
 [[env.production.analytics_engine_datasets]]
 binding = "ANALYTICS"
+
+[[env.production.vars]]
+EXPO_PUBLIC_API_BASE_URL = "https://ai-dnd.kopertop.workers.dev"
+
+# Preview environment configuration
+[env.preview]
+name = "property-workorder-web-preview"
+
+[[env.preview.analytics_engine_datasets]]
+binding = "ANALYTICS"
+
+[[env.preview.vars]]
+EXPO_PUBLIC_API_BASE_URL = "https://ai-dnd.kopertop.workers.dev"
