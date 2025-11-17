@@ -1,6 +1,6 @@
 import { Stack, router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppFooter } from '@/components/app-footer';
@@ -105,6 +105,14 @@ const CharacterManagerScreen: React.FC = () => {
 	);
 
 	const handleDelete = (character: Character) => {
+		if (Platform.OS === 'web') {
+			const confirmed = window.confirm(`Delete ${character.name}?`);
+			if (confirmed) {
+				void deleteCharacter(character);
+			}
+			return;
+		}
+
 		Alert.alert('Delete Character', `Delete ${character.name}?`, [
 			{ text: 'Cancel', style: 'cancel' },
 			{
