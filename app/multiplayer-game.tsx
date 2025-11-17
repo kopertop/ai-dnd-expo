@@ -16,6 +16,11 @@ import { PlayerActionMessage } from '@/types/api/websocket-messages';
 import { MapState } from '@/types/multiplayer-map';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 
+type PlacementSelection = {
+        type: 'character' | 'npc' | null;
+        id?: string;
+};
+
 const MultiplayerGameScreen: React.FC = () => {
 	const params = useLocalSearchParams<{ inviteCode: string; hostId?: string; playerId?: string }>();
 	const { inviteCode, hostId, playerId } = params;
@@ -23,6 +28,9 @@ const MultiplayerGameScreen: React.FC = () => {
 	const [sharedMap, setSharedMap] = useState<MapState | null>(null);
 	const [isHost, setIsHost] = useState(false);
 	const [wsConnected, setWsConnected] = useState(false);
+	const [mapEditEnabled, setMapEditEnabled] = useState(false);
+	const [selectedTerrain, setSelectedTerrain] = useState('stone');
+	const [placementSelection, setPlacementSelection] = useState<PlacementSelection>({ type: null });
 	const { isMobile } = useScreenSize();
 	const insets = useSafeAreaInsets();
 
@@ -51,7 +59,19 @@ const MultiplayerGameScreen: React.FC = () => {
 		if (hostId && gameState) {
 			setIsHost(gameState.hostId === hostId);
 		}
-	}, [hostId, gameState?.hostId]);
+	}, [gameState, hostId]);
+
+	const loadGameState = useCallback(async () => {
+		try {
+			const session = await multiplayerClient.getGameSession(inviteCode);
+			if (session.gameState) {
+				setGameState(session.gameState);
+			}
+		} catch (error) {
+			Alert.alert('Error', 'Failed to load game state');
+			console.error(error);
+		}
+	}, [inviteCode]);
 
 	// Stable callback for game state updates
 	const handleGameStateUpdate = useCallback((newState: MultiplayerGameState) => {
@@ -60,7 +80,7 @@ const MultiplayerGameScreen: React.FC = () => {
 	}, []);
 
 	// WebSocket connection - only connect when we have characterId
-	const { isConnected: wsIsConnected, send: wsSend } = useWebSocket({
+	const { isConnected: wsIsConnected } = useWebSocket({
 		inviteCode: inviteCode || '',
 		playerId: playerId || '',
 		characterId: characterId,
@@ -111,21 +131,9 @@ const MultiplayerGameScreen: React.FC = () => {
 			refreshSharedMap().catch(() => undefined);
 		}, 5000);
 		return () => clearInterval(interval);
-	}, [inviteCode, refreshSharedMap]);
+	}, [gameState, inviteCode, loadGameState, refreshSharedMap]);
 
-	const loadGameState = async () => {
-		try {
-			const session = await multiplayerClient.getGameSession(inviteCode);
-			if (session.gameState) {
-				setGameState(session.gameState);
-			}
-		} catch (error) {
-			Alert.alert('Error', 'Failed to load game state');
-			console.error(error);
-		}
-	};
-
-	const handleDMAction = useCallback(async (type: string, data: any) => {
+	const handleDMAction = useCallback(async (type: string, data: Record<string, unknown>) => {
 		if (!inviteCode || !hostId || !gameState) return;
 
 		try {
@@ -143,12 +151,108 @@ const MultiplayerGameScreen: React.FC = () => {
 			Alert.alert('Error', 'Failed to perform DM action');
 			console.error(error);
 		}
-	}, [inviteCode, hostId, gameState, wsIsConnected]);
+	}, [gameState, hostId, inviteCode, loadGameState, wsIsConnected]);
 
 	const handleAIRequest = useCallback(async (prompt: string): Promise<string> => {
 		// For now, return a placeholder. In production, this would call the Ollama API through the worker
-		return 'AI assistance feature coming soon. This will integrate with Ollama for DM help.';
+		return `AI assistance feature coming soon for: ${prompt}. This will integrate with Ollama for DM help.`;
 	}, []);
+
+	const handleToggleMapEdit = useCallback((enabled: boolean) => {
+		setPlacementSelection({ type: null });
+		setMapEditEnabled(enabled);
+	}, []);
+
+	const handlePlacementChange = useCallback((selection: PlacementSelection) => {
+		setMapEditEnabled(prev => (selection.type ? false : prev));
+		setPlacementSelection(selection);
+	}, []);
+
+	const handleMapTilePress = useCallback(
+		async (x: number, y: number) => {
+			if (!inviteCode || !isHost) {
+				return;
+			}
+
+			if (placementSelection.type === 'character') {
+				const character = gameState?.characters.find(c => c.id === placementSelection.id);
+				if (!character) return;
+
+				try {
+					await multiplayerClient.saveMapToken(inviteCode, {
+						tokenType: 'player',
+						characterId: character.id,
+						label: character.name,
+						x,
+						y,
+						color: '#3B2F1B',
+					});
+					await refreshSharedMap();
+					setPlacementSelection({ type: null });
+				} catch (error) {
+					Alert.alert('Placement Failed', 'Unable to place character token');
+					console.error(error);
+				}
+				return;
+			}
+
+			if (placementSelection.type === 'npc') {
+				const npc = gameState?.npcStates?.find(n => n.id === placementSelection.id);
+				if (!npc) return;
+
+				try {
+					await multiplayerClient.saveMapToken(inviteCode, {
+						tokenType: 'npc',
+						npcId: npc.id,
+						label: npc.name,
+						x,
+						y,
+						color: npc.color,
+						metadata: npc.metadata,
+					});
+					await refreshSharedMap();
+					setPlacementSelection({ type: null });
+				} catch (error) {
+					Alert.alert('Placement Failed', 'Unable to place NPC token');
+					console.error(error);
+				}
+				return;
+			}
+
+			if (!mapEditEnabled) {
+				return;
+			}
+
+			const terrainType = selectedTerrain || sharedMap?.defaultTerrain || 'stone';
+
+			try {
+				await multiplayerClient.mutateTerrain(inviteCode, {
+					tiles: [
+						{
+							x,
+							y,
+							terrainType,
+						},
+					],
+				});
+				await refreshSharedMap();
+			} catch (error) {
+				Alert.alert('Edit Failed', 'Unable to update terrain');
+				console.error(error);
+			}
+		},
+		[
+			inviteCode,
+			isHost,
+			placementSelection,
+			gameState?.characters,
+			gameState?.npcStates,
+			mapEditEnabled,
+			selectedTerrain,
+			sharedMap?.defaultTerrain,
+			refreshSharedMap,
+		],
+	);
 
 	if (!gameState) {
 		return (
@@ -161,18 +265,27 @@ const MultiplayerGameScreen: React.FC = () => {
 
 	const currentCharacterId = gameState.players.find(p => p.playerId === playerId)?.characterId;
 
-	const renderMapSection = () => (
-		<View style={styles.mapContainer}>
-			<ThemedText type="subtitle">Shared Map</ThemedText>
-			{sharedMap ? (
-				<InteractiveMap map={sharedMap} highlightTokenId={currentCharacterId || undefined} />
-			) : (
-				<ThemedText style={styles.mapHint}>
-					Waiting for the DM to configure a map.
-				</ThemedText>
-			)}
-		</View>
-	);
+	const renderMapSection = () => {
+		const allowMapInteraction = isHost && (mapEditEnabled || placementSelection.type !== null);
+
+		return (
+			<View style={styles.mapContainer}>
+				<ThemedText type="subtitle">Shared Map</ThemedText>
+				{sharedMap ? (
+					<InteractiveMap
+						map={sharedMap}
+						isEditable={allowMapInteraction}
+						onTilePress={allowMapInteraction ? handleMapTilePress : undefined}
+						highlightTokenId={currentCharacterId || undefined}
+					/>
+				) : (
+					<ThemedText style={styles.mapHint}>
+                                                Waiting for the DM to configure a map.
+					</ThemedText>
+				)}
+			</View>
+		);
+	};
 
 	const renderActivityLog = () => (
 		<View style={styles.logPanel}>
@@ -248,6 +361,13 @@ const MultiplayerGameScreen: React.FC = () => {
 										gameState={gameState}
 										onDMAction={handleDMAction}
 										onAIRequest={handleAIRequest}
+										mapState={sharedMap}
+										isMapEditable={mapEditEnabled}
+										selectedTerrain={selectedTerrain}
+										placementSelection={placementSelection}
+										onToggleMapEdit={handleToggleMapEdit}
+										onSelectTerrain={setSelectedTerrain}
+										onPlacementChange={handlePlacementChange}
 									/>
 								</View>
 							)}
@@ -260,6 +380,13 @@ const MultiplayerGameScreen: React.FC = () => {
 							gameState={gameState}
 							onDMAction={handleDMAction}
 							onAIRequest={handleAIRequest}
+							mapState={sharedMap}
+							isMapEditable={mapEditEnabled}
+							selectedTerrain={selectedTerrain}
+							placementSelection={placementSelection}
+							onToggleMapEdit={handleToggleMapEdit}
+							onSelectTerrain={setSelectedTerrain}
+							onPlacementChange={handlePlacementChange}
 						/>
 					</View>
 				)}

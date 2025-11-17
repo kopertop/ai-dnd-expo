@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
 	ScrollView,
 	StyleSheet,
@@ -13,17 +13,39 @@ import { ThemedView } from './themed-view';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { Character } from '@/types/character';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
+import { NpcState } from '@/types/multiplayer-map';
+
+type PlacementSelection = {
+        type: 'character' | 'npc' | null;
+        id?: string;
+};
+
+const TERRAIN_TYPES = ['stone', 'grass', 'water', 'lava'];
 
 interface DMControlsPanelProps {
-	gameState: MultiplayerGameState;
-	onDMAction: (type: string, data: any) => void;
-	onAIRequest?: (prompt: string) => Promise<string>;
+        gameState: MultiplayerGameState;
+        onDMAction: (type: string, data: Record<string, unknown>) => void;
+        onAIRequest?: (prompt: string) => Promise<string>;
+        mapState?: MultiplayerGameState['mapState'];
+        isMapEditable?: boolean;
+        selectedTerrain?: string;
+        placementSelection?: PlacementSelection;
+        onToggleMapEdit?: (enabled: boolean) => void;
+        onSelectTerrain?: (terrain: string) => void;
+        onPlacementChange?: (selection: PlacementSelection) => void;
 }
 
 export const DMControlsPanel: React.FC<DMControlsPanelProps> = ({
 	gameState,
 	onDMAction,
 	onAIRequest,
+	mapState,
+	isMapEditable = false,
+	selectedTerrain = 'stone',
+	placementSelection,
+	onToggleMapEdit,
+	onSelectTerrain,
+	onPlacementChange,
 }) => {
 	const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
 	const [aiPrompt, setAiPrompt] = useState('');
@@ -34,6 +56,8 @@ export const DMControlsPanel: React.FC<DMControlsPanelProps> = ({
 	const selectedCharacter = selectedCharacterId
 		? gameState.characters.find(c => c.id === selectedCharacterId)
 		: null;
+
+	const npcStates: NpcState[] = useMemo(() => gameState.npcStates ?? [], [gameState.npcStates]);
 
 	const handleNarrate = () => {
 		if (aiPrompt.trim()) {
@@ -192,9 +216,160 @@ export const DMControlsPanel: React.FC<DMControlsPanelProps> = ({
 						)}
 					</View>
 				)}
+
+				{onToggleMapEdit && (
+					<View style={styles.section}>
+						<ThemedText style={styles.sectionTitle}>Map Editor</ThemedText>
+						<View style={styles.toggleRow}>
+							<ThemedText style={styles.mapHint}>
+								{isMapEditable
+									? 'Tap a tile to paint terrain or place a token.'
+									: 'Enable edit mode to update the shared map.'}
+							</ThemedText>
+							<TouchableOpacity
+								style={[styles.button, isMapEditable && styles.buttonActive]}
+								onPress={() => onToggleMapEdit(!isMapEditable)}
+							>
+								<ThemedText style={styles.buttonText}>
+									{isMapEditable ? 'Editing Enabled' : 'Enable Edit Mode'}
+								</ThemedText>
+							</TouchableOpacity>
+						</View>
+						<ThemedText style={styles.paletteLabel}>Terrain Palette</ThemedText>
+						<View style={styles.paletteRow}>
+							{TERRAIN_TYPES.map(terrain => {
+								const active = selectedTerrain === terrain;
+								return (
+									<TouchableOpacity
+										key={terrain}
+										style={[
+											styles.terrainSwatch,
+											active && styles.terrainSwatchActive,
+										]}
+										onPress={() => onSelectTerrain?.(terrain)}
+									>
+										<View
+											style={[
+												styles.terrainColor,
+												{ backgroundColor: terrainColorLookup(terrain) },
+											]}
+										/>
+										<ThemedText
+											style={[
+												styles.terrainLabel,
+												active && styles.terrainLabelActive,
+											]}
+										>
+											{terrain}
+										</ThemedText>
+									</TouchableOpacity>
+								);
+							})}
+						</View>
+
+						<ThemedText style={[styles.paletteLabel, styles.placementHeader]}>
+                                                Token Placement
+						</ThemedText>
+						<ThemedText style={styles.mapHint}>
+                                                Choose a character or NPC, then tap the map to place their token.
+						</ThemedText>
+						<View style={styles.placementGrid}>
+							{gameState.characters.map(char => {
+								const active = placementSelection?.type === 'character'
+                                                                && placementSelection?.id === char.id;
+								return (
+									<TouchableOpacity
+										key={char.id}
+										style={[
+											styles.placementCard,
+											active && styles.placementCardActive,
+										]}
+										onPress={() =>
+											onPlacementChange?.(
+												active
+													? { type: null }
+													: { type: 'character', id: char.id },
+											)
+										}
+									>
+										<ThemedText style={styles.placementTitle}>
+											{char.name}
+										</ThemedText>
+										<ThemedText style={styles.placementMeta}>
+											{char.race} {char.class}
+										</ThemedText>
+									</TouchableOpacity>
+								);
+							})}
+						</View>
+
+						<ThemedText style={styles.paletteLabel}>NPCs</ThemedText>
+						{npcStates.length === 0 ? (
+							<ThemedText style={styles.mapHint}>No NPCs available yet.</ThemedText>
+						) : (
+							<View style={styles.placementGrid}>
+								{npcStates.map(npc => {
+									const active = placementSelection?.type === 'npc'
+                                                                        && placementSelection?.id === npc.id;
+									return (
+										<TouchableOpacity
+											key={npc.id}
+											style={[
+												styles.placementCard,
+												active && styles.placementCardActive,
+											]}
+											onPress={() =>
+												onPlacementChange?.(
+													active
+														? { type: null }
+														: { type: 'npc', id: npc.id },
+												)
+											}
+										>
+											<ThemedText style={styles.placementTitle}>
+												{npc.name}
+											</ThemedText>
+											<ThemedText style={styles.placementMeta}>
+												{npc.role} • {npc.disposition ?? 'neutral'}
+											</ThemedText>
+										</TouchableOpacity>
+									);
+								})}
+							</View>
+						)}
+
+						<View style={styles.mapStatusRow}>
+							<ThemedText style={styles.mapHint}>
+								{placementSelection?.type
+									? 'Placement armed: tap a tile to drop this token.'
+									: 'No token selected for placement.'}
+							</ThemedText>
+							{mapState?.name && (
+								<ThemedText style={styles.mapHint}>
+                                                                Active map: {mapState.name}
+								</ThemedText>
+							)}
+						</View>
+					</View>
+				)}
 			</ScrollView>
 		</ThemedView>
 	);
+};
+
+const terrainColorLookup = (terrain?: string) => {
+	switch (terrain) {
+		case 'water':
+			return '#7FD1F7';
+		case 'grass':
+			return '#7FB77E';
+		case 'stone':
+			return '#B0A8B9';
+		case 'lava':
+			return '#F05D23';
+		default:
+			return '#D9D4C5';
+	}
 };
 
 const styles = StyleSheet.create({
@@ -308,6 +483,92 @@ const styles = StyleSheet.create({
 		color: '#3B2F1B',
 		fontSize: 14,
 		lineHeight: 20,
+	},
+	toggleRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		gap: 12,
+		marginBottom: 12,
+	},
+	mapHint: {
+		color: '#6B5B3D',
+		flex: 1,
+	},
+	buttonActive: {
+		backgroundColor: '#8B6914',
+	},
+	paletteLabel: {
+		fontWeight: 'bold',
+		color: '#3B2F1B',
+		marginBottom: 8,
+	},
+	paletteRow: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 8,
+		marginBottom: 12,
+	},
+	terrainSwatch: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+		paddingVertical: 8,
+		paddingHorizontal: 10,
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: '#C9B037',
+		backgroundColor: '#E2D3B3',
+	},
+	terrainSwatchActive: {
+		backgroundColor: '#C9B037',
+		borderColor: '#8B6914',
+	},
+	terrainColor: {
+		width: 18,
+		height: 18,
+		borderRadius: 4,
+		borderWidth: 1,
+		borderColor: '#3B2F1B',
+	},
+	terrainLabel: {
+		color: '#3B2F1B',
+		textTransform: 'capitalize',
+	},
+	terrainLabelActive: {
+		fontWeight: 'bold',
+	},
+	placementHeader: {
+		marginTop: 4,
+	},
+	placementGrid: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 8,
+		marginBottom: 12,
+	},
+	placementCard: {
+		padding: 10,
+		borderRadius: 10,
+		backgroundColor: '#E2D3B3',
+		borderWidth: 1,
+		borderColor: '#C9B037',
+		minWidth: '45%',
+	},
+	placementCardActive: {
+		borderColor: '#8B6914',
+		backgroundColor: '#C9B037',
+	},
+	placementTitle: {
+		fontWeight: 'bold',
+		color: '#3B2F1B',
+	},
+	placementMeta: {
+		color: '#6B5B3D',
+	},
+	mapStatusRow: {
+		marginTop: 4,
+		gap: 4,
 	},
 });
 
