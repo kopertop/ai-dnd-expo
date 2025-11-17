@@ -1,9 +1,10 @@
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 
-import { CharacterRow, Database, GameRow, MapRow } from '../../../shared/workers/db';
+import { CharacterRow, Database, GameRow, MapRow, NpcInstanceRow } from '../../../shared/workers/db';
 import { generateInviteCode, getSessionId, getSessionStub } from '../../../shared/workers/session-manager';
 import { Character, Quest } from '../../../shared/workers/types';
+import { generateProceduralMap, MapGeneratorPreset } from '../../../shared/workers/map-generator';
 import { mapStateFromDb, npcFromDb } from '../../../utils/schema-adapters';
 import type { CloudflareBindings } from '../env';
 
@@ -100,6 +101,72 @@ const buildMapState = async (db: Database, game: GameRow) => {
 		db.listMapTokensForGame(game.id),
 	]);
 	return mapStateFromDb(mapRow, { tiles, tokens });
+};
+
+const slugifyName = (value: string) =>
+	value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '') || 'npc';
+
+const npcInstanceToResponse = (instance: NpcInstanceRow) => ({
+	id: instance.id,
+	tokenId: instance.token_id,
+	npcId: instance.npc_id,
+	name: instance.name,
+	disposition: instance.disposition,
+	currentHealth: instance.current_health,
+	maxHealth: instance.max_health,
+	statusEffects: JSON.parse(instance.status_effects || '[]'),
+	isFriendly: Boolean(instance.is_friendly),
+	metadata: JSON.parse(instance.metadata || '{}'),
+	updatedAt: instance.updated_at,
+});
+
+const createCustomNpcDefinition = async (
+	db: Database,
+	hostId: string,
+	custom: {
+		name: string;
+		role: string;
+		alignment: string;
+		disposition: string;
+		description?: string;
+		maxHealth?: number;
+		armorClass?: number;
+		challengeRating?: number;
+		color?: string;
+	},
+) => {
+	const slug = `${slugifyName(custom.name)}_${hostId.slice(0, 6)}`;
+	const npcId = `npc_${slug}_${Date.now()}`;
+	const now = Date.now();
+	await db.saveNpcDefinition({
+		id: npcId,
+		slug,
+		name: custom.name,
+		role: custom.role || 'custom',
+		alignment: custom.alignment || 'neutral',
+		disposition: custom.disposition || 'neutral',
+		description: custom.description ?? null,
+		base_health: custom.maxHealth ?? 12,
+		base_armor_class: custom.armorClass ?? 12,
+		challenge_rating: custom.challengeRating ?? 1,
+		archetype: 'custom',
+		default_actions: JSON.stringify(['attack']),
+		stats: JSON.stringify({}),
+		abilities: JSON.stringify([]),
+		loot_table: JSON.stringify([]),
+		metadata: JSON.stringify({ color: custom.color ?? '#3B2F1B', createdBy: hostId }),
+		created_at: now,
+		updated_at: now,
+	});
+
+	const created = await db.getNpcBySlug(slug);
+	if (!created) {
+		throw new Error('Failed to create NPC definition');
+	}
+	return created;
 };
 
 const serializeCharacter = (
@@ -582,6 +649,109 @@ games.patch('/:inviteCode/map', async (c) => {
 	}
 });
 
+games.post('/:inviteCode/map/generate', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const payload = (await c.req.json().catch(() => ({}))) as {
+		preset?: MapGeneratorPreset;
+		width?: number;
+		height?: number;
+		seed?: string;
+		name?: string;
+		slug?: string;
+	};
+
+	const generated = generateProceduralMap({
+		preset: payload.preset,
+		width: payload.width,
+		height: payload.height,
+		seed: payload.seed,
+		name: payload.name,
+		slug: payload.slug,
+	});
+
+	await db.saveMap({
+		...generated.map,
+		created_at: Date.now(),
+		updated_at: Date.now(),
+	});
+	await db.replaceMapTiles(generated.map.id, generated.tiles);
+	await db.updateGameMap(game.id, generated.map.id);
+	game.current_map_id = generated.map.id;
+
+	const mapState = await buildMapState(db, game);
+	return c.json(mapState);
+});
+
+games.post('/:inviteCode/map/terrain', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const payload = (await c.req.json().catch(() => ({}))) as {
+		tiles: Array<{
+			x: number;
+			y: number;
+			terrainType: string;
+			elevation?: number;
+			isBlocked?: boolean;
+			hasFog?: boolean;
+			featureType?: string | null;
+			metadata?: Record<string, unknown>;
+		}>;
+	};
+
+	if (!Array.isArray(payload.tiles) || payload.tiles.length === 0) {
+		return c.json({ error: 'No tiles provided' }, 400);
+	}
+
+	const mapRow = await resolveMapRow(db, game);
+	await db.upsertMapTiles(
+		mapRow.id,
+		payload.tiles.map(tile => ({
+			x: tile.x,
+			y: tile.y,
+			terrain_type: tile.terrainType,
+			elevation: tile.elevation ?? 0,
+			is_blocked: tile.isBlocked ? 1 : 0,
+			has_fog: tile.hasFog ? 1 : 0,
+			feature_type: tile.featureType ?? null,
+			metadata: JSON.stringify(tile.metadata ?? {}),
+		})),
+	);
+
+	const mapState = await buildMapState(db, game);
+	return c.json(mapState);
+});
+
 games.get('/:inviteCode/map/tokens', async (c) => {
 	const inviteCode = c.req.param('inviteCode');
 	const db = new Database(c.env.DATABASE);
@@ -671,6 +841,7 @@ games.delete('/:inviteCode/map/tokens/:tokenId', async (c) => {
 	}
 
 	await db.deleteMapToken(tokenId);
+	await db.deleteNpcInstanceByToken(tokenId);
 	const mapState = await buildMapState(db, game);
 	return c.json({ tokens: mapState.tokens });
 });
@@ -700,21 +871,45 @@ games.post('/:inviteCode/npcs', async (c) => {
 	}
 
 	const payload = (await c.req.json()) as {
-		npcId: string;
+		npcId?: string;
 		x: number;
 		y: number;
 		label?: string;
+		customNpc?: {
+			name: string;
+			role: string;
+			alignment: string;
+			disposition: string;
+			description?: string;
+			maxHealth?: number;
+			armorClass?: number;
+			color?: string;
+		};
 	};
 
-	const npc = await db.getNpcBySlug(payload.npcId);
+	let npc =
+		payload.npcId
+			? await db.getNpcBySlug(payload.npcId)
+			: null;
+
+	if (!npc && payload.customNpc) {
+		try {
+			npc = await createCustomNpcDefinition(db, user.id, payload.customNpc);
+		} catch (error) {
+			console.error('Failed to create custom NPC', error);
+			return c.json({ error: 'Failed to create NPC' }, 500);
+		}
+	}
+
 	if (!npc) {
 		return c.json({ error: 'NPC not found' }, 404);
 	}
 
 	const mapRow = await resolveMapRow(db, game);
 	const npcMetadata = JSON.parse(npc.metadata || '{}');
+	const tokenId = createId('npc');
 	await db.saveMapToken({
-		id: createId('npc'),
+		id: tokenId,
 		game_id: game.id,
 		map_id: mapRow.id,
 		character_id: null,
@@ -731,9 +926,103 @@ games.post('/:inviteCode/npcs', async (c) => {
 		max_hit_points: npc.base_health,
 		metadata: npc.metadata,
 	});
+	await db.saveNpcInstance({
+		id: createId('npci'),
+		game_id: game.id,
+		npc_id: npc.id,
+		token_id: tokenId,
+		name: payload.label || npc.name,
+		disposition: npc.disposition,
+		current_health: npc.base_health,
+		max_health: npc.base_health,
+		status_effects: JSON.stringify([]),
+		is_friendly: npc.disposition === 'hostile' ? 0 : 1,
+		metadata: JSON.stringify({
+			color: npcMetadata.color || payload.customNpc?.color || '#3B2F1B',
+			role: npc.role,
+		}),
+		created_at: Date.now(),
+		updated_at: Date.now(),
+	});
 
 	const mapState = await buildMapState(db, game);
 	return c.json({ tokens: mapState.tokens });
+});
+
+games.get('/:inviteCode/npc-instances', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const instances = await db.listNpcInstances(game.id);
+	return c.json({ instances: instances.map(npcInstanceToResponse) });
+});
+
+games.patch('/:inviteCode/npcs/:tokenId', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const tokenId = c.req.param('tokenId');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const payload = (await c.req.json().catch(() => ({}))) as {
+		currentHealth?: number;
+		statusEffects?: string[];
+		isFriendly?: boolean;
+		metadata?: Record<string, unknown>;
+		name?: string;
+	};
+
+	const instance = await db.getNpcInstanceByToken(tokenId);
+	if (!instance) {
+		return c.json({ error: 'NPC instance not found' }, 404);
+	}
+
+	await db.saveNpcInstance({
+		...instance,
+		name: payload.name ?? instance.name,
+		current_health:
+			typeof payload.currentHealth === 'number'
+				? Math.max(0, Math.min(instance.max_health, payload.currentHealth))
+				: instance.current_health,
+		status_effects: JSON.stringify(payload.statusEffects ?? JSON.parse(instance.status_effects || '[]')),
+		is_friendly:
+			typeof payload.isFriendly === 'boolean'
+				? (payload.isFriendly ? 1 : 0)
+				: instance.is_friendly,
+		metadata: JSON.stringify({
+			...(JSON.parse(instance.metadata || '{}')),
+			...(payload.metadata ?? {}),
+		}),
+	});
+
+	const refreshed = await db.getNpcInstanceByToken(tokenId);
+	return c.json({ instance: refreshed ? npcInstanceToResponse(refreshed) : null });
 });
 
 games.post('/:inviteCode/characters/:characterId/:action', async (c) => {

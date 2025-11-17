@@ -58,30 +58,36 @@ export interface GameStateRow {
 }
 
 export interface MapRow {
-        id: string;
-        slug: string;
-        name: string;
-        description: string | null;
-        width: number;
-        height: number;
-        default_terrain: string; // JSON
-        fog_of_war: string; // JSON
-        terrain_layers: string; // JSON
-        metadata: string; // JSON
-        created_at: number;
-        updated_at: number;
+	id: string;
+	slug: string;
+	name: string;
+	description: string | null;
+	width: number;
+	height: number;
+	default_terrain: string; // JSON
+	fog_of_war: string; // JSON
+	terrain_layers: string; // JSON
+	metadata: string; // JSON
+	generator_preset: string;
+	seed: string;
+	theme: string;
+	biome: string;
+	is_generated: number;
+	created_at: number;
+	updated_at: number;
 }
 
 export interface MapTileRow {
-        id: string;
-        map_id: string;
-        x: number;
-        y: number;
-        terrain_type: string;
-        elevation: number;
-        is_blocked: number;
-        has_fog: number;
-        metadata: string;
+	id: string;
+	map_id: string;
+	x: number;
+	y: number;
+	terrain_type: string;
+	elevation: number;
+	is_blocked: number;
+	has_fog: number;
+	feature_type: string | null;
+	metadata: string;
 }
 
 export interface NpcRow {
@@ -126,30 +132,46 @@ export interface MapTokenRow {
         updated_at: number;
 }
 
+export interface NpcInstanceRow {
+	id: string;
+	game_id: string;
+	npc_id: string;
+	token_id: string;
+	name: string;
+	disposition: string;
+	current_health: number;
+	max_health: number;
+	status_effects: string;
+	is_friendly: number;
+	metadata: string;
+	created_at: number;
+	updated_at: number;
+}
+
 export class Database {
 	constructor(private db: D1Database) {}
 
 	// Game operations
 	async createGame(game: Omit<GameRow, 'created_at' | 'updated_at'>): Promise<void> {
 		const now = Date.now();
-                await this.db.prepare(
-                        `INSERT INTO games (id, invite_code, host_id, host_email, quest_id, quest_data, world, starting_area, status, current_map_id, created_at, updated_at)
+		await this.db.prepare(
+			`INSERT INTO games (id, invite_code, host_id, host_email, quest_id, quest_data, world, starting_area, status, current_map_id, created_at, updated_at)
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                ).bind(
-                        game.id,
-                        game.invite_code,
-                        game.host_id,
-                        game.host_email || null,
-                        game.quest_id,
-                        game.quest_data,
-                        game.world,
-                        game.starting_area,
-                        game.status,
-                        game.current_map_id || null,
-                        now,
-                        now,
-                ).run();
-        }
+		).bind(
+			game.id,
+			game.invite_code,
+			game.host_id,
+			game.host_email || null,
+			game.quest_id,
+			game.quest_data,
+			game.world,
+			game.starting_area,
+			game.status,
+			game.current_map_id || null,
+			now,
+			now,
+		).run();
+	}
 
 	async getGameByInviteCode(inviteCode: string): Promise<GameRow | null> {
 		const result = await this.db.prepare(
@@ -188,17 +210,17 @@ export class Database {
 		return result.results || [];
 	}
 
-        async updateGameStatus(gameId: string, status: GameRow['status']): Promise<void> {
-                await this.db.prepare(
-                        'UPDATE games SET status = ?, updated_at = ? WHERE id = ?',
-                ).bind(status, Date.now(), gameId).run();
-        }
+	async updateGameStatus(gameId: string, status: GameRow['status']): Promise<void> {
+		await this.db.prepare(
+			'UPDATE games SET status = ?, updated_at = ? WHERE id = ?',
+		).bind(status, Date.now(), gameId).run();
+	}
 
-        async updateGameMap(gameId: string, mapId: string | null): Promise<void> {
-                await this.db.prepare(
-                        'UPDATE games SET current_map_id = ?, updated_at = ? WHERE id = ?',
-                ).bind(mapId, Date.now(), gameId).run();
-        }
+	async updateGameMap(gameId: string, mapId: string | null): Promise<void> {
+		await this.db.prepare(
+			'UPDATE games SET current_map_id = ?, updated_at = ? WHERE id = ?',
+		).bind(mapId, Date.now(), gameId).run();
+	}
 
 	// Character operations
 	async createCharacter(character: Omit<CharacterRow, 'created_at' | 'updated_at'>): Promise<void> {
@@ -275,20 +297,20 @@ export class Database {
 	async updateCharacter(characterId: string, updates: Partial<CharacterRow>): Promise<void> {
 		const fields: string[] = [];
 		const values: any[] = [];
-		
+
 		Object.entries(updates).forEach(([key, value]) => {
 			if (key !== 'id' && value !== undefined) {
 				fields.push(`${key} = ?`);
 				values.push(value);
 			}
 		});
-		
+
 		if (fields.length === 0) return;
-		
+
 		fields.push('updated_at = ?');
 		values.push(Date.now());
 		values.push(characterId);
-		
+
 		await this.db.prepare(
 			`UPDATE characters SET ${fields.join(', ')} WHERE id = ?`,
 		).bind(...values).run();
@@ -361,69 +383,278 @@ export class Database {
 		).bind(gameId, stateData, Date.now(), stateData, Date.now()).run();
 	}
 
-        async getGameState(gameId: string): Promise<GameStateRow | null> {
-                const result = await this.db.prepare(
-                        'SELECT * FROM game_states WHERE game_id = ?',
-                ).bind(gameId).first<GameStateRow>();
-                return result || null;
-        }
+	async getGameState(gameId: string): Promise<GameStateRow | null> {
+		const result = await this.db.prepare(
+			'SELECT * FROM game_states WHERE game_id = ?',
+		).bind(gameId).first<GameStateRow>();
+		return result || null;
+	}
 
-        // Map operations
-        async listMaps(): Promise<MapRow[]> {
-                const result = await this.db.prepare(
-                        'SELECT * FROM maps ORDER BY name ASC',
-                ).all<MapRow>();
-                return result.results || [];
-        }
+	// Map operations
+	async listMaps(): Promise<MapRow[]> {
+		const result = await this.db.prepare(
+			'SELECT * FROM maps ORDER BY name ASC',
+		).all<MapRow>();
+		return result.results || [];
+	}
 
-        async getMapById(mapId: string): Promise<MapRow | null> {
-                const result = await this.db.prepare(
-                        'SELECT * FROM maps WHERE id = ?',
-                ).bind(mapId).first<MapRow>();
-                return result || null;
-        }
+	async getMapById(mapId: string): Promise<MapRow | null> {
+		const result = await this.db.prepare(
+			'SELECT * FROM maps WHERE id = ?',
+		).bind(mapId).first<MapRow>();
+		return result || null;
+	}
 
-        async getMapTiles(mapId: string): Promise<MapTileRow[]> {
-                const result = await this.db.prepare(
-                        'SELECT * FROM map_tiles WHERE map_id = ? ORDER BY y ASC, x ASC',
-                ).bind(mapId).all<MapTileRow>();
-                return result.results || [];
-        }
+	async getMapTiles(mapId: string): Promise<MapTileRow[]> {
+		const result = await this.db.prepare(
+			'SELECT * FROM map_tiles WHERE map_id = ? ORDER BY y ASC, x ASC',
+		).bind(mapId).all<MapTileRow>();
+		return result.results || [];
+	}
 
-        // NPC operations
-        async listNpcDefinitions(): Promise<NpcRow[]> {
-                const result = await this.db.prepare(
-                        'SELECT * FROM npcs ORDER BY name ASC',
-                ).all<NpcRow>();
-                return result.results || [];
-        }
+	async saveMap(map: Omit<MapRow, 'created_at' | 'updated_at'> & Partial<Pick<MapRow, 'created_at' | 'updated_at'>>): Promise<void> {
+		const now = Date.now();
+		await this.db.prepare(
+			`INSERT INTO maps (
+				id, slug, name, description, width, height, default_terrain, fog_of_war,
+				terrain_layers, metadata, generator_preset, seed, theme, biome, is_generated,
+				created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET
+				slug = excluded.slug,
+				name = excluded.name,
+				description = excluded.description,
+				width = excluded.width,
+				height = excluded.height,
+				default_terrain = excluded.default_terrain,
+				fog_of_war = excluded.fog_of_war,
+				terrain_layers = excluded.terrain_layers,
+				metadata = excluded.metadata,
+				generator_preset = excluded.generator_preset,
+				seed = excluded.seed,
+				theme = excluded.theme,
+				biome = excluded.biome,
+				is_generated = excluded.is_generated,
+				updated_at = excluded.updated_at`,
+		).bind(
+			map.id,
+			map.slug,
+			map.name,
+			map.description,
+			map.width,
+			map.height,
+			map.default_terrain,
+			map.fog_of_war,
+			map.terrain_layers,
+			map.metadata,
+			map.generator_preset,
+			map.seed,
+			map.theme,
+			map.biome,
+			map.is_generated,
+			map.created_at ?? now,
+			map.updated_at ?? now,
+		).run();
+	}
 
-        async getNpcBySlug(slug: string): Promise<NpcRow | null> {
-                const result = await this.db.prepare(
-                        'SELECT * FROM npcs WHERE slug = ?',
-                ).bind(slug).first<NpcRow>();
-                return result || null;
-        }
+	async replaceMapTiles(
+		mapId: string,
+		tiles: Array<{
+			x: number;
+			y: number;
+			terrain_type: string;
+			elevation?: number;
+			is_blocked?: number;
+			has_fog?: number;
+			feature_type?: string | null;
+			metadata?: string;
+		}>,
+	) {
+		const insert = this.db.prepare(
+			`INSERT INTO map_tiles (
+				id, map_id, x, y, terrain_type, elevation, is_blocked, has_fog, feature_type, metadata
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET
+				terrain_type = excluded.terrain_type,
+				elevation = excluded.elevation,
+				is_blocked = excluded.is_blocked,
+				has_fog = excluded.has_fog,
+				feature_type = excluded.feature_type,
+				metadata = excluded.metadata`,
+		);
 
-        // Token operations
-        async listMapTokensForGame(gameId: string): Promise<MapTokenRow[]> {
-                const result = await this.db.prepare(
-                        'SELECT * FROM map_tokens WHERE game_id = ? ORDER BY updated_at DESC',
-                ).bind(gameId).all<MapTokenRow>();
-                return result.results || [];
-        }
+		const batch = this.db.transaction((
+			entries: Array<{
+				x: number;
+				y: number;
+				terrain_type: string;
+				elevation?: number;
+				is_blocked?: number;
+				has_fog?: number;
+				feature_type?: string | null;
+				metadata?: string;
+			}>,
+		) => {
+			this.db.prepare('DELETE FROM map_tiles WHERE map_id = ?').bind(mapId).run();
+			entries.forEach(tile => {
+				insert.run(
+					`tile_${mapId}_${tile.x}_${tile.y}`,
+					mapId,
+					tile.x,
+					tile.y,
+					tile.terrain_type,
+					tile.elevation ?? 0,
+					tile.is_blocked ?? 0,
+					tile.has_fog ?? 0,
+					tile.feature_type ?? null,
+					tile.metadata ?? '{}',
+				);
+			});
+		});
 
-        async listMapTokensForMap(mapId: string): Promise<MapTokenRow[]> {
-                const result = await this.db.prepare(
-                        'SELECT * FROM map_tokens WHERE map_id = ? ORDER BY updated_at DESC',
-                ).bind(mapId).all<MapTokenRow>();
-                return result.results || [];
-        }
+		batch(tiles);
+	}
 
-        async saveMapToken(token: Omit<MapTokenRow, 'created_at' | 'updated_at'>): Promise<void> {
-                const now = Date.now();
-                await this.db.prepare(
-                        `INSERT INTO map_tokens (
+	async upsertMapTiles(
+		mapId: string,
+		tiles: Array<{
+			x: number;
+			y: number;
+			terrain_type: string;
+			elevation?: number;
+			is_blocked?: number;
+			has_fog?: number;
+			feature_type?: string | null;
+			metadata?: string;
+		}>,
+	) {
+		const statement = this.db.prepare(
+			`INSERT INTO map_tiles (
+				id, map_id, x, y, terrain_type, elevation, is_blocked, has_fog, feature_type, metadata
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET
+				terrain_type = excluded.terrain_type,
+				elevation = excluded.elevation,
+				is_blocked = excluded.is_blocked,
+				has_fog = excluded.has_fog,
+				feature_type = excluded.feature_type,
+				metadata = excluded.metadata`,
+		);
+
+		const batch = this.db.transaction((
+			entries: Array<{
+				x: number;
+				y: number;
+				terrain_type: string;
+				elevation?: number;
+				is_blocked?: number;
+				has_fog?: number;
+				feature_type?: string | null;
+				metadata?: string;
+			}>,
+		) => {
+			entries.forEach(tile => {
+				statement.run(
+					`tile_${mapId}_${tile.x}_${tile.y}`,
+					mapId,
+					tile.x,
+					tile.y,
+					tile.terrain_type,
+					tile.elevation ?? 0,
+					tile.is_blocked ?? 0,
+					tile.has_fog ?? 0,
+					tile.feature_type ?? null,
+					tile.metadata ?? '{}',
+				);
+			});
+		});
+
+		batch(tiles);
+	}
+
+	// NPC operations
+	async listNpcDefinitions(): Promise<NpcRow[]> {
+		const result = await this.db.prepare(
+			'SELECT * FROM npcs ORDER BY name ASC',
+		).all<NpcRow>();
+		return result.results || [];
+	}
+
+	async getNpcBySlug(slug: string): Promise<NpcRow | null> {
+		const result = await this.db.prepare(
+			'SELECT * FROM npcs WHERE slug = ?',
+		).bind(slug).first<NpcRow>();
+		return result || null;
+	}
+
+	async saveNpcDefinition(
+		npc: Omit<NpcRow, 'created_at' | 'updated_at'> & Partial<Pick<NpcRow, 'created_at' | 'updated_at'>>,
+	): Promise<void> {
+		const now = Date.now();
+		await this.db.prepare(
+			`INSERT INTO npcs (
+				id, slug, name, role, alignment, disposition, description, base_health, base_armor_class,
+				challenge_rating, archetype, default_actions, stats, abilities, loot_table, metadata,
+				created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET
+				slug = excluded.slug,
+				name = excluded.name,
+				role = excluded.role,
+				alignment = excluded.alignment,
+				disposition = excluded.disposition,
+				description = excluded.description,
+				base_health = excluded.base_health,
+				base_armor_class = excluded.base_armor_class,
+				challenge_rating = excluded.challenge_rating,
+				archetype = excluded.archetype,
+				default_actions = excluded.default_actions,
+				stats = excluded.stats,
+				abilities = excluded.abilities,
+				loot_table = excluded.loot_table,
+				metadata = excluded.metadata,
+				updated_at = excluded.updated_at`,
+		).bind(
+			npc.id,
+			npc.slug,
+			npc.name,
+			npc.role,
+			npc.alignment,
+			npc.disposition,
+			npc.description,
+			npc.base_health,
+			npc.base_armor_class,
+			npc.challenge_rating,
+			npc.archetype,
+			npc.default_actions,
+			npc.stats,
+			npc.abilities,
+			npc.loot_table,
+			npc.metadata,
+			npc.created_at ?? now,
+			npc.updated_at ?? now,
+		).run();
+	}
+
+	// Token operations
+	async listMapTokensForGame(gameId: string): Promise<MapTokenRow[]> {
+		const result = await this.db.prepare(
+			'SELECT * FROM map_tokens WHERE game_id = ? ORDER BY updated_at DESC',
+		).bind(gameId).all<MapTokenRow>();
+		return result.results || [];
+	}
+
+	async listMapTokensForMap(mapId: string): Promise<MapTokenRow[]> {
+		const result = await this.db.prepare(
+			'SELECT * FROM map_tokens WHERE map_id = ? ORDER BY updated_at DESC',
+		).bind(mapId).all<MapTokenRow>();
+		return result.results || [];
+	}
+
+	async saveMapToken(token: Omit<MapTokenRow, 'created_at' | 'updated_at'>): Promise<void> {
+		const now = Date.now();
+		await this.db.prepare(
+			`INSERT INTO map_tokens (
                                 id, game_id, map_id, character_id, npc_id, token_type, label, x, y, facing, color,
                                 status, is_visible, hit_points, max_hit_points, metadata, created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -444,35 +675,94 @@ export class Database {
                                 max_hit_points = excluded.max_hit_points,
                                 metadata = excluded.metadata,
                                 updated_at = ?`,
-                ).bind(
-                        token.id,
-                        token.game_id,
-                        token.map_id,
-                        token.character_id,
-                        token.npc_id,
-                        token.token_type,
-                        token.label,
-                        token.x,
-                        token.y,
-                        token.facing,
-                        token.color,
-                        token.status,
-                        token.is_visible,
-                        token.hit_points,
-                        token.max_hit_points,
-                        token.metadata,
-                        now,
-                        now,
-                ).run();
-        }
+		).bind(
+			token.id,
+			token.game_id,
+			token.map_id,
+			token.character_id,
+			token.npc_id,
+			token.token_type,
+			token.label,
+			token.x,
+			token.y,
+			token.facing,
+			token.color,
+			token.status,
+			token.is_visible,
+			token.hit_points,
+			token.max_hit_points,
+			token.metadata,
+			now,
+			now,
+		).run();
+	}
 
-        async deleteMapToken(tokenId: string): Promise<void> {
-                await this.db.prepare('DELETE FROM map_tokens WHERE id = ?').bind(tokenId).run();
-        }
+	async deleteMapToken(tokenId: string): Promise<void> {
+		await this.db.prepare('DELETE FROM map_tokens WHERE id = ?').bind(tokenId).run();
+	}
 
-        async clearTokensForGame(gameId: string): Promise<void> {
-                await this.db.prepare('DELETE FROM map_tokens WHERE game_id = ?').bind(gameId).run();
-        }
+	async clearTokensForGame(gameId: string): Promise<void> {
+		await this.db.prepare('DELETE FROM map_tokens WHERE game_id = ?').bind(gameId).run();
+	}
+
+	// NPC instance operations
+	async listNpcInstances(gameId: string): Promise<NpcInstanceRow[]> {
+		const result = await this.db.prepare(
+			'SELECT * FROM npc_instances WHERE game_id = ? ORDER BY updated_at DESC',
+		).bind(gameId).all<NpcInstanceRow>();
+		return result.results || [];
+	}
+
+	async getNpcInstanceByToken(tokenId: string): Promise<NpcInstanceRow | null> {
+		const result = await this.db.prepare(
+			'SELECT * FROM npc_instances WHERE token_id = ?',
+		).bind(tokenId).first<NpcInstanceRow>();
+		return result || null;
+	}
+
+	async saveNpcInstance(instance: Omit<NpcInstanceRow, 'created_at' | 'updated_at'>): Promise<void> {
+		const now = Date.now();
+		await this.db.prepare(
+			`INSERT INTO npc_instances (
+				id, game_id, npc_id, token_id, name, disposition, current_health, max_health,
+				status_effects, is_friendly, metadata, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET
+				game_id = excluded.game_id,
+				npc_id = excluded.npc_id,
+				token_id = excluded.token_id,
+				name = excluded.name,
+				disposition = excluded.disposition,
+				current_health = excluded.current_health,
+				max_health = excluded.max_health,
+				status_effects = excluded.status_effects,
+				is_friendly = excluded.is_friendly,
+				metadata = excluded.metadata,
+				updated_at = ?`,
+		).bind(
+			instance.id,
+			instance.game_id,
+			instance.npc_id,
+			instance.token_id,
+			instance.name,
+			instance.disposition,
+			instance.current_health,
+			instance.max_health,
+			instance.status_effects,
+			instance.is_friendly,
+			instance.metadata,
+			now,
+			now,
+		).run();
+	}
+
+	async deleteNpcInstance(instanceId: string): Promise<void> {
+		await this.db.prepare('DELETE FROM npc_instances WHERE id = ?').bind(instanceId).run();
+	}
+
+	async deleteNpcInstanceByToken(tokenId: string): Promise<void> {
+		await this.db.prepare('DELETE FROM npc_instances WHERE token_id = ?').bind(tokenId).run();
+	}
 }
 
 

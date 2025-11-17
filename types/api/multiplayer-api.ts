@@ -2,11 +2,7 @@ import { z } from 'zod';
 
 import { CharacterSchema } from '@/types/character';
 import { GameSessionStatusSchema, MultiplayerGameStateSchema } from '@/types/multiplayer-game';
-import {
-	MapStateSchema,
-	MapTokenSchema,
-	NpcDefinitionSchema,
-} from '@/types/multiplayer-map';
+import { MapStateSchema, MapTokenSchema, NpcDefinitionSchema } from '@/types/multiplayer-map';
 import { QuestSchema } from '@/types/quest';
 
 export const MapTileSchema = z.object({
@@ -95,6 +91,68 @@ export const NpcPlacementRequestSchema = z.object({
 	x: z.number().int(),
 	y: z.number().int(),
 	label: z.string().optional(),
+	customNpc: z
+		.object({
+			name: z.string(),
+			role: z.string(),
+			alignment: z.string(),
+			disposition: z.string(),
+			description: z.string().optional(),
+			maxHealth: z.number().optional(),
+			armorClass: z.number().optional(),
+			color: z.string().optional(),
+		})
+		.optional(),
+});
+
+export const MapTerrainMutationSchema = z.object({
+	tiles: z.array(
+		z.object({
+			x: z.number().int(),
+			y: z.number().int(),
+			terrainType: z.string(),
+			elevation: z.number().int().optional(),
+			isBlocked: z.boolean().optional(),
+			hasFog: z.boolean().optional(),
+			featureType: z.string().optional().nullable(),
+			metadata: z.record(z.unknown()).optional(),
+		}),
+	),
+});
+
+export const MapGenerationRequestSchema = z.object({
+	preset: z.enum(['forest', 'road', 'dungeon', 'town']).optional(),
+	width: z.number().int().optional(),
+	height: z.number().int().optional(),
+	seed: z.string().optional(),
+	name: z.string().optional(),
+	slug: z.string().optional(),
+});
+
+export const PlacedNpcSchema = z.object({
+	id: z.string(),
+	npcId: z.string(),
+	tokenId: z.string(),
+	name: z.string(),
+	disposition: z.string(),
+	currentHealth: z.number(),
+	maxHealth: z.number(),
+	statusEffects: z.array(z.string()),
+	isFriendly: z.boolean(),
+	metadata: z.record(z.unknown()).optional(),
+	updatedAt: z.number(),
+});
+
+export const NpcInstanceListResponseSchema = z.object({
+	instances: z.array(PlacedNpcSchema),
+});
+
+export const NpcInstanceUpdateRequestSchema = z.object({
+	name: z.string().optional(),
+	currentHealth: z.number().optional(),
+	statusEffects: z.array(z.string()).optional(),
+	isFriendly: z.boolean().optional(),
+	metadata: z.record(z.unknown()).optional(),
 });
 
 // Response types
@@ -180,6 +238,11 @@ export type MapTokenUpsertRequest = z.infer<typeof MapTokenUpsertRequestSchema>;
 export type MapTokenDeleteRequest = z.infer<typeof MapTokenDeleteRequestSchema>;
 export type MapStateUpdateRequest = z.infer<typeof MapStateUpdateRequestSchema>;
 export type NpcPlacementRequest = z.infer<typeof NpcPlacementRequestSchema>;
+export type MapTerrainMutationRequest = z.infer<typeof MapTerrainMutationSchema>;
+export type MapGenerationRequest = z.infer<typeof MapGenerationRequestSchema>;
+export type PlacedNpc = z.infer<typeof PlacedNpcSchema>;
+export type NpcInstanceListResponse = z.infer<typeof NpcInstanceListResponseSchema>;
+export type NpcInstanceUpdateRequest = z.infer<typeof NpcInstanceUpdateRequestSchema>;
 export type GameSessionResponse = z.infer<typeof GameSessionResponseSchema>;
 export type GameStateResponse = z.infer<typeof GameStateResponseSchema>;
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;

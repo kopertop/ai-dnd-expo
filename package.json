@@ -54,7 +54,8 @@
     "submit:production": "./scripts/deploy.sh submit production",
     "postversion": "perl -i -pe \"s/buildNumber: '(\\\\d+)'/sprintf(\\\"buildNumber: '%d'\\\", \\$1 + 1)/e\" app.ts",
     "postinstall": "node ./scripts/postinstall/apply-patches.js",
-    "seed:maps": "bunx tsx scripts/seed-maps.ts"
+    "seed:maps": "bunx tsx scripts/seed-maps.ts",
+    "seed:game": "bunx tsx scripts/seed-game-content.ts"
   },
   "dependencies": {
     "@expo/ui": "~0.2.0-beta.7",

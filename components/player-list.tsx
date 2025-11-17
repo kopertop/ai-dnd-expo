@@ -33,6 +33,17 @@ export const PlayerList: React.FC<PlayerListProps> = ({ players, characters }) =
 			<ScrollView style={styles.scrollView} showsVerticalScrollIndicator={true}>
 				{players.map((player, index) => {
 					const character = characters?.find(c => c.id === player.characterId);
+					const raceClass = character
+						? `${character.race} ${character.class}`
+						: [player.race, player.class].filter(Boolean).join(' ');
+					const level = character ? character.level : player.level;
+					const detailParts = [];
+					if (raceClass) {
+						detailParts.push(raceClass);
+					}
+					if (typeof level === 'number') {
+						detailParts.push(`Level ${level}`);
+					}
 					return (
 						<View
 							key={player.playerId}
@@ -47,9 +58,9 @@ export const PlayerList: React.FC<PlayerListProps> = ({ players, characters }) =
 								<ThemedText style={styles.playerName}>
 									{character?.name || player.name}
 								</ThemedText>
-								{character && (
+								{detailParts.length > 0 && (
 									<ThemedText style={styles.playerDetails}>
-										{character.race} {character.class}
+										{detailParts.join(' • ')}
 									</ThemedText>
 								)}
 							</View>

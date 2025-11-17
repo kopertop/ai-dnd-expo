@@ -13,6 +13,10 @@ export const PlayerInfoSchema = z.object({
 	playerId: z.string(), // Unique player identifier (could be device ID or user ID)
 	name: z.string(), // Character name
 	joinedAt: z.number(),
+	race: z.string().optional(),
+	class: z.string().optional(),
+	level: z.number().optional(),
+	avatarColor: z.string().optional(),
 });
 
 export const GameMessageSchema = z.object({

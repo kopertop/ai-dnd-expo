@@ -29,6 +29,13 @@
       "when": 1765000000000,
       "tag": "0003_dm_first_multiplayer",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1763341474369,
+      "tag": "0004_lumpy_post",
+      "breakpoints": true
     }
   ]
 }

@@ -83,41 +83,47 @@ export const verifications = sqliteTable("verifications", {
 });
 
 export const maps = sqliteTable("maps", {
-        id: text("id").primaryKey(),
-        slug: text("slug").notNull(),
-        name: text("name").notNull(),
-        description: text("description"),
-        width: integer("width").notNull(),
-        height: integer("height").notNull(),
-        defaultTerrain: text("default_terrain").notNull(),
-        fogOfWar: text("fog_of_war").notNull(),
-        terrainLayers: text("terrain_layers").notNull(),
-        metadata: text("metadata").default("{}").notNull(),
-        createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
-        updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	id: text("id").primaryKey(),
+	slug: text("slug").notNull(),
+	name: text("name").notNull(),
+	description: text("description"),
+	width: integer("width").notNull(),
+	height: integer("height").notNull(),
+	defaultTerrain: text("default_terrain").notNull(),
+	fogOfWar: text("fog_of_war").notNull(),
+	terrainLayers: text("terrain_layers").notNull(),
+	metadata: text("metadata").default("{}").notNull(),
+	generatorPreset: text("generator_preset").default("static").notNull(),
+	seed: text("seed").default("static").notNull(),
+	theme: text("theme").default("neutral").notNull(),
+	biome: text("biome").default("temperate").notNull(),
+	isGenerated: integer("is_generated", { mode: "boolean" }).default(false).notNull(),
+	createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+	updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 }, table => ({
-        slugIdx: uniqueIndex("maps_slug_unique").on(table.slug),
+	slugIdx: uniqueIndex("maps_slug_unique").on(table.slug),
 }));
 
 export const mapTiles = sqliteTable("map_tiles", {
-        id: text("id").primaryKey(),
-        mapId: text("map_id")
-                .notNull()
-                .references(() => maps.id, { onDelete: "cascade" }),
-        x: integer("x").notNull(),
-        y: integer("y").notNull(),
-        terrainType: text("terrain_type").notNull(),
-        elevation: integer("elevation").default(0).notNull(),
-        isBlocked: integer("is_blocked", { mode: "boolean" }).default(false).notNull(),
-        hasFog: integer("has_fog", { mode: "boolean" }).default(false).notNull(),
-        metadata: text("metadata").default("{}").notNull(),
+	id: text("id").primaryKey(),
+	mapId: text("map_id")
+		.notNull()
+		.references(() => maps.id, { onDelete: "cascade" }),
+	x: integer("x").notNull(),
+	y: integer("y").notNull(),
+	terrainType: text("terrain_type").notNull(),
+	elevation: integer("elevation").default(0).notNull(),
+	isBlocked: integer("is_blocked", { mode: "boolean" }).default(false).notNull(),
+	hasFog: integer("has_fog", { mode: "boolean" }).default(false).notNull(),
+	featureType: text("feature_type"),
+	metadata: text("metadata").default("{}").notNull(),
 }, table => ({
-        mapIdx: index("map_tiles_map_id_idx").on(table.mapId),
-        coordinateIdx: uniqueIndex("map_tiles_map_coordinate_unique").on(
-                table.mapId,
-                table.x,
-                table.y,
-        ),
+	mapIdx: index("map_tiles_map_id_idx").on(table.mapId),
+	coordinateIdx: uniqueIndex("map_tiles_map_coordinate_unique").on(
+		table.mapId,
+		table.x,
+		table.y,
+	),
 }));
 
 export const npcs = sqliteTable("npcs", {
@@ -242,4 +248,30 @@ export const mapTokens = sqliteTable("map_tokens", {
         mapIdx: index("map_tokens_map_id_idx").on(table.mapId),
         characterIdx: index("map_tokens_character_id_idx").on(table.characterId),
         npcIdx: index("map_tokens_npc_id_idx").on(table.npcId),
+}));
+
+export const npcInstances = sqliteTable("npc_instances", {
+	id: text("id").primaryKey(),
+	gameId: text("game_id")
+		.notNull()
+		.references(() => games.id, { onDelete: "cascade" }),
+	npcId: text("npc_id")
+		.notNull()
+		.references(() => npcs.id, { onDelete: "cascade" }),
+	tokenId: text("token_id")
+		.notNull()
+		.references(() => mapTokens.id, { onDelete: "cascade" }),
+	name: text("name").notNull(),
+	disposition: text("disposition").notNull(),
+	currentHealth: integer("current_health").notNull(),
+	maxHealth: integer("max_health").notNull(),
+	statusEffects: text("status_effects").default("[]").notNull(),
+	isFriendly: integer("is_friendly", { mode: "boolean" }).default(false).notNull(),
+	metadata: text("metadata").default("{}").notNull(),
+	createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+	updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+}, table => ({
+	gameIdx: index("npc_instances_game_id_idx").on(table.gameId),
+	npcIdx: index("npc_instances_npc_id_idx").on(table.npcId),
+	tokenIdx: uniqueIndex("npc_instances_token_id_unique").on(table.tokenId),
 }));

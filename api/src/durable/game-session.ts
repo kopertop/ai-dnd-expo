@@ -120,6 +120,10 @@ export class GameSession {
 			playerId: payload.playerId,
 			name: payload.character.name,
 			joinedAt: Date.now(),
+			race: payload.character.race,
+			class: payload.character.class,
+			level: payload.character.level,
+			avatarColor: payload.character.trait ?? undefined,
 		};
 
 		const filtered = session.players.filter(p => p.characterId !== player.characterId);

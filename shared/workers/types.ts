@@ -19,6 +19,10 @@ export interface PlayerInfo {
 	playerId: string;
 	name: string;
 	joinedAt: number;
+	race?: string;
+	class?: string;
+	level?: number;
+	avatarColor?: string;
 }
 
 export interface Quest {

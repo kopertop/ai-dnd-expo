@@ -41,6 +41,11 @@ export const MapStateSchema = z.object({
 	tokens: z.array(MapTokenSchema).default([]),
 	updatedAt: z.number(),
 	metadata: z.record(z.unknown()).optional(),
+	preset: z.string().optional(),
+	seed: z.string().optional(),
+	theme: z.string().optional(),
+	biome: z.string().optional(),
+	isGenerated: z.boolean().optional(),
 });
 
 export const NpcDispositionSchema = z.enum(['hostile', 'friendly', 'vendor', 'neutral']);

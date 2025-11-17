@@ -5,6 +5,7 @@ import {
 	Alert,
 	ScrollView,
 	StyleSheet,
+	TextInput,
 	TouchableOpacity,
 	View,
 } from 'react-native';
@@ -21,13 +22,28 @@ import { ThemedView } from '@/components/themed-view';
 import { WorldChooser } from '@/components/world-chooser';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { useAuthStore } from '@/stores/use-auth-store';
-import { GameSessionResponse, HostedGameSummary } from '@/types/api/multiplayer-api';
+import {
+	GameSessionResponse,
+	HostedGameSummary,
+	NpcPlacementRequest,
+	PlacedNpc,
+} from '@/types/api/multiplayer-api';
 import { LocationOption } from '@/types/location-option';
 import { MapState, NpcDefinition } from '@/types/multiplayer-map';
 import { Quest } from '@/types/quest';
 import { WorldOption } from '@/types/world-option';
 
 type HostStep = 'quest' | 'world' | 'location' | 'ready' | 'waiting';
+type MapEditorMode = 'npc' | 'road' | 'tree' | 'erase';
+type MapPresetOption = 'forest' | 'road' | 'dungeon' | 'town';
+
+const MAP_PRESETS: MapPresetOption[] = ['forest', 'road', 'dungeon', 'town'];
+const MAP_EDITOR_MODES: Array<{ key: MapEditorMode; label: string }> = [
+	{ key: 'npc', label: 'NPC' },
+	{ key: 'road', label: 'Road' },
+	{ key: 'tree', label: 'Tree' },
+	{ key: 'erase', label: 'Erase' },
+];
 
 const createAdHocWorldOption = (name: string): WorldOption => ({
 	id: `saved-world-${name}`,
@@ -55,6 +71,22 @@ const HostGameScreen: React.FC = () => {
 	const [mapError, setMapError] = useState<string | null>(null);
 	const [npcPalette, setNpcPalette] = useState<NpcDefinition[]>([]);
 	const [selectedNpc, setSelectedNpc] = useState<NpcDefinition | null>(null);
+	const [customNpcForm, setCustomNpcForm] = useState<NonNullable<NpcPlacementRequest['customNpc']>>({
+		name: 'Custom Ally',
+		role: 'Support',
+		alignment: 'neutral',
+		disposition: 'friendly',
+		description: 'Quick ally ready to assist the party.',
+		maxHealth: 18,
+		armorClass: 12,
+		color: '#4A6741',
+	});
+	const [useCustomNpc, setUseCustomNpc] = useState(false);
+	const [npcInstances, setNpcInstances] = useState<PlacedNpc[]>([]);
+	const [npcInstancesLoading, setNpcInstancesLoading] = useState(false);
+	const [editorMode, setEditorMode] = useState<MapEditorMode>('npc');
+	const [mapPreset, setMapPreset] = useState<MapPresetOption>('forest');
+	const [mutatingTerrain, setMutatingTerrain] = useState(false);
 	const [hostedGames, setHostedGames] = useState<HostedGameSummary[]>([]);
 	const [gamesLoading, setGamesLoading] = useState(true);
 	const [gamesError, setGamesError] = useState<string | null>(null);
@@ -110,6 +142,23 @@ const HostGameScreen: React.FC = () => {
 		}
 	}, [session?.inviteCode]);
 
+	const loadNpcInstances = useCallback(async () => {
+		if (!session?.inviteCode) {
+			setNpcInstances([]);
+			return;
+		}
+
+		setNpcInstancesLoading(true);
+		try {
+			const instances = await multiplayerClient.getNpcInstances(session.inviteCode);
+			setNpcInstances(instances.instances);
+		} catch (error) {
+			console.error('Failed to load NPC instances:', error);
+		} finally {
+			setNpcInstancesLoading(false);
+		}
+	}, [session?.inviteCode]);
+
 	useEffect(() => {
 		if (user) {
 			loadHostedGames();
@@ -138,6 +187,7 @@ const HostGameScreen: React.FC = () => {
 		if (!session?.inviteCode) {
 			setNpcPalette([]);
 			setMapState(null);
+			setNpcInstances([]);
 			return;
 		}
 
@@ -149,7 +199,8 @@ const HostGameScreen: React.FC = () => {
 				console.error('Failed to load NPC palette:', error);
 				setMapError(prev => prev ?? 'Failed to load NPCs');
 			});
-	}, [session?.inviteCode, refreshMapState]);
+		loadNpcInstances().catch(() => undefined);
+	}, [session?.inviteCode, refreshMapState, loadNpcInstances]);
 
 	const handleQuestSelect = (quest: Quest) => {
 		setSelectedQuest(quest);
@@ -168,26 +219,143 @@ const HostGameScreen: React.FC = () => {
 
 	const handleTilePress = useCallback(
 		async (x: number, y: number) => {
-			if (!session?.inviteCode || !selectedNpc) {
+			if (!session?.inviteCode || !mapState) {
 				return;
 			}
 
+			if (editorMode === 'npc') {
+				const customPayload = !selectedNpc && useCustomNpc ? customNpcForm : null;
+				if (!selectedNpc && !customPayload) {
+					Alert.alert('Select NPC', 'Choose an NPC from the palette first.');
+					return;
+				}
+
+				try {
+					await multiplayerClient.placeNpc(session.inviteCode, {
+						npcId: selectedNpc?.slug ?? 'custom',
+						x,
+						y,
+						label: selectedNpc?.name ?? customPayload?.name,
+						customNpc: customPayload ?? undefined,
+					});
+					await Promise.all([refreshMapState(), loadNpcInstances()]);
+				} catch (error) {
+					Alert.alert(
+						'Placement Failed',
+						error instanceof Error ? error.message : 'Unable to place NPC',
+					);
+				}
+				return;
+			}
+
+			const terrainType =
+			editorMode === 'road'
+					? 'road'
+					: editorMode === 'tree'
+						? 'tree'
+						: mapState.defaultTerrain ?? 'stone';
+			const featureType =
+				editorMode === 'road' ? 'road' : editorMode === 'tree' ? 'tree' : null;
+			setMutatingTerrain(true);
 			try {
-				await multiplayerClient.placeNpc(session.inviteCode, {
-					npcId: selectedNpc.slug,
-					x,
-					y,
-					label: selectedNpc.name,
+				await multiplayerClient.mutateTerrain(session.inviteCode, {
+					tiles: [
+						{
+							x,
+							y,
+							terrainType,
+							featureType,
+							isBlocked: editorMode === 'tree',
+							metadata:
+								editorMode === 'road'
+									? { variant: 'stone' }
+									: editorMode === 'tree'
+										? { variant: 'oak' }
+										: {},
+						},
+					],
 				});
 				await refreshMapState();
 			} catch (error) {
 				Alert.alert(
-					'Placement Failed',
-					error instanceof Error ? error.message : 'Unable to place NPC',
+					'Edit Failed',
+					error instanceof Error ? error.message : 'Unable to edit terrain',
+				);
+			} finally {
+				setMutatingTerrain(false);
+			}
+		},
+		[
+			session?.inviteCode,
+			editorMode,
+			selectedNpc,
+			mapState,
+			refreshMapState,
+			loadNpcInstances,
+		],
+	);
+
+	const handleGenerateMap = useCallback(async () => {
+		if (!session?.inviteCode) {
+			return;
+		}
+
+		setMapLoading(true);
+		try {
+			const generated = await multiplayerClient.generateMap(session.inviteCode, {
+				preset: mapPreset,
+			});
+			setMapState(generated);
+		} catch (error) {
+			Alert.alert(
+				'Generation Failed',
+				error instanceof Error ? error.message : 'Unable to generate map',
+			);
+		} finally {
+			setMapLoading(false);
+		}
+	}, [session?.inviteCode, mapPreset]);
+
+	const handleNpcHealthAdjust = useCallback(
+		async (tokenId: string, currentHealth: number, delta: number) => {
+			if (!session?.inviteCode) {
+				return;
+			}
+
+			try {
+				await multiplayerClient.updateNpcInstance(session.inviteCode, tokenId, {
+					currentHealth: currentHealth + delta,
+				});
+				await loadNpcInstances();
+			} catch (error) {
+				Alert.alert(
+					'Update Failed',
+					error instanceof Error ? error.message : 'Unable to update NPC',
 				);
 			}
 		},
-		[session?.inviteCode, selectedNpc, refreshMapState],
+		[session?.inviteCode, loadNpcInstances],
+	);
+
+	const handleNpcFriendlyToggle = useCallback(
+		async (tokenId: string, nextValue: boolean) => {
+			if (!session?.inviteCode) {
+			 return;
+			}
+
+			try {
+				await multiplayerClient.updateNpcInstance(session.inviteCode, tokenId, {
+					isFriendly: nextValue,
+				});
+				await loadNpcInstances();
+			} catch (error) {
+				Alert.alert(
+					'Update Failed',
+					error instanceof Error ? error.message : 'Unable to update NPC',
+				);
+			}
+		},
+		[session?.inviteCode, loadNpcInstances],
 	);
 
 	const handleCreateGame = async () => {
@@ -409,6 +577,78 @@ const HostGameScreen: React.FC = () => {
 		handleResumeHostedGame,
 	]);
 
+	const renderNpcInstances = useCallback(() => {
+		return (
+			<View style={styles.instancePanel}>
+				<View style={styles.instanceHeader}>
+					<ThemedText type="subtitle">Battlefield NPCs</ThemedText>
+					<TouchableOpacity
+						style={styles.mapRefreshButton}
+						onPress={() => loadNpcInstances().catch(() => undefined)}
+					>
+						<ThemedText style={styles.mapRefreshButtonText}>Reload</ThemedText>
+					</TouchableOpacity>
+				</View>
+				{npcInstancesLoading ? (
+					<View style={styles.loadingContainer}>
+						<ActivityIndicator size="small" color="#8B6914" />
+						<ThemedText style={styles.loadingText}>Syncing NPCs...</ThemedText>
+					</View>
+				) : npcInstances.length === 0 ? (
+					<ThemedText style={styles.emptyStateSubtext}>
+						No NPCs placed yet.
+					</ThemedText>
+				) : (
+					npcInstances.map(instance => (
+						<View key={instance.id} style={styles.instanceCard}>
+							<View style={styles.instanceRow}>
+								<ThemedText style={styles.instanceName}>{instance.name}</ThemedText>
+								<TouchableOpacity
+									style={[
+										styles.statusBadge,
+										instance.isFriendly
+											? styles.statusFriendly
+											: styles.statusHostile,
+									]}
+									onPress={() =>
+										handleNpcFriendlyToggle(instance.tokenId, !instance.isFriendly)
+									}
+								>
+									<ThemedText style={styles.statusText}>
+										{instance.isFriendly ? 'Friendly' : 'Hostile'}
+									</ThemedText>
+								</TouchableOpacity>
+							</View>
+							<View style={styles.instanceRow}>
+								<ThemedText style={styles.instanceHealth}>
+									HP {instance.currentHealth}/{instance.maxHealth}
+								</ThemedText>
+								<View style={styles.instanceActions}>
+									<TouchableOpacity
+										style={styles.adjustButton}
+										onPress={() =>
+											handleNpcHealthAdjust(instance.tokenId, instance.currentHealth, -5)
+										}
+									>
+										<ThemedText style={styles.adjustButtonText}>-5</ThemedText>
+									</TouchableOpacity>
+									<TouchableOpacity
+										style={styles.adjustButton}
+										onPress={() =>
+											handleNpcHealthAdjust(instance.tokenId, instance.currentHealth, 5)
+										}
+									>
+										<ThemedText style={styles.adjustButtonText}>+5</ThemedText>
+									</TouchableOpacity>
+								</View>
+							</View>
+						</View>
+					))
+				)}
+			</View>
+		);
+	}, [npcInstances, npcInstancesLoading, loadNpcInstances, handleNpcFriendlyToggle, handleNpcHealthAdjust]);
+
 	const renderStepContent = () => {
 		switch (currentStep) {
 			case 'quest':
@@ -468,79 +708,229 @@ const HostGameScreen: React.FC = () => {
 						{session && (
 							<>
 								<InviteCodeDisplay inviteCode={session.inviteCode} />
-								<View style={styles.spacer} />
-								<PlayerList
-									players={session.players}
-									characters={session.gameState?.characters}
-								/>
-								<View style={styles.dmWorkspace}>
-									<View style={styles.workspaceHeader}>
-										<ThemedText type="subtitle">Interactive Map</ThemedText>
-										<TouchableOpacity
-											style={styles.mapRefreshButton}
-											onPress={() => refreshMapState().catch(() => undefined)}
-										>
-											<ThemedText style={styles.mapRefreshButtonText}>
-												Refresh
-											</ThemedText>
-										</TouchableOpacity>
-									</View>
-									{mapError && (
-										<ThemedText style={styles.errorText}>{mapError}</ThemedText>
-									)}
-									{mapLoading ? (
-										<View style={styles.loadingContainer}>
-											<ActivityIndicator size="small" color="#8B6914" />
-											<ThemedText style={styles.loadingText}>
-												Loading map...
-											</ThemedText>
-										</View>
-									) : (
-										<InteractiveMap
-											map={mapState}
-											isEditable
-											onTilePress={handleTilePress}
-										/>
-									)}
-									<View style={styles.paletteHeader}>
-										<ThemedText type="subtitle">NPC Palette</ThemedText>
-										<ThemedText style={styles.paletteHint}>
-											Select an NPC, then tap the map to place.
-										</ThemedText>
-									</View>
-									<ScrollView
-										horizontal
-										style={styles.paletteScroll}
-										contentContainerStyle={styles.paletteContent}
-										showsHorizontalScrollIndicator={false}
-									>
-										{npcPalette.length === 0 && (
-											<ThemedText style={styles.emptyStateText}>
-												No NPC definitions available.
-											</ThemedText>
-										)}
-										{npcPalette.map(npc => {
-											const isSelected = selectedNpc?.id === npc.id;
-											return (
+							<View style={styles.hostWorkspace}>
+								<View style={styles.sidebar}>
+									<PlayerList
+										players={session.players}
+										characters={session.gameState?.characters}
+									/>
+									{renderNpcInstances()}
+								</View>
+								<View style={styles.mapColumn}>
+									<View style={styles.editorToolbar}>
+										<View style={styles.workspaceHeader}>
+											<ThemedText type="subtitle">Map Tools</ThemedText>
+											<View style={styles.toolbarActions}>
 												<TouchableOpacity
-													key={npc.id}
-													style={[
-														styles.npcCard,
-														isSelected && styles.npcCardSelected,
-													]}
-													onPress={() =>
-														setSelectedNpc(isSelected ? null : npc)
-													}
+													style={styles.mapRefreshButton}
+													onPress={() => refreshMapState().catch(() => undefined)}
 												>
-													<ThemedText style={styles.npcName}>{npc.name}</ThemedText>
-													<ThemedText style={styles.npcMeta}>
-														{npc.role} • {npc.alignment}
+													<ThemedText style={styles.mapRefreshButtonText}>
+														Refresh
 													</ThemedText>
 												</TouchableOpacity>
-											);
-										})}
-									</ScrollView>
+												{mutatingTerrain && (
+													<ActivityIndicator size="small" color="#8B6914" />
+												)}
+											</View>
+										</View>
+										<View style={styles.presetControls}>
+											{MAP_PRESETS.map(preset => {
+												const active = mapPreset === preset;
+												return (
+													<TouchableOpacity
+														key={preset}
+														style={[
+															styles.presetButton,
+															active && styles.presetButtonActive,
+														]}
+														onPress={() => setMapPreset(preset)}
+													>
+														<ThemedText
+															style={[
+																styles.presetButtonText,
+																active && styles.presetButtonTextActive,
+															]}
+														>
+															{preset}
+														</ThemedText>
+													</TouchableOpacity>
+												);
+											})}
+											<TouchableOpacity
+												style={[
+													styles.generateButton,
+													mapLoading && styles.buttonDisabled,
+												]}
+												onPress={handleGenerateMap}
+												disabled={mapLoading}
+											>
+												<ThemedText style={styles.generateButtonText}>
+													{mapLoading ? 'Working...' : 'Generate'}
+												</ThemedText>
+											</TouchableOpacity>
+										</View>
+										<View style={styles.editorModes}>
+											{MAP_EDITOR_MODES.map(mode => {
+												const active = editorMode === mode.key;
+												return (
+													<TouchableOpacity
+														key={mode.key}
+														style={[
+															styles.modeButton,
+															active && styles.modeButtonActive,
+														]}
+														onPress={() => setEditorMode(mode.key)}
+													>
+														<ThemedText
+															style={[
+																styles.modeButtonText,
+																active && styles.modeButtonTextActive,
+															]}
+														>
+															{mode.label}
+														</ThemedText>
+													</TouchableOpacity>
+												);
+											})}
+										</View>
+									</View>
+									<View style={styles.dmWorkspace}>
+										{mapError && (
+											<ThemedText style={styles.errorText}>{mapError}</ThemedText>
+										)}
+										{mapLoading ? (
+											<View style={styles.loadingContainer}>
+												<ActivityIndicator size="small" color="#8B6914" />
+												<ThemedText style={styles.loadingText}>
+													Loading map...
+												</ThemedText>
+											</View>
+										) : (
+											<InteractiveMap
+												map={mapState}
+												isEditable
+												onTilePress={handleTilePress}
+											/>
+										)}
+										<View style={styles.paletteHeader}>
+											<ThemedText type="subtitle">NPC Palette</ThemedText>
+											<ThemedText style={styles.paletteHint}>
+												Select an NPC, then tap the map to place.
+											</ThemedText>
+										</View>
+										<ScrollView
+											horizontal
+											style={styles.paletteScroll}
+											contentContainerStyle={styles.paletteContent}
+											showsHorizontalScrollIndicator={false}
+										>
+											{npcPalette.length === 0 && (
+												<ThemedText style={styles.emptyStateText}>
+													No NPC definitions available.
+												</ThemedText>
+											)}
+											{npcPalette.map(npc => {
+												const isSelected = selectedNpc?.id === npc.id && !useCustomNpc;
+												return (
+													<TouchableOpacity
+														key={npc.id}
+														style={[
+															styles.npcCard,
+															isSelected && styles.npcCardSelected,
+														]}
+														onPress={() => {
+															setUseCustomNpc(false);
+															setSelectedNpc(isSelected ? null : npc);
+														}}
+													>
+														<ThemedText style={styles.npcName}>
+															{npc.name}
+														</ThemedText>
+														<ThemedText style={styles.npcMeta}>
+															{npc.role} • {npc.alignment}
+														</ThemedText>
+													</TouchableOpacity>
+												);
+											})}
+											<View
+												style={[
+													styles.npcCard,
+													useCustomNpc && styles.npcCardSelected,
+												]}
+											>
+												<ThemedText style={styles.npcName}>
+													Custom NPC
+												</ThemedText>
+												<TextInput
+													style={styles.input}
+													value={customNpcForm.name}
+													onChangeText={value =>
+														setCustomNpcForm(prev => ({ ...prev, name: value }))
+													}
+													placeholder="Name"
+													placeholderTextColor="#9C8A63"
+												/>
+												<TextInput
+													style={styles.input}
+													value={customNpcForm.role}
+													onChangeText={value =>
+														setCustomNpcForm(prev => ({ ...prev, role: value }))
+													}
+													placeholder="Role"
+													placeholderTextColor="#9C8A63"
+												/>
+												<View style={styles.dispositionRow}>
+													{['friendly', 'neutral', 'hostile'].map(disposition => {
+														const active = customNpcForm.disposition === disposition;
+														return (
+															<TouchableOpacity
+																key={disposition}
+																style={[
+																	styles.dispositionButton,
+																	active && styles.dispositionButtonActive,
+																]}
+																onPress={() =>
+																	setCustomNpcForm(prev => ({
+																		...prev,
+																		disposition: disposition as NonNullable<
+																			NpcPlacementRequest['customNpc']
+																		>['disposition'],
+																		alignment:
+																			disposition === 'hostile'
+																				? 'chaotic_evil'
+																				: 'neutral',
+																	}))
+																}
+															>
+																<ThemedText
+																	style={[
+																		styles.dispositionButtonText,
+																		active && styles.dispositionButtonTextActive,
+																	]}
+																>
+																	{disposition}
+																</ThemedText>
+															</TouchableOpacity>
+														);
+													})}
+												</View>
+												<TouchableOpacity
+													style={styles.customNpcButton}
+													onPress={() => {
+														setSelectedNpc(null);
+														setUseCustomNpc(true);
+													}}
+												>
+													<ThemedText style={styles.customNpcButtonText}>
+														Use Custom
+													</ThemedText>
+												</TouchableOpacity>
+											</View>
+										</ScrollView>
+									</View>
 								</View>
+							</View>
 								<TouchableOpacity
 									style={[
 										styles.button,
@@ -705,6 +1095,19 @@ const styles = StyleSheet.create({
 		flex: 1,
 		padding: 20,
 	},
+	hostWorkspace: {
+		flexDirection: 'row',
+		gap: 16,
+		marginTop: 20,
+	},
+	sidebar: {
+		width: 300,
+		gap: 16,
+	},
+	mapColumn: {
+		flex: 1,
+		gap: 16,
+	},
 	dmWorkspace: {
 		marginTop: 24,
 		padding: 16,
@@ -719,6 +1122,19 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'space-between',
 	},
+	toolbarActions: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+	},
+	editorToolbar: {
+		padding: 16,
+		borderRadius: 16,
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+		backgroundColor: '#FFF4DF',
+		gap: 12,
+	},
 	mapRefreshButton: {
 		paddingHorizontal: 12,
 		paddingVertical: 6,
@@ -728,6 +1144,62 @@ const styles = StyleSheet.create({
 	mapRefreshButtonText: {
 		color: '#F5E6D3',
 		fontWeight: '600',
+	},
+	presetControls: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 8,
+		alignItems: 'center',
+	},
+	presetButton: {
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: '#C9B037',
+	},
+	presetButtonActive: {
+		backgroundColor: '#C9B037',
+	},
+	presetButtonText: {
+		color: '#3B2F1B',
+		fontWeight: '600',
+		textTransform: 'capitalize',
+	},
+	presetButtonTextActive: {
+		color: '#1F130A',
+	},
+	generateButton: {
+		backgroundColor: '#3B2F1B',
+		paddingHorizontal: 16,
+		paddingVertical: 8,
+		borderRadius: 12,
+	},
+	generateButtonText: {
+		color: '#F5E6D3',
+		fontWeight: '600',
+	},
+	editorModes: {
+		flexDirection: 'row',
+		gap: 8,
+	},
+	modeButton: {
+		paddingHorizontal: 14,
+		paddingVertical: 6,
+		borderRadius: 999,
+		borderWidth: 1,
+		borderColor: '#D4BC8B',
+	},
+	modeButtonActive: {
+		backgroundColor: '#8B6914',
+		borderColor: '#8B6914',
+	},
+	modeButtonText: {
+		color: '#3B2F1B',
+		fontWeight: '600',
+	},
+	modeButtonTextActive: {
+		color: '#FFF9EF',
 	},
 	spacer: {
 		height: 30,
@@ -862,6 +1334,102 @@ const styles = StyleSheet.create({
 	npcMeta: {
 		color: '#6B5B3D',
 		fontSize: 12,
+	},
+	input: {
+		borderWidth: 1,
+		borderColor: '#C9B037',
+		borderRadius: 8,
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		color: '#3B2F1B',
+	},
+	dispositionRow: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 6,
+	},
+	dispositionButton: {
+		paddingHorizontal: 10,
+		paddingVertical: 4,
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: '#C9B037',
+	},
+	dispositionButtonActive: {
+		backgroundColor: '#C9B037',
+	},
+	dispositionButtonText: {
+		color: '#6B5B3D',
+		fontSize: 12,
+		textTransform: 'capitalize',
+	},
+	dispositionButtonTextActive: {
+		color: '#1F130A',
+	},
+	customNpcButton: {
+		marginTop: 8,
+		paddingVertical: 8,
+		borderRadius: 8,
+		backgroundColor: '#3B2F1B',
+		alignItems: 'center',
+	},
+	customNpcButtonText: {
+		color: '#F5E6D3',
+		fontWeight: '600',
+	},
+	instancePanel: {
+		padding: 16,
+		borderRadius: 16,
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+		backgroundColor: '#FFF9EF',
+		gap: 12,
+	},
+	instanceHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	instanceCard: {
+		padding: 12,
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+		backgroundColor: '#FFFFFF',
+		gap: 8,
+	},
+	instanceRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	instanceName: {
+		fontWeight: '700',
+		color: '#3B2F1B',
+	},
+	instanceHealth: {
+		color: '#3B2F1B',
+		fontWeight: '600',
+	},
+	instanceActions: {
+		flexDirection: 'row',
+		gap: 8,
+	},
+	adjustButton: {
+		paddingHorizontal: 10,
+		paddingVertical: 4,
+		borderRadius: 6,
+		backgroundColor: '#C9B037',
+	},
+	adjustButtonText: {
+		color: '#1F130A',
+		fontWeight: '700',
+	},
+	statusFriendly: {
+		backgroundColor: '#2E7D32',
+	},
+	statusHostile: {
+		backgroundColor: '#B91C1C',
 	},
 	loaderFallback: {
 		flex: 1,

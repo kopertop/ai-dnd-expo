@@ -5,13 +5,17 @@ import {
 	GameSessionResponse,
 	GameStateResponse,
 	JoinGameRequest,
+	MapGenerationRequest,
 	MapStateResponse,
 	MapStateUpdateRequest,
+	MapTerrainMutationRequest,
 	MapTokenListResponse,
 	MapTokenMutationResponse,
 	MapTokenUpsertRequest,
 	MyGamesResponse,
 	NpcDefinitionListResponse,
+	NpcInstanceListResponse,
+	NpcInstanceUpdateRequest,
 	NpcPlacementRequest,
 	PlayerActionRequest,
 } from '@/types/api/multiplayer-api';
@@ -365,6 +369,43 @@ export class MultiplayerClient {
 		return response.json();
 	}
 
+	async generateMap(inviteCode: string, request: MapGenerationRequest): Promise<MapStateResponse> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/map/generate`), {
+			method: 'POST',
+			headers,
+			credentials: 'include',
+			body: JSON.stringify(request),
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to generate map');
+		}
+
+		return response.json();
+	}
+
+	async mutateTerrain(
+		inviteCode: string,
+		request: MapTerrainMutationRequest,
+	): Promise<MapStateResponse> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/map/terrain`), {
+			method: 'POST',
+			headers,
+			credentials: 'include',
+			body: JSON.stringify(request),
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to update terrain');
+		}
+
+		return response.json();
+	}
+
 	async listMapTokens(inviteCode: string): Promise<MapTokenListResponse> {
 		const headers = this.getAuthHeaders();
 		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/map/tokens`), {
@@ -434,6 +475,43 @@ export class MultiplayerClient {
 		return response.json();
 	}
 
+	async getNpcInstances(inviteCode: string): Promise<NpcInstanceListResponse> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/npc-instances`), {
+			method: 'GET',
+			headers,
+			credentials: 'include',
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to load NPC instances');
+		}
+
+		return response.json();
+	}
+
+	async updateNpcInstance(
+		inviteCode: string,
+		tokenId: string,
+		request: NpcInstanceUpdateRequest,
+	): Promise<void> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(
+			this.buildUrl(`/api/games/${inviteCode}/npcs/${tokenId}`),
+			{
+				method: 'PATCH',
+				headers,
+				credentials: 'include',
+				body: JSON.stringify(request),
+			},
+		);
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to update NPC');
+		}
+	}
 	async placeNpc(inviteCode: string, request: NpcPlacementRequest): Promise<MapTokenMutationResponse> {
 		const headers = this.getAuthHeaders();
 		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/npcs`), {

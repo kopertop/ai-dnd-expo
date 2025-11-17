@@ -13,6 +13,8 @@ interface MapSeed {
         fogOfWar: Record<string, unknown>;
         terrainLayers: Record<string, unknown>[];
         metadata?: Record<string, unknown>;
+        theme: string;
+        biome: string;
 }
 
 interface MapTileSeed {
@@ -24,6 +26,7 @@ interface MapTileSeed {
         elevation?: number;
         isBlocked?: boolean;
         hasFog?: boolean;
+        featureType?: string;
         metadata?: Record<string, unknown>;
 }
 
@@ -58,6 +61,8 @@ const MAP_SEEDS: MapSeed[] = [
                 fogOfWar: { enabled: false },
                 terrainLayers: [{ type: 'structures', items: ['fountain', 'stalls', 'statue'] }],
                 metadata: { biome: 'urban', tags: ['safe', 'trade'] },
+                theme: 'urban',
+                biome: 'city',
         },
         {
                 id: 'map_dungeon_antechamber',
@@ -70,6 +75,8 @@ const MAP_SEEDS: MapSeed[] = [
                 fogOfWar: { enabled: true },
                 terrainLayers: [{ type: 'features', items: ['doorways', 'pillars'] }],
                 metadata: { biome: 'underground', tags: ['danger', 'combat'] },
+                theme: 'dungeon',
+                biome: 'underground',
         },
 ];
 
@@ -183,8 +190,9 @@ function seedMaps(db: BetterSqliteDatabase) {
         const statement = db.prepare(
                 `INSERT INTO maps (
                         id, slug, name, description, width, height, default_terrain, fog_of_war,
-                        terrain_layers, metadata, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        terrain_layers, metadata, generator_preset, seed, theme, biome, is_generated,
+                        created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                         slug = excluded.slug,
                         name = excluded.name,
@@ -195,6 +203,11 @@ function seedMaps(db: BetterSqliteDatabase) {
                         fog_of_war = excluded.fog_of_war,
                         terrain_layers = excluded.terrain_layers,
                         metadata = excluded.metadata,
+                        generator_preset = excluded.generator_preset,
+                        seed = excluded.seed,
+                        theme = excluded.theme,
+                        biome = excluded.biome,
+                        is_generated = excluded.is_generated,
                         updated_at = excluded.updated_at`,
         );
 
@@ -211,6 +224,11 @@ function seedMaps(db: BetterSqliteDatabase) {
                         JSON.stringify(map.fogOfWar),
                         JSON.stringify(map.terrainLayers),
                         JSON.stringify(map.metadata ?? {}),
+                        'static',
+                        map.slug,
+                        map.theme,
+                        map.biome,
+                        0,
                         now,
                         now,
                 );
@@ -220,13 +238,14 @@ function seedMaps(db: BetterSqliteDatabase) {
 function seedTiles(db: BetterSqliteDatabase) {
         const statement = db.prepare(
                 `INSERT INTO map_tiles (
-                        id, map_id, x, y, terrain_type, elevation, is_blocked, has_fog, metadata
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        id, map_id, x, y, terrain_type, elevation, is_blocked, has_fog, feature_type, metadata
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                         terrain_type = excluded.terrain_type,
                         elevation = excluded.elevation,
                         is_blocked = excluded.is_blocked,
                         has_fog = excluded.has_fog,
+                        feature_type = excluded.feature_type,
                         metadata = excluded.metadata`,
         );
 
@@ -240,6 +259,7 @@ function seedTiles(db: BetterSqliteDatabase) {
                         tile.elevation ?? 0,
                         tile.isBlocked ? 1 : 0,
                         tile.hasFog ? 1 : 0,
+                        tile.featureType ?? null,
                         JSON.stringify(tile.metadata ?? {}),
                 );
         }

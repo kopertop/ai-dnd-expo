@@ -6,6 +6,7 @@ type TerrainCell = {
 	elevation: number;
 	fogged: boolean;
 	difficult?: boolean;
+	featureType?: string | null;
 };
 
 const parseJson = <T>(raw: string | null | undefined, fallback: T): T => {
@@ -67,6 +68,7 @@ const applyTileOverrides = (grid: TerrainCell[][], tiles?: MapTileRow[]) => {
 			elevation: tile.elevation ?? cell.elevation ?? 0,
 			fogged: Boolean(tile.has_fog),
 			difficult: Boolean(tile.is_blocked),
+			featureType: tile.feature_type,
 		};
 	});
 
@@ -133,6 +135,11 @@ export const mapStateFromDb = (
 		defaultTerrain: parseJson<{ type?: string }>(map.default_terrain, { type: 'stone' }).type,
 		background: parseJson<{ image?: string }>(map.metadata, {}).image,
 		metadata: parseJson<Record<string, unknown>>(map.metadata, {}),
+		preset: map.generator_preset,
+		seed: map.seed,
+		theme: map.theme,
+		biome: map.biome,
+		isGenerated: Boolean(map.is_generated),
 		tokens: convertTokens(options.tokens),
 		updatedAt: map.updated_at,
 	};

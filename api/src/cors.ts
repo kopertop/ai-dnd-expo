@@ -21,20 +21,26 @@ function getAllowedOrigin(origin: string | null): string {
 	}
 
 	// For production, you might want to check against a whitelist
-	// For now, allow the origin if provided, otherwise use '*'
+	// For now, allow the origin if provided, otherwise fall back to '*'
 	return origin || '*';
 }
 
 export function corsHeaders(origin: string | null): Record<string, string> {
 	const allowedOrigin = getAllowedOrigin(origin);
 
-	return {
+	const headers: Record<string, string> = {
 		'Access-Control-Allow-Origin': allowedOrigin,
 		'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
 		'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Email',
-		'Access-Control-Allow-Credentials': 'true',
 		'Content-Type': 'application/json',
 	};
+
+	// Browsers reject credentialed requests when origin is '*'
+	if (allowedOrigin !== '*') {
+		headers['Access-Control-Allow-Credentials'] = 'true';
+	}
+
+	return headers;
 }
 
 /**

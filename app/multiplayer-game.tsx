@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DMControlsPanel } from '@/components/dm-controls-panel';
 import { InteractiveMap } from '@/components/map/InteractiveMap';
-import { MultiplayerChat } from '@/components/multiplayer-chat';
 import { PlayerCharacterList } from '@/components/player-character-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -126,36 +125,6 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	};
 
-	const handleSendMessage = useCallback(async (message: string) => {
-		if (!inviteCode || !playerId || !gameState) return;
-
-		try {
-			// Find player's character ID
-			const player = gameState.players.find(p => p.playerId === playerId);
-			if (!player) {
-				Alert.alert('Error', 'Player not found in game');
-				return;
-			}
-
-			// Submit action
-			await multiplayerClient.submitPlayerAction(inviteCode, {
-				action: message,
-				characterId: player.characterId,
-				playerId,
-			});
-
-			// If WebSocket is connected, it will update via WebSocket
-			// Otherwise, polling will pick it up
-			if (!wsIsConnected) {
-				// Refresh state after a short delay
-				setTimeout(loadGameState, 500);
-			}
-		} catch (error) {
-			Alert.alert('Error', 'Failed to send message');
-			console.error(error);
-		}
-	}, [inviteCode, playerId, gameState, wsIsConnected]);
-
 	const handleDMAction = useCallback(async (type: string, data: any) => {
 		if (!inviteCode || !hostId || !gameState) return;
 
@@ -205,6 +174,29 @@ const MultiplayerGameScreen: React.FC = () => {
 		</View>
 	);
 
+	const renderActivityLog = () => (
+		<View style={styles.logPanel}>
+			<ThemedText type="subtitle">Activity Log</ThemedText>
+			{gameState.messages.length === 0 ? (
+				<ThemedText style={styles.mapHint}>No actions recorded yet.</ThemedText>
+			) : (
+				gameState.messages.slice(-25).map(message => (
+					<View key={message.id} style={styles.logItem}>
+						<ThemedText style={styles.logContent}>{message.content}</ThemedText>
+						<View style={styles.logMetaRow}>
+							{message.speaker && (
+								<ThemedText style={styles.logMeta}>{message.speaker}</ThemedText>
+							)}
+							<ThemedText style={styles.logMeta}>
+								{new Date(message.timestamp).toLocaleTimeString()}
+							</ThemedText>
+						</View>
+					</View>
+				))
+			)}
+		</View>
+	);
+
 	return (
 		<ThemedView style={styles.container}>
 			<Stack.Screen
@@ -236,11 +228,7 @@ const MultiplayerGameScreen: React.FC = () => {
 							currentPlayerId={currentCharacterId}
 						/>
 						{renderMapSection()}
-						<MultiplayerChat
-							messages={gameState.messages}
-							onSendMessage={handleSendMessage}
-							currentPlayerId={currentCharacterId}
-						/>
+						{renderActivityLog()}
 					</ScrollView>
 				) : (
 					// Tablet/Desktop: Side-by-side layout
@@ -253,11 +241,7 @@ const MultiplayerGameScreen: React.FC = () => {
 						</View>
 						<View style={styles.mainContent}>
 							{renderMapSection()}
-							<MultiplayerChat
-								messages={gameState.messages}
-								onSendMessage={handleSendMessage}
-								currentPlayerId={currentCharacterId}
-							/>
+							{renderActivityLog()}
 							{isHost && (
 								<View style={styles.dmPanel}>
 									<DMControlsPanel
@@ -344,6 +328,32 @@ const styles = StyleSheet.create({
 	mapHint: {
 		color: '#6B5B3D',
 	},
+	logPanel: {
+		borderWidth: 1,
+		borderColor: '#D4BC8B',
+		borderRadius: 12,
+		padding: 12,
+		backgroundColor: '#FFF4DF',
+		gap: 8,
+		marginBottom: 16,
+	},
+	logItem: {
+		borderRadius: 8,
+		backgroundColor: '#FFFFFF',
+		padding: 10,
+		gap: 6,
+	},
+	logContent: {
+		color: '#3B2F1B',
+	},
+	logMetaRow: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+	},
+	logMeta: {
+		fontSize: 11,
+		color: '#6B5B3D',
+	},
 	dmPanel: {
 		width: 350,
 		borderLeftWidth: 1,
@@ -351,7 +361,7 @@ const styles = StyleSheet.create({
 		maxHeight: '100%',
 	},
 	mobileDMPanel: {
-		maxHeight: 300,
+		maxHeight: 320,
 		borderTopWidth: 1,
 		borderTopColor: '#C9B037',
 	},
