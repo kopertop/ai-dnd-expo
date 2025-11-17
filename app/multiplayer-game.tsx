@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -13,8 +13,8 @@ import { useScreenSize } from '@/hooks/use-screen-size';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { PlayerActionMessage } from '@/types/api/websocket-messages';
-import { MapState } from '@/types/multiplayer-map';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
+import { MapState } from '@/types/multiplayer-map';
 
 const MultiplayerGameScreen: React.FC = () => {
 	const params = useLocalSearchParams<{ inviteCode: string; hostId?: string; playerId?: string }>();

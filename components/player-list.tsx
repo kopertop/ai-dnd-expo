@@ -1,16 +1,41 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 import { useScreenSize } from '@/hooks/use-screen-size';
+import { Character } from '@/types/character';
 import { PlayerInfo } from '@/types/multiplayer-game';
 
 interface PlayerListProps {
 	players: PlayerInfo[];
-	characters?: Array<{ id: string; name: string; race: string; class: string }>;
+	characters?: Character[];
 }
+
+const FALLBACK_COLORS = ['#C9B037', '#8B6914', '#4A6741', '#7A4EAB', '#2E6F91', '#A63D40'];
+
+const hashStringToColor = (input: string) => {
+	let hash = 0;
+	for (let i = 0; i < input.length; i++) {
+		hash = input.charCodeAt(i) + ((hash << 5) - hash);
+	}
+
+	const index = Math.abs(hash) % FALLBACK_COLORS.length;
+	return FALLBACK_COLORS[index];
+};
+
+const buildImageSource = (image?: string) => {
+	if (!image) {
+		return undefined;
+	}
+
+	if (image.startsWith('http://') || image.startsWith('https://') || image.startsWith('data:')) {
+		return { uri: image };
+	}
+
+	return { uri: `data:image/png;base64,${image}` };
+};
 
 export const PlayerList: React.FC<PlayerListProps> = ({ players, characters }) => {
 	const { isMobile } = useScreenSize();
@@ -44,15 +69,29 @@ export const PlayerList: React.FC<PlayerListProps> = ({ players, characters }) =
 					if (typeof level === 'number') {
 						detailParts.push(`Level ${level}`);
 					}
+					const portraitSource = buildImageSource(character?.image);
+					const portraitInitials = (character?.name || player.name || '?').slice(0, 2).toUpperCase();
+					const portraitColor = hashStringToColor(character?.id ?? player.playerId);
 					return (
 						<View
 							key={player.playerId}
 							style={[styles.playerCard, isMobile && styles.playerCardMobile]}
 						>
-							<View style={styles.playerNumber}>
-								<ThemedText style={styles.playerNumberText}>
-									{index + 1}
-								</ThemedText>
+							<View style={styles.portraitWrapper}>
+								{portraitSource ? (
+									<Image source={portraitSource} style={styles.portraitImage} />
+								) : (
+									<View
+										style={[
+											styles.portraitFallback,
+											{ backgroundColor: portraitColor },
+										]}
+									>
+										<ThemedText style={styles.portraitInitial}>
+											{portraitInitials}
+										</ThemedText>
+									</View>
+								)}
 							</View>
 							<View style={styles.playerInfo}>
 								<ThemedText style={styles.playerName}>
@@ -105,19 +144,29 @@ const styles = StyleSheet.create({
 		padding: 12,
 		marginBottom: 10,
 	},
-	playerNumber: {
-		width: 40,
-		height: 40,
-		borderRadius: 20,
-		backgroundColor: '#C9B037',
+	portraitWrapper: {
+		width: 48,
+		height: 48,
+		borderRadius: 24,
+		overflow: 'hidden',
+		marginRight: 12,
 		alignItems: 'center',
 		justifyContent: 'center',
-		marginRight: 12,
 	},
-	playerNumberText: {
-		color: '#3B2F1B',
-		fontWeight: 'bold',
-		fontSize: 18,
+	portraitImage: {
+		width: '100%',
+		height: '100%',
+	},
+	portraitFallback: {
+		width: '100%',
+		height: '100%',
+		alignItems: 'center',
+		justifyContent: 'center',
+		borderRadius: 24,
+	},
+	portraitInitial: {
+		color: '#FFF9EF',
+		fontWeight: '700',
 	},
 	playerInfo: {
 		flex: 1,

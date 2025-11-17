@@ -1,4 +1,6 @@
+import { API_BASE_URL, buildApiUrl } from '@/services/config/api-base-url';
 import {
+	CharacterListResponse,
 	CreateGameRequest,
 	DMActionRequest,
 	ErrorResponse,
@@ -22,8 +24,6 @@ import {
 import { Character } from '@/types/character';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { Quest } from '@/types/quest';
-
-import { API_BASE_URL, buildApiUrl } from '@/services/config/api-base-url';
 // Note: Better-auth uses cookies for session management, which are automatically sent with fetch requests
 
 export class MultiplayerClient {
@@ -268,6 +268,20 @@ export class MultiplayerClient {
 		return response.json();
 	}
 
+	async deleteGame(inviteCode: string): Promise<void> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}`), {
+			method: 'DELETE',
+			headers,
+			credentials: 'include',
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to delete game');
+		}
+	}
+
 	async getMyCharacters(): Promise<Character[]> {
 		const headers = this.getAuthHeaders();
 		const response = await fetch(this.buildUrl('/api/games/me/characters'), {
@@ -381,6 +395,22 @@ export class MultiplayerClient {
 		if (!response.ok) {
 			const error: ErrorResponse = await response.json();
 			throw new Error(error.error || 'Failed to generate map');
+		}
+
+		return response.json();
+	}
+
+	async getGameCharacters(inviteCode: string): Promise<CharacterListResponse> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/characters`), {
+			method: 'GET',
+			headers,
+			credentials: 'include',
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to load characters');
 		}
 
 		return response.json();

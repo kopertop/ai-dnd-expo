@@ -2,9 +2,9 @@ import type { Context } from 'hono';
 import { Hono } from 'hono';
 
 import { CharacterRow, Database, GameRow, MapRow, NpcInstanceRow } from '../../../shared/workers/db';
+import { generateProceduralMap, MapGeneratorPreset } from '../../../shared/workers/map-generator';
 import { generateInviteCode, getSessionId, getSessionStub } from '../../../shared/workers/session-manager';
 import { Character, Quest } from '../../../shared/workers/types';
-import { generateProceduralMap, MapGeneratorPreset } from '../../../shared/workers/map-generator';
 import { mapStateFromDb, npcFromDb } from '../../../utils/schema-adapters';
 import type { CloudflareBindings } from '../env';
 
@@ -15,22 +15,22 @@ type Variables = {
 type GamesContext = { Bindings: CloudflareBindings; Variables: Variables };
 
 interface CreateGameBody {
-        questId?: string;
-        quest?: Quest;
-        world: string;
-        startingArea: string;
-        hostId?: string;
-        hostEmail?: string;
-        hostCharacter?: Character;
-        currentMapId?: string;
+	questId?: string;
+	quest?: Quest;
+	world: string;
+	startingArea: string;
+	hostId?: string;
+	hostEmail?: string;
+	hostCharacter?: Character;
+	currentMapId?: string;
 }
 
 interface JoinGameBody {
-        inviteCode: string;
-        characterId?: string;
-        character?: Character;
-        playerId?: string;
-        playerEmail?: string;
+	inviteCode: string;
+	characterId?: string;
+	character?: Character;
+	playerId?: string;
+	playerEmail?: string;
 }
 
 const games = new Hono<GamesContext>();
@@ -38,19 +38,19 @@ const games = new Hono<GamesContext>();
 const normalizePath = (path: string): string => (path.startsWith('/') ? path : `/${path}`);
 
 const buildDurableRequest = (
-        req: Request,
-        path: string,
-        init?: RequestInit,
+	req: Request,
+	path: string,
+	init?: RequestInit,
 ): Request => {
-        const origin = new URL(req.url).origin;
-        return new Request(`${origin}${normalizePath(path)}`, init);
+	const origin = new URL(req.url).origin;
+	return new Request(`${origin}${normalizePath(path)}`, init);
 };
 
 const jsonWithStatus = <T>(_: Context<GamesContext>, payload: T, status: number) =>
-        new Response(JSON.stringify(payload), {
-                status,
-                headers: { 'Content-Type': 'application/json' },
-        });
+	new Response(JSON.stringify(payload), {
+		status,
+		headers: { 'Content-Type': 'application/json' },
+	});
 
 const createId = (prefix: string) => {
 	if (globalThis.crypto?.randomUUID) {
@@ -224,17 +224,17 @@ const parseQuestData = (questJson: string): Quest => {
 };
 
 const toGameSummary = (game: GameRow) => ({
-        id: game.id,
-        inviteCode: game.invite_code,
-        status: game.status,
-        hostId: game.host_id,
-        hostEmail: game.host_email,
-        world: game.world,
-        startingArea: game.starting_area,
-        quest: parseQuestData(game.quest_data),
-        currentMapId: game.current_map_id,
-        createdAt: game.created_at,
-        updatedAt: game.updated_at,
+	id: game.id,
+	inviteCode: game.invite_code,
+	status: game.status,
+	hostId: game.host_id,
+	hostEmail: game.host_email,
+	world: game.world,
+	startingArea: game.starting_area,
+	quest: parseQuestData(game.quest_data),
+	currentMapId: game.current_map_id,
+	createdAt: game.created_at,
+	updatedAt: game.updated_at,
 });
 
 games.post('/', async (c) => {
@@ -244,7 +244,7 @@ games.post('/', async (c) => {
 	}
 
 	const body = (await c.req.json()) as CreateGameBody;
-        const { questId, quest, world, startingArea, hostId, hostEmail, hostCharacter, currentMapId } = body;
+	const { questId, quest, world, startingArea, hostId, hostEmail, hostCharacter, currentMapId } = body;
 	const resolvedHostId = hostId ?? user.id;
 	const resolvedHostEmail = hostEmail ?? user.email ?? undefined;
 
@@ -302,18 +302,18 @@ games.post('/', async (c) => {
 		createdBy: questData.createdBy ?? (resolvedHostEmail || user.email || 'host'),
 	};
 
-        await db.createGame({
-                id: gameId,
-                invite_code: inviteCode,
-                host_id: resolvedHostId,
-                host_email: resolvedHostEmail || user.email || null,
-                quest_id: persistedQuest.id,
-                quest_data: JSON.stringify(persistedQuest),
-                world,
-                starting_area: startingArea,
-                status: 'waiting',
-                current_map_id: currentMapId || null,
-        });
+	await db.createGame({
+		id: gameId,
+		invite_code: inviteCode,
+		host_id: resolvedHostId,
+		host_email: resolvedHostEmail || user.email || null,
+		quest_id: persistedQuest.id,
+		quest_data: JSON.stringify(persistedQuest),
+		world,
+		starting_area: startingArea,
+		status: 'waiting',
+		current_map_id: currentMapId || null,
+	});
 
 	if (hostCharacter) {
 		const serializedCharacter = serializeCharacter(
@@ -496,6 +496,33 @@ games.delete('/me/characters/:id', async (c) => {
 	return c.json({ ok: true });
 });
 
+games.delete('/:inviteCode', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden - Only the host can delete this game' }, 403);
+	}
+
+	// Delete the game and all related data
+	await db.deleteGame(game.id);
+
+	// Note: Durable Objects are automatically garbage collected after inactivity
+	// We don't need to explicitly delete the Durable Object
+
+	return c.json({ ok: true, message: 'Game deleted successfully' });
+});
+
 games.get('/:inviteCode', async (c) => {
 	const inviteCode = c.req.param('inviteCode');
 	const sessionStub = getSessionStub(c.env, inviteCode);
@@ -504,10 +531,10 @@ games.get('/:inviteCode', async (c) => {
 		buildDurableRequest(c.req.raw, '/state'),
 	);
 
-        if (!stateResponse.ok) {
-                const details = await stateResponse.text();
-                return jsonWithStatus(c, { error: 'Failed to fetch session', details }, stateResponse.status);
-        }
+	if (!stateResponse.ok) {
+		const details = await stateResponse.text();
+		return jsonWithStatus(c, { error: 'Failed to fetch session', details }, stateResponse.status);
+	}
 
 	return c.json(await stateResponse.json());
 });
@@ -573,10 +600,10 @@ games.post('/:inviteCode/join', async (c) => {
 		}),
 	);
 
-        if (!joinResponse.ok) {
-                const details = await joinResponse.text();
-                return jsonWithStatus(c, { error: 'Failed to join game', details }, joinResponse.status);
-        }
+	if (!joinResponse.ok) {
+		const details = await joinResponse.text();
+		return jsonWithStatus(c, { error: 'Failed to join game', details }, joinResponse.status);
+	}
 
 	return c.json(await joinResponse.json());
 });
@@ -589,10 +616,10 @@ games.get('/:inviteCode/state', async (c) => {
 		buildDurableRequest(c.req.raw, '/state'),
 	);
 
-        if (!stateResponse.ok) {
-                const details = await stateResponse.text();
-                return jsonWithStatus(c, { error: 'Failed to fetch game state', details }, stateResponse.status);
-        }
+	if (!stateResponse.ok) {
+		const details = await stateResponse.text();
+		return jsonWithStatus(c, { error: 'Failed to fetch game state', details }, stateResponse.status);
+	}
 
 	return c.json(await stateResponse.json());
 });
@@ -763,6 +790,35 @@ games.get('/:inviteCode/map/tokens', async (c) => {
 
 	const mapState = await buildMapState(db, game);
 	return c.json({ tokens: mapState.tokens });
+});
+
+games.get('/:inviteCode/characters', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const memberships = await db.getGamePlayers(game.id);
+	const characters = await Promise.all(
+		memberships.map(async membership => {
+			const row = await db.getCharacterById(membership.character_id);
+			return row ? deserializeCharacter(row) : null;
+		}),
+	);
+
+	return c.json({ characters: characters.filter((character): character is Character => Boolean(character)) });
 });
 
 games.post('/:inviteCode/map/tokens', async (c) => {
@@ -1084,14 +1140,14 @@ const forwardJsonRequest = async (c: Context<GamesContext>, path: string) => {
 		}),
 	);
 
-        if (!response.ok) {
-                const details = await response.text();
-                return jsonWithStatus(c, { error: 'Durable Object request failed', details }, response.status);
-        }
+	if (!response.ok) {
+		const details = await response.text();
+		return jsonWithStatus(c, { error: 'Durable Object request failed', details }, response.status);
+	}
 
-        if (response.headers.get('Content-Type')?.includes('application/json')) {
-                return jsonWithStatus(c, await response.json(), response.status);
-        }
+	if (response.headers.get('Content-Type')?.includes('application/json')) {
+		return jsonWithStatus(c, await response.json(), response.status);
+	}
 
 	return new Response(response.body, {
 		status: response.status,

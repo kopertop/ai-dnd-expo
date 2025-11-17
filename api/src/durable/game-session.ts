@@ -1,4 +1,6 @@
-import type { MultiplayerGameState, PlayerInfo, Quest, Character } from '../../../shared/workers/types';
+import { DurableObjectState, DurableObjectStorage } from '@cloudflare/workers-types';
+
+import type { Character, MultiplayerGameState, PlayerInfo, Quest } from '../../../shared/workers/types';
 
 type SessionStatus = 'waiting' | 'active' | 'completed' | 'cancelled';
 
@@ -10,6 +12,7 @@ type StoredSession = {
 	world: string;
 	startingArea: string;
 	players: PlayerInfo[];
+	characters: Character[];
 	status: SessionStatus;
 	createdAt: number;
 	lastUpdated: number;
@@ -97,6 +100,7 @@ export class GameSession {
 			world: payload.world,
 			startingArea: payload.startingArea,
 			players: [],
+			characters: [],
 			status: 'waiting',
 			createdAt: now,
 			lastUpdated: now,
@@ -126,10 +130,28 @@ export class GameSession {
 			avatarColor: payload.character.trait ?? undefined,
 		};
 
-		const filtered = session.players.filter(p => p.characterId !== player.characterId);
+		const filteredPlayers = session.players.filter(p => p.characterId !== player.characterId);
+		const filteredCharacters = (session.characters ?? []).filter(c => c.id !== payload.character.id);
+		const updatedPlayers = [...filteredPlayers, player];
+		const updatedCharacters = [...filteredCharacters, payload.character];
+
+		const updatedGameState = session.gameState
+			? {
+				...session.gameState,
+				players: updatedPlayers,
+				characters: [
+					...(session.gameState.characters || []).filter(c => c.id !== payload.character.id),
+					payload.character,
+				],
+				lastUpdated: Date.now(),
+			}
+			: session.gameState;
+
 		const updatedSession: StoredSession = {
 			...session,
-			players: [...filtered, player],
+			players: updatedPlayers,
+			characters: updatedCharacters,
+			gameState: updatedGameState,
 			lastUpdated: Date.now(),
 		};
 
@@ -153,11 +175,52 @@ export class GameSession {
 			return json({ error: 'Session not initialized' }, 404);
 		}
 
+		// Prefer characters from payload, then session.characters, ensuring we have full character data
+		const canonicalCharacters =
+			payload.gameState?.characters?.length
+				? payload.gameState.characters
+				: session.characters && session.characters.length > 0
+					? session.characters
+					: [];
+
+		// Merge characters: ensure all players have corresponding characters with full data
+		const mergedCharacters = [...canonicalCharacters];
+		for (const player of session.players) {
+			const existing = mergedCharacters.find(c => c.id === player.characterId);
+			if (!existing) {
+				// Create character from player data if missing
+				mergedCharacters.push({
+					id: player.characterId,
+					name: player.name || 'Unknown',
+					race: player.race || 'Unknown',
+					class: player.class || 'Unknown',
+					level: player.level || 1,
+					stats: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 },
+					skills: [],
+					inventory: [],
+					equipped: {},
+					health: 10,
+					maxHealth: 10,
+					actionPoints: 3,
+					maxActionPoints: 3,
+				});
+			}
+		}
+
+		const updatedGameState = payload.gameState
+			? {
+				...payload.gameState,
+				characters: mergedCharacters,
+				players: payload.gameState.players ?? session.players,
+			}
+			: null;
+
 		const updated: StoredSession = {
 			...session,
 			status: payload.gameState?.status ?? 'active',
-			gameState: payload.gameState,
-			players: payload.gameState?.players ?? session.players,
+			gameState: updatedGameState,
+			players: updatedGameState?.players ?? session.players,
+			characters: mergedCharacters,
 			lastUpdated: Date.now(),
 		};
 
@@ -166,7 +229,15 @@ export class GameSession {
 	}
 
 	private async getSession(): Promise<StoredSession | null> {
-		return (await this.storage.get<StoredSession>(SESSION_KEY)) ?? null;
+		const stored = (await this.storage.get<StoredSession>(SESSION_KEY)) ?? null;
+		if (!stored) {
+			return null;
+		}
+
+		return {
+			...stored,
+			characters: stored.characters ?? [],
+		};
 	}
 
 	private toResponse(session: StoredSession) {
@@ -177,6 +248,7 @@ export class GameSession {
 			hostId: session.hostId,
 			quest: session.quest,
 			players: session.players,
+			characters: session.characters,
 			createdAt: session.createdAt,
 			gameState: session.gameState,
 		};

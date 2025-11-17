@@ -19,39 +19,39 @@ export const MapTileSchema = z.object({
 
 // Request types
 export const CreateGameRequestSchema = z
-        .object({
-                questId: z.string().optional(), // Optional if quest object is provided
-                quest: QuestSchema.optional(), // Quest object can be provided directly
-                world: z.string(),
-                startingArea: z.string(),
-                hostId: z.string(),
-                hostEmail: z.string().email().optional(), // Email for character persistence
-                currentMapId: z.string().optional(),
-        })
-        .refine(data => data.questId || data.quest, {
-                message: 'Either questId or quest object must be provided',
-        });
+	.object({
+		questId: z.string().optional(), // Optional if quest object is provided
+		quest: QuestSchema.optional(), // Quest object can be provided directly
+		world: z.string(),
+		startingArea: z.string(),
+		hostId: z.string(),
+		hostEmail: z.string().email().optional(), // Email for character persistence
+		currentMapId: z.string().optional(),
+	})
+	.refine(data => data.questId || data.quest, {
+		message: 'Either questId or quest object must be provided',
+	});
 
 export const JoinGameRequestSchema = z
-        .object({
-                inviteCode: z.string().regex(/^[A-Z0-9]{6}$/),
-                characterId: z.string().optional(),
-                character: CharacterSchema.optional(),
-                playerId: z.string(),
-                playerEmail: z.string().email().optional(), // Email for character persistence
-        })
-        .refine(data => data.characterId || data.character, {
-                message: 'A stored character ID or payload is required',
-        });
+	.object({
+		inviteCode: z.string().regex(/^[A-Z0-9]{6}$/),
+		characterId: z.string().optional(),
+		character: CharacterSchema.optional(),
+		playerId: z.string(),
+		playerEmail: z.string().email().optional(), // Email for character persistence
+	})
+	.refine(data => data.characterId || data.character, {
+		message: 'A stored character ID or payload is required',
+	});
 
 export const PlayerActionRequestSchema = z.object({
-        action: z.string(),
-        characterId: z.string(),
+	action: z.string(),
+	characterId: z.string(),
 });
 
 export const DMActionRequestSchema = z.object({
-        type: z.enum(['narrate', 'update_character', 'update_npc', 'advance_story', 'roll_dice']),
-        data: z.record(z.unknown()),
+	type: z.enum(['narrate', 'update_character', 'update_npc', 'advance_story', 'roll_dice']),
+	data: z.record(z.unknown()),
 });
 
 export const CharacterCreateRequestSchema = CharacterSchema.omit({ id: true });
@@ -73,7 +73,7 @@ export const MapTokenUpsertRequestSchema = z.object({
 });
 
 export const MapTokenDeleteRequestSchema = z.object({
-        tokenId: z.string(),
+	tokenId: z.string(),
 });
 
 export const MapStateUpdateRequestSchema = z.object({
@@ -157,70 +157,75 @@ export const NpcInstanceUpdateRequestSchema = z.object({
 
 // Response types
 export const GameSessionResponseSchema = z.object({
-        sessionId: z.string(),
-        inviteCode: z.string(),
-        status: GameSessionStatusSchema,
-        hostId: z.string(),
-        quest: QuestSchema,
-        players: z.array(
-                z.object({
-                        characterId: z.string(),
-                        playerId: z.string(),
-                        name: z.string(),
-                        joinedAt: z.number(),
-                }),
-        ),
-        createdAt: z.number(),
-        gameState: MultiplayerGameStateSchema.optional(),
+	sessionId: z.string(),
+	inviteCode: z.string(),
+	status: GameSessionStatusSchema,
+	hostId: z.string(),
+	quest: QuestSchema,
+	players: z.array(
+		z.object({
+			characterId: z.string(),
+			playerId: z.string(),
+			name: z.string(),
+			joinedAt: z.number(),
+			race: z.string().optional(),
+			class: z.string().optional(),
+			level: z.number().optional(),
+			avatarColor: z.string().optional(),
+		}),
+	),
+	characters: z.array(CharacterSchema).optional().default([]),
+	createdAt: z.number(),
+	gameState: MultiplayerGameStateSchema.optional(),
 });
 
 export const GameStateResponseSchema = MultiplayerGameStateSchema;
 
 export const ErrorResponseSchema = z.object({
-        error: z.string(),
-        code: z.string().optional(),
-        details: z.record(z.unknown()).optional(),
+	error: z.string(),
+	code: z.string().optional(),
+	details: z.record(z.unknown()).optional(),
 });
 
 export const GameSummarySchema = z.object({
-        id: z.string(),
-        inviteCode: z.string(),
-        status: GameSessionStatusSchema,
-        hostId: z.string(),
-        hostEmail: z.string().nullable().optional(),
-        world: z.string(),
-        startingArea: z.string(),
-        quest: QuestSchema,
-        currentMapId: z.string().nullable().optional(),
-        createdAt: z.number(),
-        updatedAt: z.number(),
+	id: z.string(),
+	inviteCode: z.string(),
+	status: GameSessionStatusSchema,
+	hostId: z.string(),
+	hostEmail: z.string().nullable().optional(),
+	world: z.string(),
+	startingArea: z.string(),
+	quest: QuestSchema,
+	currentMapId: z.string().nullable().optional(),
+	createdAt: z.number(),
+	updatedAt: z.number(),
 });
 
 export const HostedGameSummarySchema = GameSummarySchema.extend({});
 
 export const JoinedGameSummarySchema = GameSummarySchema.extend({
-        characterId: z.string().optional(),
-        characterName: z.string().optional(),
-        joinedAt: z.number().optional(),
+	characterId: z.string().optional(),
+	characterName: z.string().optional(),
+	joinedAt: z.number().optional(),
 });
 
 export const MyGamesResponseSchema = z.object({
-        hostedGames: z.array(HostedGameSummarySchema),
-        joinedGames: z.array(JoinedGameSummarySchema),
+	hostedGames: z.array(HostedGameSummarySchema),
+	joinedGames: z.array(JoinedGameSummarySchema),
 });
 
 export const CharacterListResponseSchema = z.object({
-        characters: z.array(CharacterSchema),
+	characters: z.array(CharacterSchema),
 });
 
 export const MapStateResponseSchema = MapStateSchema;
 
 export const NpcDefinitionListResponseSchema = z.object({
-        npcs: z.array(NpcDefinitionSchema),
+	npcs: z.array(NpcDefinitionSchema),
 });
 
 export const MapTokenMutationResponseSchema = z.object({
-        tokens: z.array(MapTokenSchema),
+	tokens: z.array(MapTokenSchema),
 });
 
 export const MapTokenListResponseSchema = z.object({

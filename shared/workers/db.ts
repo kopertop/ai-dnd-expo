@@ -764,6 +764,18 @@ export class Database {
 	async deleteNpcInstanceByToken(tokenId: string): Promise<void> {
 		await this.db.prepare('DELETE FROM npc_instances WHERE token_id = ?').bind(tokenId).run();
 	}
+
+	async deleteGame(gameId: string): Promise<void> {
+		// Delete related data first (foreign key constraints will handle game_players via CASCADE)
+		// Delete NPC instances
+		await this.db.prepare('DELETE FROM npc_instances WHERE game_id = ?').bind(gameId).run();
+		// Delete map tokens
+		await this.db.prepare('DELETE FROM map_tokens WHERE game_id = ?').bind(gameId).run();
+		// Delete game states
+		await this.db.prepare('DELETE FROM game_states WHERE game_id = ?').bind(gameId).run();
+		// Delete the game itself (this will CASCADE delete game_players)
+		await this.db.prepare('DELETE FROM games WHERE id = ?').bind(gameId).run();
+	}
 }
 
 

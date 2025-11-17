@@ -26,6 +26,7 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 			<ScrollView style={styles.scrollView} showsVerticalScrollIndicator={true}>
 				{characters.map((character, index) => {
 					const isCurrentPlayer = character.id === currentPlayerId;
+					const displayName = character.name || character.race || character.class || 'Unknown';
 					return (
 						<View
 							key={character.id}
@@ -37,7 +38,7 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 						>
 							<View style={styles.characterHeader}>
 								<ThemedText style={styles.characterName}>
-									{character.name}
+									{displayName}
 									{isCurrentPlayer && ' (You)'}
 								</ThemedText>
 								<ThemedText style={styles.characterLevel}>
