@@ -1,0 +1,14 @@
+name = "ai-dnd-web"
+compatibility_date = "2024-06-01"
+pages_build_output_dir = "dist"
+
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "ai_dnd_analytics"
+
+# Production environment configuration
+[env.production]
+name = "ai-dnd-web"
+
+[[env.production.analytics_engine_datasets]]
+binding = "ANALYTICS"
