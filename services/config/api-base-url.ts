@@ -20,8 +20,8 @@ const resolveApiBaseUrl = (): string => {
 			return 'http://localhost:8787';
 		}
 
-		// Cloudflare Pages rewrites relative `/api/*` to the Worker
-		return '';
+		// Cloudflare Pages API
+		return 'https://ai-dnd.kopertop.workers.dev';
 	}
 
 	// Node/Expo dev server
