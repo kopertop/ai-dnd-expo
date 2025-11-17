@@ -1,4 +1,4 @@
-import type { D1Database, IncomingRequestCfProperties } from '@cloudflare/workers-types';
+import type { D1Database, IncomingRequestCfProperties, KVNamespace } from '@cloudflare/workers-types';
 import { betterAuth } from 'better-auth';
 import { withCloudflare } from 'better-auth-cloudflare';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
@@ -67,7 +67,9 @@ function createAuth(env?: CloudflareBindings, cf?: IncomingRequestCfProperties) 
 						},
 					}
 					: undefined,
-				kv: env?.AUTH_SESSIONS,
+                                kv: env?.AUTH_SESSIONS
+                                        ? (env.AUTH_SESSIONS as KVNamespace<string>)
+                                        : undefined,
 			},
 			{
 				emailAndPassword: {

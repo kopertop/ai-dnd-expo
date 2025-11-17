@@ -5,7 +5,14 @@ import {
 	GameSessionResponse,
 	GameStateResponse,
 	JoinGameRequest,
+	MapStateResponse,
+	MapStateUpdateRequest,
+	MapTokenListResponse,
+	MapTokenMutationResponse,
+	MapTokenUpsertRequest,
 	MyGamesResponse,
+	NpcDefinitionListResponse,
+	NpcPlacementRequest,
 	PlayerActionRequest,
 } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
@@ -56,7 +63,7 @@ export class MultiplayerClient {
 	/**
 	 * Create a new game session (host)
 	 */
-	async createGame(request: CreateGameRequest & { hostCharacter: Character }): Promise<GameSessionResponse> {
+	async createGame(request: CreateGameRequest): Promise<GameSessionResponse> {
 		const headers = this.getAuthHeaders();
 		const response = await fetch(this.buildUrl('/api/games'), {
 			method: 'POST',
@@ -272,6 +279,176 @@ export class MultiplayerClient {
 
 		const data = await response.json();
 		return data.characters || [];
+	}
+
+	async createCharacter(payload: Character): Promise<Character> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl('/api/games/me/characters'), {
+			method: 'POST',
+			headers,
+			credentials: 'include',
+			body: JSON.stringify(payload),
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to create character');
+		}
+
+		return response.json();
+	}
+
+	async updateCharacter(id: string, payload: Partial<Character>): Promise<Character> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl(`/api/games/me/characters/${id}`), {
+			method: 'PUT',
+			headers,
+			credentials: 'include',
+			body: JSON.stringify(payload),
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to update character');
+		}
+
+		return response.json();
+	}
+
+	async deleteCharacter(id: string): Promise<void> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl(`/api/games/me/characters/${id}`), {
+			method: 'DELETE',
+			headers,
+			credentials: 'include',
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to delete character');
+		}
+	}
+
+	async getMapState(inviteCode: string): Promise<MapStateResponse> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/map`), {
+			method: 'GET',
+			headers,
+			credentials: 'include',
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to load map');
+		}
+
+		return response.json();
+	}
+
+	async updateMapState(
+		inviteCode: string,
+		request: MapStateUpdateRequest,
+	): Promise<MapStateResponse> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/map`), {
+			method: 'PATCH',
+			headers,
+			credentials: 'include',
+			body: JSON.stringify(request),
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to update map');
+		}
+
+		return response.json();
+	}
+
+	async listMapTokens(inviteCode: string): Promise<MapTokenListResponse> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/map/tokens`), {
+			method: 'GET',
+			headers,
+			credentials: 'include',
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to load tokens');
+		}
+
+		return response.json();
+	}
+
+	async saveMapToken(
+		inviteCode: string,
+		request: MapTokenUpsertRequest & { id?: string },
+	): Promise<MapTokenMutationResponse> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/map/tokens`), {
+			method: 'POST',
+			headers,
+			credentials: 'include',
+			body: JSON.stringify(request),
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to save token');
+		}
+
+		return response.json();
+	}
+
+	async deleteMapToken(inviteCode: string, tokenId: string): Promise<void> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(
+			this.buildUrl(`/api/games/${inviteCode}/map/tokens/${tokenId}`),
+			{
+				method: 'DELETE',
+				headers,
+				credentials: 'include',
+			},
+		);
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to delete token');
+		}
+	}
+
+	async getNpcDefinitions(inviteCode: string): Promise<NpcDefinitionListResponse> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/npcs`), {
+			method: 'GET',
+			headers,
+			credentials: 'include',
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to load NPCs');
+		}
+
+		return response.json();
+	}
+
+	async placeNpc(inviteCode: string, request: NpcPlacementRequest): Promise<MapTokenMutationResponse> {
+		const headers = this.getAuthHeaders();
+		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/npcs`), {
+			method: 'POST',
+			headers,
+			credentials: 'include',
+			body: JSON.stringify(request),
+		});
+
+		if (!response.ok) {
+			const error: ErrorResponse = await response.json();
+			throw new Error(error.error || 'Failed to place NPC');
+		}
+
+		return response.json();
 	}
 }
 

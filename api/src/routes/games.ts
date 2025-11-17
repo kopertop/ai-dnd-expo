@@ -1,9 +1,10 @@
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 
-import { CharacterRow, Database, GameRow } from '../../../shared/workers/db';
+import { CharacterRow, Database, GameRow, MapRow } from '../../../shared/workers/db';
 import { generateInviteCode, getSessionId, getSessionStub } from '../../../shared/workers/session-manager';
 import { Character, Quest } from '../../../shared/workers/types';
+import { mapStateFromDb, npcFromDb } from '../../../utils/schema-adapters';
 import type { CloudflareBindings } from '../env';
 
 type Variables = {
@@ -13,20 +14,22 @@ type Variables = {
 type GamesContext = { Bindings: CloudflareBindings; Variables: Variables };
 
 interface CreateGameBody {
-	questId?: string;
-	quest?: Quest;
-	world: string;
-	startingArea: string;
-	hostId?: string;
-	hostEmail?: string;
-	hostCharacter?: Character;
+        questId?: string;
+        quest?: Quest;
+        world: string;
+        startingArea: string;
+        hostId?: string;
+        hostEmail?: string;
+        hostCharacter?: Character;
+        currentMapId?: string;
 }
 
 interface JoinGameBody {
-	inviteCode: string;
-	character: Character;
-	playerId?: string;
-	playerEmail?: string;
+        inviteCode: string;
+        characterId?: string;
+        character?: Character;
+        playerId?: string;
+        playerEmail?: string;
 }
 
 const games = new Hono<GamesContext>();
@@ -34,12 +37,69 @@ const games = new Hono<GamesContext>();
 const normalizePath = (path: string): string => (path.startsWith('/') ? path : `/${path}`);
 
 const buildDurableRequest = (
-	req: Request,
-	path: string,
-	init?: RequestInit,
+        req: Request,
+        path: string,
+        init?: RequestInit,
 ): Request => {
-	const origin = new URL(req.url).origin;
-	return new Request(`${origin}${normalizePath(path)}`, init);
+        const origin = new URL(req.url).origin;
+        return new Request(`${origin}${normalizePath(path)}`, init);
+};
+
+const jsonWithStatus = <T>(_: Context<GamesContext>, payload: T, status: number) =>
+        new Response(JSON.stringify(payload), {
+                status,
+                headers: { 'Content-Type': 'application/json' },
+        });
+
+const createId = (prefix: string) => {
+	if (globalThis.crypto?.randomUUID) {
+		return `${prefix}_${globalThis.crypto.randomUUID()}`;
+	}
+
+	return `${prefix}_${Math.random().toString(36).slice(2)}`;
+};
+
+const isHostUser = (game: GameRow, user: Variables['user']) => {
+	if (!user) {
+		return false;
+	}
+
+	if (game.host_id && game.host_id === user.id) {
+		return true;
+	}
+
+	if (game.host_email && user.email && game.host_email === user.email) {
+		return true;
+	}
+
+	return false;
+};
+
+const resolveMapRow = async (db: Database, game: GameRow): Promise<MapRow> => {
+	if (game.current_map_id) {
+		const existing = await db.getMapById(game.current_map_id);
+		if (existing) {
+			return existing;
+		}
+	}
+
+	const maps = await db.listMaps();
+	if (!maps.length) {
+		throw new Error('No maps available');
+	}
+
+	const fallback = maps[0];
+	await db.updateGameMap(game.id, fallback.id);
+	return fallback;
+};
+
+const buildMapState = async (db: Database, game: GameRow) => {
+	const mapRow = await resolveMapRow(db, game);
+	const [tiles, tokens] = await Promise.all([
+		db.getMapTiles(mapRow.id),
+		db.listMapTokensForGame(game.id),
+	]);
+	return mapStateFromDb(mapRow, { tiles, tokens });
 };
 
 const serializeCharacter = (
@@ -97,16 +157,17 @@ const parseQuestData = (questJson: string): Quest => {
 };
 
 const toGameSummary = (game: GameRow) => ({
-	id: game.id,
-	inviteCode: game.invite_code,
-	status: game.status,
-	hostId: game.host_id,
-	hostEmail: game.host_email,
-	world: game.world,
-	startingArea: game.starting_area,
-	quest: parseQuestData(game.quest_data),
-	createdAt: game.created_at,
-	updatedAt: game.updated_at,
+        id: game.id,
+        inviteCode: game.invite_code,
+        status: game.status,
+        hostId: game.host_id,
+        hostEmail: game.host_email,
+        world: game.world,
+        startingArea: game.starting_area,
+        quest: parseQuestData(game.quest_data),
+        currentMapId: game.current_map_id,
+        createdAt: game.created_at,
+        updatedAt: game.updated_at,
 });
 
 games.post('/', async (c) => {
@@ -116,7 +177,7 @@ games.post('/', async (c) => {
 	}
 
 	const body = (await c.req.json()) as CreateGameBody;
-	const { questId, quest, world, startingArea, hostId, hostEmail, hostCharacter } = body;
+        const { questId, quest, world, startingArea, hostId, hostEmail, hostCharacter, currentMapId } = body;
 	const resolvedHostId = hostId ?? user.id;
 	const resolvedHostEmail = hostEmail ?? user.email ?? undefined;
 
@@ -174,17 +235,18 @@ games.post('/', async (c) => {
 		createdBy: questData.createdBy ?? (resolvedHostEmail || user.email || 'host'),
 	};
 
-	await db.createGame({
-		id: gameId,
-		invite_code: inviteCode,
-		host_id: resolvedHostId,
-		host_email: resolvedHostEmail || user.email || null,
-		quest_id: persistedQuest.id,
-		quest_data: JSON.stringify(persistedQuest),
-		world,
-		starting_area: startingArea,
-		status: 'waiting',
-	});
+        await db.createGame({
+                id: gameId,
+                invite_code: inviteCode,
+                host_id: resolvedHostId,
+                host_email: resolvedHostEmail || user.email || null,
+                quest_id: persistedQuest.id,
+                quest_data: JSON.stringify(persistedQuest),
+                world,
+                starting_area: startingArea,
+                status: 'waiting',
+                current_map_id: currentMapId || null,
+        });
 
 	if (hostCharacter) {
 		const serializedCharacter = serializeCharacter(
@@ -297,6 +359,76 @@ games.get('/me/characters', async (c) => {
 	return c.json({ characters: Array.from(deduped.values()) });
 });
 
+games.post('/me/characters', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const payload = (await c.req.json()) as Character;
+	const characterId = payload.id || createId('char');
+	const db = new Database(c.env.DATABASE);
+	const serialized = serializeCharacter(
+		{ ...payload, id: characterId },
+		user.id,
+		user.email,
+	);
+	await db.createCharacter(serialized);
+	const saved = await db.getCharacterById(characterId);
+	return c.json({ character: saved ? deserializeCharacter(saved) : payload });
+});
+
+games.put('/me/characters/:id', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const characterId = c.req.param('id');
+	const updates = (await c.req.json()) as Partial<Character>;
+	const db = new Database(c.env.DATABASE);
+	const existing = await db.getCharacterById(characterId);
+
+	if (!existing) {
+		return c.json({ error: 'Character not found' }, 404);
+	}
+
+	if (existing.player_id !== user.id && existing.player_email !== user.email) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const serializedUpdate = serializeCharacter(
+		{ ...deserializeCharacter(existing), ...updates, id: characterId },
+		existing.player_id || user.id,
+		existing.player_email || user.email,
+	);
+	await db.updateCharacter(characterId, serializedUpdate);
+	const updated = await db.getCharacterById(characterId);
+	return c.json({ character: updated ? deserializeCharacter(updated) : updates });
+});
+
+games.delete('/me/characters/:id', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const characterId = c.req.param('id');
+	const db = new Database(c.env.DATABASE);
+	const existing = await db.getCharacterById(characterId);
+
+	if (!existing) {
+		return c.json({ error: 'Character not found' }, 404);
+	}
+
+	if (existing.player_id !== user.id && existing.player_email !== user.email) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	await db.deleteCharacter(characterId);
+	return c.json({ ok: true });
+});
+
 games.get('/:inviteCode', async (c) => {
 	const inviteCode = c.req.param('inviteCode');
 	const sessionStub = getSessionStub(c.env, inviteCode);
@@ -305,10 +437,10 @@ games.get('/:inviteCode', async (c) => {
 		buildDurableRequest(c.req.raw, '/state'),
 	);
 
-	if (!stateResponse.ok) {
-		const details = await stateResponse.text();
-		return c.json({ error: 'Failed to fetch session', details }, stateResponse.status);
-	}
+        if (!stateResponse.ok) {
+                const details = await stateResponse.text();
+                return jsonWithStatus(c, { error: 'Failed to fetch session', details }, stateResponse.status);
+        }
 
 	return c.json(await stateResponse.json());
 });
@@ -374,10 +506,10 @@ games.post('/:inviteCode/join', async (c) => {
 		}),
 	);
 
-	if (!joinResponse.ok) {
-		const details = await joinResponse.text();
-		return c.json({ error: 'Failed to join game', details }, joinResponse.status);
-	}
+        if (!joinResponse.ok) {
+                const details = await joinResponse.text();
+                return jsonWithStatus(c, { error: 'Failed to join game', details }, joinResponse.status);
+        }
 
 	return c.json(await joinResponse.json());
 });
@@ -390,12 +522,263 @@ games.get('/:inviteCode/state', async (c) => {
 		buildDurableRequest(c.req.raw, '/state'),
 	);
 
-	if (!stateResponse.ok) {
-		const details = await stateResponse.text();
-		return c.json({ error: 'Failed to fetch game state', details }, stateResponse.status);
-	}
+        if (!stateResponse.ok) {
+                const details = await stateResponse.text();
+                return jsonWithStatus(c, { error: 'Failed to fetch game state', details }, stateResponse.status);
+        }
 
 	return c.json(await stateResponse.json());
+});
+
+games.get('/:inviteCode/map', async (c) => {
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	try {
+		const mapState = await buildMapState(db, game);
+		return c.json(mapState);
+	} catch (error) {
+		console.error('Failed to build map state:', error);
+		return c.json({ error: 'Failed to load map' }, 500);
+	}
+});
+
+games.patch('/:inviteCode/map', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const payload = (await c.req.json()) as { id?: string };
+
+	if (payload?.id && payload.id !== game.current_map_id) {
+		await db.updateGameMap(game.id, payload.id);
+		game.current_map_id = payload.id;
+	}
+
+	try {
+		const mapState = await buildMapState(db, game);
+		return c.json(mapState);
+	} catch (error) {
+		console.error('Failed to update map state:', error);
+		return c.json({ error: 'Failed to update map' }, 500);
+	}
+});
+
+games.get('/:inviteCode/map/tokens', async (c) => {
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	const mapState = await buildMapState(db, game);
+	return c.json({ tokens: mapState.tokens });
+});
+
+games.post('/:inviteCode/map/tokens', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const body = (await c.req.json()) as {
+		id?: string;
+		mapId?: string;
+		tokenType?: string;
+		label?: string;
+		x: number;
+		y: number;
+		color?: string;
+		characterId?: string;
+		npcId?: string;
+		metadata?: Record<string, unknown>;
+	};
+
+	const mapRow = await resolveMapRow(db, game);
+	const tokenId = body.id || createId('token');
+	await db.saveMapToken({
+		id: tokenId,
+		game_id: game.id,
+		map_id: body.mapId || mapRow.id,
+		character_id: body.characterId || null,
+		npc_id: body.npcId || null,
+		token_type: body.tokenType || 'player',
+		label: body.label || null,
+		x: body.x,
+		y: body.y,
+		facing: 0,
+		color: body.color || null,
+		status: 'idle',
+		is_visible: 1,
+		hit_points: null,
+		max_hit_points: null,
+		metadata: JSON.stringify(body.metadata ?? {}),
+	});
+
+	const mapState = await buildMapState(db, game);
+	return c.json({ tokens: mapState.tokens });
+});
+
+games.delete('/:inviteCode/map/tokens/:tokenId', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const tokenId = c.req.param('tokenId');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	await db.deleteMapToken(tokenId);
+	const mapState = await buildMapState(db, game);
+	return c.json({ tokens: mapState.tokens });
+});
+
+games.get('/:inviteCode/npcs', async (c) => {
+	const db = new Database(c.env.DATABASE);
+	const npcRows = await db.listNpcDefinitions();
+	return c.json({ npcs: npcRows.map(npcFromDb) });
+});
+
+games.post('/:inviteCode/npcs', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const payload = (await c.req.json()) as {
+		npcId: string;
+		x: number;
+		y: number;
+		label?: string;
+	};
+
+	const npc = await db.getNpcBySlug(payload.npcId);
+	if (!npc) {
+		return c.json({ error: 'NPC not found' }, 404);
+	}
+
+	const mapRow = await resolveMapRow(db, game);
+	const npcMetadata = JSON.parse(npc.metadata || '{}');
+	await db.saveMapToken({
+		id: createId('npc'),
+		game_id: game.id,
+		map_id: mapRow.id,
+		character_id: null,
+		npc_id: npc.id,
+		token_type: 'npc',
+		label: payload.label || npc.name,
+		x: payload.x,
+		y: payload.y,
+		facing: 0,
+		color: npcMetadata.color || '#3B2F1B',
+		status: npc.disposition,
+		is_visible: 1,
+		hit_points: npc.base_health,
+		max_hit_points: npc.base_health,
+		metadata: npc.metadata,
+	});
+
+	const mapState = await buildMapState(db, game);
+	return c.json({ tokens: mapState.tokens });
+});
+
+games.post('/:inviteCode/characters/:characterId/:action', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const characterId = c.req.param('characterId');
+	const action = c.req.param('action');
+	const body = (await c.req.json().catch(() => ({}))) as { amount?: number };
+	const amount = typeof body.amount === 'number' ? body.amount : 0;
+
+	const characterRow = await db.getCharacterById(characterId);
+	if (!characterRow) {
+		return c.json({ error: 'Character not found' }, 404);
+	}
+
+	if (action === 'damage') {
+		const nextHealth = Math.max(0, characterRow.health - Math.max(0, amount));
+		await db.updateCharacter(characterId, { health: nextHealth });
+	} else if (action === 'heal') {
+		const nextHealth = Math.min(
+			characterRow.max_health,
+			characterRow.health + Math.max(0, amount),
+		);
+		await db.updateCharacter(characterId, { health: nextHealth });
+	} else {
+		return c.json({ error: 'Unsupported action' }, 400);
+	}
+
+	const updated = await db.getCharacterById(characterId);
+	return c.json({ character: updated ? deserializeCharacter(updated) : null });
 });
 
 const forwardJsonRequest = async (c: Context<GamesContext>, path: string) => {
@@ -412,14 +795,14 @@ const forwardJsonRequest = async (c: Context<GamesContext>, path: string) => {
 		}),
 	);
 
-	if (!response.ok) {
-		const details = await response.text();
-		return c.json({ error: 'Durable Object request failed', details }, response.status);
-	}
+        if (!response.ok) {
+                const details = await response.text();
+                return jsonWithStatus(c, { error: 'Durable Object request failed', details }, response.status);
+        }
 
-	if (response.headers.get('Content-Type')?.includes('application/json')) {
-		return c.json(await response.json(), response.status);
-	}
+        if (response.headers.get('Content-Type')?.includes('application/json')) {
+                return jsonWithStatus(c, await response.json(), response.status);
+        }
 
 	return new Response(response.body, {
 		status: response.status,
