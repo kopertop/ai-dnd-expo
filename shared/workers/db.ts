@@ -753,6 +753,7 @@ export class Database {
 			instance.metadata,
 			now,
 			now,
+			now,
 		).run();
 	}
 

@@ -292,6 +292,8 @@ const HostGameScreen: React.FC = () => {
 			mapState,
 			refreshMapState,
 			loadNpcInstances,
+			useCustomNpc,
+			customNpcForm,
 		],
 	);
 
