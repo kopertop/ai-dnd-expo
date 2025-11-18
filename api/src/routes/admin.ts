@@ -2,7 +2,6 @@ import { Hono } from 'hono';
 
 import { isAdmin as sharedIsAdmin } from '../../../shared/workers/admin';
 import { Quest } from '../../../shared/workers/types';
-
 import type { CloudflareBindings } from '../env';
 
 type Variables = {

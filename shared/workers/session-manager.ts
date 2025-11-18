@@ -26,11 +26,11 @@ export function getSessionId(env: HasGameSessionNamespace, inviteCode: string): 
  * Get the Durable Object stub for a game session
  */
 export function getSessionStub(
-        env: HasGameSessionNamespace,
-        inviteCode: string,
+	env: HasGameSessionNamespace,
+	inviteCode: string,
 ): DurableObjectStub {
-        const id = getSessionId(env, inviteCode);
-        return env.GAME_SESSION.get(id);
+	const id = getSessionId(env, inviteCode);
+	return env.GAME_SESSION.get(id);
 }
 
 

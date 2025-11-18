@@ -14,48 +14,48 @@ interface InteractiveMapProps {
 }
 
 const terrainColors: Record<string, string> = {
-        water: '#7FD1F7',
-        grass: '#7FB77E',
-        forest: '#2D4A22',
-        mountain: '#8B7355',
-        impassible: '#4B4844',
-        impassable: '#4B4844',
-        desert: '#C2B280',
-        sand: '#FFD700',
-        stone: '#B0A8B9',
-        gravel: '#A89F91',
-        road: '#C8A97E',
-        dirt: '#8B4513',
-        mud: '#6E431C',
-        snow: '#FFF9F5',
-        ice: '#DFF3FF',
-        tundra: '#C8D3C0',
-        swamp: '#556B2F',
-        marsh: '#667E52',
-        cobblestone: '#9E8FA4',
-        plaza: '#D7C3A3',
-        market: '#C6A15E',
-        fountain: '#9BD7E8',
-        pit: '#2F1B10',
-        doorway: '#A58A6B',
-        bridge: '#C1B199',
-        dock: '#7E5E3B',
-        harbor: '#7E5E3B',
-        cliff: '#7A654B',
-        hill: '#A4A77D',
-        beach: '#F4E2B4',
-        path: '#BBA37A',
-        tree: '#3E6B4B',
-        wall: '#4A4A4A',
-        pillar: '#B6B6B6',
-        ruins: '#7F6A6A',
-        rubble: '#7D7063',
-        lava: '#F05D23',
+	water: '#7FD1F7',
+	grass: '#7FB77E',
+	forest: '#2D4A22',
+	mountain: '#8B7355',
+	impassible: '#4B4844',
+	impassable: '#4B4844',
+	desert: '#C2B280',
+	sand: '#FFD700',
+	stone: '#B0A8B9',
+	gravel: '#A89F91',
+	road: '#C8A97E',
+	dirt: '#8B4513',
+	mud: '#6E431C',
+	snow: '#FFF9F5',
+	ice: '#DFF3FF',
+	tundra: '#C8D3C0',
+	swamp: '#556B2F',
+	marsh: '#667E52',
+	cobblestone: '#9E8FA4',
+	plaza: '#D7C3A3',
+	market: '#C6A15E',
+	fountain: '#9BD7E8',
+	pit: '#2F1B10',
+	doorway: '#A58A6B',
+	bridge: '#C1B199',
+	dock: '#7E5E3B',
+	harbor: '#7E5E3B',
+	cliff: '#7A654B',
+	hill: '#A4A77D',
+	beach: '#F4E2B4',
+	path: '#BBA37A',
+	tree: '#3E6B4B',
+	wall: '#4A4A4A',
+	pillar: '#B6B6B6',
+	ruins: '#7F6A6A',
+	rubble: '#7D7063',
+	lava: '#F05D23',
 };
 
 const terrainColor = (terrain?: string) => {
-        const normalizedTerrain = terrain?.trim().toLowerCase();
-        return normalizedTerrain ? terrainColors[normalizedTerrain] ?? '#D9D4C5' : '#D9D4C5';
+	const normalizedTerrain = terrain?.trim().toLowerCase();
+	return normalizedTerrain ? terrainColors[normalizedTerrain] ?? '#D9D4C5' : '#D9D4C5';
 };
 
 const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
@@ -97,28 +97,28 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 				]}
 			>
 				{normalizedTerrain.map((row, y) => (
-                                        <View key={`row-${y}`} style={styles.row}>
-                                                {row.map((cell, x) => {
-                                                        const canEdit = isEditable && Boolean(onTilePress);
+					<View key={`row-${y}`} style={styles.row}>
+						{row.map((cell, x) => {
+							const canEdit = isEditable && Boolean(onTilePress);
 
-                                                        return (
-                                                                <TouchableOpacity
-                                                                        key={`tile-${x}-${y}`}
-                                                                        style={[
-                                                                                styles.tile,
-                                                                                {
-                                                                                        width: TILE_SIZE,
-                                                                                        height: TILE_SIZE,
-                                                                                        backgroundColor: terrainColor(cell?.terrain),
-                                                                                },
-                                                                        ]}
-                                                                        activeOpacity={canEdit ? 0.7 : 1}
-                                                                        disabled={!canEdit}
-                                                                        onPress={() => onTilePress?.(x, y)}
-                                                                />
-                                                        );
-                                                })}
-                                        </View>
+							return (
+								<TouchableOpacity
+									key={`tile-${x}-${y}`}
+									style={[
+										styles.tile,
+										{
+											width: TILE_SIZE,
+											height: TILE_SIZE,
+											backgroundColor: terrainColor(cell?.terrain),
+										},
+									]}
+									activeOpacity={canEdit ? 0.7 : 1}
+									disabled={!canEdit}
+									onPress={() => onTilePress?.(x, y)}
+								/>
+							);
+						})}
+					</View>
 				))}
 				<View
 					pointerEvents={isEditable ? 'none' : 'auto'}

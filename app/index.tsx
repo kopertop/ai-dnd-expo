@@ -91,10 +91,10 @@ const IndexScreen: React.FC = () => {
 				<View style={styles.section}>
 					<View style={styles.sectionHeader}>
 						<ThemedText type="subtitle">My Characters</ThemedText>
-					<TouchableOpacity
-						style={styles.manageBtn}
-						onPress={() => router.push('/characters' as never)}
-					>
+						<TouchableOpacity
+							style={styles.manageBtn}
+							onPress={() => router.push('/characters' as never)}
+						>
 							<ThemedText style={styles.manageLabel}>Manage</ThemedText>
 						</TouchableOpacity>
 					</View>

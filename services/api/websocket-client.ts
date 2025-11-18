@@ -1,7 +1,6 @@
 import {
 	WebSocketMessage,
 } from '@/types/api/websocket-messages';
-
 import { API_BASE_URL } from '@/services/config/api-base-url';
 
 export type WebSocketMessageHandler = (message: WebSocketMessage) => void;

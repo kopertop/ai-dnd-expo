@@ -77,7 +77,7 @@ export const createAudioHooks = (
 					console.warn('Audio cleanup failed:', error);
 				}
 			};
-			// eslint-disable-next-line react-hooks/exhaustive-deps
+			 
 		}, []);
 
 		useEffect(() => {
