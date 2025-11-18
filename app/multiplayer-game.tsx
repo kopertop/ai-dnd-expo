@@ -26,33 +26,69 @@ const MultiplayerGameScreen: React.FC = () => {
 	const { inviteCode, hostId, playerId } = params;
 	const [gameState, setGameState] = useState<MultiplayerGameState | null>(null);
 	const [sharedMap, setSharedMap] = useState<MapState | null>(null);
-	const [isHost, setIsHost] = useState(false);
-	const [wsConnected, setWsConnected] = useState(false);
-	const [mapEditEnabled, setMapEditEnabled] = useState(false);
-	const [selectedTerrain, setSelectedTerrain] = useState('stone');
-	const [placementSelection, setPlacementSelection] = useState<PlacementSelection>({ type: null });
-	const { isMobile } = useScreenSize();
-	const insets = useSafeAreaInsets();
+        const [isHost, setIsHost] = useState(false);
+        const [wsConnected, setWsConnected] = useState(false);
+        const [mapEditEnabled, setMapEditEnabled] = useState(false);
+        const [selectedTerrain, setSelectedTerrain] = useState('stone');
+        const [placementSelection, setPlacementSelection] = useState<PlacementSelection>({ type: null });
+        const { isMobile } = useScreenSize();
+        const insets = useSafeAreaInsets();
 
-	// Get character ID from gameState (memoized to prevent re-renders)
-	const characterId = useMemo(() => {
+        // Get character ID from gameState (memoized to prevent re-renders)
+        const characterId = useMemo(() => {
 		if (!gameState || !playerId) return '';
-		const player = gameState.players.find(p => p.playerId === playerId);
-		return player?.characterId || '';
-	}, [gameState, playerId]);
+                const player = gameState.players.find(p => p.playerId === playerId);
+                return player?.characterId || '';
+        }, [gameState, playerId]);
 
-	const refreshSharedMap = useCallback(async () => {
-		if (!inviteCode) {
-			return;
-		}
+        const syncMapState = useCallback((nextMap: MapState) => {
+                setSharedMap(nextMap);
+                setGameState(prev => (prev ? { ...prev, mapState: nextMap } : prev));
+        }, []);
 
-		try {
-			const state = await multiplayerClient.getMapState(inviteCode);
-			setSharedMap(state);
-		} catch (error) {
-			console.error('Failed to refresh shared map:', error);
-		}
-	}, [inviteCode]);
+        const syncMapTokens = useCallback(
+                (tokens: MapState['tokens']) => {
+                        setSharedMap(prev => {
+                                const sourceMap = prev ?? gameState?.mapState;
+                                if (!sourceMap) return prev;
+
+                                const updated = { ...sourceMap, tokens, updatedAt: Date.now() };
+                                setGameState(prevGame => (prevGame ? { ...prevGame, mapState: updated } : prevGame));
+                                return updated;
+                        });
+                },
+                [gameState?.mapState],
+        );
+
+        const findExistingToken = useCallback(
+                (entityId?: string) => {
+                        if (!entityId || !sharedMap?.tokens) return undefined;
+
+                        return sharedMap.tokens.find(token => {
+                                const tokenEntity =
+                                        token.entityId ||
+                                        (token as unknown as { characterId?: string }).characterId ||
+                                        (token as unknown as { npcId?: string }).npcId ||
+                                        (token.metadata as { entityId?: string } | undefined)?.entityId;
+
+                                return tokenEntity === entityId;
+                        });
+                },
+                [sharedMap?.tokens],
+        );
+
+        const refreshSharedMap = useCallback(async () => {
+                if (!inviteCode) {
+                        return;
+                }
+
+                try {
+                        const state = await multiplayerClient.getMapState(inviteCode);
+                        syncMapState(state);
+                } catch (error) {
+                        console.error('Failed to refresh shared map:', error);
+                }
+        }, [inviteCode, syncMapState]);
 
 	// Determine if this is the host
 	useEffect(() => {
@@ -173,31 +209,31 @@ const MultiplayerGameScreen: React.FC = () => {
 		setPlacementSelection(selection);
 	}, []);
 
-	const handleMapTilePress = useCallback(
-		async (x: number, y: number) => {
-			if (!inviteCode || !isHost) {
-				return;
-			}
+        const handleMapTilePress = useCallback(
+                async (x: number, y: number) => {
+                        if (!inviteCode || !isHost || !sharedMap) {
+                                return;
+                        }
 
                         if (placementSelection.type === 'character') {
                                 const character = gameState?.characters.find(c => c.id === placementSelection.id);
                                 if (!character) return;
 
-                                const existingToken = sharedMap?.tokens.find(
-                                        token => token.entityId === character.id,
-                                );
+                                const existingToken = findExistingToken(character.id);
 
                                 try {
-                                        await multiplayerClient.saveMapToken(inviteCode, {
+                                        const tokenResponse = await multiplayerClient.saveMapToken(inviteCode, {
                                                 id: existingToken?.id,
+                                                mapId: sharedMap.id,
                                                 tokenType: 'player',
                                                 characterId: character.id,
                                                 label: character.name,
                                                 x,
                                                 y,
                                                 color: '#3B2F1B',
+                                                metadata: { entityId: character.id, type: 'character' },
                                         });
-                                        await refreshSharedMap();
+                                        syncMapTokens(tokenResponse.tokens);
                                         setPlacementSelection({ type: null });
                                 } catch (error) {
                                         Alert.alert('Placement Failed', 'Unable to place character token');
@@ -210,20 +246,21 @@ const MultiplayerGameScreen: React.FC = () => {
                                 const npc = gameState?.npcStates?.find(n => n.id === placementSelection.id);
                                 if (!npc) return;
 
-                                const existingToken = sharedMap?.tokens.find(token => token.entityId === npc.id);
+                                const existingToken = findExistingToken(npc.id);
 
                                 try {
-                                        await multiplayerClient.saveMapToken(inviteCode, {
+                                        const tokenResponse = await multiplayerClient.saveMapToken(inviteCode, {
                                                 id: existingToken?.id,
+                                                mapId: sharedMap.id,
                                                 tokenType: 'npc',
                                                 npcId: npc.id,
                                                 label: npc.name,
                                                 x,
                                                 y,
                                                 color: npc.color,
-                                                metadata: npc.metadata,
+                                                metadata: { ...npc.metadata, entityId: npc.id },
                                         });
-                                        await refreshSharedMap();
+                                        syncMapTokens(tokenResponse.tokens);
                                         setPlacementSelection({ type: null });
                                 } catch (error) {
                                         Alert.alert('Placement Failed', 'Unable to place NPC token');
@@ -232,39 +269,40 @@ const MultiplayerGameScreen: React.FC = () => {
                                 return;
                         }
 
-			if (!mapEditEnabled) {
-				return;
-			}
+                        if (!mapEditEnabled) {
+                                return;
+                        }
 
-			const terrainType = selectedTerrain || sharedMap?.defaultTerrain || 'stone';
+                        const terrainType = selectedTerrain || sharedMap.defaultTerrain || 'stone';
 
-			try {
-				await multiplayerClient.mutateTerrain(inviteCode, {
-					tiles: [
-						{
-							x,
-							y,
-							terrainType,
-						},
-					],
-				});
-				await refreshSharedMap();
-			} catch (error) {
-				Alert.alert('Edit Failed', 'Unable to update terrain');
-				console.error(error);
-			}
-		},
-		[
-			inviteCode,
-			isHost,
-			placementSelection,
+                        try {
+                                const updatedMap = await multiplayerClient.mutateTerrain(inviteCode, {
+                                        tiles: [
+                                                {
+                                                        x,
+                                                        y,
+                                                        terrainType,
+                                                },
+                                        ],
+                                });
+                                syncMapState(updatedMap);
+                        } catch (error) {
+                                Alert.alert('Edit Failed', 'Unable to update terrain');
+                                console.error(error);
+                        }
+                },
+                [
+                        inviteCode,
+                        isHost,
+                        sharedMap,
+                        placementSelection,
                         gameState?.characters,
                         gameState?.npcStates,
                         mapEditEnabled,
                         selectedTerrain,
-                        sharedMap?.defaultTerrain,
-                        sharedMap?.tokens,
-                        refreshSharedMap,
+                        findExistingToken,
+                        syncMapTokens,
+                        syncMapState,
                 ],
         );
 
