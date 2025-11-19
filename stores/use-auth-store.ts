@@ -1,54 +1,15 @@
 /**
  * Auth Store
  *
- * Manages authentication state and user session using better-auth
+ * Compatibility layer that wraps the new AuthService
+ * This allows existing code to continue working while we migrate
  */
 
 import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import authClient, { AUTH_BASE_URL } from '@/services/auth/better-auth-client';
-
-const getCallbackURL = () =>
-	typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : '/auth/callback';
-
-const getErrorCallbackURL = () =>
-	typeof window !== 'undefined' ? `${window.location.origin}/auth/error` : '/auth/error';
-
-const extractBetterAuthError = (result: unknown): string | null => {
-	if (!result || typeof result !== 'object') {
-		return null;
-	}
-
-	if (!('error' in result)) {
-		return null;
-	}
-
-	const errorPayload = (result as { error: unknown }).error;
-
-	if (!errorPayload) {
-		return null;
-	}
-
-	if (typeof errorPayload === 'string') {
-		return errorPayload;
-	}
-
-	if (typeof errorPayload === 'object') {
-		const message = (errorPayload as { message?: unknown }).message;
-		if (typeof message === 'string' && message.trim().length > 0) {
-			return message;
-		}
-
-		const statusText = (errorPayload as { statusText?: unknown }).statusText;
-		if (typeof statusText === 'string' && statusText.trim().length > 0) {
-			return statusText;
-		}
-	}
-
-	return null;
-};
+import { authService } from '@/services/auth-service';
 
 interface AuthState {
 	user: {
@@ -85,7 +46,7 @@ export const useAuthStore = create<AuthState>()(
 			isLoading: false,
 			error: null,
 			providers: {
-				google: false,
+				google: true, // Google is always available
 				apple: Platform.OS === 'ios',
 			},
 
@@ -98,29 +59,58 @@ export const useAuthStore = create<AuthState>()(
 				isInitializing = true;
 				set({ isLoading: true, error: null });
 				try {
-					const session = await authClient.getSession();
+					// Wait for auth service to initialize
+					await authService.waitForInitialization();
+					
+					const [session, user] = await Promise.all([
+						authService.getSession(),
+						authService.getUser(),
+					]);
 
-					if (session?.data?.user) {
+					if (session && user) {
 						set({
 							user: {
-								id: session.data.user.id,
-								email: session.data.user.email,
-								name: session.data.user.name,
-								image: session.data.user.image,
+								id: user.id,
+								email: user.email,
+								name: user.name,
+								image: user.picture || undefined,
 							},
 							isAuthenticated: true,
 							isLoading: false,
 						});
 					} else {
-						set({
-							user: null,
-							isAuthenticated: false,
-							isLoading: false,
-						});
+						// Try device token auth if no session
+						const deviceSession = await authService.signInWithDeviceToken();
+						if (deviceSession) {
+							const deviceUser = await authService.getUser();
+							if (deviceUser) {
+								set({
+									user: {
+										id: deviceUser.id,
+										email: deviceUser.email,
+										name: deviceUser.name,
+										image: deviceUser.picture || undefined,
+									},
+									isAuthenticated: true,
+									isLoading: false,
+								});
+							} else {
+								set({
+									user: null,
+									isAuthenticated: false,
+									isLoading: false,
+								});
+							}
+						} else {
+							set({
+								user: null,
+								isAuthenticated: false,
+								isLoading: false,
+							});
+						}
 					}
 				} catch (error) {
 					console.error('Failed to initialize auth:', error);
-					// On error, assume not authenticated (backend might not be running)
 					set({
 						user: null,
 						isAuthenticated: false,
@@ -133,97 +123,33 @@ export const useAuthStore = create<AuthState>()(
 			},
 
 			fetchProviders: async () => {
-				const baseUrl = AUTH_BASE_URL || '';
-				const normalizedBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-				const targetUrl = `${normalizedBase}/api/auth/providers`;
-
-				try {
-					const response = await fetch(targetUrl, {
-						method: 'GET',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						credentials: 'include',
-					});
-
-					if (!response.ok) {
-						throw new Error(`Failed to load auth providers: ${response.status}`);
-					}
-
-					const data = await response.json();
-
-					set({
-						providers: {
-							google: Boolean(data?.google ?? data?.socialProviders?.google ?? true),
-							apple: Boolean(
-								data?.apple ?? data?.socialProviders?.apple ?? Platform.OS === 'ios',
-							),
-						},
-					});
-				} catch (error) {
-					console.error('Failed to fetch auth providers:', error);
-					set((state) => ({
-						providers: {
-							...state.providers,
-							google: true,
-							apple: Platform.OS === 'ios',
-						},
-					}));
-				}
+				// Providers are always available based on platform
+				set({
+					providers: {
+						google: true,
+						apple: Platform.OS === 'ios',
+					},
+				});
 			},
 
 			signInWithGoogle: async () => {
 				set({ isLoading: true, error: null });
-				try {
-					const result = await authClient.signIn.social({
-						provider: 'google',
-						callbackURL: getCallbackURL(),
-						errorCallbackURL: getErrorCallbackURL(),
-					});
-
-					const errorMessage = extractBetterAuthError(result);
-					if (errorMessage) {
-						throw new Error(errorMessage);
-					}
-				} catch (error) {
-					console.error('Google sign-in failed:', error);
-					set({
-						error: error instanceof Error ? error.message : 'Google sign-in failed',
-					});
-					throw error;
-				} finally {
-					set({ isLoading: false });
-				}
+				// Google sign-in is handled in the login screen via expo-auth-session
+				// This is just a placeholder for compatibility
+				set({ isLoading: false });
 			},
 
 			signInWithApple: async () => {
 				set({ isLoading: true, error: null });
-				try {
-					const result = await authClient.signIn.social({
-						provider: 'apple',
-						callbackURL: getCallbackURL(),
-						errorCallbackURL: getErrorCallbackURL(),
-					});
-
-					const errorMessage = extractBetterAuthError(result);
-					if (errorMessage) {
-						throw new Error(errorMessage);
-					}
-				} catch (error) {
-					console.error('Apple sign-in failed:', error);
-					set({
-						error: error instanceof Error ? error.message : 'Apple sign-in failed',
-					});
-					throw error;
-				} finally {
-					set({ isLoading: false });
-				}
+				// Apple sign-in is handled in the login screen via expo-apple-authentication
+				// This is just a placeholder for compatibility
+				set({ isLoading: false });
 			},
 
 			signOut: async () => {
 				set({ isLoading: true, error: null });
 				try {
-					await authClient.signOut();
+					await authService.signOut();
 
 					set({
 						user: null,
@@ -241,15 +167,18 @@ export const useAuthStore = create<AuthState>()(
 
 			refreshSession: async () => {
 				try {
-					const session = await authClient.getSession();
+					const [session, user] = await Promise.all([
+						authService.getSession(),
+						authService.getUser(),
+					]);
 
-					if (session?.data?.user) {
+					if (session && user) {
 						set({
 							user: {
-								id: session.data.user.id,
-								email: session.data.user.email,
-								name: session.data.user.name,
-								image: session.data.user.image,
+								id: user.id,
+								email: user.email,
+								name: user.name,
+								image: user.picture || undefined,
 							},
 							isAuthenticated: true,
 						});
@@ -278,3 +207,33 @@ export const useAuthStore = create<AuthState>()(
 	),
 );
 
+// Subscribe to auth service changes to keep store in sync
+authService.onSessionChange(async (session) => {
+	const user = await authService.getUser();
+	useAuthStore.setState({
+		user: user ? {
+			id: user.id,
+			email: user.email,
+			name: user.name,
+			image: user.picture || undefined,
+		} : null,
+		isAuthenticated: !!session && !!user,
+	});
+});
+
+authService.onUserChange(async (user) => {
+	const session = await authService.getSession();
+	useAuthStore.setState({
+		user: user ? {
+			id: user.id,
+			email: user.email,
+			name: user.name,
+			image: user.picture || undefined,
+		} : null,
+		isAuthenticated: !!session && !!user,
+	});
+});
+
+authService.onAuthError((error) => {
+	useAuthStore.setState({ error });
+});

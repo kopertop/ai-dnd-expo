@@ -21,6 +21,7 @@ import { ThemedView } from '@/components/themed-view';
 import { AudioProvider, useAudio } from '@/hooks/use-audio-player';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { InputModeProvider } from '@/hooks/use-input-mode';
+import { authService } from '@/services/auth-service';
 import { useAuthStore } from '@/stores/use-auth-store';
 
 const AudioButton: React.FC = () => {
@@ -142,8 +143,19 @@ const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 		// If not authenticated and not on auth pages, redirect to login
 		if (!isLoading && !isAuthenticated && !inAuthGroup) {
-			setHasRedirected(true);
-			router.replace('/login');
+			// Double-check with authService before redirecting (in case store is out of sync)
+			authService.getSession().then(session => {
+				authService.getUser().then(user => {
+					if (session && user) {
+						// Actually authenticated, refresh the store
+						useAuthStore.getState().refreshSession();
+					} else {
+						// Not authenticated, proceed with redirect
+						setHasRedirected(true);
+						router.replace('/login');
+					}
+				});
+			});
 			return;
 		}
 
@@ -193,6 +205,7 @@ const RootLayout: React.FC = () => {
 							<Stack initialRouteName="index">
 								<Stack.Screen name="index" options={{ headerShown: false }} />
 								<Stack.Screen name="login" options={{ headerShown: false }} />
+								<Stack.Screen name="auth" options={{ headerShown: false }} />
 								<Stack.Screen name="auth/callback" options={{ headerShown: false }} />
 								<Stack.Screen name="auth/error" options={{ headerShown: false }} />
 								<Stack.Screen name="new-game" options={{ headerShown: false }} />

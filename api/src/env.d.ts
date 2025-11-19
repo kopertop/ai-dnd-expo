@@ -3,6 +3,7 @@ export interface CloudflareBindings {
 	GAME_SESSION: DurableObjectNamespace;
 	QUESTS: KVNamespace;
 	AUTH_SESSIONS?: KVNamespace;
+	ASSETS?: Fetcher; // Worker with Assets binding
 
 	OLLAMA_BASE_URL: string;
 	OLLAMA_MODEL: string;
