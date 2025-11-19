@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 import { API_BASE_URL } from '@/services/config/api-base-url';
 import { deviceTokenService } from '@/services/device-token-service';
+import { fetchWithTimeout } from '@/services/http-service';
 import { secureStoreService } from '@/services/secure-store-service';
 import type { User } from '@/types/models';
 
@@ -18,10 +19,11 @@ export type UserSession = {
 };
 
 export const GOOGLE_INFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
+export const GOOGLE_REFRESH_URL = 'https://oauth2.googleapis.com/token';
 export const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
 export const GOOGLE_REDIRECT_URI = Platform.select({
 	ios: process.env.EXPO_PUBLIC_AUTH_REDIRECT_URI_IOS || 'ai-dnd://login',
-	web: process.env.EXPO_PUBLIC_AUTH_REDIRECT_URI_WEB || 'http://localhost:8081/login',
+	web: globalThis?.location ? `${globalThis.location.origin}/login` : process.env.EXPO_PUBLIC_AUTH_REDIRECT_URI_WEB || 'http://localhost:8081/login',
 	default: process.env.EXPO_PUBLIC_AUTH_REDIRECT_URI || 'ai-dnd://login',
 }) || 'ai-dnd://login';
 console.log('GOOGLE_REDIRECT_URI', GOOGLE_REDIRECT_URI);
@@ -82,12 +84,6 @@ class AuthService {
 
 	async getUser(): Promise<User | null> {
 		await this.waitForInitialization();
-
-		// If we have a session, try to fetch user from API
-		if (this.currentSession && !this.currentUser) {
-			await this.fetchUserFromAPI();
-		}
-
 		return this.currentUser;
 	}
 
@@ -115,7 +111,7 @@ class AuthService {
 				return null;
 			}
 
-			const response = await fetch(`${API_BASE_URL}/api/me`, {
+			const response = await fetchWithTimeout(`${API_BASE_URL}/api/me`, {
 				method: 'GET',
 				headers: {
 					'Authorization': authHeader,
@@ -213,7 +209,7 @@ class AuthService {
 		let userInfo;
 		if (response.accessToken) {
 			try {
-				const userInfoResponse = await fetch(GOOGLE_INFO_URL, {
+				const userInfoResponse = await fetchWithTimeout(GOOGLE_INFO_URL, {
 					headers: {
 						Authorization: `Bearer ${response.accessToken}`,
 					},
@@ -322,7 +318,13 @@ class AuthService {
 		}
 	}
 
-	private decodeJWT(token: string): any {
+	private decodeJWT(token: string): {
+		sub?: string;
+		iss?: string;
+		exp?: number;
+		email?: string;
+		[key: string]: unknown;
+	} {
 		try {
 			if (!token || typeof token !== 'string') {
 				throw new Error('Invalid token: not a string');
@@ -343,7 +345,13 @@ class AuthService {
 				return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
 			}).join(''));
 
-			const payload = JSON.parse(jsonPayload);
+			const payload = JSON.parse(jsonPayload) as {
+				sub?: string;
+				iss?: string;
+				exp?: number;
+				email?: string;
+				[key: string]: unknown;
+			};
 			console.log('JWT payload decoded successfully:', { sub: payload.sub, iss: payload.iss, exp: payload.exp });
 			return payload;
 		} catch (error) {
@@ -360,7 +368,7 @@ class AuthService {
 		}
 
 		try {
-			const response = await fetch(`${API_BASE_URL}/api/me`, {
+			const response = await fetchWithTimeout(`${API_BASE_URL}/api/me`, {
 				method: 'GET',
 				headers: {
 					'Authorization': `Device ${deviceToken}`,
@@ -431,7 +439,7 @@ class AuthService {
 			const deviceInfo = deviceTokenService.getDeviceInfo();
 
 			// Register device token with backend using OAuth token
-			const response = await fetch(`${API_BASE_URL}/api/device-tokens`, {
+			const response = await fetchWithTimeout(`${API_BASE_URL}/api/device-tokens`, {
 				method: 'POST',
 				headers: {
 					'Authorization': `Bearer ${this.currentSession.accessToken || this.currentSession.idToken} ${this.currentSession.provider || 'google'}`,
@@ -585,7 +593,7 @@ class AuthService {
 
 		try {
 			console.log('Validating access token...');
-			const response = await fetch(GOOGLE_INFO_URL, {
+			const response = await fetchWithTimeout(GOOGLE_INFO_URL, {
 				headers: {
 					Authorization: `Bearer ${this.currentSession.accessToken}`,
 				},
@@ -593,7 +601,21 @@ class AuthService {
 
 			if (!response.ok) {
 				console.log('Token validation failed with status:', response.status);
-				return false;
+				// Only try to refresh if we have a refresh token
+				if (this.currentSession?.refreshToken) {
+					console.log('Attempting token refresh...');
+					const refreshedSession = await this.refreshTokens();
+					if (refreshedSession) {
+						console.log('Token refresh successful');
+						return true;
+					} else {
+						console.warn('Token refresh failed');
+						return false;
+					}
+				} else {
+					console.warn('No refresh token available');
+					return false;
+				}
 			} else {
 				console.log('Token validation successful');
 				return true;
@@ -601,6 +623,47 @@ class AuthService {
 		} catch (error) {
 			console.error('Error during token validation:', error);
 			return false;
+		}
+	}
+
+	async refreshTokens(): Promise<UserSession | null> {
+		if (!this.currentSession?.refreshToken) {
+			console.log('No refresh token available');
+			return null;
+		}
+
+		try {
+			const response = await fetchWithTimeout(GOOGLE_REFRESH_URL, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				body: new URLSearchParams({
+					grant_type: 'refresh_token',
+					client_id: GOOGLE_CLIENT_ID,
+					refresh_token: this.currentSession.refreshToken,
+				}).toString(),
+			});
+
+			if (response.ok) {
+				const tokenData = await response.json();
+				console.log('Token refresh successful');
+
+				const updatedSession: UserSession = {
+					...this.currentSession,
+					accessToken: tokenData.access_token,
+					refreshToken: tokenData.refresh_token || this.currentSession.refreshToken,
+				};
+
+				await this.setSession(updatedSession);
+				return updatedSession;
+			} else {
+				console.error('Token refresh failed:', response.status);
+				return null;
+			}
+		} catch (error) {
+			console.error('Error refreshing tokens:', error);
+			return null;
 		}
 	}
 }

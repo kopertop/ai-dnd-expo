@@ -6,8 +6,8 @@
 
 import * as AppleAuthentication from 'expo-apple-authentication';
 import {
-    exchangeCodeAsync,
-    useAuthRequest
+	TokenResponse,
+	useAuthRequest,
 } from 'expo-auth-session';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -18,7 +18,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/hooks/use-auth';
 import { GOOGLE_CLIENT_ID, GOOGLE_REDIRECT_URI, authService } from '@/services/auth-service';
-import { useAuthStore } from '@/stores/use-auth-store';
+import { API_BASE_URL } from '@/services/config/api-base-url';
 
 // Required for Auth
 WebBrowser.maybeCompleteAuthSession();
@@ -92,61 +92,61 @@ const LoginScreen: React.FC = () => {
 	// Handle Google OAuth response from useAuthRequest hook
 	useEffect(() => {
 		const processGoogleAuth = async () => {
-			console.log('Checking Google auth response:', { 
-				hasRequest: !!googleRequest, 
+			console.log('Checking Google auth response:', {
+				hasRequest: !!googleRequest,
 				responseType: googleResponse?.type,
 				response: googleResponse,
-				urlParams: urlParams
+				urlParams: urlParams,
 			});
-			
+
 			if (googleRequest && googleResponse?.type === 'success') {
 				try {
 					setGoogleLoading(true);
-					console.log('Exchanging code for token...');
-					// Exchange the code for access token
-					const result = await exchangeCodeAsync(
-						{
-							clientId: GOOGLE_CLIENT_ID,
-							code: googleResponse.params.code,
-							extraParams: googleRequest.codeVerifier
-								? { code_verifier: googleRequest.codeVerifier }
-								: undefined,
-							redirectUri: GOOGLE_REDIRECT_URI,
+					console.log('Exchanging code for token via backend...');
+
+					// Exchange the code for access token via backend (secure, uses client secret)
+					const exchangeResponse = await fetch(`${API_BASE_URL}/api/auth/exchange`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
 						},
-						GOOGLE_DISCOVERY,
-					);
+						body: JSON.stringify({
+							code: googleResponse.params.code,
+							redirectUri: GOOGLE_REDIRECT_URI,
+							codeVerifier: googleRequest.codeVerifier,
+						}),
+					});
+
+					if (!exchangeResponse.ok) {
+						const errorData = await exchangeResponse.json();
+						throw new Error(errorData.error || 'Token exchange failed');
+					}
+
+					const tokenData = await exchangeResponse.json() as {
+						accessToken: string;
+						refreshToken?: string;
+						idToken?: string;
+						expiresIn?: number;
+						tokenType?: string;
+					};
+
+					// Convert to TokenResponse format for authService
+					// Cast to TokenResponse since we only need the properties, not the class methods
+					const result = {
+						accessToken: tokenData.accessToken,
+						refreshToken: tokenData.refreshToken,
+						idToken: tokenData.idToken,
+						expiresIn: tokenData.expiresIn,
+						tokenType: tokenData.tokenType || 'Bearer',
+					} as unknown as TokenResponse; // TokenResponse is a class but we only need the properties
 
 					console.log('Token exchange successful:', result);
 					// Sign in with the token
 					const session = await authService.signIn(result);
 					console.log('Sign-in complete, session:', session);
 
-					// Wait for user to be fetched
-					let attempts = 0;
-					let user = null;
-					while (attempts < 10) {
-						user = await authService.getUser();
-						if (user) {
-							console.log('User fetched successfully:', user);
-							break;
-						}
-						await new Promise(resolve => setTimeout(resolve, 200));
-						attempts++;
-					}
-
-					// Manually refresh the auth store to ensure it's in sync
-					const { refreshSession } = useAuthStore.getState();
-					await refreshSession();
-
-					// Wait a moment for state to propagate
-					await new Promise(resolve => setTimeout(resolve, 300));
-
-					// Check auth state before navigating
-					const finalUser = await authService.getUser();
-					const finalSession = await authService.getSession();
-					const storeState = useAuthStore.getState();
-					console.log('Before navigation - User:', finalUser, 'Session:', finalSession);
-					console.log('Store state - isAuthenticated:', storeState.isAuthenticated, 'user:', storeState.user);
+					// Wait for state to propagate
+					await new Promise(resolve => setTimeout(resolve, 500));
 
 					// Navigate to home
 					router.replace('/');
@@ -170,7 +170,7 @@ const LoginScreen: React.FC = () => {
 		};
 
 		void processGoogleAuth();
-	}, [googleResponse, googleRequest]);
+	}, [googleResponse, googleRequest, urlParams]);
 
 	// Track if we've already processed this code to prevent duplicate processing
 	const [processedCode, setProcessedCode] = useState<string | null>(null);
@@ -239,15 +239,41 @@ const LoginScreen: React.FC = () => {
 						return;
 					}
 
-					const result = await exchangeCodeAsync(
-						{
-							clientId: GOOGLE_CLIENT_ID,
-							code,
-							extraParams: { code_verifier: codeVerifier },
-							redirectUri: GOOGLE_REDIRECT_URI,
+					// Exchange the code for access token via backend (secure, uses client secret)
+					const exchangeResponse = await fetch(`${API_BASE_URL}/api/auth/exchange`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
 						},
-						GOOGLE_DISCOVERY,
-					);
+						body: JSON.stringify({
+							code,
+							redirectUri: GOOGLE_REDIRECT_URI,
+							codeVerifier,
+						}),
+					});
+
+					if (!exchangeResponse.ok) {
+						const errorData = await exchangeResponse.json();
+						throw new Error(errorData.error || 'Token exchange failed');
+					}
+
+					const tokenData = await exchangeResponse.json() as {
+						accessToken: string;
+						refreshToken?: string;
+						idToken?: string;
+						expiresIn?: number;
+						tokenType?: string;
+					};
+
+					// Convert to TokenResponse format for authService
+					// Cast to TokenResponse since we only need the properties, not the class methods
+					const result = {
+						accessToken: tokenData.accessToken,
+						refreshToken: tokenData.refreshToken,
+						idToken: tokenData.idToken,
+						expiresIn: tokenData.expiresIn,
+						tokenType: tokenData.tokenType || 'Bearer',
+					} as unknown as TokenResponse; // TokenResponse is a class but we only need the properties
 
 					// Clear stored OAuth data
 					if (typeof window !== 'undefined' && window.sessionStorage) {
@@ -262,30 +288,13 @@ const LoginScreen: React.FC = () => {
 					}
 
 					console.log('Token exchange successful:', result);
-					
-					// Sign in with the token (this will redirect to /)
+
+					// Sign in with the token
 					const session = await authService.signIn(result);
 					console.log('Sign-in complete, session:', session);
 
-					// Wait for user to be fetched
-					let attempts = 0;
-					let user = null;
-					while (attempts < 10) {
-						user = await authService.getUser();
-						if (user) {
-							console.log('User fetched successfully:', user);
-							break;
-						}
-						await new Promise(resolve => setTimeout(resolve, 200));
-						attempts++;
-					}
-
-					// Manually refresh the auth store to ensure it's in sync
-					const { refreshSession } = useAuthStore.getState();
-					await refreshSession();
-
-					// Wait a moment for state to propagate
-					await new Promise(resolve => setTimeout(resolve, 300));
+					// Wait for state to propagate
+					await new Promise(resolve => setTimeout(resolve, 500));
 
 					// Navigate to home
 					router.replace('/');
@@ -440,16 +449,17 @@ const LoginScreen: React.FC = () => {
 			await new Promise(resolve => setTimeout(resolve, 500));
 			router.replace('/');
 
-		} catch (error: any) {
+		} catch (error: unknown) {
 			console.error('Apple Sign-In error:', error);
 
-			if (error.code === 'ERR_REQUEST_CANCELED') {
+			const errorObj = error as { code?: string; message?: string };
+			if (errorObj.code === 'ERR_REQUEST_CANCELED') {
 				// User canceled the sign-in flow
 				console.log('Apple Sign-In was canceled by user');
-			} else if (error.code === 'ERR_REQUEST_NOT_HANDLED') {
+			} else if (errorObj.code === 'ERR_REQUEST_NOT_HANDLED') {
 				console.error('Apple Sign-In request not handled - this may indicate a configuration issue');
 				Alert.alert('Error', 'Sign in with Apple is not properly configured. Please contact support.');
-			} else if (error.code === 'ERR_REQUEST_NOT_INTERACTIVE') {
+			} else if (errorObj.code === 'ERR_REQUEST_NOT_INTERACTIVE') {
 				console.error('Apple Sign-In request not interactive - user may need to sign in through Settings');
 				Alert.alert('Error', 'Please sign in with Apple through your device Settings first, then try again.');
 			} else {

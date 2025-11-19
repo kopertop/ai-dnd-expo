@@ -4,6 +4,7 @@ import { authMiddleware } from './auth/middleware';
 import { corsMiddleware } from './cors';
 import type { CloudflareBindings } from './env';
 import adminRoutes from './routes/admin';
+import authRoutes from './routes/auth';
 import deviceTokensRoutes from './routes/device-tokens';
 import gameRoutes from './routes/games';
 import meRoutes from './routes/me';
@@ -19,7 +20,15 @@ const app = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
 app.use('*', corsMiddleware);
 
 // Apply auth middleware globally (sets user in context)
-app.use('*', authMiddleware);
+// Exclude auth routes that don't require authentication
+app.use('*', async (c, next) => {
+	// Skip auth middleware for auth exchange endpoint (users aren't authenticated yet)
+	if (c.req.path === '/api/auth/exchange') {
+		await next();
+		return;
+	}
+	return authMiddleware(c, next);
+});
 
 // Health check (no auth required)
 app.get('/health', c => {
@@ -37,6 +46,7 @@ app.route('/api/quests', questRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/device-tokens', deviceTokensRoutes);
 app.route('/api/me', meRoutes);
+app.route('/api/auth', authRoutes);
 
 // Serve static assets for non-API routes (Worker with Assets)
 app.get('*', async (c) => {
