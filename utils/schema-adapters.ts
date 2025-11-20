@@ -1,5 +1,5 @@
-import type { MapRow, MapTileRow, MapTokenRow, NpcRow } from '../shared/workers/db';
-import type { MapState, MapToken, NpcDefinition } from '../types/multiplayer-map';
+import type { MapRow, MapTileRow, MapTokenRow, NpcRow } from '@/shared/workers/db';
+import type { MapState, MapToken, NpcDefinition } from '@/types/multiplayer-map';
 
 type TerrainCell = {
 	terrain: string;
