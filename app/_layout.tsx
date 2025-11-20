@@ -23,8 +23,6 @@ import { AudioProvider, useAudio } from '@/hooks/use-audio-player';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { InputModeProvider } from '@/hooks/use-input-mode';
 
-const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8787/api/').replace(/\/$/, '') + '/';
-
 const AudioButton: React.FC = () => {
 	const { isPlaying, togglePlayPause } = useAudio();
 
