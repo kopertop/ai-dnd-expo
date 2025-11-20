@@ -4,7 +4,7 @@ import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DMControlsPanel } from '@/components/dm-controls-panel';
-import { InteractiveMap } from '@/components/map/InteractiveMap';
+import { InteractiveMap } from '@/components/map/interactive-map';
 import { PlayerCharacterList } from '@/components/player-character-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';

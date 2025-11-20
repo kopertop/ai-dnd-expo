@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppFooter } from '@/components/app-footer';
 import { InviteCodeDisplay } from '@/components/invite-code-display';
 import { LocationChooser } from '@/components/location-chooser';
-import { InteractiveMap } from '@/components/map/InteractiveMap';
+import { InteractiveMap } from '@/components/map/interactive-map';
 import { PlayerList } from '@/components/player-list';
 import { QuestSelector } from '@/components/quest-selector';
 import { ThemedText } from '@/components/themed-text';
