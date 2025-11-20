@@ -13,12 +13,12 @@ const resolveApiBaseUrl = (): string => {
 	} catch {
 		// expo-constants not available, fall back to process.env
 	}
-	
+
 	// Fall back to process.env if not found in Constants
 	if (!explicitUrl) {
 		explicitUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
 	}
-	
+
 	if (explicitUrl) {
 		return explicitUrl;
 	}
@@ -34,7 +34,7 @@ const resolveApiBaseUrl = (): string => {
 		}
 
 		// Cloudflare Pages API
-		return 'https://ai-dnd.kopertop.workers.dev';
+		return 'https://ai-dnd.kopertop.workers.dev/api/';
 	}
 
 	// Node/Expo dev server

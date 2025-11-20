@@ -55,6 +55,18 @@ app.post('/api/auth/google/callback', async (c) => {
 
 		const body = await c.req.json();
 		console.log('body', body);
+
+		// Validate configuration
+		if (!c.env.GOOGLE_CLIENT_ID) {
+			console.error('Missing GOOGLE_CLIENT_ID environment variable');
+			return c.json({ error: 'Server configuration error: Missing GOOGLE_CLIENT_ID' }, 500);
+		}
+
+		if (!c.env.GOOGLE_CLIENT_SECRET) {
+			console.error('Missing GOOGLE_CLIENT_SECRET environment variable');
+			return c.json({ error: 'Server configuration error: Missing GOOGLE_CLIENT_SECRET' }, 500);
+		}
+
 		const result = await handleGoogleCallback(envWithDB, body, {
 			createUserIfNotExists: true,
 			googleClientId: c.env.GOOGLE_CLIENT_ID,

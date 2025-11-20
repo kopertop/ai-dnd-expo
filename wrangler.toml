@@ -41,12 +41,3 @@ preview_id = "be5f833b304a489f9feae6d7573e865e"
 binding = "AUTH_SESSIONS"
 id = "da420984bd1d44ed982e99eab7ac54d9"
 preview_id = "1986f512835f470f95f4df8b48c6c51a"
-
-[vars]
-OLLAMA_BASE_URL = "http://localhost:11434"
-OLLAMA_MODEL = "llama3.2"
-# Optional API key for Ollama servers that require authentication
-OLLAMA_API_KEY = ""
-ADMIN_EMAILS = "kopertop@gmail.com,cmoyer@newstex.com"
-AUTH_SECRET = "replace-me-in-production"
-AUTH_URL = "http://localhost:8787"
