@@ -72,7 +72,6 @@ export default defineConfig({
 				'styles/**/*.{js,ts}',
 			],
 			// Ensure all files are included even if not imported in tests
-			all: true,
 		},
 
 		// Test timeout for fast execution (under 30 seconds total)

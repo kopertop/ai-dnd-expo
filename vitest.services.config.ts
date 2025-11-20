@@ -52,7 +52,6 @@ export default defineConfig({
 			},
 			include: ['services/**/*.{js,ts,tsx}'],
 			// Ensure all service files are included even if not imported in tests
-			all: true,
 		},
 
 		// Test timeout for fast execution

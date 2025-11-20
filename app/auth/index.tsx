@@ -30,7 +30,7 @@ const AuthIndexScreen: React.FC = () => {
 				setError(errorMessage);
 				setProcessing(false);
 				setTimeout(() => {
-					router.replace('/auth/error?error=' + encodeURIComponent(errorMessage));
+					router.replace(`/auth/error?error=${encodeURIComponent(errorMessage)}` as any);
 				}, 2000);
 				return;
 			}
@@ -76,7 +76,7 @@ const AuthIndexScreen: React.FC = () => {
 				setProcessing(false);
 				// Redirect to error page after a delay
 				setTimeout(() => {
-					router.replace('/auth/error?error=' + encodeURIComponent(errorMessage));
+					router.replace(`/auth/error?error=${encodeURIComponent(errorMessage)}` as any);
 				}, 2000);
 			}
 		}
