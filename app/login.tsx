@@ -23,7 +23,7 @@ const LoginScreen: React.FC = () => {
 	}, [session, user, authLoading]);
 
 	const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
-	const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8787/').replace(/\/$/, '') + '/';
+	const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8787/api/').replace(/\/$/, '') + '/';
 
 	return (
 		<ThemedView style={styles.container}>

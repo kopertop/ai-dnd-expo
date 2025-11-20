@@ -1,6 +1,7 @@
 import { authService } from 'expo-auth-template/frontend';
 
 import { API_BASE_URL, buildApiUrl } from '@/services/config/api-base-url';
+import { Character } from '@/types/character';
 import {
 	CharacterListResponse,
 	CreateGameRequest,
@@ -22,8 +23,7 @@ import {
 	NpcInstanceUpdateRequest,
 	NpcPlacementRequest,
 	PlayerActionRequest,
-} from '@/types/api/multiplayer-api';
-import { Character } from '@/types/character';
+} from '@/types/multiplayer-api';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { Quest } from '@/types/quest';
 
@@ -91,7 +91,7 @@ export class MultiplayerClient {
 	 */
 	async createGame(request: CreateGameRequest): Promise<GameSessionResponse> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl('/api/games'), {
+		const response = await fetch(this.buildUrl('/games'), {
 			method: 'POST',
 			headers,
 			body: JSON.stringify(request),
@@ -110,7 +110,7 @@ export class MultiplayerClient {
 	 */
 	async getGameSession(inviteCode: string): Promise<GameSessionResponse> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}`), {
+		const response = await fetch(this.buildUrl(`/games/${inviteCode}`), {
 			method: 'GET',
 			headers,
 		});
@@ -129,7 +129,7 @@ export class MultiplayerClient {
 	async joinGame(request: JoinGameRequest): Promise<GameSessionResponse> {
 		const headers = await this.getAuthHeaders();
 		const response = await fetch(
-			this.buildUrl(`/api/games/${request.inviteCode}/join`),
+			this.buildUrl(`/games/${request.inviteCode}/join`),
 			{
 				method: 'POST',
 				headers,
@@ -155,7 +155,7 @@ export class MultiplayerClient {
 	async pollGameState(inviteCode: string): Promise<GameSessionResponse> {
 		const headers = await this.getAuthHeaders();
 		const response = await fetch(
-			this.buildUrl(`/api/games/${inviteCode}/state`),
+			this.buildUrl(`/games/${inviteCode}/state`),
 			{
 				method: 'GET',
 				headers,
@@ -179,7 +179,7 @@ export class MultiplayerClient {
 	): Promise<void> {
 		const headers = await this.getAuthHeaders();
 		const response = await fetch(
-			this.buildUrl(`/api/games/${inviteCode}/action`),
+			this.buildUrl(`/games/${inviteCode}/action`),
 			{
 				method: 'POST',
 				headers,
@@ -202,7 +202,7 @@ export class MultiplayerClient {
 	): Promise<GameStateResponse> {
 		const headers = await this.getAuthHeaders();
 		const response = await fetch(
-			this.buildUrl(`/api/games/${inviteCode}/dm-action`),
+			this.buildUrl(`/games/${inviteCode}/dm-action`),
 			{
 				method: 'POST',
 				headers,
@@ -228,7 +228,7 @@ export class MultiplayerClient {
 	): Promise<GameStateResponse> {
 		const headers = await this.getAuthHeaders();
 		const response = await fetch(
-			this.buildUrl(`/api/games/${inviteCode}/start`),
+			this.buildUrl(`/games/${inviteCode}/start`),
 			{
 				method: 'POST',
 				headers,
@@ -252,7 +252,7 @@ export class MultiplayerClient {
 	 */
 	async getQuests(): Promise<Quest[]> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl('/api/quests'), {
+		const response = await fetch(this.buildUrl('/quests'), {
 			method: 'GET',
 			headers,
 		});
@@ -268,7 +268,7 @@ export class MultiplayerClient {
 
 	async getMyGames(): Promise<MyGamesResponse> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl('/api/games/me'), {
+		const response = await fetch(this.buildUrl('/games/me'), {
 			method: 'GET',
 			headers,
 		});
@@ -283,7 +283,7 @@ export class MultiplayerClient {
 
 	async deleteGame(inviteCode: string): Promise<void> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}`), {
+		const response = await fetch(this.buildUrl(`/games/${inviteCode}`), {
 			method: 'DELETE',
 			headers,
 		});
@@ -296,7 +296,7 @@ export class MultiplayerClient {
 
 	async getMyCharacters(): Promise<Character[]> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl('/api/games/me/characters'), {
+		const response = await fetch(this.buildUrl('/games/me/characters'), {
 			method: 'GET',
 			headers,
 		});
@@ -312,7 +312,7 @@ export class MultiplayerClient {
 
 	async createCharacter(payload: Character): Promise<Character> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl('/api/games/me/characters'), {
+		const response = await fetch(this.buildUrl('/games/me/characters'), {
 			method: 'POST',
 			headers,
 			body: JSON.stringify(payload),
@@ -328,7 +328,7 @@ export class MultiplayerClient {
 
 	async updateCharacter(id: string, payload: Partial<Character>): Promise<Character> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl(`/api/games/me/characters/${id}`), {
+		const response = await fetch(this.buildUrl(`/games/me/characters/${id}`), {
 			method: 'PUT',
 			headers,
 			body: JSON.stringify(payload),
@@ -344,7 +344,7 @@ export class MultiplayerClient {
 
 	async deleteCharacter(id: string): Promise<void> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl(`/api/games/me/characters/${id}`), {
+		const response = await fetch(this.buildUrl(`/games/me/characters/${id}`), {
 			method: 'DELETE',
 			headers,
 		});
@@ -357,7 +357,7 @@ export class MultiplayerClient {
 
 	async getMapState(inviteCode: string): Promise<MapStateResponse> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/map`), {
+		const response = await fetch(this.buildUrl(`/games/${inviteCode}/map`), {
 			method: 'GET',
 			headers,
 		});
@@ -375,7 +375,7 @@ export class MultiplayerClient {
 		request: MapStateUpdateRequest,
 	): Promise<MapStateResponse> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/map`), {
+		const response = await fetch(this.buildUrl(`/games/${inviteCode}/map`), {
 			method: 'PATCH',
 			headers,
 			body: JSON.stringify(request),
@@ -391,7 +391,7 @@ export class MultiplayerClient {
 
 	async generateMap(inviteCode: string, request: MapGenerationRequest): Promise<MapStateResponse> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/map/generate`), {
+		const response = await fetch(this.buildUrl(`/games/${inviteCode}/map/generate`), {
 			method: 'POST',
 			headers,
 			body: JSON.stringify(request),
@@ -407,7 +407,7 @@ export class MultiplayerClient {
 
 	async getGameCharacters(inviteCode: string): Promise<CharacterListResponse> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/characters`), {
+		const response = await fetch(this.buildUrl(`/games/${inviteCode}/characters`), {
 			method: 'GET',
 			headers,
 		});
@@ -425,7 +425,7 @@ export class MultiplayerClient {
 		request: MapTerrainMutationRequest,
 	): Promise<MapStateResponse> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/map/terrain`), {
+		const response = await fetch(this.buildUrl(`/games/${inviteCode}/map/terrain`), {
 			method: 'POST',
 			headers,
 			body: JSON.stringify(request),
@@ -441,7 +441,7 @@ export class MultiplayerClient {
 
 	async listMapTokens(inviteCode: string): Promise<MapTokenListResponse> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/map/tokens`), {
+		const response = await fetch(this.buildUrl(`/games/${inviteCode}/map/tokens`), {
 			method: 'GET',
 			headers,
 		});
@@ -459,7 +459,7 @@ export class MultiplayerClient {
 		request: MapTokenUpsertRequest & { id?: string },
 	): Promise<MapTokenMutationResponse> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/map/tokens`), {
+		const response = await fetch(this.buildUrl(`/games/${inviteCode}/map/tokens`), {
 			method: 'POST',
 			headers,
 			body: JSON.stringify(request),
@@ -476,7 +476,7 @@ export class MultiplayerClient {
 	async deleteMapToken(inviteCode: string, tokenId: string): Promise<void> {
 		const headers = await this.getAuthHeaders();
 		const response = await fetch(
-			this.buildUrl(`/api/games/${inviteCode}/map/tokens/${tokenId}`),
+			this.buildUrl(`/games/${inviteCode}/map/tokens/${tokenId}`),
 			{
 				method: 'DELETE',
 				headers,
@@ -491,7 +491,7 @@ export class MultiplayerClient {
 
 	async getNpcDefinitions(inviteCode: string): Promise<NpcDefinitionListResponse> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/npcs`), {
+		const response = await fetch(this.buildUrl(`/games/${inviteCode}/npcs`), {
 			method: 'GET',
 			headers,
 		});
@@ -506,7 +506,7 @@ export class MultiplayerClient {
 
 	async getNpcInstances(inviteCode: string): Promise<NpcInstanceListResponse> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/npc-instances`), {
+		const response = await fetch(this.buildUrl(`/games/${inviteCode}/npc-instances`), {
 			method: 'GET',
 			headers,
 		});
@@ -526,7 +526,7 @@ export class MultiplayerClient {
 	): Promise<void> {
 		const headers = await this.getAuthHeaders();
 		const response = await fetch(
-			this.buildUrl(`/api/games/${inviteCode}/npcs/${tokenId}`),
+			this.buildUrl(`/games/${inviteCode}/npcs/${tokenId}`),
 			{
 				method: 'PATCH',
 				headers,
@@ -541,7 +541,7 @@ export class MultiplayerClient {
 	}
 	async placeNpc(inviteCode: string, request: NpcPlacementRequest): Promise<MapTokenMutationResponse> {
 		const headers = await this.getAuthHeaders();
-		const response = await fetch(this.buildUrl(`/api/games/${inviteCode}/npcs`), {
+		const response = await fetch(this.buildUrl(`/games/${inviteCode}/npcs`), {
 			method: 'POST',
 			headers,
 			body: JSON.stringify(request),
