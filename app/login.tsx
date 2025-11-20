@@ -1,122 +1,54 @@
 /**
  * Login Page
  *
- * Provides Google and Apple (iOS) authentication via Better Auth
+ * Provides Google authentication using expo-auth-template
+ * Apple authentication is disabled for now
  */
-
-import { Feather } from '@expo/vector-icons';
-import { Stack, router } from 'expo-router';
+import { GoogleSigninButton, useAuth } from 'expo-auth-template/frontend';
+import { router } from 'expo-router';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, Alert, Platform, StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useAuthStore } from '@/stores/use-auth-store';
 
 const LoginScreen: React.FC = () => {
-	const {
-		isLoading,
-		error,
-		providers,
-		fetchProviders,
-		signInWithGoogle,
-		signInWithApple,
-		isAuthenticated,
-	} = useAuthStore();
+	const { session, user, isLoading: authLoading } = useAuth();
 
-	// Don't call initialize here - AuthGuard already handles it
-	// useEffect(() => {
-	// 	initialize();
-	// }, []);
-
+	// Redirect if already authenticated
 	useEffect(() => {
-		void fetchProviders();
-	}, [fetchProviders]);
-
-	useEffect(() => {
-		// Redirect if already authenticated (but wait for loading to complete)
-		if (!isLoading && isAuthenticated) {
+		if (!authLoading && session && user) {
 			router.replace('/');
 		}
-	}, [isAuthenticated, isLoading]);
+	}, [session, user, authLoading]);
 
-	useEffect(() => {
-		// Show error alerts
-		if (error) {
-			Alert.alert('Authentication Error', error);
-		}
-	}, [error]);
-
-	const handleGoogleSignIn = async () => {
-		try {
-			await signInWithGoogle();
-		} catch (err) {
-			// Error already handled in store
-		}
-	};
-
-	const handleAppleSignIn = async () => {
-		try {
-			await signInWithApple();
-		} catch (err) {
-			// Error already handled in store
-		}
-	};
+	const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
+	const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8787/api/').replace(/\/$/, '') + '/';
 
 	return (
-		<>
-			<Stack.Screen
-				options={{
-					title: 'Login',
-					headerShown: false,
-				}}
-			/>
-			<ThemedView style={styles.container}>
-				<ThemedText type="title" style={styles.title}>
-					Welcome to AI D&D
-				</ThemedText>
-				<ThemedText style={styles.subtitle}>
-					Sign in to continue your adventure
-				</ThemedText>
+		<ThemedView style={styles.container}>
+			<ThemedText type="title" style={styles.title}>
+				Welcome to AI D&D
+			</ThemedText>
+			<ThemedText style={styles.subtitle}>
+				Sign in to continue your adventure
+			</ThemedText>
 
-				{/* Google Sign In */}
-				{providers.google && (
-					<TouchableOpacity
-						style={[styles.button, styles.googleButton]}
-						onPress={handleGoogleSignIn}
-						disabled={isLoading}
-					>
-						{isLoading ? (
-							<ActivityIndicator color="#fff" />
-						) : (
-							<>
-								<Feather name="mail" size={20} color="#fff" style={styles.buttonIcon} />
-								<ThemedText style={styles.googleButtonText}>Sign in with Google</ThemedText>
-							</>
-						)}
-					</TouchableOpacity>
-				)}
-
-				{/* Apple Sign In (required on iOS) */}
-				{Platform.OS === 'ios' && providers.apple && (
-					<TouchableOpacity
-						style={[styles.button, styles.appleButton]}
-						onPress={handleAppleSignIn}
-						disabled={isLoading}
-					>
-						{isLoading ? (
-							<ActivityIndicator color="#fff" />
-						) : (
-							<>
-								<Feather name="smartphone" size={20} color="#fff" style={styles.buttonIcon} />
-								<ThemedText style={styles.appleButtonText}>Sign in with Apple</ThemedText>
-							</>
-						)}
-					</TouchableOpacity>
-				)}
-
-			</ThemedView>
-		</>
+			{/* Google Sign In */}
+			{GOOGLE_CLIENT_ID ? (
+				<GoogleSigninButton
+					clientId={GOOGLE_CLIENT_ID}
+					apiBaseUrl={API_BASE_URL}
+				/>
+			) : (
+				<ThemedView style={styles.errorContainer}>
+					<ThemedText style={styles.errorText}>
+						Google Sign-In is not configured.{'\n'}
+						Please set EXPO_PUBLIC_GOOGLE_CLIENT_ID in your .env file.
+					</ThemedText>
+				</ThemedView>
+			)}
+		</ThemedView>
 	);
 };
 
@@ -151,14 +83,6 @@ const styles = StyleSheet.create({
 		marginBottom: 15,
 		minHeight: 50,
 	},
-	googleButton: {
-		backgroundColor: '#4285F4',
-	},
-	googleButtonText: {
-		color: '#fff',
-		fontWeight: 'bold',
-		fontSize: 16,
-	},
 	appleButton: {
 		backgroundColor: '#000',
 	},
@@ -167,9 +91,18 @@ const styles = StyleSheet.create({
 		fontWeight: 'bold',
 		fontSize: 16,
 	},
-	buttonIcon: {
-		marginRight: 10,
+	errorContainer: {
+		width: '100%',
+		padding: 16,
+		backgroundColor: 'rgba(255, 0, 0, 0.1)',
+		borderRadius: 8,
+		marginBottom: 15,
+		borderWidth: 1,
+		borderColor: 'rgba(255, 0, 0, 0.3)',
+	},
+	errorText: {
+		color: '#d32f2f',
+		textAlign: 'center',
+		fontSize: 14,
 	},
 });
-
-

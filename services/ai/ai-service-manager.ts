@@ -23,6 +23,7 @@ export interface AIServiceConfig {
 		baseUrl?: string;
 		model?: string;
 		timeout?: number;
+		apiKey?: string;
 	};
 	local: {
 		enabled: boolean;
@@ -100,6 +101,7 @@ export class AIServiceManager {
 				ollamaBaseUrl: this.config.ollama.baseUrl,
 				ollamaModel: this.config.ollama.model,
 				ollamaTimeout: this.config.ollama.timeout || this.config.performance.timeout,
+				ollamaApiKey: this.config.ollama.apiKey,
 			});
 			if (this.config.ollama.enabled) {
 				this.isPlatformReady = await this.platformProvider.initialize();
@@ -572,6 +574,7 @@ export const DefaultAIConfig: AIServiceConfig = {
 		baseUrl: 'http://localhost:11434',
 		model: 'llama3.2',
 		timeout: 30000,
+		apiKey: undefined,
 	},
 	local: {
 		enabled: false,

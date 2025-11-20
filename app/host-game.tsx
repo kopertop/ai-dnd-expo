@@ -21,8 +21,9 @@ import { QuestSelector } from '@/components/quest-selector';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WorldChooser } from '@/components/world-chooser';
+import { useAuth } from 'expo-auth-template/frontend';
+
 import { multiplayerClient } from '@/services/api/multiplayer-client';
-import { useAuthStore } from '@/stores/use-auth-store';
 import {
 	GameSessionResponse,
 	HostedGameSummary,
@@ -97,7 +98,7 @@ const HostGameScreen: React.FC = () => {
 	const [resumingGame, setResumingGame] = useState(false);
 	const [deletingGameId, setDeletingGameId] = useState<string | null>(null);
 	const insets = useSafeAreaInsets();
-	const { user } = useAuthStore();
+	const { user } = useAuth();
 	const hostId = user?.id ?? null;
 	const hostEmail = user?.email ?? null;
 	const resumableGames = useMemo(

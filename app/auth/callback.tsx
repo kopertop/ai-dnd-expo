@@ -8,37 +8,28 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 
+import { useAuth } from 'expo-auth-template/frontend';
+
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useAuthStore } from '@/stores/use-auth-store';
 
 const AuthCallbackScreen: React.FC = () => {
 	const params = useLocalSearchParams();
-	const { refreshSession, initialize } = useAuthStore();
+	const { session, user } = useAuth();
 
 	useEffect(() => {
-		const handleCallback = async () => {
-			try {
-				// Refresh session to get the new auth state
-				await refreshSession();
-				// Also initialize to ensure state is up to date
-				await initialize();
-
-				// Redirect to home after a brief delay
-				setTimeout(() => {
-					router.replace('/');
-				}, 500);
-			} catch (error) {
-				console.error('Auth callback error:', error);
-				// Redirect to login on error
-				setTimeout(() => {
-					router.replace('/login');
-				}, 1000);
+		// Package handles OAuth callbacks automatically
+		// Just redirect based on auth state
+		const timer = setTimeout(() => {
+			if (session && user) {
+				router.replace('/');
+			} else {
+				router.replace('/login');
 			}
-		};
+		}, 500);
 
-		handleCallback();
-	}, [params]);
+		return () => clearTimeout(timer);
+	}, [session, user, params]);
 
 	return (
 		<>

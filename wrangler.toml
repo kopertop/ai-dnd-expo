@@ -1,27 +1,52 @@
-name = "ai-dnd-web"
-compatibility_date = "2024-06-01"
-pages_build_output_dir = "dist"
+# For more details on how to configure Wrangler, refer to:
+# https://developers.cloudflare.com/workers/wrangler/configuration/
 
-[[analytics_engine_datasets]]
-binding = "ANALYTICS"
-dataset = "ai_dnd_analytics"
+name = "ai-dnd-app"
+main = "api/src/index.ts"
+compatibility_date = "2025-03-01"
+compatibility_flags = ["nodejs_compat"]
 
-# Production environment configuration
-[env.production]
-name = "ai-dnd-web"
+# Assets binding for serving static files from dist/
+[assets]
+directory = "./dist"
+binding = "ASSETS"
 
-[[env.production.analytics_engine_datasets]]
-binding = "ANALYTICS"
+[observability]
+enabled = true
 
-[[env.production.vars]]
-EXPO_PUBLIC_API_BASE_URL = "https://ai-dnd.kopertop.workers.dev"
+[placement]
+mode = "smart"
 
-# Preview environment configuration
-[env.preview]
-name = "property-workorder-web-preview"
+[[d1_databases]]
+binding = "DATABASE"
+database_name = "ai-dnd-db"
+database_id = "44d163b1-a7e0-43eb-8091-8d0093f100f7"
+migrations_dir = "api/migrations"
+# Note: DB binding is aliased from DATABASE in code (api/src/index.ts) for expo-auth-template compatibility
 
-[[env.preview.analytics_engine_datasets]]
-binding = "ANALYTICS"
+[[durable_objects.bindings]]
+name = "GAME_SESSION"
+class_name = "GameSession"
 
-[[env.preview.vars]]
-EXPO_PUBLIC_API_BASE_URL = "https://ai-dnd.kopertop.workers.dev"
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GameSession"]
+
+[[kv_namespaces]]
+binding = "QUESTS"
+id = "171ccff48f13430e9ebeeb7ce2646e03"
+preview_id = "be5f833b304a489f9feae6d7573e865e"
+
+[[kv_namespaces]]
+binding = "AUTH_SESSIONS"
+id = "da420984bd1d44ed982e99eab7ac54d9"
+preview_id = "1986f512835f470f95f4df8b48c6c51a"
+
+[vars]
+OLLAMA_BASE_URL = "http://localhost:11434"
+OLLAMA_MODEL = "llama3.2"
+# Optional API key for Ollama servers that require authentication
+OLLAMA_API_KEY = ""
+ADMIN_EMAILS = "kopertop@gmail.com,cmoyer@newstex.com"
+AUTH_SECRET = "replace-me-in-production"
+AUTH_URL = "http://localhost:8787"

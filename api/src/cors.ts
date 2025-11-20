@@ -19,6 +19,7 @@ function getAllowedOrigin(origin: string | null): string {
 	) {
 		return origin;
 	}
+	console.log('origin', origin);
 
 	// For production, you might want to check against a whitelist
 	// For now, allow the origin if provided, otherwise fall back to '*'
@@ -31,7 +32,7 @@ export function corsHeaders(origin: string | null): Record<string, string> {
 	const headers: Record<string, string> = {
 		'Access-Control-Allow-Origin': allowedOrigin,
 		'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
-		'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Email',
+		'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Auth-Provider, x-client-version',
 		'Content-Type': 'application/json',
 	};
 
@@ -47,7 +48,7 @@ export function corsHeaders(origin: string | null): Record<string, string> {
  * CORS middleware for Hono
  */
 export async function corsMiddleware(c: Context, next: Next) {
-	const origin = c.req.header('Origin') || null;
+	const origin = c.req.header('Origin') || c.req.header('referer') || null;
 	const headers = corsHeaders(origin);
 
 	if (c.req.method === 'OPTIONS') {
