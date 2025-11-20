@@ -1,7 +1,6 @@
-import { authService } from 'expo-auth-template/frontend';
+import { createAuthService } from 'expo-auth-template/frontend';
 
 import { API_BASE_URL, buildApiUrl } from '@/services/config/api-base-url';
-import { Character } from '@/types/character';
 import {
 	CharacterListResponse,
 	CreateGameRequest,
@@ -23,15 +22,21 @@ import {
 	NpcInstanceUpdateRequest,
 	NpcPlacementRequest,
 	PlayerActionRequest,
-} from '@/types/multiplayer-api';
+} from '@/types/api/multiplayer-api';
+import { Character } from '@/types/character';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { Quest } from '@/types/quest';
 
 export class MultiplayerClient {
+	public authService: ReturnType<typeof createAuthService>;
 	private baseUrl: string;
 
 	constructor(baseUrl: string = API_BASE_URL) {
-		this.baseUrl = baseUrl;
+		this.baseUrl = baseUrl || '/api/';
+		console.log('baseUrl', this.baseUrl);
+		this.authService = createAuthService({
+			apiBaseUrl: this.baseUrl,
+		});
 	}
 
 	private buildUrl(path: string): string {
@@ -65,7 +70,7 @@ export class MultiplayerClient {
 		};
 
 		// Get current session from package's authService
-		const session = await authService.getSession();
+		const session = await this.authService.getSession();
 
 		if (session) {
 			// Package handles device tokens and OAuth tokens

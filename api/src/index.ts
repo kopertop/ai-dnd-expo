@@ -1,5 +1,4 @@
 import { handleGoogleCallback, useAuth } from 'expo-auth-template/backend';
-
 import { Hono } from 'hono';
 
 import { corsMiddleware } from './cors';
@@ -77,6 +76,33 @@ app.route('/api/admin', adminRoutes);
 // Note: /api/auth/exchange and /api/device-tokens routes removed - handled by expo-auth-template
 app.route('/api/me', meRoutes);
 
+/**
+ * Get content-type based on file extension
+ */
+function getContentType(path: string): string {
+	const ext = path.split('.').pop()?.toLowerCase();
+	const contentTypes: Record<string, string> = {
+		html: 'text/html',
+		css: 'text/css',
+		js: 'application/javascript',
+		json: 'application/json',
+		png: 'image/png',
+		jpg: 'image/jpeg',
+		jpeg: 'image/jpeg',
+		gif: 'image/gif',
+		svg: 'image/svg+xml',
+		ico: 'image/x-icon',
+		woff: 'font/woff',
+		woff2: 'font/woff2',
+		ttf: 'font/ttf',
+		otf: 'font/otf',
+		mp3: 'audio/mpeg',
+		mp4: 'video/mp4',
+		webm: 'video/webm',
+	};
+	return contentTypes[ext || ''] || 'application/octet-stream';
+}
+
 // Serve static assets for non-API routes (Worker with Assets)
 app.get('*', async (c) => {
 	// Check if this is an API route
@@ -103,7 +129,20 @@ app.get('*', async (c) => {
 			const asset = await assets.fetch(new Request(new URL(assetPath, c.req.url)));
 
 			if (asset.status === 200) {
-				return asset;
+				// Create a new response with the asset body and proper headers
+				const contentType = asset.headers.get('Content-Type') || getContentType(path);
+				
+				// Preserve all headers from the asset response
+				const headers = new Headers(asset.headers);
+				// Ensure Content-Type is set correctly
+				headers.set('Content-Type', contentType);
+				
+				const response = new Response(asset.body, {
+					status: asset.status,
+					statusText: asset.statusText,
+					headers,
+				});
+				return response;
 			}
 		} catch (error) {
 			console.error('Error serving asset:', error);

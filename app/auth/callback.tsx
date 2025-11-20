@@ -7,7 +7,6 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
-
 import { useAuth } from 'expo-auth-template/frontend';
 
 import { ThemedText } from '@/components/themed-text';

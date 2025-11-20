@@ -1,5 +1,16 @@
 import { ExpoConfig } from 'expo/config';
 
+// Expo automatically loads .env files, so process.env should be available here
+// We put these in extra so they're accessible via Constants.expoConfig.extra
+// This works for static exports where process.env is not replaced in the bundle
+const env = {
+	apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || '',
+	googleClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '',
+	ollamaBaseUrl: process.env.EXPO_PUBLIC_OLLAMA_BASE_URL || '',
+	ollamaApiKey: process.env.EXPO_PUBLIC_OLLAMA_API_KEY || '',
+	ttsBaseUrl: process.env.EXPO_PUBLIC_TTS_BASE_URL || '',
+};
+
 const now = new Date();
 const buildVersion = `${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()}.${now.getHours()}`;
 
@@ -62,6 +73,13 @@ const config: { expo: ExpoConfig } = {
 			eas: {
 				projectId: 'f082f538-7adb-4504-a251-729b293f0cf6',
 			},
+			// Environment variables accessible via Constants.expoConfig.extra
+			// This works for static exports where process.env is not replaced
+			apiBaseUrl: env.apiBaseUrl,
+			googleClientId: env.googleClientId,
+			ollamaBaseUrl: env.ollamaBaseUrl,
+			ollamaApiKey: env.ollamaApiKey,
+			ttsBaseUrl: env.ttsBaseUrl,
 		},
 		updates: {
 			url: 'https://u.expo.dev/f082f538-7adb-4504-a251-729b293f0cf6',

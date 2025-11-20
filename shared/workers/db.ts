@@ -470,49 +470,35 @@ export class Database {
 			metadata?: string;
 		}>,
 	) {
-		const insert = this.db.prepare(
-			`INSERT INTO map_tiles (
-				id, map_id, x, y, terrain_type, elevation, is_blocked, has_fog, feature_type, metadata
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT(id) DO UPDATE SET
-				terrain_type = excluded.terrain_type,
-				elevation = excluded.elevation,
-				is_blocked = excluded.is_blocked,
-				has_fog = excluded.has_fog,
-				feature_type = excluded.feature_type,
-				metadata = excluded.metadata`,
+		const deleteStatement = this.db.prepare('DELETE FROM map_tiles WHERE map_id = ?').bind(mapId);
+		
+		const insertStatements = tiles.map(tile =>
+			this.db.prepare(
+				`INSERT INTO map_tiles (
+					id, map_id, x, y, terrain_type, elevation, is_blocked, has_fog, feature_type, metadata
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				ON CONFLICT(id) DO UPDATE SET
+					terrain_type = excluded.terrain_type,
+					elevation = excluded.elevation,
+					is_blocked = excluded.is_blocked,
+					has_fog = excluded.has_fog,
+					feature_type = excluded.feature_type,
+					metadata = excluded.metadata`,
+			).bind(
+				`tile_${mapId}_${tile.x}_${tile.y}`,
+				mapId,
+				tile.x,
+				tile.y,
+				tile.terrain_type,
+				tile.elevation ?? 0,
+				tile.is_blocked ?? 0,
+				tile.has_fog ?? 0,
+				tile.feature_type ?? null,
+				tile.metadata ?? '{}',
+			),
 		);
 
-		const batch = this.db.transaction((
-			entries: Array<{
-				x: number;
-				y: number;
-				terrain_type: string;
-				elevation?: number;
-				is_blocked?: number;
-				has_fog?: number;
-				feature_type?: string | null;
-				metadata?: string;
-			}>,
-		) => {
-			this.db.prepare('DELETE FROM map_tiles WHERE map_id = ?').bind(mapId).run();
-			entries.forEach(tile => {
-				insert.run(
-					`tile_${mapId}_${tile.x}_${tile.y}`,
-					mapId,
-					tile.x,
-					tile.y,
-					tile.terrain_type,
-					tile.elevation ?? 0,
-					tile.is_blocked ?? 0,
-					tile.has_fog ?? 0,
-					tile.feature_type ?? null,
-					tile.metadata ?? '{}',
-				);
-			});
-		});
-
-		batch(tiles);
+		await this.db.batch([deleteStatement, ...insertStatements]);
 	}
 
 	async upsertMapTiles(
@@ -528,48 +514,33 @@ export class Database {
 			metadata?: string;
 		}>,
 	) {
-		const statement = this.db.prepare(
-			`INSERT INTO map_tiles (
-				id, map_id, x, y, terrain_type, elevation, is_blocked, has_fog, feature_type, metadata
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT(id) DO UPDATE SET
-				terrain_type = excluded.terrain_type,
-				elevation = excluded.elevation,
-				is_blocked = excluded.is_blocked,
-				has_fog = excluded.has_fog,
-				feature_type = excluded.feature_type,
-				metadata = excluded.metadata`,
+		const statements = tiles.map(tile =>
+			this.db.prepare(
+				`INSERT INTO map_tiles (
+					id, map_id, x, y, terrain_type, elevation, is_blocked, has_fog, feature_type, metadata
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				ON CONFLICT(id) DO UPDATE SET
+					terrain_type = excluded.terrain_type,
+					elevation = excluded.elevation,
+					is_blocked = excluded.is_blocked,
+					has_fog = excluded.has_fog,
+					feature_type = excluded.feature_type,
+					metadata = excluded.metadata`,
+			).bind(
+				`tile_${mapId}_${tile.x}_${tile.y}`,
+				mapId,
+				tile.x,
+				tile.y,
+				tile.terrain_type,
+				tile.elevation ?? 0,
+				tile.is_blocked ?? 0,
+				tile.has_fog ?? 0,
+				tile.feature_type ?? null,
+				tile.metadata ?? '{}',
+			),
 		);
 
-		const batch = this.db.transaction((
-			entries: Array<{
-				x: number;
-				y: number;
-				terrain_type: string;
-				elevation?: number;
-				is_blocked?: number;
-				has_fog?: number;
-				feature_type?: string | null;
-				metadata?: string;
-			}>,
-		) => {
-			entries.forEach(tile => {
-				statement.run(
-					`tile_${mapId}_${tile.x}_${tile.y}`,
-					mapId,
-					tile.x,
-					tile.y,
-					tile.terrain_type,
-					tile.elevation ?? 0,
-					tile.is_blocked ?? 0,
-					tile.has_fog ?? 0,
-					tile.feature_type ?? null,
-					tile.metadata ?? '{}',
-				);
-			});
-		});
-
-		batch(tiles);
+		await this.db.batch(statements);
 	}
 
 	// NPC operations

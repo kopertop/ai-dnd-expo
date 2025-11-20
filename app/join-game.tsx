@@ -10,13 +10,12 @@ import {
 	View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from 'expo-auth-template/frontend';
 
 import { AppFooter } from '@/components/app-footer';
 import { InviteCodeInput } from '@/components/invite-code-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useAuth } from 'expo-auth-template/frontend';
-
 import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { GameSessionResponse } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';

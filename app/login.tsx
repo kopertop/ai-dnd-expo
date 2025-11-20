@@ -7,7 +7,7 @@
 import { GoogleSigninButton, useAuth } from 'expo-auth-template/frontend';
 import { router } from 'expo-router';
 import React, { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -22,8 +22,24 @@ const LoginScreen: React.FC = () => {
 		}
 	}, [session, user, authLoading]);
 
-	const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
-	const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8787/api/').replace(/\/$/, '') + '/';
+	// Try to get from Constants first (works for static exports), then fall back to process.env
+	let GOOGLE_CLIENT_ID = '';
+	let API_BASE_URL = 'http://localhost:8787/api/';
+
+	try {
+		// Use dynamic import to avoid issues if expo-constants is not available
+		const Constants = require('expo-constants') as typeof import('expo-constants');
+		const extra = Constants.default?.expoConfig?.extra;
+		GOOGLE_CLIENT_ID = extra?.googleClientId || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
+		API_BASE_URL = (extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8787/api/').replace(/\/$/, '') + '/';
+	} catch {
+		// expo-constants not available, use process.env
+		GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
+		API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8787/api/').replace(/\/$/, '') + '/';
+	}
+
+	console.log('** GOOGLE_CLIENT_ID', GOOGLE_CLIENT_ID);
+	console.log('** API_BASE_URL', API_BASE_URL);
 
 	return (
 		<ThemedView style={styles.container}>
@@ -48,6 +64,7 @@ const LoginScreen: React.FC = () => {
 					</ThemedText>
 				</ThemedView>
 			)}
+			<Text>API_BASE_URL: {API_BASE_URL}</Text>
 		</ThemedView>
 	);
 };

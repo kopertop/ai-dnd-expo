@@ -1,15 +1,15 @@
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import games from '../src/routes/games';
 import type {
+	GameRow,
 	MapRow,
 	MapTileRow,
 	MapTokenRow,
 	NpcRow,
-	GameRow,
 } from '../../shared/workers/db';
 import * as dbModule from '../../shared/workers/db';
+import games from '../src/routes/games';
 
 const mockEnv = { DATABASE: {} as any };
 
@@ -53,6 +53,11 @@ class MockMapDatabase {
 			fog_of_war: JSON.stringify({ enabled: false }),
 			terrain_layers: JSON.stringify([]),
 			metadata: JSON.stringify({}),
+			generator_preset: 'forest',
+			seed: 'test-seed',
+			theme: 'default',
+			biome: 'forest',
+			is_generated: 0,
 			created_at: Date.now(),
 			updated_at: Date.now(),
 		},
@@ -68,6 +73,7 @@ class MockMapDatabase {
 			elevation: 0,
 			is_blocked: 0,
 			has_fog: 0,
+			feature_type: null,
 			metadata: JSON.stringify({}),
 		},
 	];

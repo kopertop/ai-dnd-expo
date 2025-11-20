@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { MapRow, MapTileRow, MapTokenRow, NpcRow } from '../../shared/workers/db';
-import { mapStateFromDb, mapStateToDb, npcFromDb } from '../../utils/schema-adapters';
+import type { MapRow, MapTileRow, MapTokenRow, NpcRow } from '@/shared/workers/db';
+import { mapStateFromDb, mapStateToDb, npcFromDb } from '@/utils/schema-adapters';
 
 const baseMapRow = (): MapRow => ({
 	id: 'map-1',
@@ -14,6 +14,11 @@ const baseMapRow = (): MapRow => ({
 	fog_of_war: JSON.stringify({ enabled: true, revealed: [[0, 1]] }),
 	terrain_layers: JSON.stringify([{ type: 'structures', items: ['fountain'] }]),
 	metadata: JSON.stringify({ biome: 'urban' }),
+	generator_preset: 'forest',
+	seed: 'test-seed',
+	theme: 'default',
+	biome: 'forest',
+	is_generated: 0,
 	created_at: Date.now(),
 	updated_at: Date.now(),
 });
@@ -28,6 +33,7 @@ const sampleTiles: MapTileRow[] = [
 		elevation: 1,
 		is_blocked: 0,
 		has_fog: 0,
+		feature_type: null,
 		metadata: JSON.stringify({}),
 	},
 	{
@@ -39,6 +45,7 @@ const sampleTiles: MapTileRow[] = [
 		elevation: 0,
 		is_blocked: 1,
 		has_fog: 1,
+		feature_type: null,
 		metadata: JSON.stringify({}),
 	},
 ];

@@ -186,7 +186,7 @@ const RootLayout: React.FC = () => {
 
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
-			<SessionProvider config={{ apiBaseUrl: API_BASE_URL }}>
+			<SessionProvider>
 				<InputModeProvider>
 					<AudioProvider>
 						<ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

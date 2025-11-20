@@ -2,12 +2,11 @@ import { Stack, router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from 'expo-auth-template/frontend';
 
 import { AppFooter } from '@/components/app-footer';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useAuth } from 'expo-auth-template/frontend';
-
 import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { Character } from '@/types/character';
 

@@ -5,7 +5,20 @@
  */
 
 const resolveApiBaseUrl = (): string => {
-	const explicitUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+	// Try to get from Constants first (works for static exports)
+	let explicitUrl: string | undefined;
+	try {
+		const Constants = require('expo-constants') as typeof import('expo-constants');
+		explicitUrl = Constants.default?.expoConfig?.extra?.apiBaseUrl;
+	} catch {
+		// expo-constants not available, fall back to process.env
+	}
+	
+	// Fall back to process.env if not found in Constants
+	if (!explicitUrl) {
+		explicitUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+	}
+	
 	if (explicitUrl) {
 		return explicitUrl;
 	}
@@ -25,7 +38,7 @@ const resolveApiBaseUrl = (): string => {
 	}
 
 	// Node/Expo dev server
-	return 'http://localhost:8787';
+	return 'http://localhost:8787/api/';
 };
 
 export const API_BASE_URL = resolveApiBaseUrl();

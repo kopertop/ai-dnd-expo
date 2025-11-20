@@ -5,8 +5,9 @@ import { CharacterRow, Database, GameRow, MapRow, NpcInstanceRow } from '../../.
 import { generateProceduralMap, MapGeneratorPreset } from '../../../shared/workers/map-generator';
 import { generateInviteCode, getSessionId, getSessionStub } from '../../../shared/workers/session-manager';
 import { Character, Quest } from '../../../shared/workers/types';
-import { mapStateFromDb, npcFromDb } from '../../../utils/schema-adapters';
 import type { CloudflareBindings } from '../env';
+
+import { mapStateFromDb, npcFromDb } from '@/utils/schema-adapters';
 
 type Variables = {
 	user: { id: string; email: string; name?: string | null } | null;
@@ -997,8 +998,6 @@ games.post('/:inviteCode/npcs', async (c) => {
 			color: npcMetadata.color || payload.customNpc?.color || '#3B2F1B',
 			role: npc.role,
 		}),
-		created_at: Date.now(),
-		updated_at: Date.now(),
 	});
 
 	const mapState = await buildMapState(db, game);

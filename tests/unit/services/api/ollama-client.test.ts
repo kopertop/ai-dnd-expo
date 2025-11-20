@@ -17,13 +17,13 @@ describe('OllamaClient', () => {
 		it('should include Authorization header when API key is provided', async () => {
 			// Create client with API key
 			ollamaClient = new OllamaClient({
-				apiKey: 'test-api-key'
+				apiKey: 'test-api-key',
 			});
 
 			// Mock successful response
 			mockFetch.mockResolvedValueOnce({
 				ok: true,
-				json: async () => ({ message: { content: 'Test response' } })
+				json: async () => ({ message: { content: 'Test response' } }),
 			});
 
 			// Make a completion request
@@ -34,9 +34,9 @@ describe('OllamaClient', () => {
 				expect.any(String),
 				expect.objectContaining({
 					headers: expect.objectContaining({
-						'Authorization': 'Bearer test-api-key'
-					})
-				})
+						'Authorization': 'Bearer test-api-key',
+					}),
+				}),
 			);
 		});
 
@@ -47,7 +47,7 @@ describe('OllamaClient', () => {
 			// Mock successful response
 			mockFetch.mockResolvedValueOnce({
 				ok: true,
-				json: async () => ({ message: { content: 'Test response' } })
+				json: async () => ({ message: { content: 'Test response' } }),
 			});
 
 			// Make a completion request
@@ -58,22 +58,22 @@ describe('OllamaClient', () => {
 				expect.any(String),
 				expect.objectContaining({
 					headers: expect.not.objectContaining({
-						'Authorization': expect.any(String)
-					})
-				})
+						'Authorization': expect.any(String),
+					}),
+				}),
 			);
 		});
 
 		it('should include Authorization header in health check when API key is provided', async () => {
 			// Create client with API key
 			ollamaClient = new OllamaClient({
-				apiKey: 'test-api-key'
+				apiKey: 'test-api-key',
 			});
 
 			// Mock successful response
 			mockFetch.mockResolvedValueOnce({
 				ok: true,
-				json: async () => ({ models: [] })
+				json: async () => ({ models: [] }),
 			});
 
 			// Make a health check request
@@ -84,9 +84,9 @@ describe('OllamaClient', () => {
 				expect.any(String),
 				expect.objectContaining({
 					headers: expect.objectContaining({
-						'Authorization': 'Bearer test-api-key'
-					})
-				})
+						'Authorization': 'Bearer test-api-key',
+					}),
+				}),
 			);
 		});
 	});

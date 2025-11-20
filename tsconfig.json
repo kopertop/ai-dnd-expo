@@ -26,6 +26,9 @@
       "@/hooks/*": [
         "./hooks/*"
       ],
+      "@/shared/*": [
+        "./shared/*"
+      ],
       "@/styles/*": [
         "./styles/*"
       ],

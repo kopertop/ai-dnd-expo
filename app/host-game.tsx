@@ -1,3 +1,4 @@
+import { useAuth } from 'expo-auth-template/frontend';
 import { Stack, router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -21,8 +22,6 @@ import { QuestSelector } from '@/components/quest-selector';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WorldChooser } from '@/components/world-chooser';
-import { useAuth } from 'expo-auth-template/frontend';
-
 import { multiplayerClient } from '@/services/api/multiplayer-client';
 import {
 	GameSessionResponse,
@@ -130,7 +129,7 @@ const HostGameScreen: React.FC = () => {
 		setGamesLoading(true);
 		try {
 			const overview = await multiplayerClient.getMyGames();
-			const resumable = (overview.hostedGames || []).filter(game =>
+			const resumable = (overview.hostedGames || []).filter((game: { status: string }) =>
 				game.status === 'waiting' || game.status === 'active',
 			);
 			setHostedGames(resumable);
