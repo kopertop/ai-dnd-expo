@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS `users` (
 	`id` text PRIMARY KEY NOT NULL,
 	`email` text UNIQUE NOT NULL,
 	`name` text NOT NULL,
+	`picture` text,
 	`role` text,
 	`is_admin` integer DEFAULT 0,
 	`organization_id` text,
