@@ -11,6 +11,7 @@ import { StyleSheet, Text } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { API_BASE_URL } from '@/services/config/api-base-url';
 
 const LoginScreen: React.FC = () => {
 	const { session, user, isLoading: authLoading } = useAuth();
@@ -24,22 +25,19 @@ const LoginScreen: React.FC = () => {
 
 	// Try to get from Constants first (works for static exports), then fall back to process.env
 	let GOOGLE_CLIENT_ID = '';
-	let API_BASE_URL = '/api/';
 
 	try {
 		// Use dynamic import to avoid issues if expo-constants is not available
 		const Constants = require('expo-constants') as typeof import('expo-constants');
 		const extra = Constants.default?.expoConfig?.extra;
 		GOOGLE_CLIENT_ID = extra?.googleClientId || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
-		API_BASE_URL = (extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || '/api/').replace(/\/$/, '') + '/';
 	} catch {
 		// expo-constants not available, use process.env
 		GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
-		API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || '/api/').replace(/\/$/, '') + '/';
 	}
 
 	console.log('** GOOGLE_CLIENT_ID', GOOGLE_CLIENT_ID);
-	console.log('** API_BASE_URL', API_BASE_URL);
+	console.log('** API_BASE_URL (from shared config)', API_BASE_URL);
 
 	return (
 		<ThemedView style={styles.container}>
@@ -54,7 +52,7 @@ const LoginScreen: React.FC = () => {
 			{GOOGLE_CLIENT_ID ? (
 				<GoogleSigninButton
 					clientId={GOOGLE_CLIENT_ID}
-					apiBaseUrl={API_BASE_URL}
+					apiBaseUrl={API_BASE_URL.endsWith('/') ? API_BASE_URL : `${API_BASE_URL}/`}
 				/>
 			) : (
 				<ThemedView style={styles.errorContainer}>

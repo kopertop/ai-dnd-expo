@@ -6,12 +6,12 @@ CREATE TABLE IF NOT EXISTS `users` (
 	`id` text PRIMARY KEY NOT NULL,
 	`email` text UNIQUE NOT NULL,
 	`name` text NOT NULL,
-	`picture` text,
-	`role` text,
+	`picture` text NOT NULL DEFAULT '',
+	`role` text NOT NULL DEFAULT 'user',
 	`is_admin` integer DEFAULT 0,
-	`organization_id` text,
-	`created_at` integer,
-	`updated_at` integer
+	`organization_id` text NOT NULL DEFAULT '',
+	`created_at` integer NOT NULL DEFAULT 0,
+	`updated_at` integer NOT NULL DEFAULT 0
 );
 CREATE UNIQUE INDEX IF NOT EXISTS `users_email_unique` ON `users` (`email`);
 
