@@ -47,6 +47,8 @@ An open-source platform for playing Dungeons and Dragons online with AI assistan
    # Ollama Configuration (for web platform)
    EXPO_PUBLIC_OLLAMA_BASE_URL=http://localhost:11434
    EXPO_PUBLIC_OLLAMA_MODEL=llama3.2
+   # Optional API key for Ollama servers that require authentication
+   EXPO_PUBLIC_OLLAMA_API_KEY=your-api-key-here
 
    # Kokoro TTS Configuration (optional)
    EXPO_PUBLIC_TTS_BASE_URL=http://localhost:5000

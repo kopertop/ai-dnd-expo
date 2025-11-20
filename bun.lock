@@ -18,6 +18,7 @@
         "expo-asset": "~12.0.9",
         "expo-audio": "~1.0.14",
         "expo-auth-session": "^7.0.8",
+        "expo-auth-template": "^1.0.4",
         "expo-av": "~16.0.7",
         "expo-blur": "~15.0.7",
         "expo-constants": "~18.0.10",
@@ -1232,6 +1233,8 @@
     "expo-audio": ["expo-audio@1.0.14", "", { "peerDependencies": { "expo": "*", "expo-asset": "*", "react": "*", "react-native": "*" } }, "sha512-UU8n1mIDPfO9zFQbPnIpnzhHeqC8c8WQUoOOFvlgI5CeOJMUrQ6UXDpX+LBcHxw/amSBhF5HP6VMr58foPKwbA=="],
 
     "expo-auth-session": ["expo-auth-session@7.0.8", "", { "dependencies": { "expo-application": "~7.0.7", "expo-constants": "~18.0.8", "expo-crypto": "~15.0.7", "expo-linking": "~8.0.8", "expo-web-browser": "~15.0.7", "invariant": "^2.2.4" }, "peerDependencies": { "react": "*", "react-native": "*" } }, "sha512-kpo2Jva+6uVjk6TmNqWAoqTnULXZaEVa9l4uf8JH32uDMt/iZQhM0fauy7Ww+y910Euhv5djCP7cPj8KWv6cmQ=="],
+
+    "expo-auth-template": ["expo-auth-template@1.0.4", "", { "dependencies": { "expo-apple-authentication": "~8.0.7", "expo-auth-session": "~7.0.8", "expo-constants": "~18.0.8", "expo-secure-store": "~15.0.7" }, "peerDependencies": { "react": ">=18.0.0", "react-native": ">=0.70.0" } }, "sha512-1zvL62IC1zULvykGlFaCAXKzCSaY77EKD6uiSpo8zgMKX2QJzVEdBhXZf6Ztrq5ANVRLJpR13zjYXyjcIrMaeA=="],
 
     "expo-av": ["expo-av@16.0.7", "", { "peerDependencies": { "expo": "*", "react": "*", "react-native": "*", "react-native-web": "*" }, "optionalPeers": ["react-native-web"] }, "sha512-QReef6/RYuZ4GekTcZZw5zY26pcPOmHqK6LMgFlPhnsT0ga97HJrgMc63pvIiojDP+q4oIv24g+QPD8ljZu4XQ=="],
 

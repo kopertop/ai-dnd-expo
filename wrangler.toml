@@ -22,6 +22,7 @@ binding = "DATABASE"
 database_name = "ai-dnd-db"
 database_id = "44d163b1-a7e0-43eb-8091-8d0093f100f7"
 migrations_dir = "api/migrations"
+# Note: DB binding is aliased from DATABASE in code (api/src/index.ts) for expo-auth-template compatibility
 
 [[durable_objects.bindings]]
 name = "GAME_SESSION"
@@ -44,6 +45,8 @@ preview_id = "1986f512835f470f95f4df8b48c6c51a"
 [vars]
 OLLAMA_BASE_URL = "http://localhost:11434"
 OLLAMA_MODEL = "llama3.2"
+# Optional API key for Ollama servers that require authentication
+OLLAMA_API_KEY = ""
 ADMIN_EMAILS = "kopertop@gmail.com,cmoyer@newstex.com"
 AUTH_SECRET = "replace-me-in-production"
 AUTH_URL = "http://localhost:8787"

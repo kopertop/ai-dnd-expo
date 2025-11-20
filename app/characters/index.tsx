@@ -6,8 +6,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppFooter } from '@/components/app-footer';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useAuth } from 'expo-auth-template/frontend';
+
 import { multiplayerClient } from '@/services/api/multiplayer-client';
-import { useAuthStore } from '@/stores/use-auth-store';
 import { Character } from '@/types/character';
 
 const createDefaultCharacter = (overrides?: Partial<Character>): Character => ({
@@ -29,7 +30,7 @@ const createDefaultCharacter = (overrides?: Partial<Character>): Character => ({
 });
 
 const CharacterManagerScreen: React.FC = () => {
-	const { user } = useAuthStore();
+	const { user } = useAuth();
 	const insets = useSafeAreaInsets();
 	const [characters, setCharacters] = useState<Character[]>([]);
 	const [loading, setLoading] = useState(false);

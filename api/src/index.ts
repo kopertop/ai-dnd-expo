@@ -1,11 +1,10 @@
+import { handleGoogleCallback, useAuth } from 'expo-auth-template/backend';
+
 import { Hono } from 'hono';
 
-import { authMiddleware } from './auth/middleware';
 import { corsMiddleware } from './cors';
 import type { CloudflareBindings } from './env';
 import adminRoutes from './routes/admin';
-import authRoutes from './routes/auth';
-import deviceTokensRoutes from './routes/device-tokens';
 import gameRoutes from './routes/games';
 import meRoutes from './routes/me';
 import questRoutes from './routes/quests';
@@ -20,14 +19,21 @@ const app = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
 app.use('*', corsMiddleware);
 
 // Apply auth middleware globally (sets user in context)
-// Exclude auth routes that don't require authentication
+// expo-auth-template handles authentication via useAuth function
 app.use('*', async (c, next) => {
-	// Skip auth middleware for auth exchange endpoint (users aren't authenticated yet)
-	if (c.req.path === '/api/auth/exchange') {
-		await next();
-		return;
-	}
-	return authMiddleware(c, next);
+	// Create env with DB alias for expo-auth-template
+	const envWithDB = {
+		...c.env,
+		DB: c.env.DATABASE, // Package expects DB binding
+	};
+
+	// Authenticate using expo-auth-template
+	const user = await useAuth(c.req.raw, envWithDB);
+
+	// Set user in context
+	c.set('user', user);
+
+	await next();
 });
 
 // Health check (no auth required)
@@ -40,13 +46,36 @@ app.get('/status', c => {
 	return c.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
+// Google OAuth callback handler (no auth required - this is the authentication endpoint)
+app.post('/api/auth/google/callback', async (c) => {
+	try {
+		const envWithDB = {
+			...c.env,
+			DB: c.env.DATABASE, // Package expects DB binding
+		};
+
+		const body = await c.req.json();
+		console.log('body', body);
+		const result = await handleGoogleCallback(envWithDB, body, {
+			createUserIfNotExists: true,
+			googleClientId: c.env.GOOGLE_CLIENT_ID,
+			googleClientSecret: c.env.GOOGLE_CLIENT_SECRET,
+		});
+
+		return c.json(result);
+	} catch (error) {
+		console.error('Google callback error:', error);
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+		return c.json({ error: errorMessage }, 400);
+	}
+});
+
 // Mount API routes
 app.route('/api/games', gameRoutes);
 app.route('/api/quests', questRoutes);
 app.route('/api/admin', adminRoutes);
-app.route('/api/device-tokens', deviceTokensRoutes);
+// Note: /api/auth/exchange and /api/device-tokens routes removed - handled by expo-auth-template
 app.route('/api/me', meRoutes);
-app.route('/api/auth', authRoutes);
 
 // Serve static assets for non-API routes (Worker with Assets)
 app.get('*', async (c) => {
@@ -62,17 +91,17 @@ app.get('*', async (c) => {
 			// Get the file from the assets binding
 			const url = new URL(c.req.url);
 			let path = url.pathname;
-			
+
 			// Default to index.html for root or directory requests
 			if (path === '/' || !path.includes('.')) {
 				path = '/index.html';
 			}
-			
+
 			// Remove leading slash for asset lookup
 			const assetPath = path.startsWith('/') ? path.slice(1) : path;
-			
+
 			const asset = await assets.fetch(new Request(new URL(assetPath, c.req.url)));
-			
+
 			if (asset.status === 200) {
 				return asset;
 			}

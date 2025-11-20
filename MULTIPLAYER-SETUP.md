@@ -47,6 +47,8 @@ cp .dev.vars.example .dev.vars
 ```
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.2
+# Optional API key for Ollama servers that require authentication
+OLLAMA_API_KEY=your-api-key-here
 ADMIN_EMAILS=kopertop@gmail.com,cmoyer@newstex.com
 ```
 

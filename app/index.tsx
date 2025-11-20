@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from 'expo-auth-template/frontend';
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -7,7 +8,6 @@ import { AppFooter } from '@/components/app-footer';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
-import { useAuthStore } from '@/stores/use-auth-store';
 import { Character } from '@/types/character';
 
 const IndexScreen: React.FC = () => {
@@ -15,7 +15,7 @@ const IndexScreen: React.FC = () => {
 	const [loading, setLoading] = useState(true);
 	const [characters, setCharacters] = useState<Character[]>([]);
 	const [charactersLoading, setCharactersLoading] = useState(false);
-	const { user } = useAuthStore();
+	const { user } = useAuth();
 
 	useEffect(() => {
 		const checkSavedGame = async () => {

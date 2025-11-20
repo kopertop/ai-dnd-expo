@@ -15,11 +15,12 @@ import { AppFooter } from '@/components/app-footer';
 import { InviteCodeInput } from '@/components/invite-code-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useAuth } from 'expo-auth-template/frontend';
+
 import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { GameSessionResponse } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
 import { StatBlock } from '@/types/stats';
-import { useAuthStore } from '@/stores/use-auth-store';
 
 type CharacterTemplate = {
 	id: string;
@@ -103,7 +104,7 @@ const JoinGameScreen: React.FC = () => {
 	const [newCharacterName, setNewCharacterName] = useState('');
 	const [selectedTemplateId, setSelectedTemplateId] = useState<string>(CHARACTER_TEMPLATES[0].id);
 	const insets = useSafeAreaInsets();
-	const { user } = useAuthStore();
+	const { user } = useAuth();
 	const playerId = user?.id ?? null;
 	const playerEmail = user?.email ?? null;
 	const selectedTemplate = useMemo(

@@ -1,33 +1,6 @@
 -- Initial schema for ai-dnd-app
 -- This replaces all previous Drizzle migrations with a clean start
-
--- Users table (simplified for OAuth/Device auth)
-CREATE TABLE IF NOT EXISTS `users` (
-	`id` text PRIMARY KEY NOT NULL,
-	`email` text NOT NULL,
-	`name` text NOT NULL,
-	`picture` text,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL
-);
-CREATE UNIQUE INDEX IF NOT EXISTS `users_email_unique` ON `users` (`email`);
-
--- Device tokens for persistent authentication
-CREATE TABLE IF NOT EXISTS `device_tokens` (
-	`device_token` text PRIMARY KEY NOT NULL,
-	`user_id` text NOT NULL,
-	`device_name` text,
-	`device_platform` text NOT NULL,
-	`user_agent` text,
-	`ip_address` text,
-	`last_used_at` integer NOT NULL,
-	`expires_at` integer,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL,
-	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
-);
-CREATE INDEX IF NOT EXISTS `device_tokens_user_id_idx` ON `device_tokens` (`user_id`);
-CREATE INDEX IF NOT EXISTS `device_tokens_last_used_idx` ON `device_tokens` (`last_used_at`);
+-- Note: Users and device_tokens tables are created in 0001_auth.sql
 
 -- Games table
 CREATE TABLE IF NOT EXISTS `games` (

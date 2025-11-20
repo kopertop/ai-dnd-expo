@@ -53,15 +53,30 @@ export class OllamaClient {
 	private baseUrl: string;
 	private defaultModel: string;
 	private timeout: number;
+	private apiKey: string | null;
 
 	constructor(config?: {
 		baseUrl?: string;
 		defaultModel?: string;
 		timeout?: number;
+		apiKey?: string;
 	}) {
 		this.baseUrl = config?.baseUrl || process.env.EXPO_PUBLIC_OLLAMA_BASE_URL || 'http://localhost:11434';
 		this.defaultModel = config?.defaultModel || 'llama3.2';
 		this.timeout = config?.timeout || 30000;
+		this.apiKey = config?.apiKey || process.env.EXPO_PUBLIC_OLLAMA_API_KEY || null;
+	}
+
+	private getHeaders(): Record<string, string> {
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json',
+		};
+		
+		if (this.apiKey) {
+			headers['Authorization'] = `Bearer ${this.apiKey}`;
+		}
+		
+		return headers;
 	}
 
 	/**
@@ -95,9 +110,7 @@ export class OllamaClient {
 
 			const response = await fetch(url, {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers: this.getHeaders(),
 				body: JSON.stringify(requestBody),
 				signal: controller.signal,
 			});
@@ -158,9 +171,7 @@ export class OllamaClient {
 
 			const response = await fetch(url, {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers: this.getHeaders(),
 				body: JSON.stringify(requestBody),
 				signal: controller.signal,
 			});
@@ -230,6 +241,7 @@ export class OllamaClient {
 
 			const response = await fetch(url, {
 				method: 'GET',
+				headers: this.getHeaders(),
 				signal: controller.signal,
 			});
 
@@ -248,6 +260,7 @@ export class OllamaClient {
 			const url = `${this.baseUrl}/api/tags`;
 			const response = await fetch(url, {
 				method: 'GET',
+				headers: this.getHeaders(),
 			});
 
 			if (!response.ok) {

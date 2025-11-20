@@ -1,4 +1,5 @@
-import { authService } from '@/services/auth-service';
+import { authService } from 'expo-auth-template/frontend';
+
 import { API_BASE_URL, buildApiUrl } from '@/services/config/api-base-url';
 import {
 	CharacterListResponse,
@@ -56,25 +57,29 @@ export class MultiplayerClient {
 
 	/**
 	 * Get auth headers with Authorization token
+	 * Uses expo-auth-template's authService which handles device tokens and OAuth automatically
 	 */
 	private async getAuthHeaders(): Promise<Record<string, string>> {
 		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
 		};
 
-		// Get current session
+		// Get current session from package's authService
 		const session = await authService.getSession();
 
 		if (session) {
-			// Prefer device token for persistent auth
+			// Package handles device tokens and OAuth tokens
+			// Check for device token first (persistent auth)
 			if (session.deviceToken) {
 				headers['Authorization'] = `Device ${session.deviceToken}`;
-			} else if (session.accessToken && session.provider) {
-				// Use OAuth token with provider
-				headers['Authorization'] = `Bearer ${session.accessToken} ${session.provider}`;
-			} else if (session.idToken && session.provider) {
+			} else if (session.accessToken) {
+				// OAuth token - package may include provider in session
+				const provider = (session as any).provider || 'google';
+				headers['Authorization'] = `Bearer ${session.accessToken} ${provider}`;
+			} else if (session.idToken) {
 				// Fallback to ID token
-				headers['Authorization'] = `Bearer ${session.idToken} ${session.provider}`;
+				const provider = (session as any).provider || 'google';
+				headers['Authorization'] = `Bearer ${session.idToken} ${provider}`;
 			}
 		}
 
