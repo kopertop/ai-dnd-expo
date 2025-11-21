@@ -43,49 +43,98 @@ const MAP_EDITOR_MODES: Array<{ key: MapEditorMode; label: string }> = [
 	{ key: 'erase', label: 'Erase' },
 ];
 
-// Map NPC roles and character classes to emojis
-const getTokenEmoji = (tokenData: { type: 'npc' | 'player'; role?: string; label?: string; icon?: string; class?: string }): string => {
-	// If icon is provided, use it
-	if (tokenData.icon) {
+// Map NPC roles and character classes to SVG icons
+const getTokenSvg = (tokenData: { type: 'npc' | 'player'; role?: string; label?: string; icon?: string; class?: string }): string => {
+	// If icon is provided and it's an SVG, use it
+	if (tokenData.icon && tokenData.icon.startsWith('<svg')) {
 		return tokenData.icon;
 	}
 	
 	// For NPCs, map by role
 	if (tokenData.type === 'npc') {
 		const role = (tokenData.role || '').toLowerCase();
-		if (role.includes('vendor') || role.includes('merchant') || role.includes('shop')) return '💰';
-		if (role.includes('scout') || role.includes('ranger') || role.includes('tracker')) return '🔍';
-		if (role.includes('sentinel') || role.includes('guard') || role.includes('watch')) return '🗼';
-		if (role.includes('healer') || role.includes('cleric') || role.includes('priest')) return '⚕️';
-		if (role.includes('mage') || role.includes('wizard') || role.includes('sorcerer')) return '🔮';
-		if (role.includes('warrior') || role.includes('fighter') || role.includes('soldier')) return '⚔️';
-		if (role.includes('rogue') || role.includes('thief') || role.includes('assassin')) return '🗡️';
-		if (role.includes('bard') || role.includes('minstrel')) return '🎵';
-		if (role.includes('blacksmith') || role.includes('smith')) return '🔨';
-		if (role.includes('innkeeper') || role.includes('tavern')) return '🍺';
-		return '👤'; // Default NPC
+		if (role.includes('vendor') || role.includes('merchant') || role.includes('shop')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="8" fill="#FFD700" stroke="#FFA500" stroke-width="1"/><text x="10" y="14" font-size="12" text-anchor="middle" fill="#000">$</text></svg>';
+		}
+		if (role.includes('scout') || role.includes('ranger') || role.includes('tracker')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="8" r="3" fill="none" stroke="#333" stroke-width="1.5"/><line x1="10" y1="11" x2="10" y2="15" stroke="#333" stroke-width="1.5"/><line x1="7" y1="13" x2="13" y2="13" stroke="#333" stroke-width="1.5"/></svg>';
+		}
+		if (role.includes('sentinel') || role.includes('guard') || role.includes('watch')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="4" width="8" height="12" fill="#666" stroke="#333" stroke-width="1"/><rect x="8" y="6" width="4" height="2" fill="#333"/><rect x="8" y="9" width="4" height="2" fill="#333"/></svg>';
+		}
+		if (role.includes('healer') || role.includes('cleric') || role.includes('priest')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 4 L10 16 M4 10 L16 10" stroke="#FF0000" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="10" r="6" fill="none" stroke="#FF0000" stroke-width="1"/></svg>';
+		}
+		if (role.includes('mage') || role.includes('wizard') || role.includes('sorcerer')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2 L12 8 L18 8 L13 12 L15 18 L10 14 L5 18 L7 12 L2 8 L8 8 Z" fill="#9B59B6" stroke="#6A1B9A" stroke-width="0.5"/></svg>';
+		}
+		if (role.includes('warrior') || role.includes('fighter') || role.includes('soldier')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2 L12 6 L16 6 L13 9 L15 13 L10 10 L5 13 L7 9 L4 6 L8 6 Z" fill="#666" stroke="#333" stroke-width="0.5"/></svg>';
+		}
+		if (role.includes('rogue') || role.includes('thief') || role.includes('assassin')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2 L12 7 L17 5 L14 10 L19 12 L14 14 L17 19 L12 17 L10 22 L8 17 L3 19 L6 14 L1 12 L6 10 L3 5 L8 7 Z" fill="#333" stroke="#000" stroke-width="0.5"/></svg>';
+		}
+		if (role.includes('bard') || role.includes('minstrel')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M5 5 Q10 2 15 5 Q10 8 5 5" fill="none" stroke="#FF6B6B" stroke-width="1.5"/><circle cx="7" cy="6" r="1" fill="#FF6B6B"/><circle cx="13" cy="6" r="1" fill="#FF6B6B"/></svg>';
+		}
+		if (role.includes('blacksmith') || role.includes('smith')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="6" width="4" height="8" fill="#8B4513" stroke="#654321" stroke-width="1"/><rect x="9" y="4" width="2" height="2" fill="#654321"/></svg>';
+		}
+		if (role.includes('innkeeper') || role.includes('tavern')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="8" width="8" height="6" fill="#8B4513" stroke="#654321" stroke-width="1"/><rect x="7" y="9" width="6" height="4" fill="#FFD700"/></svg>';
+		}
+		// Default NPC - person icon
+		return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="7" r="3" fill="#4A90E2" stroke="#2E5C8A" stroke-width="1"/><path d="M5 18 Q5 13 10 13 Q15 13 15 18" fill="#4A90E2" stroke="#2E5C8A" stroke-width="1"/></svg>';
 	}
 	
 	// For players, map by class
 	if (tokenData.type === 'player') {
 		const className = (tokenData.class || '').toLowerCase();
-		if (className.includes('fighter')) return '⚔️';
-		if (className.includes('rogue')) return '🗡️';
-		if (className.includes('wizard')) return '🔮';
-		if (className.includes('cleric')) return '⚕️';
-		if (className.includes('ranger')) return '🏹';
-		if (className.includes('paladin')) return '🛡️';
-		if (className.includes('warlock')) return '👹';
-		if (className.includes('barbarian')) return '🪓';
-		if (className.includes('bard')) return '🎵';
-		if (className.includes('sorcerer')) return '✨';
-		if (className.includes('druid')) return '🌿';
-		if (className.includes('monk')) return '🥋';
-		if (className.includes('artificer')) return '⚙️';
-		return '🧙'; // Default player
+		if (className.includes('fighter')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2 L12 6 L16 6 L13 9 L15 13 L10 10 L5 13 L7 9 L4 6 L8 6 Z" fill="#C0C0C0" stroke="#666" stroke-width="0.5"/></svg>';
+		}
+		if (className.includes('rogue')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2 L12 7 L17 5 L14 10 L19 12 L14 14 L17 19 L12 17 L10 22 L8 17 L3 19 L6 14 L1 12 L6 10 L3 5 L8 7 Z" fill="#333" stroke="#000" stroke-width="0.5"/></svg>';
+		}
+		if (className.includes('wizard')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2 L12 8 L18 8 L13 12 L15 18 L10 14 L5 18 L7 12 L2 8 L8 8 Z" fill="#9B59B6" stroke="#6A1B9A" stroke-width="0.5"/></svg>';
+		}
+		if (className.includes('cleric')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 4 L10 16 M4 10 L16 10" stroke="#FF0000" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="10" r="6" fill="none" stroke="#FF0000" stroke-width="1"/></svg>';
+		}
+		if (className.includes('ranger')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2 L12 6 L16 2 L14 10 L20 10 L14 12 L16 20 L12 16 L10 20 L8 16 L4 20 L6 12 L0 10 L6 10 L4 2 L8 6 Z" fill="#228B22" stroke="#006400" stroke-width="0.5"/></svg>';
+		}
+		if (className.includes('paladin')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="4" width="8" height="12" fill="#FFD700" stroke="#FFA500" stroke-width="1"/><path d="M10 6 L11 9 L14 9 L11.5 11 L12.5 14 L10 12 L7.5 14 L8.5 11 L6 9 L9 9 Z" fill="#FFA500"/></svg>';
+		}
+		if (className.includes('warlock')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2 L12 8 L18 8 L13 12 L15 18 L10 14 L5 18 L7 12 L2 8 L8 8 Z" fill="#8B0000" stroke="#4B0000" stroke-width="0.5"/></svg>';
+		}
+		if (className.includes('barbarian')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2 L12 6 L16 6 L13 9 L15 13 L10 10 L5 13 L7 9 L4 6 L8 6 Z" fill="#8B0000" stroke="#4B0000" stroke-width="0.5"/></svg>';
+		}
+		if (className.includes('bard')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M5 5 Q10 2 15 5 Q10 8 5 5" fill="none" stroke="#FF6B6B" stroke-width="1.5"/><circle cx="7" cy="6" r="1" fill="#FF6B6B"/><circle cx="13" cy="6" r="1" fill="#FF6B6B"/></svg>';
+		}
+		if (className.includes('sorcerer')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="6" fill="#FF69B4" stroke="#FF1493" stroke-width="1"/><circle cx="10" cy="10" r="3" fill="#FFB6C1"/></svg>';
+		}
+		if (className.includes('druid')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2 Q6 6 6 10 Q6 14 10 18 Q14 14 14 10 Q14 6 10 2" fill="#228B22" stroke="#006400" stroke-width="0.5"/><circle cx="10" cy="10" r="2" fill="#32CD32"/></svg>';
+		}
+		if (className.includes('monk')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="6" fill="#FFA500" stroke="#FF8C00" stroke-width="1"/><circle cx="10" cy="10" r="3" fill="#FFD700"/></svg>';
+		}
+		if (className.includes('artificer')) {
+			return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="8" height="8" fill="#4169E1" stroke="#000080" stroke-width="1"/><rect x="8" y="8" width="4" height="4" fill="#87CEEB"/></svg>';
+		}
+		// Default player - wizard hat
+		return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2 L12 8 L18 8 L13 12 L15 18 L10 14 L5 18 L7 12 L2 8 L8 8 Z" fill="#9B59B6" stroke="#6A1B9A" stroke-width="0.5"/></svg>';
 	}
 	
-	return '👤'; // Fallback
+	// Fallback - person icon
+	return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="7" r="3" fill="#4A90E2" stroke="#2E5C8A" stroke-width="1"/><path d="M5 18 Q5 13 10 13 Q15 13 15 18" fill="#4A90E2" stroke="#2E5C8A" stroke-width="1"/></svg>';
 };
 
 // Improved DraggableCard component with proper HTML5 drag-and-drop
@@ -132,12 +181,6 @@ const DraggableCard = ({
 
 				if (domNode && typeof domNode.addEventListener === 'function') {
 					domNode.draggable = true;
-					
-					const handleDragEnd = (e: DragEvent) => {
-						if (domNode) {
-							domNode.style.opacity = '1';
-						}
-					};
 
 					// Prevent text selection
 					domNode.style.userSelect = 'none';
@@ -147,59 +190,103 @@ const DraggableCard = ({
 					domNode.style.cursor = 'grab';
 
 					// Create drag preview image function (single icon, 1 tile size)
-					const createDragImage = (icon: string) => {
-						const canvas = document.createElement('canvas');
-						canvas.width = 28; // TILE_SIZE
-						canvas.height = 28; // TILE_SIZE
-						const ctx = canvas.getContext('2d');
-						if (ctx) {
-							ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-							ctx.fillRect(0, 0, 28, 28);
-							ctx.font = '20px Arial';
-							ctx.textAlign = 'center';
-							ctx.textBaseline = 'middle';
-							ctx.fillText(icon, 14, 14);
+					// Use SVG converted to data URL (works synchronously)
+					let dragImageElement: HTMLImageElement | null = null;
+					
+					const createDragImage = (svgString: string): HTMLImageElement => {
+						// Remove previous drag image if it exists
+						if (dragImageElement && dragImageElement.parentNode) {
+							dragImageElement.parentNode.removeChild(dragImageElement);
 						}
-						return canvas;
+						
+						// Convert SVG to data URL (synchronous)
+						const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+						
+						// Create an image element from SVG data URL
+						const img = new Image();
+						img.src = svgDataUrl;
+						img.width = 28;
+						img.height = 28;
+						img.style.position = 'absolute';
+						img.style.top = '-9999px';
+						img.style.left = '-9999px';
+						img.style.pointerEvents = 'none';
+						document.body.appendChild(img);
+						
+						dragImageElement = img;
+						
+						return img;
 					};
 
 					const handleDragStart = (e: DragEvent) => {
 						e.stopPropagation();
 						
+						if (!e.dataTransfer) return;
+						
 						// Store the mouse position relative to the element
+						let offsetX = 14; // Default to center
+						let offsetY = 14;
+						
 						if (domNode) {
 							const rect = domNode.getBoundingClientRect();
-							dragStartPosRef.current = {
-								x: e.clientX - rect.left,
-								y: e.clientY - rect.top,
-							};
+							const mouseX = e.clientX - rect.left;
+							const mouseY = e.clientY - rect.top;
+							// Clamp offset to element bounds (use actual element size, not fixed 28)
+							const elementWidth = rect.width || 28;
+							const elementHeight = rect.height || 28;
+							offsetX = Math.max(0, Math.min(elementWidth, mouseX));
+							offsetY = Math.max(0, Math.min(elementHeight, mouseY));
+							dragStartPosRef.current = { x: offsetX, y: offsetY };
 						}
 						
-						if (e.dataTransfer) {
-							e.dataTransfer.effectAllowed = 'move';
-							e.dataTransfer.setData('application/json', JSON.stringify(tokenData));
-							
-							// Get appropriate emoji based on type/role/class
-							const icon = getTokenEmoji(tokenData);
-							const dragImage = createDragImage(icon);
-							
-							// Use the stored mouse position for offset, or center if not available
-							const offsetX = dragStartPosRef.current?.x ?? 14;
-							const offsetY = dragStartPosRef.current?.y ?? 14;
-							e.dataTransfer.setDragImage(dragImage, offsetX, offsetY);
-						}
+						e.dataTransfer.effectAllowed = 'move';
+						e.dataTransfer.setData('application/json', JSON.stringify(tokenData));
+						
+						// Get appropriate SVG icon based on type/role/class
+						const svgIcon = getTokenSvg(tokenData);
+						console.log('Creating drag image with SVG for token:', tokenData);
+						
+						// Create drag image element from SVG (using data URL for synchronous loading)
+						const dragImage = createDragImage(svgIcon);
+						
+						// The offset should be relative to where the mouse clicked
+						// Clamp to the drag image size (28x28)
+						const dragOffsetX = Math.min(14, Math.max(0, offsetX));
+						const dragOffsetY = Math.min(14, Math.max(0, offsetY));
+						
+						// Set drag image - data URL should work synchronously
+						e.dataTransfer.setDragImage(dragImage, dragOffsetX, dragOffsetY);
+						
 						if (domNode) {
 							domNode.style.opacity = '0.5';
 						}
 					};
+					
+					const handleDragEndCleanup = (e: DragEvent) => {
+						// Clean up drag image element after a short delay to ensure drag completes
+						setTimeout(() => {
+							if (dragImageElement && dragImageElement.parentNode) {
+								dragImageElement.parentNode.removeChild(dragImageElement);
+								dragImageElement = null;
+							}
+						}, 100);
+						if (domNode) {
+							domNode.style.opacity = '1';
+						}
+					};
 
 					domNode.addEventListener('dragstart', handleDragStart);
-					domNode.addEventListener('dragend', handleDragEnd);
+					domNode.addEventListener('dragend', handleDragEndCleanup);
 
 					return () => {
 						if (domNode) {
 							domNode.removeEventListener('dragstart', handleDragStart);
-							domNode.removeEventListener('dragend', handleDragEnd);
+							domNode.removeEventListener('dragend', handleDragEndCleanup);
+						}
+						// Clean up drag image element if it still exists
+						if (dragImageElement && dragImageElement.parentNode) {
+							dragImageElement.parentNode.removeChild(dragImageElement);
+							dragImageElement = null;
 						}
 					};
 				}

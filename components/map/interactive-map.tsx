@@ -132,16 +132,27 @@ const MapTile: React.FC<{
                                                 e.stopPropagation();
                                                 e.stopImmediatePropagation();
                                                 setHoveredTile(null);
+                                                
                                                 const data = e.dataTransfer?.getData('application/json');
-                                                console.log('Drop event on tile:', { x, y, data, hasOnTokenDrop: !!onTokenDrop });
-                                                if (data && onTokenDrop) {
-                                                        try {
-                                                                const token = JSON.parse(data);
-                                                                console.log('Calling onTokenDrop with:', { token, x, y });
-                                                                onTokenDrop(token, x, y);
-                                                        } catch (err) {
-                                                                console.error('Failed to parse drop data:', err);
-                                                        }
+                                                console.log('Drop event on tile:', { x, y, data, hasOnTokenDrop: !!onTokenDrop, dataTransfer: !!e.dataTransfer });
+                                                
+                                                if (!data) {
+                                                        console.warn('No drop data found');
+                                                        return;
+                                                }
+                                                
+                                                if (!onTokenDrop) {
+                                                        console.warn('onTokenDrop callback not provided');
+                                                        return;
+                                                }
+                                                
+                                                try {
+                                                        const token = JSON.parse(data);
+                                                        console.log('Parsed token data:', token);
+                                                        console.log('Calling onTokenDrop with:', { token, x, y });
+                                                        onTokenDrop(token, x, y);
+                                                } catch (err) {
+                                                        console.error('Failed to parse drop data:', err, 'Raw data:', data);
                                                 }
                                         };
                                         
