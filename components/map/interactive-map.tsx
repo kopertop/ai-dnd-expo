@@ -1,5 +1,5 @@
-import React, { memo, useMemo, useRef, useState } from 'react';
-import { Dimensions, Image, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { memo, useMemo, useRef, useState, useEffect } from 'react';
+import { Dimensions, Image, PanResponder, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { MapState, MapToken } from '@/types/multiplayer-map';
 
@@ -11,7 +11,10 @@ interface InteractiveMapProps {
         onTilePress?: (x: number, y: number) => void;
         onTileDrag?: (x: number, y: number) => void;
         onTileDragEnd?: () => void;
+        onTileLongPress?: (x: number, y: number) => void;
         onTokenPress?: (token: MapToken) => void;
+        onTokenLongPress?: (token: MapToken) => void;
+        onTokenDrop?: (token: { type: 'npc' | 'player'; id: string; label: string; icon?: string }, x: number, y: number) => void;
         highlightTokenId?: string;
         reachableTiles?: Array<{ x: number; y: number; cost: number }>;
         pathTiles?: Array<{ x: number; y: number }>;
@@ -62,13 +65,159 @@ const terrainColor = (terrain?: string) => {
         return normalizedTerrain ? terrainColors[normalizedTerrain] ?? '#D9D4C5' : '#D9D4C5';
 };
 
+// Tile component that can properly use hooks for drag-and-drop
+const MapTile: React.FC<{
+        x: number;
+        y: number;
+        cell: any;
+        isPathTile: boolean;
+        hoveredTile: { x: number; y: number } | null;
+        isEditable: boolean;
+        onTokenDrop?: (token: { type: 'npc' | 'player'; id: string; label: string; icon?: string }, x: number, y: number) => void;
+        onTilePress?: (x: number, y: number) => void;
+        onTileLongPress?: (x: number, y: number) => void;
+        canInteract: boolean;
+        isReachable: boolean;
+        setHoveredTile: (tile: { x: number; y: number } | null) => void;
+}> = ({ x, y, cell, isPathTile, hoveredTile, isEditable, onTokenDrop, onTilePress, onTileLongPress, canInteract, isReachable, setHoveredTile }) => {
+        const tileRef = useRef<View>(null);
+        
+        // Attach drag handlers directly to DOM node for web
+        useEffect(() => {
+                if (Platform.OS === 'web' && isEditable && onTokenDrop && tileRef.current) {
+                        const timeoutId = setTimeout(() => {
+                                const element = tileRef.current as any;
+                                if (!element) return;
+                                
+                                let domNode: HTMLElement | null = null;
+                                
+                                if (element._nativeNode) {
+                                        domNode = element._nativeNode;
+                                } else if (element.nodeType === 1) {
+                                        domNode = element;
+                                } else if (element.firstChild && element.firstChild.nodeType === 1) {
+                                        domNode = element.firstChild;
+                                }
+                                
+                                if (domNode && typeof domNode.addEventListener === 'function') {
+                                        const handleDragEnter = (e: DragEvent) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (e.dataTransfer) {
+                                                        e.dataTransfer.dropEffect = 'move';
+                                                }
+                                                setHoveredTile({ x, y });
+                                        };
+                                        
+                                        const handleDragOver = (e: DragEvent) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (e.dataTransfer) {
+                                                        e.dataTransfer.dropEffect = 'move';
+                                                }
+                                                setHoveredTile({ x, y });
+                                        };
+                                        
+                                        const handleDragLeave = (e: DragEvent) => {
+                                                const rect = domNode!.getBoundingClientRect();
+                                                const leaveX = e.clientX;
+                                                const leaveY = e.clientY;
+                                                if (leaveX < rect.left || leaveX > rect.right || leaveY < rect.top || leaveY > rect.bottom) {
+                                                        setHoveredTile(null);
+                                                }
+                                        };
+                                        
+                                        const handleDrop = (e: DragEvent) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                e.stopImmediatePropagation();
+                                                setHoveredTile(null);
+                                                const data = e.dataTransfer?.getData('application/json');
+                                                console.log('Drop event on tile:', { x, y, data, hasOnTokenDrop: !!onTokenDrop });
+                                                if (data && onTokenDrop) {
+                                                        try {
+                                                                const token = JSON.parse(data);
+                                                                console.log('Calling onTokenDrop with:', { token, x, y });
+                                                                onTokenDrop(token, x, y);
+                                                        } catch (err) {
+                                                                console.error('Failed to parse drop data:', err);
+                                                        }
+                                                }
+                                        };
+                                        
+                                        domNode.addEventListener('dragenter', handleDragEnter);
+                                        domNode.addEventListener('dragover', handleDragOver);
+                                        domNode.addEventListener('dragleave', handleDragLeave);
+                                        domNode.addEventListener('drop', handleDrop);
+                                        
+                                        return () => {
+                                                if (domNode) {
+                                                        domNode.removeEventListener('dragenter', handleDragEnter);
+                                                        domNode.removeEventListener('dragover', handleDragOver);
+                                                        domNode.removeEventListener('dragleave', handleDragLeave);
+                                                        domNode.removeEventListener('drop', handleDrop);
+                                                }
+                                        };
+                                }
+                        }, 0);
+                        
+                        return () => {
+                                clearTimeout(timeoutId);
+                        };
+                }
+        }, [x, y, isEditable, onTokenDrop, setHoveredTile]);
+
+        return (
+                <View
+                        ref={tileRef}
+                        key={`tile-${x}-${y}`}
+                        style={[
+                                styles.tile,
+                                {
+                                        width: TILE_SIZE,
+                                        height: TILE_SIZE,
+                                        backgroundColor: terrainColor(cell?.terrain),
+                                        borderColor: isPathTile
+                                                ? '#FFD447'
+                                                : hoveredTile?.x === x && hoveredTile?.y === y
+                                                        ? '#FFD700'
+                                                        : styles.tile.borderColor,
+                                        borderWidth: isPathTile
+                                                ? 2
+                                                : hoveredTile?.x === x && hoveredTile?.y === y
+                                                        ? 2
+                                                        : styles.tile.borderWidth,
+                                        opacity: hoveredTile?.x === x && hoveredTile?.y === y ? 0.6 : 1,
+                                },
+                        ]}
+                >
+                        <TouchableOpacity
+                                style={StyleSheet.absoluteFill}
+                                activeOpacity={canInteract ? 0.7 : 1}
+                                disabled={!canInteract && !isEditable}
+                                onPress={() => onTilePress?.(x, y)}
+                                onLongPress={() => onTileLongPress?.(x, y)}
+                        >
+                                {isReachable && (
+                                        <View style={styles.rangeBadge}>
+                                                <Text style={styles.rangeText}>✓</Text>
+                                        </View>
+                                )}
+                        </TouchableOpacity>
+                </View>
+        );
+};
+
 const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
         map,
         isEditable = false,
         onTilePress,
         onTileDrag,
         onTileDragEnd,
+        onTileLongPress,
         onTokenPress,
+        onTokenLongPress,
+        onTokenDrop,
         highlightTokenId,
         reachableTiles,
         pathTiles,
@@ -95,6 +244,7 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
         }));
         const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
         const panStartRef = useRef({ x: 0, y: 0 });
+        const [hoveredTile, setHoveredTile] = useState<{ x: number; y: number } | null>(null);
 
         const startDrag = (x: number, y: number) => {
                 if (!onTileDrag || !isEditable) {
@@ -178,30 +328,46 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 
         const enablePanning = mapWidthPx > containerSize.width || mapHeightPx > containerSize.height;
 
-        const panResponder = useMemo(
-                () =>
-                        PanResponder.create({
-                                onStartShouldSetPanResponder: () => false,
-                                onMoveShouldSetPanResponder: (_, gestureState) => {
-                                        const distance = Math.abs(gestureState.dx) + Math.abs(gestureState.dy);
-                                        return distance > 4 && !isDragging;
-                                },
-                                onPanResponderGrant: () => {
-                                        panStartRef.current = panOffset;
-                                },
-                                onPanResponderMove: (_, gestureState) => {
-                                        if (!enablePanning) {
-                                                return;
-                                        }
+	const panResponder = useMemo(
+		() =>
+			PanResponder.create({
+				onStartShouldSetPanResponder: () => false,
+				onMoveShouldSetPanResponder: (_, gestureState) =>
+					enablePanning &&
+					!isEditable &&
+					(Math.abs(gestureState.dx) > 6 || Math.abs(gestureState.dy) > 6),
+				onPanResponderGrant: () => {
+					panStartRef.current = panOffset;
+				},
+				onPanResponderMove: (_, gestureState) => {
+					if (!enablePanning) {
+						return;
+					}
 
-                                        setPanOffset({
-                                                x: clampPan(panStartRef.current.x + gestureState.dx, containerSize.width, mapWidthPx),
-                                                y: clampPan(panStartRef.current.y + gestureState.dy, containerSize.height, mapHeightPx),
-                                        });
-                                },
-                        }),
-                [enablePanning, isEditable, containerSize.width, containerSize.height, mapWidthPx, mapHeightPx, panOffset, isDragging],
-        );
+					setPanOffset({
+						x: clampPan(
+							panStartRef.current.x + gestureState.dx,
+							containerSize.width,
+							mapWidthPx,
+						),
+						y: clampPan(
+							panStartRef.current.y + gestureState.dy,
+							containerSize.height,
+							mapHeightPx,
+						),
+					});
+				},
+			}),
+		[
+			enablePanning,
+			isEditable,
+			containerSize.width,
+			containerSize.height,
+			mapWidthPx,
+			mapHeightPx,
+			panOffset,
+		],
+	);
 
         if (!map) {
                 return (
@@ -211,6 +377,28 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
                         </View>
                 );
         }
+
+        // Clear hovered tile when drag ends (for web)
+        React.useEffect(() => {
+                if (Platform.OS === 'web') {
+                        const handleDragEnd = () => {
+                                // Small delay to ensure drop event fires first
+                                setTimeout(() => {
+                                        setHoveredTile(null);
+                                }, 100);
+                        };
+                        const handleDragLeave = (e: DragEvent) => {
+                                // Clear if dragging outside the map container
+                                if (e.target === e.currentTarget) {
+                                        setHoveredTile(null);
+                                }
+                        };
+                        document.addEventListener('dragend', handleDragEnd);
+                        return () => {
+                                document.removeEventListener('dragend', handleDragEnd);
+                        };
+                }
+        }, []);
 
         return (
                 <View
@@ -241,39 +429,21 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
                                                                 const isPathTile = pathLookup.has(key);
 
                                                                 return (
-                                                                        <TouchableOpacity
-                                                                                key={`tile-${x}-${y}`}
-                                                                                style={[
-                                                                                        styles.tile,
-                                                                                        {
-                                                                                                width: TILE_SIZE,
-                                                                                                height: TILE_SIZE,
-                                                                                                backgroundColor: terrainColor(
-                                                                                                        cell?.terrain,
-                                                                                                ),
-                                                                                                borderColor: isPathTile
-                                                                                                        ? '#FFD447'
-                                                                                                        : styles.tile.borderColor,
-                                                                                                borderWidth: isPathTile
-                                                                                                        ? 2
-                                                                                                        : styles.tile.borderWidth,
-                                                                                        },
-                                                                                ]}
-                                                                                activeOpacity={canInteract ? 0.7 : 1}
-                                                                                disabled={!canInteract && !isEditable}
-                                                                                onPress={() => onTilePress?.(x, y)}
-                                                                                onPressIn={() => startDrag(x, y)}
-                                                                                onPressOut={endDrag}
-                                                                                onMouseEnter={() => continueDrag(x, y)}
-                                                                        >
-                                                                                {isReachable && (
-                                                                                        <View style={styles.rangeBadge}>
-                                                                                                <Text style={styles.rangeText}>
-                                                                                                        {reachableLookup.get(key)?.toFixed(1)}
-                                                                                                </Text>
-                                                                                        </View>
-                                                                                )}
-                                                                        </TouchableOpacity>
+                                                                        <MapTile
+                                                                                key={key}
+                                                                                x={x}
+                                                                                y={y}
+                                                                                cell={cell}
+                                                                                isPathTile={isPathTile}
+                                                                                hoveredTile={hoveredTile}
+                                                                                isEditable={isEditable}
+                                                                                onTokenDrop={onTokenDrop}
+                                                                                onTilePress={onTilePress}
+                                                                                onTileLongPress={onTileLongPress}
+                                                                                canInteract={canInteract}
+                                                                                isReachable={isReachable}
+                                                                                setHoveredTile={setHoveredTile}
+                                                                        />
                                                                 );
                                                         })}
                                                 </View>
@@ -339,6 +509,11 @@ const styles = StyleSheet.create({
         tile: {
                 borderWidth: StyleSheet.hairlineWidth,
                 borderColor: 'rgba(0, 0, 0, 0.1)',
+                position: 'relative',
+                ...(Platform.OS === 'web' ? {
+                        userSelect: 'none',
+                        WebkitUserSelect: 'none',
+                } : {}),
         },
         rangeBadge: {
                 backgroundColor: 'rgba(255, 212, 71, 0.85)',

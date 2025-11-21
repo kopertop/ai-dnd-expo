@@ -296,6 +296,28 @@ export class MultiplayerClient {
                         body: JSON.stringify(request),
                 });
         }
+
+        async startTurn(
+                inviteCode: string,
+                request: { turnType: 'player' | 'npc' | 'dm'; entityId: string },
+        ): Promise<GameStateResponse> {
+                return apiService.fetchApi(`/games/${inviteCode}/turn/start`, {
+                        method: 'POST',
+                        body: JSON.stringify(request),
+                });
+        }
+
+        async endTurn(inviteCode: string): Promise<GameStateResponse> {
+                return apiService.fetchApi(`/games/${inviteCode}/turn/end`, {
+                        method: 'POST',
+                });
+        }
+
+        async getCurrentTurn(inviteCode: string): Promise<{ activeTurn: { type: string; entityId: string; turnNumber: number; startedAt: number } | null }> {
+                return apiService.fetchApi(`/games/${inviteCode}/turn`, {
+                        method: 'GET',
+                });
+        }
 }
 
 // Singleton instance

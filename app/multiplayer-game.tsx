@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,18 +18,20 @@ import { MapState } from '@/types/multiplayer-map';
 import { calculateMovementRange, findPathWithCosts } from '@/utils/movement-calculator';
 
 const MultiplayerGameScreen: React.FC = () => {
-        const params = useLocalSearchParams<{ inviteCode: string; hostId?: string; playerId?: string }>();
-        const { inviteCode, hostId, playerId } = params;
-        const [gameState, setGameState] = useState<MultiplayerGameState | null>(null);
-        const [sharedMap, setSharedMap] = useState<MapState | null>(null);
-        const [movementRange, setMovementRange] = useState<Array<{ x: number; y: number; cost: number }>>([]);
-        const [pathPreview, setPathPreview] = useState<{ path: Array<{ x: number; y: number }>; cost: number } | null>(null);
-        const [movementInFlight, setMovementInFlight] = useState(false);
-        const [movementMode, setMovementMode] = useState(false);
-        const [isHost, setIsHost] = useState(false);
-        const [wsConnected, setWsConnected] = useState(false);
-        const { isMobile } = useScreenSize();
-        const insets = useSafeAreaInsets();
+	const params = useLocalSearchParams<{ inviteCode: string; hostId?: string; playerId?: string }>();
+	const { inviteCode, hostId, playerId } = params;
+	const [gameState, setGameState] = useState<MultiplayerGameState | null>(null);
+	const [sharedMap, setSharedMap] = useState<MapState | null>(null);
+	const [movementRange, setMovementRange] = useState<Array<{ x: number; y: number; cost: number }>>([]);
+	const [pathPreview, setPathPreview] = useState<{ path: Array<{ x: number; y: number }>; cost: number } | null>(
+		null,
+	);
+	const [movementInFlight, setMovementInFlight] = useState(false);
+	const [movementMode, setMovementMode] = useState(false);
+	const [isHost, setIsHost] = useState(false);
+	const [wsConnected, setWsConnected] = useState(false);
+	const { isMobile } = useScreenSize();
+	const insets = useSafeAreaInsets();
 
 	// Get character ID from gameState (memoized to prevent re-renders)
 	const characterId = useMemo(() => {
@@ -37,6 +39,56 @@ const MultiplayerGameScreen: React.FC = () => {
 		const player = gameState.players.find(p => p.playerId === playerId);
 		return player?.characterId || '';
 	}, [gameState, playerId]);
+
+	const currentCharacterId = useMemo(
+		() => gameState?.players.find(p => p.playerId === playerId)?.characterId,
+		[gameState?.players, playerId],
+	);
+
+	const playerToken = useMemo(() => {
+		if (!sharedMap || !currentCharacterId) {
+			return null;
+		}
+
+		return (
+			sharedMap.tokens?.find(token => token.type === 'player' && token.entityId === currentCharacterId) ?? null
+		);
+	}, [sharedMap, currentCharacterId]);
+
+        const movementBudget = useMemo(() => {
+                const character = gameState?.characters.find(c => c.id === currentCharacterId);
+                if (!character) {
+                        return 0;
+                }
+
+                return character.actionPoints ?? character.maxActionPoints ?? 6;
+        }, [gameState?.characters, currentCharacterId]);
+
+        const isPlayerTurn = useMemo(() => {
+                if (!gameState?.activeTurn || !currentCharacterId) {
+                        return false;
+                }
+                return (
+                        gameState.activeTurn.type === 'player' &&
+                        gameState.activeTurn.entityId === currentCharacterId
+                );
+        }, [gameState?.activeTurn, currentCharacterId]);
+
+        const currentTurnName = useMemo(() => {
+                if (!gameState?.activeTurn) {
+                        return null;
+                }
+                if (gameState.activeTurn.type === 'player') {
+                        const character = gameState.characters.find(
+                                c => c.id === gameState.activeTurn?.entityId,
+                        );
+                        return character?.name || 'Player';
+                }
+                if (gameState.activeTurn.type === 'npc') {
+                        return 'NPC';
+                }
+                return 'DM';
+        }, [gameState?.activeTurn, gameState?.characters]);
 
 	const refreshSharedMap = useCallback(async () => {
 		if (!inviteCode) {
@@ -98,14 +150,14 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	}, [gameState, polledState]);
 
-        useEffect(() => {
-                if (gameState?.mapState) {
-                        setSharedMap(gameState.mapState);
-                }
-        }, [gameState?.mapState]);
+	useEffect(() => {
+		if (gameState?.mapState) {
+			setSharedMap(gameState.mapState);
+		}
+	}, [gameState?.mapState]);
 
         useEffect(() => {
-                if (!movementMode || !sharedMap || !playerToken || movementBudget <= 0) {
+                if (!movementMode || !sharedMap || !playerToken || movementBudget <= 0 || !isPlayerTurn) {
                         setMovementRange([]);
                         setPathPreview(null);
                         return;
@@ -113,7 +165,7 @@ const MultiplayerGameScreen: React.FC = () => {
 
                 const reachable = calculateMovementRange(sharedMap, { x: playerToken.x, y: playerToken.y }, movementBudget);
                 setMovementRange(reachable);
-        }, [movementMode, sharedMap, playerToken, movementBudget]);
+        }, [sharedMap, playerToken, movementBudget, movementMode, isPlayerTurn]);
 
 	// Load initial game state - only once
 	const loadGameStateRef = useRef(false);
@@ -141,113 +193,116 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	};
 
-	const handleDMAction = useCallback(async (type: string, data: any) => {
-		if (!inviteCode || !hostId || !gameState) return;
+	const handleDMAction = useCallback(
+		async (type: string, data: any) => {
+			if (!inviteCode || !hostId || !gameState) return;
 
-		try {
-			await multiplayerClient.submitDMAction(inviteCode, {
-				type: type as any,
-				data,
-				hostId,
-			});
+			try {
+				await multiplayerClient.submitDMAction(inviteCode, {
+					type: type as any,
+					data,
+					hostId,
+				});
 
-			// Refresh state
-			if (!wsIsConnected) {
-				setTimeout(loadGameState, 500);
+				// Refresh state
+				if (!wsIsConnected) {
+					setTimeout(loadGameState, 500);
+				}
+			} catch (error) {
+				Alert.alert('Error', 'Failed to perform DM action');
+				console.error(error);
 			}
-		} catch (error) {
-			Alert.alert('Error', 'Failed to perform DM action');
-			console.error(error);
-		}
-	}, [inviteCode, hostId, gameState, wsIsConnected]);
+		},
+		[inviteCode, hostId, gameState, wsIsConnected],
+	);
 
-        const handleAIRequest = useCallback(async (prompt: string): Promise<string> => {
-                // For now, return a placeholder. In production, this would call the Ollama API through the worker
-                return 'AI assistance feature coming soon. This will integrate with Ollama for DM help.';
-        }, []);
+	const handleAIRequest = useCallback(async (prompt: string): Promise<string> => {
+		// For now, return a placeholder. In production, this would call the Ollama API through the worker
+		return 'AI assistance feature coming soon. This will integrate with Ollama for DM help.';
+	}, []);
 
         const handleMovementTilePress = useCallback(
-                (x: number, y: number) => {
-                        if (!sharedMap || !playerToken || !currentCharacterId || movementInFlight) {
-                                return;
-                        }
+		(x: number, y: number) => {
+			if (!movementMode || !sharedMap || !playerToken || !currentCharacterId || movementInFlight || !isPlayerTurn) {
+				if (!isPlayerTurn) {
+					Alert.alert('Not your turn', 'Wait for your turn to move.');
+				}
+				return;
+			}
 
-                        const reachable = movementRange.find(tile => tile.x === x && tile.y === y);
-                        if (!reachable) {
-                                Alert.alert('Out of range', 'Pick a reachable tile within your movement budget.');
-                                return;
-                        }
+			const reachable = movementRange.find(tile => tile.x === x && tile.y === y);
+			if (!reachable) {
+				// Silent return if clicking outside range in movement mode, or just clear preview
+				setPathPreview(null);
+				return;
+			}
 
-                        const pathResult = findPathWithCosts(
-                                sharedMap,
-                                { x: playerToken.x, y: playerToken.y },
-                                { x, y },
-                        );
+			const pathResult = findPathWithCosts(sharedMap, { x: playerToken.x, y: playerToken.y }, { x, y });
 
-                        if (!pathResult || !pathResult.path.length) {
-                                Alert.alert('No path', 'Unable to find a valid path to that tile.');
-                                return;
-                        }
+			if (!pathResult || !pathResult.path.length) {
+				Alert.alert('No path', 'Unable to find a valid path to that tile.');
+				return;
+			}
 
-                        if (pathResult.cost > movementBudget) {
-                                Alert.alert('Not enough movement', 'You need more movement points for that path.');
-                                return;
-                        }
+			if (pathResult.cost > movementBudget) {
+				Alert.alert('Not enough movement', 'You need more movement points for that path.');
+				return;
+			}
 
-                        setPathPreview(pathResult);
+			setPathPreview(pathResult);
 
-                        const performMove = async () => {
-                                try {
-                                        setMovementInFlight(true);
-                                        const validation = await multiplayerClient.validateMovement(inviteCode || '', {
-                                                characterId: currentCharacterId,
-                                                fromX: playerToken.x,
-                                                fromY: playerToken.y,
-                                                toX: x,
-                                                toY: y,
-                                        });
+			const performMove = async () => {
+				try {
+					setMovementInFlight(true);
+					const validation = await multiplayerClient.validateMovement(inviteCode || '', {
+						characterId: currentCharacterId,
+						fromX: playerToken.x,
+						fromY: playerToken.y,
+						toX: x,
+						toY: y,
+					});
 
-                                        if (!validation?.valid) {
-                                                Alert.alert('Move blocked', 'That move is not allowed on the current terrain.');
-                                                return;
-                                        }
+					if (!validation?.valid) {
+						Alert.alert('Move blocked', 'That move is not allowed on the current terrain.');
+						return;
+					}
 
-                                        await multiplayerClient.saveMapToken(inviteCode || '', {
-                                                id: playerToken.id,
-                                                tokenType: 'player',
-                                                x,
-                                                y,
-                                                characterId: playerToken.entityId ?? currentCharacterId,
-                                                label: playerToken.label,
-                                                color: playerToken.color,
-                                                metadata: { ...playerToken.metadata, path: validation.path },
-                                        });
-                                        await refreshSharedMap();
-                                        setPathPreview(null);
-                                } catch (error) {
-                                        console.error('Failed to move player', error);
-                                        Alert.alert(
-                                                'Movement failed',
-                                                error instanceof Error ? error.message : 'Could not move token',
-                                        );
-                                } finally {
-                                        setMovementInFlight(false);
-                                }
-                        };
+					await multiplayerClient.saveMapToken(inviteCode || '', {
+						id: playerToken.id,
+						tokenType: 'player',
+						x,
+						y,
+						characterId: playerToken.entityId ?? currentCharacterId,
+						label: playerToken.label,
+						color: playerToken.color,
+						metadata: { ...playerToken.metadata, path: validation.path },
+					});
+					await refreshSharedMap();
+					setPathPreview(null);
+					setMovementMode(false); // Exit movement mode after move
+				} catch (error) {
+					console.error('Failed to move player', error);
+					Alert.alert('Movement failed', error instanceof Error ? error.message : 'Could not move token');
+				} finally {
+					setMovementInFlight(false);
+				}
+			};
 
-                        performMove();
-                },
-                [
-                        sharedMap,
-                        playerToken,
-                        currentCharacterId,
-                        movementRange,
-                        movementBudget,
-                        movementInFlight,
-                        inviteCode,
-                        refreshSharedMap,
-                ],
-        );
+			performMove();
+		},
+				[
+					movementMode,
+					sharedMap,
+					playerToken,
+					currentCharacterId,
+					movementRange,
+					movementBudget,
+					movementInFlight,
+					inviteCode,
+					refreshSharedMap,
+					isPlayerTurn,
+				],
+		);
 
 	if (!gameState) {
 		return (
@@ -258,54 +313,49 @@ const MultiplayerGameScreen: React.FC = () => {
 		);
 	}
 
-        const currentCharacterId = gameState.players.find(p => p.playerId === playerId)?.characterId;
-
-        const playerToken = useMemo(() => {
-                if (!sharedMap || !currentCharacterId) {
-                        return null;
-                }
-
-                return (
-                        sharedMap.tokens?.find(
-                                token => token.type === 'player' && token.entityId === currentCharacterId,
-                        ) ?? null
-                );
-        }, [sharedMap, currentCharacterId]);
-
-        const movementBudget = useMemo(() => {
-                const character = gameState?.characters.find(c => c.id === currentCharacterId);
-                if (!character) {
-                        return 0;
-                }
-
-                return character.actionPoints ?? character.maxActionPoints ?? 6;
-        }, [gameState?.characters, currentCharacterId]);
-
-        const renderMapSection = () => (
-                <View style={styles.mapContainer}>
-                        <View style={styles.mapHeader}>
-                                <ThemedText type="subtitle">Shared Map</ThemedText>
-                                <TouchableOpacity
-                                        onPress={() => setMovementMode(value => !value)}
-                                        style={[styles.movementToggle, movementMode && styles.movementToggleActive]}
-                                >
-                                        <ThemedText style={styles.movementToggleText}>
-                                                Movement: {movementMode ? 'On' : 'Off'}
-                                        </ThemedText>
-                                </TouchableOpacity>
-                        </View>
-                        {sharedMap ? (
-                                <InteractiveMap
-                                        map={sharedMap}
-                                        highlightTokenId={currentCharacterId || undefined}
-                                        onTilePress={movementMode && playerToken ? handleMovementTilePress : undefined}
-                                        reachableTiles={movementMode ? movementRange : undefined}
-                                        pathTiles={movementMode ? pathPreview?.path : undefined}
-                                />
-                        ) : (
-                                <ThemedText style={styles.mapHint}>
-                                        Waiting for the DM to configure a map.
-				</ThemedText>
+	const renderMapSection = () => (
+		<View style={styles.mapContainer}>
+			<View style={styles.mapHeader}>
+				<ThemedText type="subtitle">Shared Map</ThemedText>
+				{currentCharacterId && (
+					<TouchableOpacity
+						style={[
+							styles.movementButton,
+							movementMode && styles.movementButtonActive,
+							!isPlayerTurn && styles.movementButtonDisabled,
+						]}
+						onPress={() => {
+							if (!isPlayerTurn) {
+								Alert.alert('Not your turn', 'Wait for your turn to enable movement.');
+								return;
+							}
+							setMovementMode(mode => !mode);
+							setPathPreview(null);
+						}}
+						disabled={!isPlayerTurn}
+					>
+						<ThemedText style={styles.movementButtonText}>
+							{movementMode ? 'Movement: On' : 'Movement: Off'}
+						</ThemedText>
+					</TouchableOpacity>
+				)}
+			</View>
+			{!isPlayerTurn && currentTurnName && (
+				<ThemedText style={styles.mapHint}>Waiting for your turn... (Current: {currentTurnName})</ThemedText>
+			)}
+			{movementMode && isPlayerTurn && (
+				<ThemedText style={styles.mapHint}>Tap a highlighted tile to move (budget {movementBudget}).</ThemedText>
+			)}
+			{sharedMap ? (
+				<InteractiveMap
+					map={sharedMap}
+					highlightTokenId={currentCharacterId || undefined}
+					onTilePress={playerToken ? handleMovementTilePress : undefined}
+					reachableTiles={movementRange}
+					pathTiles={pathPreview?.path}
+				/>
+			) : (
+				<ThemedText style={styles.mapHint}>Waiting for the DM to configure a map.</ThemedText>
 			)}
 		</View>
 	);
@@ -320,9 +370,7 @@ const MultiplayerGameScreen: React.FC = () => {
 					<View key={message.id} style={styles.logItem}>
 						<ThemedText style={styles.logContent}>{message.content}</ThemedText>
 						<View style={styles.logMetaRow}>
-							{message.speaker && (
-								<ThemedText style={styles.logMeta}>{message.speaker}</ThemedText>
-							)}
+							{message.speaker && <ThemedText style={styles.logMeta}>{message.speaker}</ThemedText>}
 							<ThemedText style={styles.logMeta}>
 								{new Date(message.timestamp).toLocaleTimeString()}
 							</ThemedText>
@@ -342,22 +390,34 @@ const MultiplayerGameScreen: React.FC = () => {
 				}}
 			/>
 			<View style={styles.statusBar}>
-				<ThemedText style={styles.statusText}>
-					{wsConnected ? '🟢 Connected' : '🟡 Polling'}
-				</ThemedText>
-				{isHost && (
-					<ThemedText style={styles.hostBadge}>Host</ThemedText>
-				)}
+				<ThemedText style={styles.statusText}>{wsConnected ? '🟢 Connected' : '🟡 Polling'}</ThemedText>
+				<View style={styles.statusRight}>
+					{currentTurnName && (
+						<ThemedText style={styles.turnIndicator}>
+							{isPlayerTurn ? '🟢 Your Turn' : `Turn: ${currentTurnName}`}
+						</ThemedText>
+					)}
+					{isHost && (
+						<>
+							<TouchableOpacity
+								style={styles.lobbyButton}
+								onPress={() => {
+									router.push(`/host-game`);
+								}}
+							>
+								<ThemedText style={styles.lobbyButtonText}>Return to Lobby</ThemedText>
+							</TouchableOpacity>
+							<ThemedText style={styles.hostBadge}>Host</ThemedText>
+						</>
+					)}
+				</View>
 			</View>
 			<View style={styles.content}>
 				{isMobile ? (
 					// Mobile: Stacked layout
 					<ScrollView
 						style={styles.scrollView}
-						contentContainerStyle={[
-							styles.scrollContent,
-							{ paddingTop: insets.top },
-						]}
+						contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top }]}
 					>
 						<PlayerCharacterList
 							characters={gameState.characters}
@@ -422,6 +482,28 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 		color: '#6B5B3D',
 	},
+	statusRight: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+	},
+	turnIndicator: {
+		fontSize: 12,
+		fontWeight: '600',
+		color: '#8B6914',
+	},
+	lobbyButton: {
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		backgroundColor: '#8B6914',
+		borderRadius: 6,
+		marginRight: 8,
+	},
+	lobbyButtonText: {
+		color: '#FFFFFF',
+		fontSize: 12,
+		fontWeight: '600',
+	},
 	hostBadge: {
 		fontSize: 12,
 		fontWeight: 'bold',
@@ -451,6 +533,40 @@ const styles = StyleSheet.create({
 	},
 	mainContent: {
 		flex: 1,
+	},
+	mapContainer: {
+		borderWidth: 1,
+		borderColor: '#C9B037',
+		borderRadius: 12,
+		padding: 12,
+		marginBottom: 16,
+		backgroundColor: '#FFF9EF',
+		gap: 8,
+	},
+	mapHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		gap: 8,
+	},
+	movementButton: {
+		backgroundColor: '#E6DDC6',
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		borderRadius: 8,
+	},
+	movementButtonActive: {
+		backgroundColor: '#C9B037',
+	},
+	movementButtonDisabled: {
+		opacity: 0.5,
+	},
+	movementButtonText: {
+		color: '#3B2F1B',
+		fontWeight: '600',
+	},
+	mapHint: {
+		color: '#6B5B3D',
 	},
         mapContainer: {
                 borderWidth: 1,
@@ -525,4 +641,3 @@ const styles = StyleSheet.create({
 });
 
 export default MultiplayerGameScreen;
-

@@ -101,6 +101,7 @@ export const NpcPlacementRequestSchema = z.object({
 			maxHealth: z.number().optional(),
 			armorClass: z.number().optional(),
 			color: z.string().optional(),
+			icon: z.string().optional(),
 		})
 		.optional(),
 });
