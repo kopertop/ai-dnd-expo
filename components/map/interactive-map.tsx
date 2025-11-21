@@ -181,9 +181,11 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
         const panResponder = useMemo(
                 () =>
                         PanResponder.create({
-                                onStartShouldSetPanResponder: () => enablePanning && !isEditable,
-                                onMoveShouldSetPanResponder: (_, gestureState) =>
-                                        enablePanning && !isEditable && (Math.abs(gestureState.dx) > 6 || Math.abs(gestureState.dy) > 6),
+                                onStartShouldSetPanResponder: () => false,
+                                onMoveShouldSetPanResponder: (_, gestureState) => {
+                                        const distance = Math.abs(gestureState.dx) + Math.abs(gestureState.dy);
+                                        return distance > 4 && !isDragging;
+                                },
                                 onPanResponderGrant: () => {
                                         panStartRef.current = panOffset;
                                 },
@@ -198,7 +200,7 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
                                         });
                                 },
                         }),
-                [enablePanning, isEditable, containerSize.width, containerSize.height, mapWidthPx, mapHeightPx, panOffset],
+                [enablePanning, isEditable, containerSize.width, containerSize.height, mapWidthPx, mapHeightPx, panOffset, isDragging],
         );
 
         if (!map) {

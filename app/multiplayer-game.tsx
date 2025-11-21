@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DMControlsPanel } from '@/components/dm-controls-panel';
@@ -25,10 +25,11 @@ const MultiplayerGameScreen: React.FC = () => {
         const [movementRange, setMovementRange] = useState<Array<{ x: number; y: number; cost: number }>>([]);
         const [pathPreview, setPathPreview] = useState<{ path: Array<{ x: number; y: number }>; cost: number } | null>(null);
         const [movementInFlight, setMovementInFlight] = useState(false);
+        const [movementMode, setMovementMode] = useState(false);
         const [isHost, setIsHost] = useState(false);
         const [wsConnected, setWsConnected] = useState(false);
         const { isMobile } = useScreenSize();
-	const insets = useSafeAreaInsets();
+        const insets = useSafeAreaInsets();
 
 	// Get character ID from gameState (memoized to prevent re-renders)
 	const characterId = useMemo(() => {
@@ -104,7 +105,7 @@ const MultiplayerGameScreen: React.FC = () => {
         }, [gameState?.mapState]);
 
         useEffect(() => {
-                if (!sharedMap || !playerToken || movementBudget <= 0) {
+                if (!movementMode || !sharedMap || !playerToken || movementBudget <= 0) {
                         setMovementRange([]);
                         setPathPreview(null);
                         return;
@@ -112,7 +113,7 @@ const MultiplayerGameScreen: React.FC = () => {
 
                 const reachable = calculateMovementRange(sharedMap, { x: playerToken.x, y: playerToken.y }, movementBudget);
                 setMovementRange(reachable);
-        }, [sharedMap, playerToken, movementBudget]);
+        }, [movementMode, sharedMap, playerToken, movementBudget]);
 
 	// Load initial game state - only once
 	const loadGameStateRef = useRef(false);
@@ -234,14 +235,7 @@ const MultiplayerGameScreen: React.FC = () => {
                                 }
                         };
 
-                        Alert.alert(
-                                'Move character',
-                                `Move to (${x + 1}, ${y + 1}) for ${pathResult.cost.toFixed(1)} movement?`,
-                                [
-                                        { text: 'Cancel', style: 'cancel' },
-                                        { text: 'Move', onPress: performMove },
-                                ],
-                        );
+                        performMove();
                 },
                 [
                         sharedMap,
@@ -287,16 +281,26 @@ const MultiplayerGameScreen: React.FC = () => {
                 return character.actionPoints ?? character.maxActionPoints ?? 6;
         }, [gameState?.characters, currentCharacterId]);
 
-	const renderMapSection = () => (
-		<View style={styles.mapContainer}>
-			<ThemedText type="subtitle">Shared Map</ThemedText>
+        const renderMapSection = () => (
+                <View style={styles.mapContainer}>
+                        <View style={styles.mapHeader}>
+                                <ThemedText type="subtitle">Shared Map</ThemedText>
+                                <TouchableOpacity
+                                        onPress={() => setMovementMode(value => !value)}
+                                        style={[styles.movementToggle, movementMode && styles.movementToggleActive]}
+                                >
+                                        <ThemedText style={styles.movementToggleText}>
+                                                Movement: {movementMode ? 'On' : 'Off'}
+                                        </ThemedText>
+                                </TouchableOpacity>
+                        </View>
                         {sharedMap ? (
                                 <InteractiveMap
                                         map={sharedMap}
                                         highlightTokenId={currentCharacterId || undefined}
-                                        onTilePress={playerToken ? handleMovementTilePress : undefined}
-                                        reachableTiles={movementRange}
-                                        pathTiles={pathPreview?.path}
+                                        onTilePress={movementMode && playerToken ? handleMovementTilePress : undefined}
+                                        reachableTiles={movementMode ? movementRange : undefined}
+                                        pathTiles={movementMode ? pathPreview?.path : undefined}
                                 />
                         ) : (
                                 <ThemedText style={styles.mapHint}>
@@ -448,23 +452,44 @@ const styles = StyleSheet.create({
 	mainContent: {
 		flex: 1,
 	},
-	mapContainer: {
-		borderWidth: 1,
-		borderColor: '#C9B037',
-		borderRadius: 12,
-		padding: 12,
-		marginBottom: 16,
-		backgroundColor: '#FFF9EF',
-		gap: 8,
-	},
-	mapHint: {
-		color: '#6B5B3D',
-	},
-	logPanel: {
-		borderWidth: 1,
-		borderColor: '#D4BC8B',
-		borderRadius: 12,
-		padding: 12,
+        mapContainer: {
+                borderWidth: 1,
+                borderColor: '#C9B037',
+                borderRadius: 12,
+                padding: 12,
+                marginBottom: 16,
+                backgroundColor: '#FFF9EF',
+                gap: 8,
+        },
+        mapHeader: {
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 8,
+        },
+        mapHint: {
+                color: '#6B5B3D',
+        },
+        movementToggle: {
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: '#C9B037',
+                backgroundColor: '#FFF',
+        },
+        movementToggleActive: {
+                backgroundColor: '#E9D8A6',
+        },
+        movementToggleText: {
+                color: '#3B2F1B',
+                fontWeight: '600',
+        },
+        logPanel: {
+                borderWidth: 1,
+                borderColor: '#D4BC8B',
+                borderRadius: 12,
+                padding: 12,
 		backgroundColor: '#FFF4DF',
 		gap: 8,
 		marginBottom: 16,
