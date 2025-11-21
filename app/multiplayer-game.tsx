@@ -15,23 +15,35 @@ import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { PlayerActionMessage } from '@/types/api/websocket-messages';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { MapState } from '@/types/multiplayer-map';
+import { calculateReachableTiles, findPathWithCost } from '@/utils/movement-calculator';
 
 const MultiplayerGameScreen: React.FC = () => {
 	const params = useLocalSearchParams<{ inviteCode: string; hostId?: string; playerId?: string }>();
 	const { inviteCode, hostId, playerId } = params;
-	const [gameState, setGameState] = useState<MultiplayerGameState | null>(null);
-	const [sharedMap, setSharedMap] = useState<MapState | null>(null);
-	const [isHost, setIsHost] = useState(false);
-	const [wsConnected, setWsConnected] = useState(false);
-	const { isMobile } = useScreenSize();
-	const insets = useSafeAreaInsets();
+        const [gameState, setGameState] = useState<MultiplayerGameState | null>(null);
+        const [sharedMap, setSharedMap] = useState<MapState | null>(null);
+        const [isHost, setIsHost] = useState(false);
+        const [wsConnected, setWsConnected] = useState(false);
+        const { isMobile } = useScreenSize();
+        const insets = useSafeAreaInsets();
+        const [movementRange, setMovementRange] = useState<Array<{ x: number; y: number; cost: number }>>([]);
+        const [pathPreview, setPathPreview] = useState<Array<{ x: number; y: number }>>([]);
+        const movementBudget = 6;
 
 	// Get character ID from gameState (memoized to prevent re-renders)
-	const characterId = useMemo(() => {
-		if (!gameState || !playerId) return '';
-		const player = gameState.players.find(p => p.playerId === playerId);
-		return player?.characterId || '';
-	}, [gameState, playerId]);
+        const characterId = useMemo(() => {
+                if (!gameState || !playerId) return '';
+                const player = gameState.players.find(p => p.playerId === playerId);
+                return player?.characterId || '';
+        }, [gameState, playerId]);
+
+        const playerToken = useMemo(() => {
+                if (!sharedMap?.tokens || !characterId) {
+                        return null;
+                }
+
+                return sharedMap.tokens.find(token => token.entityId === characterId || token.id === characterId) ?? null;
+        }, [characterId, sharedMap?.tokens]);
 
 	const refreshSharedMap = useCallback(async () => {
 		if (!inviteCode) {
@@ -93,11 +105,27 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	}, [gameState, polledState]);
 
-	useEffect(() => {
-		if (gameState?.mapState) {
-			setSharedMap(gameState.mapState);
-		}
-	}, [gameState?.mapState]);
+        useEffect(() => {
+                if (gameState?.mapState) {
+                        setSharedMap(gameState.mapState);
+                }
+        }, [gameState?.mapState]);
+
+        useEffect(() => {
+                if (!sharedMap || !playerToken) {
+                        setMovementRange([]);
+                        setPathPreview([]);
+                        return;
+                }
+
+                const reachable = calculateReachableTiles(
+                        sharedMap,
+                        { x: playerToken.x, y: playerToken.y },
+                        movementBudget,
+                );
+                setMovementRange(Array.from(reachable.values()));
+                setPathPreview([]);
+        }, [movementBudget, playerToken, playerToken?.x, playerToken?.y, sharedMap]);
 
 	// Load initial game state - only once
 	const loadGameStateRef = useRef(false);
@@ -145,10 +173,56 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	}, [inviteCode, hostId, gameState, wsIsConnected]);
 
-	const handleAIRequest = useCallback(async (prompt: string): Promise<string> => {
-		// For now, return a placeholder. In production, this would call the Ollama API through the worker
-		return 'AI assistance feature coming soon. This will integrate with Ollama for DM help.';
-	}, []);
+        const handleAIRequest = useCallback(async (prompt: string): Promise<string> => {
+                // For now, return a placeholder. In production, this would call the Ollama API through the worker
+                return 'AI assistance feature coming soon. This will integrate with Ollama for DM help.';
+        }, []);
+
+        const handleTileSelection = useCallback(
+                async (x: number, y: number) => {
+                        if (!inviteCode || !sharedMap || !playerToken) {
+                                return;
+                        }
+
+                        setPathPreview([]);
+
+                        const pathResult = findPathWithCost(
+                                sharedMap,
+                                { x: playerToken.x, y: playerToken.y },
+                                { x, y },
+                                movementBudget,
+                        );
+
+                        if (!pathResult) {
+                                Alert.alert('Invalid Move', 'Destination is out of range or blocked.');
+                                return;
+                        }
+
+                        setPathPreview(pathResult.path);
+
+                        try {
+                                await multiplayerClient.saveMapToken(inviteCode, {
+                                        id: playerToken.id,
+                                        mapId: sharedMap.id,
+                                        tokenType: playerToken.type,
+                                        label: playerToken.label,
+                                        x,
+                                        y,
+                                        color: playerToken.color,
+                                        metadata: playerToken.metadata,
+                                        characterId: playerToken.entityId ?? undefined,
+                                        npcId: playerToken.type === 'npc' ? playerToken.entityId : undefined,
+                                });
+                                await refreshSharedMap();
+                        } catch (error) {
+                                Alert.alert(
+                                        'Move Failed',
+                                        error instanceof Error ? error.message : 'Unable to move token',
+                                );
+                        }
+                },
+                [inviteCode, movementBudget, playerToken, refreshSharedMap, sharedMap],
+        );
 
 	if (!gameState) {
 		return (
@@ -161,16 +235,22 @@ const MultiplayerGameScreen: React.FC = () => {
 
 	const currentCharacterId = gameState.players.find(p => p.playerId === playerId)?.characterId;
 
-	const renderMapSection = () => (
-		<View style={styles.mapContainer}>
-			<ThemedText type="subtitle">Shared Map</ThemedText>
-			{sharedMap ? (
-				<InteractiveMap map={sharedMap} highlightTokenId={currentCharacterId || undefined} />
-			) : (
-				<ThemedText style={styles.mapHint}>
-					Waiting for the DM to configure a map.
-				</ThemedText>
-			)}
+        const renderMapSection = () => (
+                <View style={styles.mapContainer}>
+                        <ThemedText type="subtitle">Shared Map</ThemedText>
+                        {sharedMap ? (
+                                <InteractiveMap
+                                        map={sharedMap}
+                                        highlightTokenId={currentCharacterId || undefined}
+                                        onTilePress={handleTileSelection}
+                                        movementRange={movementRange}
+                                        movementPath={pathPreview}
+                                />
+                        ) : (
+                                <ThemedText style={styles.mapHint}>
+                                        Waiting for the DM to configure a map.
+                                </ThemedText>
+                        )}
 		</View>
 	);
 

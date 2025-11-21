@@ -1,16 +1,29 @@
-import React, { memo, useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { memo, useMemo, useRef, useState } from 'react';
+import {
+        Image,
+        LayoutChangeEvent,
+        PanResponder,
+        PanResponderGestureState,
+        StyleSheet,
+        Text,
+        TouchableOpacity,
+        View,
+} from 'react-native';
 
 import { MapState, MapToken } from '@/types/multiplayer-map';
 
 const TILE_SIZE = 28;
 
 interface InteractiveMapProps {
-	map?: MapState | null;
-	isEditable?: boolean;
-	onTilePress?: (x: number, y: number) => void;
-	onTokenPress?: (token: MapToken) => void;
-	highlightTokenId?: string;
+        map?: MapState | null;
+        isEditable?: boolean;
+        onTilePress?: (x: number, y: number) => void;
+        onTileDrag?: (x: number, y: number) => void;
+        onTileDragEnd?: () => void;
+        onTokenPress?: (token: MapToken) => void;
+        highlightTokenId?: string;
+        movementRange?: Array<{ x: number; y: number; cost: number }>;
+        movementPath?: Array<{ x: number; y: number }>;
 }
 
 const terrainColors: Record<string, string> = {
@@ -59,13 +72,17 @@ const terrainColor = (terrain?: string) => {
 };
 
 const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
-	map,
-	isEditable = false,
-	onTilePress,
-	onTokenPress,
-	highlightTokenId,
+        map,
+        isEditable = false,
+        onTilePress,
+        onTileDrag,
+        onTileDragEnd,
+        onTokenPress,
+        highlightTokenId,
+        movementRange,
+        movementPath,
 }) => {
-	const normalizedTerrain = useMemo(() => {
+        const normalizedTerrain = useMemo(() => {
 		if (!map) {
 			return [];
 		}
@@ -76,8 +93,116 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 
 		return Array.from({ length: map.height }, () =>
 			Array.from({ length: map.width }, () => ({ terrain: map.defaultTerrain ?? 'stone' })),
-		);
-	}, [map]);
+                );
+        }, [map]);
+
+        const [isDragging, setIsDragging] = useState(false);
+        const lastDragKey = useRef<string | null>(null);
+        const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+        const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+        const initialPanOffset = useRef({ x: 0, y: 0 });
+
+        const mapWidth = (map?.width ?? 0) * TILE_SIZE;
+        const mapHeight = (map?.height ?? 0) * TILE_SIZE;
+
+        const clampPan = (value: number, viewport: number, content: number) => {
+                const maxNegative = Math.max(0, content - viewport);
+                return Math.min(0, Math.max(value, -maxNegative));
+        };
+
+        const handleLayout = (event: LayoutChangeEvent) => {
+                const { width, height } = event.nativeEvent.layout;
+                setViewportSize({ width, height });
+                setPanOffset(current => ({
+                        x: clampPan(current.x, width, mapWidth),
+                        y: clampPan(current.y, height, mapHeight),
+                }));
+        };
+
+        const panResponder = useMemo(
+                () =>
+                        PanResponder.create({
+                                onMoveShouldSetPanResponder: (_, gestureState: PanResponderGestureState) => {
+                                        return Math.abs(gestureState.dx) + Math.abs(gestureState.dy) > 6;
+                                },
+                                onPanResponderGrant: () => {
+                                        initialPanOffset.current = panOffset;
+                                },
+                                onPanResponderMove: (_, gestureState: PanResponderGestureState) => {
+                                        setPanOffset({
+                                                x: clampPan(
+                                                        initialPanOffset.current.x + gestureState.dx,
+                                                        viewportSize.width,
+                                                        mapWidth,
+                                                ),
+                                                y: clampPan(
+                                                        initialPanOffset.current.y + gestureState.dy,
+                                                        viewportSize.height,
+                                                        mapHeight,
+                                                ),
+                                        });
+                                },
+                        }),
+                [mapHeight, mapWidth, panOffset, viewportSize.height, viewportSize.width],
+        );
+
+        const startDrag = (x: number, y: number) => {
+                if (!isEditable || !onTileDrag) {
+                        return;
+                }
+
+                setIsDragging(true);
+                const key = `${x}-${y}`;
+                lastDragKey.current = key;
+                onTileDrag(x, y);
+        };
+
+        const continueDrag = (x: number, y: number) => {
+                if (!isEditable || !isDragging || !onTileDrag) {
+                        return;
+                }
+
+                const key = `${x}-${y}`;
+                if (lastDragKey.current === key) {
+                        return;
+                }
+
+                lastDragKey.current = key;
+                onTileDrag(x, y);
+        };
+
+        const endDrag = () => {
+                if (!isEditable || !isDragging) {
+                        return;
+                }
+
+                setIsDragging(false);
+                lastDragKey.current = null;
+                onTileDragEnd?.();
+        };
+
+        const renderTokenContent = (token: MapToken) => {
+                const icon = token.icon || token.metadata?.icon;
+                const isImageIcon = typeof icon === 'string' && (icon.startsWith('http') || icon.startsWith('data:'));
+
+                if (isImageIcon) {
+                        return <Image source={{ uri: icon }} style={styles.tokenImage} />;
+                }
+
+                if (typeof icon === 'string' && icon.trim().length > 0) {
+                        return (
+                                <Text style={[styles.tokenLabel, styles.tokenEmoji]} numberOfLines={1}>
+                                        {icon.trim()}
+                                </Text>
+                        );
+                }
+
+                return (
+                        <Text style={styles.tokenLabel} numberOfLines={1}>
+                                {token.label?.slice(0, 2).toUpperCase() || 'T'}
+                        </Text>
+                );
+        };
 
 	if (!map) {
 		return (
@@ -88,70 +213,115 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 		);
 	}
 
-	return (
-		<View style={styles.wrapper}>
-			<View
-				style={[
-					styles.gridContainer,
-					{ width: map.width * TILE_SIZE, height: map.height * TILE_SIZE },
-				]}
-			>
-				{normalizedTerrain.map((row, y) => (
-					<View key={`row-${y}`} style={styles.row}>
-						{row.map((cell, x) => {
-							const canEdit = isEditable && Boolean(onTilePress);
+        return (
+                <View style={styles.wrapper} onLayout={handleLayout} {...panResponder.panHandlers}>
+                        <View style={styles.panSurface}>
+                                <View
+                                        style={[
+                                                styles.gridContainer,
+                                                {
+                                                        width: map.width * TILE_SIZE,
+                                                        height: map.height * TILE_SIZE,
+                                                        transform: [
+                                                                { translateX: panOffset.x },
+                                                                { translateY: panOffset.y },
+                                                        ],
+                                                },
+                                        ]}
+                                >
+                                        {normalizedTerrain.map((row, y) => (
+                                                <View key={`row-${y}`} style={styles.row}>
+                                                        {row.map((cell, x) => {
+                                                                const canSelect = Boolean(onTilePress);
+                                                                const canEdit = isEditable && Boolean(onTilePress);
 
-							return (
-								<TouchableOpacity
-									key={`tile-${x}-${y}`}
-									style={[
-										styles.tile,
-										{
-											width: TILE_SIZE,
-											height: TILE_SIZE,
-											backgroundColor: terrainColor(cell?.terrain),
-										},
-									]}
-									activeOpacity={canEdit ? 0.7 : 1}
-									disabled={!canEdit}
-									onPress={() => onTilePress?.(x, y)}
-								/>
-							);
-						})}
-					</View>
-				))}
-				<View
-					pointerEvents={isEditable ? 'none' : 'auto'}
-					style={[StyleSheet.absoluteFill, styles.tokenLayer]}
-				>
-					{map.tokens?.map(token => (
-						<TouchableOpacity
-							key={token.id}
-							style={[
-								styles.token,
-								{
-									left: token.x * TILE_SIZE,
-									top: token.y * TILE_SIZE,
-									width: TILE_SIZE,
-									height: TILE_SIZE,
-									borderColor:
-                                                                                token.id === highlightTokenId
-                                                                                	? '#FFD447'
-                                                                                	: token.color || '#3B2F1B',
-								},
-							]}
-							onPress={() => onTokenPress?.(token)}
-							disabled={!onTokenPress}
-						>
-							<Text style={styles.tokenLabel} numberOfLines={1}>
-								{token.label?.slice(0, 2).toUpperCase() || 'T'}
-							</Text>
-						</TouchableOpacity>
-					))}
-				</View>
-			</View>
-		</View>
-	);
+                                                                return (
+                                                                        <TouchableOpacity
+                                                                                key={`tile-${x}-${y}`}
+                                                                                style={[
+                                                                                        styles.tile,
+                                                                                        {
+                                                                                                width: TILE_SIZE,
+                                                                                                height: TILE_SIZE,
+                                                                                                backgroundColor: terrainColor(
+                                                                                                        cell?.terrain,
+                                                                                                ),
+                                                                                        },
+                                                                                ]}
+                                                                                activeOpacity={canEdit ? 0.7 : 1}
+                                                                                disabled={!canSelect}
+                                                                                onPress={() => onTilePress?.(x, y)}
+                                                                                onPressIn={() => startDrag(x, y)}
+                                                                                onPressOut={endDrag}
+                                                                                onMouseEnter={() => continueDrag(x, y)}
+                                                                        />
+                                                                );
+                                                        })}
+                                                </View>
+                                        ))}
+                                        <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.overlayLayer]}>
+                                                {movementRange?.map(tile => (
+                                                        <View
+                                                                key={`range-${tile.x}-${tile.y}`}
+                                                                style={[
+                                                                        styles.overlayTile,
+                                                                        {
+                                                                                left: tile.x * TILE_SIZE,
+                                                                                top: tile.y * TILE_SIZE,
+                                                                                width: TILE_SIZE,
+                                                                                height: TILE_SIZE,
+                                                                        },
+                                                                ]}
+                                                        >
+                                                                <Text style={styles.overlayLabel}>{tile.cost.toFixed(1)}</Text>
+                                                        </View>
+                                                ))}
+                                                {movementPath?.map(tile => (
+                                                        <View
+                                                                key={`path-${tile.x}-${tile.y}`}
+                                                                style={[
+                                                                        styles.pathTile,
+                                                                        {
+                                                                                left: tile.x * TILE_SIZE,
+                                                                                top: tile.y * TILE_SIZE,
+                                                                                width: TILE_SIZE,
+                                                                                height: TILE_SIZE,
+                                                                        },
+                                                                ]}
+                                                        />
+                                                ))}
+                                        </View>
+                                        <View
+                                                pointerEvents={isEditable ? 'none' : 'auto'}
+                                                style={[StyleSheet.absoluteFill, styles.tokenLayer]}
+                                        >
+                                                {map.tokens?.map(token => (
+                                                        <TouchableOpacity
+                                                                key={token.id}
+                                                                style={[
+                                                                        styles.token,
+                                                                        {
+                                                                                left: token.x * TILE_SIZE,
+                                                                                top: token.y * TILE_SIZE,
+                                                                                width: TILE_SIZE,
+                                                                                height: TILE_SIZE,
+                                                                                borderColor:
+                                                                                        token.id === highlightTokenId
+                                                                                                ? '#FFD447'
+                                                                                                : token.color || '#3B2F1B',
+                                                                        },
+                                                                ]}
+                                                                onPress={() => onTokenPress?.(token)}
+                                                                disabled={!onTokenPress}
+                                                        >
+                                                                {renderTokenContent(token)}
+                                                        </TouchableOpacity>
+                                                ))}
+                                        </View>
+                                </View>
+                        </View>
+                </View>
+        );
 };
 
 InteractiveMapComponent.displayName = 'InteractiveMap';
@@ -159,42 +329,72 @@ InteractiveMapComponent.displayName = 'InteractiveMap';
 export const InteractiveMap = memo(InteractiveMapComponent);
 
 const styles = StyleSheet.create({
-	wrapper: {
-		padding: 12,
-		alignItems: 'center',
-	},
-	gridContainer: {
-		position: 'relative',
-		borderWidth: 1,
-		borderColor: '#CAB08A',
+        wrapper: {
+                padding: 12,
+                alignItems: 'center',
+        },
+        panSurface: {
+                overflow: 'hidden',
+                borderRadius: 12,
+        },
+        gridContainer: {
+                position: 'relative',
+                borderWidth: 1,
+                borderColor: '#CAB08A',
 		backgroundColor: '#1F130A',
 	},
 	row: {
 		flexDirection: 'row',
 	},
-	tile: {
-		borderWidth: StyleSheet.hairlineWidth,
-		borderColor: 'rgba(0, 0, 0, 0.1)',
-	},
-	tokenLayer: {
-		position: 'absolute',
-	},
-	token: {
-		position: 'absolute',
+        tile: {
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: 'rgba(0, 0, 0, 0.1)',
+        },
+        overlayLayer: {
+                position: 'absolute',
+        },
+        overlayTile: {
+                position: 'absolute',
+                backgroundColor: 'rgba(63, 149, 247, 0.35)',
+                alignItems: 'center',
+                justifyContent: 'center',
+        },
+        pathTile: {
+                position: 'absolute',
+                backgroundColor: 'rgba(255, 212, 71, 0.55)',
+        },
+        overlayLabel: {
+                fontSize: 10,
+                fontWeight: '600',
+                color: '#0E1A2B',
+        },
+        tokenLayer: {
+                position: 'absolute',
+        },
+        token: {
+                position: 'absolute',
 		borderWidth: 2,
 		borderRadius: 4,
 		alignItems: 'center',
 		justifyContent: 'center',
 		backgroundColor: 'rgba(255, 255, 255, 0.8)',
 	},
-	tokenLabel: {
-		fontSize: 12,
-		fontWeight: 'bold',
-		color: '#1F130A',
-	},
-	emptyState: {
-		alignItems: 'center',
-		justifyContent: 'center',
+        tokenLabel: {
+                fontSize: 12,
+                fontWeight: 'bold',
+                color: '#1F130A',
+        },
+        tokenEmoji: {
+                fontSize: 16,
+        },
+        tokenImage: {
+                width: 20,
+                height: 20,
+                resizeMode: 'contain',
+        },
+        emptyState: {
+                alignItems: 'center',
+                justifyContent: 'center',
 		padding: 24,
 		borderRadius: 8,
 		backgroundColor: 'rgba(0, 0, 0, 0.05)',
