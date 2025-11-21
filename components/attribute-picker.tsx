@@ -32,6 +32,38 @@ interface AttributePickerProps {
 	onConfirm: (stats: StatBlock) => void;
 }
 
+function adjustStatsToBudget(
+	stats: StatBlock,
+	classOption: ClassOption,
+	budget: number,
+): StatBlock {
+	let adjusted = { ...stats };
+	let total = getPointBuyTotal(adjusted);
+
+	const getPriority = (key: StatKey) => {
+		if (classOption.primaryStats.includes(key)) return 2;
+		if (classOption.secondaryStats?.includes(key)) return 1;
+		return 0;
+	};
+
+	while (total > budget) {
+		const keyToReduce = [...STAT_KEYS]
+			.sort((a, b) => {
+				const priorityDiff = getPriority(a) - getPriority(b);
+				if (priorityDiff !== 0) return priorityDiff;
+				return adjusted[b] - adjusted[a];
+			})
+			.find(key => adjusted[key] > MIN_STAT);
+
+		if (!keyToReduce) break;
+
+		adjusted = { ...adjusted, [keyToReduce]: adjusted[keyToReduce] - 1 };
+		total = getPointBuyTotal(adjusted);
+	}
+
+	return adjusted;
+}
+
 export const AttributePicker: React.FC<AttributePickerProps> = ({
 	classOption,
 	initialStats,
@@ -44,7 +76,7 @@ export const AttributePicker: React.FC<AttributePickerProps> = ({
 			if (classOption.primaryStats.includes(key)) s[key] = 15;
 			else if (classOption.secondaryStats?.includes(key)) s[key] = 12;
 		}
-		return s;
+		return adjustStatsToBudget(s, classOption, POINT_BUY_TOTAL);
 	});
 
 	const pointsUsed = getPointBuyTotal(stats);
