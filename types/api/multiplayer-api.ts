@@ -121,10 +121,10 @@ export const MapTerrainMutationSchema = z.object({
 });
 
 export const MapGenerationRequestSchema = z.object({
-	preset: z.enum(['forest', 'road', 'dungeon', 'town']).optional(),
-	width: z.number().int().optional(),
-	height: z.number().int().optional(),
-	seed: z.string().optional(),
+        preset: z.enum(['forest', 'road', 'dungeon', 'town']).optional(),
+        width: z.number().int().optional(),
+        height: z.number().int().optional(),
+        seed: z.string().optional(),
 	name: z.string().optional(),
 	slug: z.string().optional(),
 });
@@ -148,11 +148,22 @@ export const NpcInstanceListResponseSchema = z.object({
 });
 
 export const NpcInstanceUpdateRequestSchema = z.object({
-	name: z.string().optional(),
-	currentHealth: z.number().optional(),
-	statusEffects: z.array(z.string()).optional(),
-	isFriendly: z.boolean().optional(),
-	metadata: z.record(z.unknown()).optional(),
+        name: z.string().optional(),
+        currentHealth: z.number().optional(),
+        statusEffects: z.array(z.string()).optional(),
+        isFriendly: z.boolean().optional(),
+        metadata: z.record(z.unknown()).optional(),
+});
+
+export const MovementValidationResponseSchema = z.object({
+        valid: z.boolean(),
+        cost: z.number(),
+        path: z.array(
+                z.object({
+                        x: z.number().int(),
+                        y: z.number().int(),
+                }),
+        ),
 });
 
 // Response types
@@ -180,6 +191,8 @@ export const GameSessionResponseSchema = z.object({
 });
 
 export const GameStateResponseSchema = MultiplayerGameStateSchema;
+
+export type MovementValidationResponse = z.infer<typeof MovementValidationResponseSchema>;
 
 export const ErrorResponseSchema = z.object({
 	error: z.string(),

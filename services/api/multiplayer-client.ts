@@ -2,24 +2,25 @@ import { apiService, authService } from 'expo-auth-template/frontend';
 
 import { API_BASE_URL } from '@/services/config/api-base-url';
 import {
-	CharacterListResponse,
-	CreateGameRequest,
-	DMActionRequest,
-	GameSessionResponse,
+        CharacterListResponse,
+        CreateGameRequest,
+        DMActionRequest,
+        GameSessionResponse,
 	GameStateResponse,
 	JoinGameRequest,
 	MapGenerationRequest,
-	MapStateResponse,
-	MapStateUpdateRequest,
-	MapTerrainMutationRequest,
-	MapTokenListResponse,
-	MapTokenMutationResponse,
-	MapTokenUpsertRequest,
-	MyGamesResponse,
-	NpcDefinitionListResponse,
-	NpcInstanceListResponse,
-	NpcInstanceUpdateRequest,
-	NpcPlacementRequest,
+        MapStateResponse,
+        MapStateUpdateRequest,
+        MapTerrainMutationRequest,
+        MapTokenListResponse,
+        MapTokenMutationResponse,
+        MapTokenUpsertRequest,
+        MovementValidationResponse,
+        MyGamesResponse,
+        NpcDefinitionListResponse,
+        NpcInstanceListResponse,
+        NpcInstanceUpdateRequest,
+        NpcPlacementRequest,
 	PlayerActionRequest,
 } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
@@ -214,11 +215,11 @@ export class MultiplayerClient {
 		});
 	}
 
-	async mutateTerrain(
-		inviteCode: string,
-		request: MapTerrainMutationRequest,
-	): Promise<MapStateResponse> {
-		return apiService.fetchApi(`/games/${inviteCode}/map/terrain`, {
+        async mutateTerrain(
+                inviteCode: string,
+                request: MapTerrainMutationRequest,
+        ): Promise<MapStateResponse> {
+                return apiService.fetchApi(`/games/${inviteCode}/map/terrain`, {
 			method: 'POST',
 			body: JSON.stringify(request),
 		});
@@ -230,15 +231,46 @@ export class MultiplayerClient {
 		});
 	}
 
-	async saveMapToken(
-		inviteCode: string,
-		request: MapTokenUpsertRequest & { id?: string },
-	): Promise<MapTokenMutationResponse> {
-		return apiService.fetchApi(`/games/${inviteCode}/map/tokens`, {
-			method: 'POST',
-			body: JSON.stringify(request),
-		});
-	}
+        async saveMapToken(
+                inviteCode: string,
+                request: MapTokenUpsertRequest & { id?: string },
+        ): Promise<MapTokenMutationResponse> {
+                return apiService.fetchApi(`/games/${inviteCode}/map/tokens`, {
+                        method: 'POST',
+                        body: JSON.stringify(request),
+                });
+        }
+
+        async placePlayerToken(
+                inviteCode: string,
+                request: { characterId: string; x: number; y: number; label?: string; icon?: string },
+        ): Promise<MapTokenMutationResponse> {
+                return apiService.fetchApi(`/games/${inviteCode}/map/tokens`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                                characterId: request.characterId,
+                                x: request.x,
+                                y: request.y,
+                                tokenType: 'player',
+                                label: request.label,
+                                metadata: request.icon ? { icon: request.icon } : undefined,
+                        }),
+                });
+        }
+
+        async validateMovement(
+                inviteCode: string,
+                characterId: string,
+                fromX: number,
+                fromY: number,
+                toX: number,
+                toY: number,
+        ): Promise<MovementValidationResponse> {
+                return apiService.fetchApi(`/games/${inviteCode}/map/movement/validate`, {
+                        method: 'POST',
+                        body: JSON.stringify({ characterId, fromX, fromY, toX, toY }),
+                });
+        }
 
 	async deleteMapToken(inviteCode: string, tokenId: string): Promise<void> {
 		return apiService.fetchApi(`/games/${inviteCode}/map/tokens/${tokenId}`, {

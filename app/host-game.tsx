@@ -1,6 +1,6 @@
 import { useAuth } from 'expo-auth-template/frontend';
 import { Stack, router } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
 	ActivityIndicator,
 	Alert,
@@ -36,15 +36,17 @@ import { Quest } from '@/types/quest';
 import { WorldOption } from '@/types/world-option';
 
 type HostStep = 'quest' | 'world' | 'location' | 'ready' | 'waiting';
-type MapEditorMode = 'npc' | 'road' | 'tree' | 'erase';
+type MapEditorMode = 'npc' | 'road' | 'tree' | 'water' | 'mountain' | 'erase';
 type MapPresetOption = 'forest' | 'road' | 'dungeon' | 'town';
 
 const MAP_PRESETS: MapPresetOption[] = ['forest', 'road', 'dungeon', 'town'];
 const MAP_EDITOR_MODES: Array<{ key: MapEditorMode; label: string }> = [
-	{ key: 'npc', label: 'NPC' },
-	{ key: 'road', label: 'Road' },
-	{ key: 'tree', label: 'Tree' },
-	{ key: 'erase', label: 'Erase' },
+        { key: 'npc', label: 'NPC' },
+        { key: 'road', label: 'Road' },
+        { key: 'tree', label: 'Tree' },
+        { key: 'water', label: 'Water' },
+        { key: 'mountain', label: 'Mountain' },
+        { key: 'erase', label: 'Erase' },
 ];
 
 const createAdHocWorldOption = (name: string): WorldOption => ({
@@ -71,11 +73,11 @@ const HostGameScreen: React.FC = () => {
 	const [mapState, setMapState] = useState<MapState | null>(null);
 	const [mapLoading, setMapLoading] = useState(false);
 	const [mapError, setMapError] = useState<string | null>(null);
-	const [npcPalette, setNpcPalette] = useState<NpcDefinition[]>([]);
-	const [selectedNpc, setSelectedNpc] = useState<NpcDefinition | null>(null);
-	const [lobbyCharacters, setLobbyCharacters] = useState<Character[]>([]);
-	const [charactersLoading, setCharactersLoading] = useState(false);
-	const [customNpcForm, setCustomNpcForm] = useState<NonNullable<NpcPlacementRequest['customNpc']>>({
+        const [npcPalette, setNpcPalette] = useState<NpcDefinition[]>([]);
+        const [selectedNpc, setSelectedNpc] = useState<NpcDefinition | null>(null);
+        const [lobbyCharacters, setLobbyCharacters] = useState<Character[]>([]);
+        const [charactersLoading, setCharactersLoading] = useState(false);
+        const [customNpcForm, setCustomNpcForm] = useState<NonNullable<NpcPlacementRequest['customNpc']>>({
 		name: 'Custom Ally',
 		role: 'Support',
 		alignment: 'neutral',
@@ -90,12 +92,14 @@ const HostGameScreen: React.FC = () => {
 	const [npcInstancesLoading, setNpcInstancesLoading] = useState(false);
 	const [editorMode, setEditorMode] = useState<MapEditorMode>('npc');
 	const [mapPreset, setMapPreset] = useState<MapPresetOption>('forest');
-	const [mutatingTerrain, setMutatingTerrain] = useState(false);
-	const [hostedGames, setHostedGames] = useState<HostedGameSummary[]>([]);
-	const [gamesLoading, setGamesLoading] = useState(true);
-	const [gamesError, setGamesError] = useState<string | null>(null);
-	const [resumingGame, setResumingGame] = useState(false);
-	const [deletingGameId, setDeletingGameId] = useState<string | null>(null);
+        const [mutatingTerrain, setMutatingTerrain] = useState(false);
+        const draggedTiles = useRef<Set<string>>(new Set());
+        const terrainMutationsInFlight = useRef(0);
+        const [hostedGames, setHostedGames] = useState<HostedGameSummary[]>([]);
+        const [gamesLoading, setGamesLoading] = useState(true);
+        const [gamesError, setGamesError] = useState<string | null>(null);
+        const [resumingGame, setResumingGame] = useState(false);
+        const [deletingGameId, setDeletingGameId] = useState<string | null>(null);
 	const insets = useSafeAreaInsets();
 	const { user } = useAuth();
 	const hostId = user?.id ?? null;
@@ -261,16 +265,92 @@ const HostGameScreen: React.FC = () => {
 		setCurrentStep('location');
 	};
 
-	const handleLocationSelect = async (location: LocationOption) => {
-		setSelectedLocation(location);
-		setCurrentStep('ready');
-	};
+        const handleLocationSelect = async (location: LocationOption) => {
+                setSelectedLocation(location);
+                setCurrentStep('ready');
+        };
 
-	const handleTilePress = useCallback(
-		async (x: number, y: number) => {
-			if (!session?.inviteCode || !mapState) {
-				return;
-			}
+        const applyTerrainEdit = useCallback(
+                async (x: number, y: number) => {
+                        if (!session?.inviteCode || !mapState || editorMode === 'npc') {
+                                return;
+                        }
+
+                        let terrainType = mapState.defaultTerrain ?? 'stone';
+                        let featureType: string | null = null;
+                        let isBlocked = false;
+                        let metadata: Record<string, unknown> = {};
+
+                        switch (editorMode) {
+                                case 'road':
+                                        terrainType = 'road';
+                                        featureType = 'road';
+                                        metadata = { variant: 'stone' };
+                                        break;
+                                case 'tree':
+                                        terrainType = 'tree';
+                                        featureType = 'tree';
+                                        isBlocked = true;
+                                        metadata = { variant: 'oak' };
+                                        break;
+                                case 'water':
+                                        terrainType = 'water';
+                                        featureType = 'water';
+                                        isBlocked = true;
+                                        metadata = { depth: 'shallow' };
+                                        break;
+                                case 'mountain':
+                                        terrainType = 'mountain';
+                                        featureType = 'mountain';
+                                        isBlocked = true;
+                                        metadata = { peak: true };
+                                        break;
+                                case 'erase':
+                                        terrainType = mapState.defaultTerrain ?? 'stone';
+                                        featureType = null;
+                                        isBlocked = false;
+                                        metadata = {};
+                                        break;
+                                default:
+                                        break;
+                        }
+
+                        terrainMutationsInFlight.current += 1;
+                        setMutatingTerrain(true);
+                        try {
+                                await multiplayerClient.mutateTerrain(session.inviteCode, {
+                                        tiles: [
+                                                {
+                                                        x,
+                                                        y,
+                                                        terrainType,
+                                                        featureType,
+                                                        isBlocked,
+                                                        metadata,
+                                                },
+                                        ],
+                                });
+                                await refreshMapState();
+                        } catch (error) {
+                                Alert.alert(
+                                        'Edit Failed',
+                                        error instanceof Error ? error.message : 'Unable to edit terrain',
+                                );
+                        } finally {
+                                terrainMutationsInFlight.current -= 1;
+                                if (terrainMutationsInFlight.current <= 0) {
+                                        setMutatingTerrain(false);
+                                }
+                        }
+                },
+                [editorMode, mapState, refreshMapState, session?.inviteCode],
+        );
+
+        const handleTilePress = useCallback(
+                async (x: number, y: number) => {
+                        if (!session?.inviteCode || !mapState) {
+                                return;
+                        }
 
 			if (editorMode === 'npc') {
 				const customPayload = !selectedNpc && useCustomNpc ? customNpcForm : null;
@@ -292,59 +372,46 @@ const HostGameScreen: React.FC = () => {
 					Alert.alert(
 						'Placement Failed',
 						error instanceof Error ? error.message : 'Unable to place NPC',
-					);
-				}
-				return;
-			}
+                                        );
+                                }
+                                return;
+                        }
 
-			const terrainType =
-			editorMode === 'road'
-				? 'road'
-				: editorMode === 'tree'
-					? 'tree'
-					: mapState.defaultTerrain ?? 'stone';
-			const featureType =
-				editorMode === 'road' ? 'road' : editorMode === 'tree' ? 'tree' : null;
-			setMutatingTerrain(true);
-			try {
-				await multiplayerClient.mutateTerrain(session.inviteCode, {
-					tiles: [
-						{
-							x,
-							y,
-							terrainType,
-							featureType,
-							isBlocked: editorMode === 'tree',
-							metadata:
-								editorMode === 'road'
-									? { variant: 'stone' }
-									: editorMode === 'tree'
-										? { variant: 'oak' }
-										: {},
-						},
-					],
-				});
-				await refreshMapState();
-			} catch (error) {
-				Alert.alert(
-					'Edit Failed',
-					error instanceof Error ? error.message : 'Unable to edit terrain',
-				);
-			} finally {
-				setMutatingTerrain(false);
-			}
-		},
-		[
-			session?.inviteCode,
-			editorMode,
-			selectedNpc,
-			mapState,
-			refreshMapState,
+                        await applyTerrainEdit(x, y);
+                },
+                [
+                        applyTerrainEdit,
+                        session?.inviteCode,
+                        editorMode,
+                        selectedNpc,
+                        mapState,
+                        refreshMapState,
 			loadNpcInstances,
 			useCustomNpc,
-			customNpcForm,
-		],
-	);
+                        customNpcForm,
+                ],
+        );
+
+        const handleTileDrag = useCallback(
+                (x: number, y: number) => {
+                        if (editorMode === 'npc') {
+                                return;
+                        }
+
+                        const key = `${x},${y}`;
+                        if (draggedTiles.current.has(key)) {
+                                return;
+                        }
+
+                        draggedTiles.current.add(key);
+                        void applyTerrainEdit(x, y);
+                },
+                [applyTerrainEdit, editorMode],
+        );
+
+        const handleTileDragEnd = useCallback(() => {
+                draggedTiles.current.clear();
+        }, []);
 
 	const handleGenerateMap = useCallback(async () => {
 		if (!session?.inviteCode) {
@@ -962,11 +1029,13 @@ const HostGameScreen: React.FC = () => {
 													</ThemedText>
 												</View>
 											) : (
-												<InteractiveMap
-													map={mapState}
-													isEditable
-													onTilePress={handleTilePress}
-												/>
+                                                                                        <InteractiveMap
+                                                                                                map={mapState}
+                                                                                                isEditable
+                                                                                                onTilePress={handleTilePress}
+                                                                                                onTileDrag={handleTileDrag}
+                                                                                                onTileDragEnd={handleTileDragEnd}
+                                                                                        />
 											)}
 											<View style={styles.paletteHeader}>
 												<ThemedText type="subtitle">NPC Palette</ThemedText>
