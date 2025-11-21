@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { SessionProvider, useAuth } from 'expo-auth-template/frontend';
+import { authService, SessionProvider, useAuth } from 'expo-auth-template/frontend';
 import { useFonts } from 'expo-font';
 import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -22,6 +22,11 @@ import { ThemedView } from '@/components/themed-view';
 import { AudioProvider, useAudio } from '@/hooks/use-audio-player';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { InputModeProvider } from '@/hooks/use-input-mode';
+import { API_BASE_URL } from '@/services/config/api-base-url';
+
+authService.updateConfig({
+	apiBaseUrl: API_BASE_URL || '/api/',
+});
 
 const AudioButton: React.FC = () => {
 	const { isPlaying, togglePlayPause } = useAudio();
