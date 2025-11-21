@@ -106,18 +106,39 @@ export const NpcPlacementRequestSchema = z.object({
 });
 
 export const MapTerrainMutationSchema = z.object({
-	tiles: z.array(
-		z.object({
-			x: z.number().int(),
-			y: z.number().int(),
+        tiles: z.array(
+                z.object({
+                        x: z.number().int(),
+                        y: z.number().int(),
 			terrainType: z.string(),
 			elevation: z.number().int().optional(),
 			isBlocked: z.boolean().optional(),
 			hasFog: z.boolean().optional(),
 			featureType: z.string().optional().nullable(),
 			metadata: z.record(z.unknown()).optional(),
-		}),
-	),
+                }),
+        ),
+});
+
+export const PlayerPlacementRequestSchema = z.object({
+        characterId: z.string(),
+        x: z.number().int(),
+        y: z.number().int(),
+        icon: z.string().optional(),
+        label: z.string().optional(),
+        color: z.string().optional(),
+        metadata: z.record(z.unknown()).optional(),
+});
+
+export const MovementValidationResponseSchema = z.object({
+        valid: z.boolean(),
+        cost: z.number(),
+        path: z.array(
+                z.object({
+                        x: z.number().int(),
+                        y: z.number().int(),
+                }),
+        ),
 });
 
 export const MapGenerationRequestSchema = z.object({
@@ -244,6 +265,8 @@ export type MapTokenDeleteRequest = z.infer<typeof MapTokenDeleteRequestSchema>;
 export type MapStateUpdateRequest = z.infer<typeof MapStateUpdateRequestSchema>;
 export type NpcPlacementRequest = z.infer<typeof NpcPlacementRequestSchema>;
 export type MapTerrainMutationRequest = z.infer<typeof MapTerrainMutationSchema>;
+export type PlayerPlacementRequest = z.infer<typeof PlayerPlacementRequestSchema>;
+export type MovementValidationResponse = z.infer<typeof MovementValidationResponseSchema>;
 export type MapGenerationRequest = z.infer<typeof MapGenerationRequestSchema>;
 export type PlacedNpc = z.infer<typeof PlacedNpcSchema>;
 export type NpcInstanceListResponse = z.infer<typeof NpcInstanceListResponseSchema>;

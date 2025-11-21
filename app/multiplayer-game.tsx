@@ -15,15 +15,19 @@ import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { PlayerActionMessage } from '@/types/api/websocket-messages';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { MapState } from '@/types/multiplayer-map';
+import { calculateMovementRange, findPathWithCosts } from '@/utils/movement-calculator';
 
 const MultiplayerGameScreen: React.FC = () => {
-	const params = useLocalSearchParams<{ inviteCode: string; hostId?: string; playerId?: string }>();
-	const { inviteCode, hostId, playerId } = params;
-	const [gameState, setGameState] = useState<MultiplayerGameState | null>(null);
-	const [sharedMap, setSharedMap] = useState<MapState | null>(null);
-	const [isHost, setIsHost] = useState(false);
-	const [wsConnected, setWsConnected] = useState(false);
-	const { isMobile } = useScreenSize();
+        const params = useLocalSearchParams<{ inviteCode: string; hostId?: string; playerId?: string }>();
+        const { inviteCode, hostId, playerId } = params;
+        const [gameState, setGameState] = useState<MultiplayerGameState | null>(null);
+        const [sharedMap, setSharedMap] = useState<MapState | null>(null);
+        const [movementRange, setMovementRange] = useState<Array<{ x: number; y: number; cost: number }>>([]);
+        const [pathPreview, setPathPreview] = useState<{ path: Array<{ x: number; y: number }>; cost: number } | null>(null);
+        const [movementInFlight, setMovementInFlight] = useState(false);
+        const [isHost, setIsHost] = useState(false);
+        const [wsConnected, setWsConnected] = useState(false);
+        const { isMobile } = useScreenSize();
 	const insets = useSafeAreaInsets();
 
 	// Get character ID from gameState (memoized to prevent re-renders)
@@ -93,11 +97,22 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	}, [gameState, polledState]);
 
-	useEffect(() => {
-		if (gameState?.mapState) {
-			setSharedMap(gameState.mapState);
-		}
-	}, [gameState?.mapState]);
+        useEffect(() => {
+                if (gameState?.mapState) {
+                        setSharedMap(gameState.mapState);
+                }
+        }, [gameState?.mapState]);
+
+        useEffect(() => {
+                if (!sharedMap || !playerToken || movementBudget <= 0) {
+                        setMovementRange([]);
+                        setPathPreview(null);
+                        return;
+                }
+
+                const reachable = calculateMovementRange(sharedMap, { x: playerToken.x, y: playerToken.y }, movementBudget);
+                setMovementRange(reachable);
+        }, [sharedMap, playerToken, movementBudget]);
 
 	// Load initial game state - only once
 	const loadGameStateRef = useRef(false);
@@ -145,10 +160,100 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	}, [inviteCode, hostId, gameState, wsIsConnected]);
 
-	const handleAIRequest = useCallback(async (prompt: string): Promise<string> => {
-		// For now, return a placeholder. In production, this would call the Ollama API through the worker
-		return 'AI assistance feature coming soon. This will integrate with Ollama for DM help.';
-	}, []);
+        const handleAIRequest = useCallback(async (prompt: string): Promise<string> => {
+                // For now, return a placeholder. In production, this would call the Ollama API through the worker
+                return 'AI assistance feature coming soon. This will integrate with Ollama for DM help.';
+        }, []);
+
+        const handleMovementTilePress = useCallback(
+                (x: number, y: number) => {
+                        if (!sharedMap || !playerToken || !currentCharacterId || movementInFlight) {
+                                return;
+                        }
+
+                        const reachable = movementRange.find(tile => tile.x === x && tile.y === y);
+                        if (!reachable) {
+                                Alert.alert('Out of range', 'Pick a reachable tile within your movement budget.');
+                                return;
+                        }
+
+                        const pathResult = findPathWithCosts(
+                                sharedMap,
+                                { x: playerToken.x, y: playerToken.y },
+                                { x, y },
+                        );
+
+                        if (!pathResult || !pathResult.path.length) {
+                                Alert.alert('No path', 'Unable to find a valid path to that tile.');
+                                return;
+                        }
+
+                        if (pathResult.cost > movementBudget) {
+                                Alert.alert('Not enough movement', 'You need more movement points for that path.');
+                                return;
+                        }
+
+                        setPathPreview(pathResult);
+
+                        const performMove = async () => {
+                                try {
+                                        setMovementInFlight(true);
+                                        const validation = await multiplayerClient.validateMovement(inviteCode || '', {
+                                                characterId: currentCharacterId,
+                                                fromX: playerToken.x,
+                                                fromY: playerToken.y,
+                                                toX: x,
+                                                toY: y,
+                                        });
+
+                                        if (!validation?.valid) {
+                                                Alert.alert('Move blocked', 'That move is not allowed on the current terrain.');
+                                                return;
+                                        }
+
+                                        await multiplayerClient.saveMapToken(inviteCode || '', {
+                                                id: playerToken.id,
+                                                tokenType: 'player',
+                                                x,
+                                                y,
+                                                characterId: playerToken.entityId ?? currentCharacterId,
+                                                label: playerToken.label,
+                                                color: playerToken.color,
+                                                metadata: { ...playerToken.metadata, path: validation.path },
+                                        });
+                                        await refreshSharedMap();
+                                        setPathPreview(null);
+                                } catch (error) {
+                                        console.error('Failed to move player', error);
+                                        Alert.alert(
+                                                'Movement failed',
+                                                error instanceof Error ? error.message : 'Could not move token',
+                                        );
+                                } finally {
+                                        setMovementInFlight(false);
+                                }
+                        };
+
+                        Alert.alert(
+                                'Move character',
+                                `Move to (${x + 1}, ${y + 1}) for ${pathResult.cost.toFixed(1)} movement?`,
+                                [
+                                        { text: 'Cancel', style: 'cancel' },
+                                        { text: 'Move', onPress: performMove },
+                                ],
+                        );
+                },
+                [
+                        sharedMap,
+                        playerToken,
+                        currentCharacterId,
+                        movementRange,
+                        movementBudget,
+                        movementInFlight,
+                        inviteCode,
+                        refreshSharedMap,
+                ],
+        );
 
 	if (!gameState) {
 		return (
@@ -159,16 +264,43 @@ const MultiplayerGameScreen: React.FC = () => {
 		);
 	}
 
-	const currentCharacterId = gameState.players.find(p => p.playerId === playerId)?.characterId;
+        const currentCharacterId = gameState.players.find(p => p.playerId === playerId)?.characterId;
+
+        const playerToken = useMemo(() => {
+                if (!sharedMap || !currentCharacterId) {
+                        return null;
+                }
+
+                return (
+                        sharedMap.tokens?.find(
+                                token => token.type === 'player' && token.entityId === currentCharacterId,
+                        ) ?? null
+                );
+        }, [sharedMap, currentCharacterId]);
+
+        const movementBudget = useMemo(() => {
+                const character = gameState?.characters.find(c => c.id === currentCharacterId);
+                if (!character) {
+                        return 0;
+                }
+
+                return character.actionPoints ?? character.maxActionPoints ?? 6;
+        }, [gameState?.characters, currentCharacterId]);
 
 	const renderMapSection = () => (
 		<View style={styles.mapContainer}>
 			<ThemedText type="subtitle">Shared Map</ThemedText>
-			{sharedMap ? (
-				<InteractiveMap map={sharedMap} highlightTokenId={currentCharacterId || undefined} />
-			) : (
-				<ThemedText style={styles.mapHint}>
-					Waiting for the DM to configure a map.
+                        {sharedMap ? (
+                                <InteractiveMap
+                                        map={sharedMap}
+                                        highlightTokenId={currentCharacterId || undefined}
+                                        onTilePress={playerToken ? handleMovementTilePress : undefined}
+                                        reachableTiles={movementRange}
+                                        pathTiles={pathPreview?.path}
+                                />
+                        ) : (
+                                <ThemedText style={styles.mapHint}>
+                                        Waiting for the DM to configure a map.
 				</ThemedText>
 			)}
 		</View>
