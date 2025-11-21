@@ -15,16 +15,19 @@ import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { PlayerActionMessage } from '@/types/api/websocket-messages';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { MapState } from '@/types/multiplayer-map';
+import { calculateMovementRange, reconstructPath } from '@/utils/movement-calculator';
 
 const MultiplayerGameScreen: React.FC = () => {
 	const params = useLocalSearchParams<{ inviteCode: string; hostId?: string; playerId?: string }>();
 	const { inviteCode, hostId, playerId } = params;
 	const [gameState, setGameState] = useState<MultiplayerGameState | null>(null);
-	const [sharedMap, setSharedMap] = useState<MapState | null>(null);
-	const [isHost, setIsHost] = useState(false);
-	const [wsConnected, setWsConnected] = useState(false);
-	const { isMobile } = useScreenSize();
-	const insets = useSafeAreaInsets();
+        const [sharedMap, setSharedMap] = useState<MapState | null>(null);
+        const [isHost, setIsHost] = useState(false);
+        const [wsConnected, setWsConnected] = useState(false);
+        const { isMobile } = useScreenSize();
+        const insets = useSafeAreaInsets();
+        const [movementPath, setMovementPath] = useState<Array<{ x: number; y: number }>>([]);
+        const [moveInFlight, setMoveInFlight] = useState(false);
 
 	// Get character ID from gameState (memoized to prevent re-renders)
 	const characterId = useMemo(() => {
@@ -145,30 +148,153 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	}, [inviteCode, hostId, gameState, wsIsConnected]);
 
-	const handleAIRequest = useCallback(async (prompt: string): Promise<string> => {
-		// For now, return a placeholder. In production, this would call the Ollama API through the worker
-		return 'AI assistance feature coming soon. This will integrate with Ollama for DM help.';
-	}, []);
+        const handleAIRequest = useCallback(async (prompt: string): Promise<string> => {
+                // For now, return a placeholder. In production, this would call the Ollama API through the worker
+                return 'AI assistance feature coming soon. This will integrate with Ollama for DM help.';
+        }, []);
 
-	if (!gameState) {
-		return (
-			<ThemedView style={styles.container}>
+        if (!gameState) {
+                return (
+                        <ThemedView style={styles.container}>
 				<Stack.Screen options={{ title: 'Loading...' }} />
 				<ThemedText>Loading game...</ThemedText>
 			</ThemedView>
 		);
-	}
+        }
 
-	const currentCharacterId = gameState.players.find(p => p.playerId === playerId)?.characterId;
+        const currentCharacterId = gameState.players.find(p => p.playerId === playerId)?.characterId;
 
-	const renderMapSection = () => (
-		<View style={styles.mapContainer}>
-			<ThemedText type="subtitle">Shared Map</ThemedText>
-			{sharedMap ? (
-				<InteractiveMap map={sharedMap} highlightTokenId={currentCharacterId || undefined} />
-			) : (
-				<ThemedText style={styles.mapHint}>
-					Waiting for the DM to configure a map.
+        const activeCharacter = useMemo(
+                () => gameState.characters.find(character => character.id === currentCharacterId),
+                [currentCharacterId, gameState.characters],
+        );
+
+        const playerToken = useMemo(() => {
+                if (!sharedMap || !currentCharacterId) {
+                        return null;
+                }
+
+                return (
+                        sharedMap.tokens?.find(
+                                token => token.entityId === currentCharacterId || token.id === currentCharacterId,
+                        ) ?? null
+                );
+        }, [currentCharacterId, sharedMap]);
+
+        const movementBudget = useMemo(() => {
+                if (activeCharacter?.actionPoints && activeCharacter.actionPoints > 0) {
+                        return activeCharacter.actionPoints;
+                }
+
+                if (activeCharacter?.maxActionPoints && activeCharacter.maxActionPoints > 0) {
+                        return activeCharacter.maxActionPoints;
+                }
+
+                return 6;
+        }, [activeCharacter?.actionPoints, activeCharacter?.maxActionPoints]);
+
+        const movementResult = useMemo(() => {
+                if (!sharedMap || !playerToken) {
+                        return null;
+                }
+
+                return calculateMovementRange(sharedMap, { x: playerToken.x, y: playerToken.y }, movementBudget);
+        }, [movementBudget, playerToken, sharedMap]);
+
+        const movementRange = useMemo(() => {
+                if (!movementResult) {
+                        return null;
+                }
+
+                return Object.fromEntries(
+                        Object.entries(movementResult.nodes).map(([key, node]) => [key, node.cost]),
+                );
+        }, [movementResult]);
+
+        useEffect(() => {
+                setMovementPath([]);
+        }, [playerToken?.id]);
+
+        const handleMovement = useCallback(
+                async (x: number, y: number) => {
+                        if (!movementResult || !playerToken || !inviteCode || !currentCharacterId || moveInFlight) {
+                                return;
+                        }
+
+                        const destinationKey = `${x},${y}`;
+                        const destinationNode = movementResult.nodes[destinationKey];
+                        if (!destinationNode) {
+                                setMovementPath([]);
+                                return;
+                        }
+
+                        const path = reconstructPath(movementResult, destinationKey);
+                        setMovementPath(path);
+                        setMoveInFlight(true);
+
+                        try {
+                                let validationCost = destinationNode.cost;
+                                try {
+                                        const validation = await multiplayerClient.validateMovement(inviteCode, {
+                                                characterId: currentCharacterId,
+                                                fromX: playerToken.x,
+                                                fromY: playerToken.y,
+                                                toX: x,
+                                                toY: y,
+                                        });
+
+                                        if (!validation.valid) {
+                                                Alert.alert('Move blocked', 'That route is not traversable.');
+                                                return;
+                                        }
+
+                                        validationCost = validation.cost;
+                                } catch (error) {
+                                        console.warn('Movement validation failed, falling back to client result', error);
+                                }
+
+                                await multiplayerClient.saveMapToken(inviteCode, {
+                                        id: playerToken.id,
+                                        tokenType: playerToken.type,
+                                        label: playerToken.label,
+                                        x,
+                                        y,
+                                        color: playerToken.color,
+                                        icon: playerToken.icon,
+                                        metadata: { ...playerToken.metadata, lastMoveCost: validationCost, lastPath: path },
+                                });
+
+                                await refreshSharedMap();
+                        } catch (error) {
+                                Alert.alert('Movement failed', 'Unable to move your token right now.');
+                        } finally {
+                                setMoveInFlight(false);
+                        }
+                },
+                [
+                        currentCharacterId,
+                        inviteCode,
+                        movementResult,
+                        playerToken,
+                        refreshSharedMap,
+                        moveInFlight,
+                ],
+        );
+
+        const renderMapSection = () => (
+                <View style={styles.mapContainer}>
+                        <ThemedText type="subtitle">Shared Map</ThemedText>
+                        {sharedMap ? (
+                                <InteractiveMap
+                                        map={sharedMap}
+                                        highlightTokenId={currentCharacterId || undefined}
+                                        onTilePress={movementResult ? handleMovement : undefined}
+                                        movementRange={movementRange}
+                                        movementPath={movementPath}
+                                />
+                        ) : (
+                                <ThemedText style={styles.mapHint}>
+                                        Waiting for the DM to configure a map.
 				</ThemedText>
 			)}
 		</View>

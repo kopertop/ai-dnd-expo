@@ -13,13 +13,14 @@ import {
 	MapStateUpdateRequest,
 	MapTerrainMutationRequest,
 	MapTokenListResponse,
-	MapTokenMutationResponse,
-	MapTokenUpsertRequest,
-	MyGamesResponse,
-	NpcDefinitionListResponse,
-	NpcInstanceListResponse,
-	NpcInstanceUpdateRequest,
-	NpcPlacementRequest,
+        MapTokenMutationResponse,
+        MapTokenUpsertRequest,
+        MyGamesResponse,
+        NpcDefinitionListResponse,
+        NpcInstanceListResponse,
+        NpcInstanceUpdateRequest,
+        NpcPlacementRequest,
+        MovementValidationResponse,
 	PlayerActionRequest,
 } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
@@ -230,15 +231,41 @@ export class MultiplayerClient {
 		});
 	}
 
-	async saveMapToken(
-		inviteCode: string,
-		request: MapTokenUpsertRequest & { id?: string },
-	): Promise<MapTokenMutationResponse> {
-		return apiService.fetchApi(`/games/${inviteCode}/map/tokens`, {
-			method: 'POST',
-			body: JSON.stringify(request),
-		});
-	}
+        async saveMapToken(
+                inviteCode: string,
+                request: MapTokenUpsertRequest & { id?: string },
+        ): Promise<MapTokenMutationResponse> {
+                return apiService.fetchApi(`/games/${inviteCode}/map/tokens`, {
+                        method: 'POST',
+                        body: JSON.stringify(request),
+                });
+        }
+
+        async placePlayerToken(
+                inviteCode: string,
+                request: MapTokenUpsertRequest & { characterId: string },
+        ): Promise<MapTokenMutationResponse> {
+                return this.saveMapToken(inviteCode, {
+                        ...request,
+                        tokenType: 'player',
+                });
+        }
+
+        async validateMovement(
+                inviteCode: string,
+                payload: {
+                        characterId: string;
+                        fromX: number;
+                        fromY: number;
+                        toX: number;
+                        toY: number;
+                },
+        ): Promise<MovementValidationResponse> {
+                return apiService.fetchApi(`/games/${inviteCode}/map/validate-movement`, {
+                        method: 'POST',
+                        body: JSON.stringify(payload),
+                });
+        }
 
 	async deleteMapToken(inviteCode: string, tokenId: string): Promise<void> {
 		return apiService.fetchApi(`/games/${inviteCode}/map/tokens/${tokenId}`, {

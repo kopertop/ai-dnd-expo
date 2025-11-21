@@ -59,17 +59,18 @@ export const CharacterCreateRequestSchema = CharacterSchema.omit({ id: true });
 export const CharacterUpdateRequestSchema = CharacterSchema.partial();
 
 export const MapTokenUpsertRequestSchema = z.object({
-	id: z.string().optional(),
-	mapId: z.string().optional(),
-	gameId: z.string().optional(),
-	characterId: z.string().optional(),
-	npcId: z.string().optional(),
-	tokenType: MapTokenSchema.shape.type,
-	label: MapTokenSchema.shape.label.optional(),
-	x: z.number().int(),
-	y: z.number().int(),
-	color: MapTokenSchema.shape.color.optional(),
-	metadata: MapTokenSchema.shape.metadata.optional(),
+        id: z.string().optional(),
+        mapId: z.string().optional(),
+        gameId: z.string().optional(),
+        characterId: z.string().optional(),
+        npcId: z.string().optional(),
+        tokenType: MapTokenSchema.shape.type,
+        label: MapTokenSchema.shape.label.optional(),
+        x: z.number().int(),
+        y: z.number().int(),
+        color: MapTokenSchema.shape.color.optional(),
+        icon: MapTokenSchema.shape.icon.optional(),
+        metadata: MapTokenSchema.shape.metadata.optional(),
 });
 
 export const MapTokenDeleteRequestSchema = z.object({
@@ -229,7 +230,20 @@ export const MapTokenMutationResponseSchema = z.object({
 });
 
 export const MapTokenListResponseSchema = z.object({
-	tokens: z.array(MapTokenSchema),
+        tokens: z.array(MapTokenSchema),
+});
+
+export const MovementValidationResponseSchema = z.object({
+        valid: z.boolean(),
+        cost: z.number(),
+        path: z
+                .array(
+                        z.object({
+                                x: z.number().int(),
+                                y: z.number().int(),
+                        }),
+                )
+                .default([]),
 });
 
 // Type exports
@@ -260,6 +274,7 @@ export type MapStateResponse = z.infer<typeof MapStateResponseSchema>;
 export type NpcDefinitionListResponse = z.infer<typeof NpcDefinitionListResponseSchema>;
 export type MapTokenMutationResponse = z.infer<typeof MapTokenMutationResponseSchema>;
 export type MapTokenListResponse = z.infer<typeof MapTokenListResponseSchema>;
+export type MovementValidationResponse = z.infer<typeof MovementValidationResponseSchema>;
 export type MapState = z.infer<typeof MapStateSchema>;
 export type MapTile = z.infer<typeof MapTileSchema>;
 export type MapToken = z.infer<typeof MapTokenSchema>;
