@@ -107,39 +107,39 @@ export const NpcPlacementRequestSchema = z.object({
 });
 
 export const MapTerrainMutationSchema = z.object({
-        tiles: z.array(
-                z.object({
-                        x: z.number().int(),
-                        y: z.number().int(),
+	tiles: z.array(
+		z.object({
+			x: z.number().int(),
+			y: z.number().int(),
 			terrainType: z.string(),
 			elevation: z.number().int().optional(),
 			isBlocked: z.boolean().optional(),
 			hasFog: z.boolean().optional(),
 			featureType: z.string().optional().nullable(),
 			metadata: z.record(z.unknown()).optional(),
-                }),
-        ),
+		}),
+	),
 });
 
 export const PlayerPlacementRequestSchema = z.object({
-        characterId: z.string(),
-        x: z.number().int(),
-        y: z.number().int(),
-        icon: z.string().optional(),
-        label: z.string().optional(),
-        color: z.string().optional(),
-        metadata: z.record(z.unknown()).optional(),
+	characterId: z.string(),
+	x: z.number().int(),
+	y: z.number().int(),
+	icon: z.string().optional(),
+	label: z.string().optional(),
+	color: z.string().optional(),
+	metadata: z.record(z.unknown()).optional(),
 });
 
 export const MovementValidationResponseSchema = z.object({
-        valid: z.boolean(),
-        cost: z.number(),
-        path: z.array(
-                z.object({
-                        x: z.number().int(),
-                        y: z.number().int(),
-                }),
-        ),
+	valid: z.boolean(),
+	cost: z.number(),
+	path: z.array(
+		z.object({
+			x: z.number().int(),
+			y: z.number().int(),
+		}),
+	),
 });
 
 export const MapGenerationRequestSchema = z.object({

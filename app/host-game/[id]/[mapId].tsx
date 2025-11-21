@@ -1,30 +1,26 @@
 import { useAuth } from 'expo-auth-template/frontend';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
 	ActivityIndicator,
 	Alert,
-	Modal,
 	Platform,
 	ScrollView,
 	StyleSheet,
-	TextInput,
 	TouchableOpacity,
 	View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppFooter } from '@/components/app-footer';
-import { IconPicker } from '@/components/icon-picker';
 import { InteractiveMap } from '@/components/map/interactive-map';
 import { TileActionMenu, type TileAction } from '@/components/map/tile-action-menu';
-import { TokenDetailModal } from '@/components/token-detail-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TokenDetailModal } from '@/components/token-detail-modal';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
 import {
-	NpcPlacementRequest,
-	PlacedNpc,
+	NpcPlacementRequest
 } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
 import { MapState, MapToken, NpcDefinition } from '@/types/multiplayer-map';
@@ -49,7 +45,7 @@ const getTokenSvg = (tokenData: { type: 'npc' | 'player'; role?: string; label?:
 	if (tokenData.icon && tokenData.icon.startsWith('<svg')) {
 		return tokenData.icon;
 	}
-	
+
 	// For NPCs, map by role
 	if (tokenData.type === 'npc') {
 		const role = (tokenData.role || '').toLowerCase();
@@ -86,7 +82,7 @@ const getTokenSvg = (tokenData: { type: 'npc' | 'player'; role?: string; label?:
 		// Default NPC - person icon
 		return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="7" r="3" fill="#4A90E2" stroke="#2E5C8A" stroke-width="1"/><path d="M5 18 Q5 13 10 13 Q15 13 15 18" fill="#4A90E2" stroke="#2E5C8A" stroke-width="1"/></svg>';
 	}
-	
+
 	// For players, map by class
 	if (tokenData.type === 'player') {
 		const className = (tokenData.class || '').toLowerCase();
@@ -132,7 +128,7 @@ const getTokenSvg = (tokenData: { type: 'npc' | 'player'; role?: string; label?:
 		// Default player - wizard hat
 		return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2 L12 8 L18 8 L13 12 L15 18 L10 14 L5 18 L7 12 L2 8 L8 8 Z" fill="#9B59B6" stroke="#6A1B9A" stroke-width="0.5"/></svg>';
 	}
-	
+
 	// Fallback - person icon
 	return '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="7" r="3" fill="#4A90E2" stroke="#2E5C8A" stroke-width="1"/><path d="M5 18 Q5 13 10 13 Q15 13 15 18" fill="#4A90E2" stroke="#2E5C8A" stroke-width="1"/></svg>';
 };
@@ -161,7 +157,7 @@ const DraggableCard = ({
 
 				// Try multiple ways to find the DOM node
 				let domNode: HTMLElement | null = null;
-				
+
 				// Method 1: Direct access if it's already a DOM element
 				if (element.nodeType === 1) {
 					domNode = element;
@@ -192,16 +188,16 @@ const DraggableCard = ({
 					// Create drag preview image function (single icon, 1 tile size)
 					// Use SVG converted to data URL (works synchronously)
 					let dragImageElement: HTMLImageElement | null = null;
-					
+
 					const createDragImage = (svgString: string): HTMLImageElement => {
 						// Remove previous drag image if it exists
 						if (dragImageElement && dragImageElement.parentNode) {
 							dragImageElement.parentNode.removeChild(dragImageElement);
 						}
-						
+
 						// Convert SVG to data URL (synchronous)
 						const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
-						
+
 						// Create an image element from SVG data URL
 						const img = new Image();
 						img.src = svgDataUrl;
@@ -212,21 +208,21 @@ const DraggableCard = ({
 						img.style.left = '-9999px';
 						img.style.pointerEvents = 'none';
 						document.body.appendChild(img);
-						
+
 						dragImageElement = img;
-						
+
 						return img;
 					};
 
 					const handleDragStart = (e: DragEvent) => {
 						e.stopPropagation();
-						
+
 						if (!e.dataTransfer) return;
-						
+
 						// Store the mouse position relative to the element
 						let offsetX = 14; // Default to center
 						let offsetY = 14;
-						
+
 						if (domNode) {
 							const rect = domNode.getBoundingClientRect();
 							const mouseX = e.clientX - rect.left;
@@ -238,30 +234,30 @@ const DraggableCard = ({
 							offsetY = Math.max(0, Math.min(elementHeight, mouseY));
 							dragStartPosRef.current = { x: offsetX, y: offsetY };
 						}
-						
+
 						e.dataTransfer.effectAllowed = 'move';
 						e.dataTransfer.setData('application/json', JSON.stringify(tokenData));
-						
+
 						// Get appropriate SVG icon based on type/role/class
 						const svgIcon = getTokenSvg(tokenData);
 						console.log('Creating drag image with SVG for token:', tokenData);
-						
+
 						// Create drag image element from SVG (using data URL for synchronous loading)
 						const dragImage = createDragImage(svgIcon);
-						
+
 						// The offset should be relative to where the mouse clicked
 						// Clamp to the drag image size (28x28)
 						const dragOffsetX = Math.min(14, Math.max(0, offsetX));
 						const dragOffsetY = Math.min(14, Math.max(0, offsetY));
-						
+
 						// Set drag image - data URL should work synchronously
 						e.dataTransfer.setDragImage(dragImage, dragOffsetX, dragOffsetY);
-						
+
 						if (domNode) {
 							domNode.style.opacity = '0.5';
 						}
 					};
-					
+
 					const handleDragEndCleanup = (e: DragEvent) => {
 						// Clean up drag image element after a short delay to ensure drag completes
 						setTimeout(() => {
@@ -520,6 +516,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 				try {
 					await multiplayerClient.placeNpc(inviteCode, {
 						npcId: selectedNpc?.slug ?? 'custom',
+						mapId: mapState?.id || (mapId !== 'new-map' ? mapId : undefined),
 						x,
 						y,
 						label: selectedNpc?.name ?? customPayload?.name,
@@ -539,6 +536,8 @@ const HostGameMapEditorScreen: React.FC = () => {
 				}
 
 				try {
+					// PlayerPlacementRequest doesn't have mapId, but the API endpoint might need it
+					// Check the API implementation - for now, try without mapId
 					await multiplayerClient.placePlayerToken(inviteCode, {
 						characterId: selectedPlayer.id,
 						x,
@@ -592,30 +591,51 @@ const HostGameMapEditorScreen: React.FC = () => {
 
 	const handleTokenDrop = useCallback(
 		async (token: { type: 'npc' | 'player'; id: string; label: string; icon?: string; role?: string }, x: number, y: number) => {
-			console.log('handleTokenDrop called:', { token, x, y, inviteCode, mapState: !!mapState });
+			console.log('=== handleTokenDrop called ===');
+			console.log('Token:', token);
+			console.log('Position:', { x, y });
+			console.log('inviteCode:', inviteCode);
+			console.log('mapState exists:', !!mapState);
+			console.log('npcPalette length:', npcPalette.length);
+			console.log('npcPalette IDs:', npcPalette.map(n => n.id));
+			console.log('lobbyCharacters length:', lobbyCharacters.length);
+
 			if (!inviteCode || !mapState) {
-				console.warn('Missing inviteCode or mapState');
+				console.warn('Missing inviteCode or mapState', { inviteCode, mapState: !!mapState });
+				Alert.alert('Error', 'Missing game session or map. Please refresh the page.');
 				return;
 			}
 
 			if (token.type === 'npc') {
+				console.log('Looking for NPC with id:', token.id);
 				const npc = npcPalette.find(n => n.id === token.id);
+				console.log('Found NPC:', npc ? { name: npc.name, id: npc.id, slug: npc.slug } : 'NOT FOUND');
+
 				if (npc) {
 					try {
-						console.log('Placing NPC:', npc.name, 'at', x, y);
-						await multiplayerClient.placeNpc(inviteCode, {
+						console.log('Placing NPC:', npc.name, 'at', x, y, 'with slug:', npc.slug);
+						console.log('mapState.id:', mapState.id);
+						console.log('mapId from route:', mapId);
+
+						const result = await multiplayerClient.placeNpc(inviteCode, {
 							npcId: npc.slug,
+							mapId: mapState.id || (mapId !== 'new-map' ? mapId : undefined),
 							x,
 							y,
 							label: npc.name,
 						});
+						console.log('Place NPC API response:', result);
 						await refreshMapState();
-						console.log('NPC placed successfully');
+						console.log('NPC placed successfully, map refreshed');
+						Alert.alert('Success', `${npc.name} placed at (${x}, ${y})`);
 					} catch (error) {
 						console.error('NPC placement error:', error);
-						Alert.alert('Placement Failed', error instanceof Error ? error.message : 'Unable to place NPC');
+						const errorMessage = error instanceof Error ? error.message : 'Unable to place NPC';
+						console.error('Error details:', error);
+						Alert.alert('Placement Failed', errorMessage);
 					}
 				} else if (token.id === 'custom') {
+					console.log('Custom NPC drop detected');
 					setEditorMode('npc');
 					setUseCustomNpc(true);
 					setTimeout(() => {
@@ -623,27 +643,42 @@ const HostGameMapEditorScreen: React.FC = () => {
 					}, 100);
 				} else {
 					console.warn('NPC not found in palette:', token.id);
+					console.warn('Available NPC IDs:', npcPalette.map(n => ({ id: n.id, name: n.name })));
+					Alert.alert('Error', `NPC with ID "${token.id}" not found in palette. Available: ${npcPalette.length} NPCs`);
 				}
 			} else if (token.type === 'player') {
+				console.log('Looking for Player with id:', token.id);
 				const character = lobbyCharacters.find(c => c.id === token.id);
+				console.log('Found Character:', character ? { name: character.name, id: character.id } : 'NOT FOUND');
+
 				if (character) {
 					try {
 						console.log('Placing Player:', character.name, 'at', x, y);
-						await multiplayerClient.placePlayerToken(inviteCode, {
+						console.log('mapState.id:', mapState.id);
+						console.log('mapId from route:', mapId);
+
+						// PlayerPlacementRequest doesn't include mapId in schema
+						const result = await multiplayerClient.placePlayerToken(inviteCode, {
 							characterId: character.id,
 							x,
 							y,
 							label: character.name,
 							icon: character.icon,
 						});
+						console.log('Place Player API response:', result);
 						await refreshMapState();
-						console.log('Player placed successfully');
+						console.log('Player placed successfully, map refreshed');
+						Alert.alert('Success', `${character.name} placed at (${x}, ${y})`);
 					} catch (error) {
 						console.error('Player placement error:', error);
-						Alert.alert('Placement Failed', error instanceof Error ? error.message : 'Unable to place player');
+						const errorMessage = error instanceof Error ? error.message : 'Unable to place player';
+						console.error('Error details:', error);
+						Alert.alert('Placement Failed', errorMessage);
 					}
 				} else {
 					console.warn('Character not found in lobby:', token.id);
+					console.warn('Available Character IDs:', lobbyCharacters.map(c => ({ id: c.id, name: c.name })));
+					Alert.alert('Error', `Character with ID "${token.id}" not found in lobby. Available: ${lobbyCharacters.length} characters`);
 				}
 			}
 		},
@@ -758,48 +793,48 @@ const HostGameMapEditorScreen: React.FC = () => {
 							</View>
 						</View>
 						<View style={styles.presetControls}>
-						{MAP_PRESETS.map(preset => {
-							const active = mapPreset === preset;
-							return (
-								<TouchableOpacity
-									key={preset}
-									style={[styles.presetButton, active && styles.presetButtonActive]}
-									onPress={() => setMapPreset(preset)}
-								>
-									<ThemedText
-										style={[styles.presetButtonText, active && styles.presetButtonTextActive]}
+							{MAP_PRESETS.map(preset => {
+								const active = mapPreset === preset;
+								return (
+									<TouchableOpacity
+										key={preset}
+										style={[styles.presetButton, active && styles.presetButtonActive]}
+										onPress={() => setMapPreset(preset)}
 									>
-										{preset}
-									</ThemedText>
-								</TouchableOpacity>
-							);
-						})}
-						<TouchableOpacity
-							style={[styles.generateButton, mapLoading && styles.buttonDisabled]}
-							onPress={handleGenerateMap}
-							disabled={mapLoading}
-						>
-							<ThemedText style={styles.generateButtonText}>
-								{mapLoading ? 'Working...' : 'Generate'}
-							</ThemedText>
-						</TouchableOpacity>
-					</View>
-					<View style={styles.editorModes}>
-						{MAP_EDITOR_MODES.map(mode => {
-							const active = editorMode === mode.key;
-							return (
-								<TouchableOpacity
-									key={mode.key}
-									style={[styles.modeButton, active && styles.modeButtonActive]}
-									onPress={() => setEditorMode(mode.key)}
-								>
-									<ThemedText style={[styles.modeButtonText, active && styles.modeButtonTextActive]}>
-										{mode.label}
-									</ThemedText>
-								</TouchableOpacity>
-							);
-						})}
-					</View>
+										<ThemedText
+											style={[styles.presetButtonText, active && styles.presetButtonTextActive]}
+										>
+											{preset}
+										</ThemedText>
+									</TouchableOpacity>
+								);
+							})}
+							<TouchableOpacity
+								style={[styles.generateButton, mapLoading && styles.buttonDisabled]}
+								onPress={handleGenerateMap}
+								disabled={mapLoading}
+							>
+								<ThemedText style={styles.generateButtonText}>
+									{mapLoading ? 'Working...' : 'Generate'}
+								</ThemedText>
+							</TouchableOpacity>
+						</View>
+						<View style={styles.editorModes}>
+							{MAP_EDITOR_MODES.map(mode => {
+								const active = editorMode === mode.key;
+								return (
+									<TouchableOpacity
+										key={mode.key}
+										style={[styles.modeButton, active && styles.modeButtonActive]}
+										onPress={() => setEditorMode(mode.key)}
+									>
+										<ThemedText style={[styles.modeButtonText, active && styles.modeButtonTextActive]}>
+											{mode.label}
+										</ThemedText>
+									</TouchableOpacity>
+								);
+							})}
+						</View>
 					</View>
 				</View>
 				<View style={styles.dmWorkspace}>

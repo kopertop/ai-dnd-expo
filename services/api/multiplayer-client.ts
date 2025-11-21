@@ -10,19 +10,19 @@ import {
 	JoinGameRequest,
 	MapGenerationRequest,
 	MapStateResponse,
-        MapStateUpdateRequest,
-        MapTerrainMutationRequest,
-        MapTokenListResponse,
-        MapTokenMutationResponse,
-        MapTokenUpsertRequest,
-        MovementValidationResponse,
-        MyGamesResponse,
-        NpcDefinitionListResponse,
-        NpcInstanceListResponse,
-        NpcInstanceUpdateRequest,
-        NpcPlacementRequest,
-        PlayerPlacementRequest,
-        PlayerActionRequest,
+	MapStateUpdateRequest,
+	MapTerrainMutationRequest,
+	MapTokenListResponse,
+	MapTokenMutationResponse,
+	MapTokenUpsertRequest,
+	MovementValidationResponse,
+	MyGamesResponse,
+	NpcDefinitionListResponse,
+	NpcInstanceListResponse,
+	NpcInstanceUpdateRequest,
+	NpcPlacementRequest,
+	PlayerActionRequest,
+	PlayerPlacementRequest,
 } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
@@ -216,25 +216,25 @@ export class MultiplayerClient {
 		});
 	}
 
-        async mutateTerrain(
-                inviteCode: string,
-                request: MapTerrainMutationRequest,
-        ): Promise<MapStateResponse> {
-                return apiService.fetchApi(`/games/${inviteCode}/map/terrain`, {
-                        method: 'POST',
-                        body: JSON.stringify(request),
-                });
-        }
+	async mutateTerrain(
+		inviteCode: string,
+		request: MapTerrainMutationRequest,
+	): Promise<MapStateResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/map/terrain`, {
+			method: 'POST',
+			body: JSON.stringify(request),
+		});
+	}
 
-        async placePlayerToken(inviteCode: string, request: PlayerPlacementRequest): Promise<MapTokenMutationResponse> {
-                return apiService.fetchApi(`/games/${inviteCode}/map/tokens`, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                                ...request,
-                                tokenType: 'player',
-                        }),
-                });
-        }
+	async placePlayerToken(inviteCode: string, request: PlayerPlacementRequest): Promise<MapTokenMutationResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/map/tokens`, {
+			method: 'POST',
+			body: JSON.stringify({
+				...request,
+				tokenType: 'player',
+			}),
+		});
+	}
 
 	async listMapTokens(inviteCode: string): Promise<MapTokenListResponse> {
 		return apiService.fetchApi(`/games/${inviteCode}/map/tokens`, {
@@ -264,11 +264,11 @@ export class MultiplayerClient {
 		});
 	}
 
-        async getNpcInstances(inviteCode: string): Promise<NpcInstanceListResponse> {
-                return apiService.fetchApi(`/games/${inviteCode}/npc-instances`, {
-                        method: 'GET',
-                });
-        }
+	async getNpcInstances(inviteCode: string): Promise<NpcInstanceListResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/npc-instances`, {
+			method: 'GET',
+		});
+	}
 
 	async updateNpcInstance(
 		inviteCode: string,
@@ -280,44 +280,44 @@ export class MultiplayerClient {
 			body: JSON.stringify(request),
 		});
 	}
-        async placeNpc(inviteCode: string, request: NpcPlacementRequest): Promise<MapTokenMutationResponse> {
-                return apiService.fetchApi(`/games/${inviteCode}/npcs`, {
-                        method: 'POST',
-                        body: JSON.stringify(request),
-                });
-        }
+	async placeNpc(inviteCode: string, request: NpcPlacementRequest): Promise<MapTokenMutationResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/npcs`, {
+			method: 'POST',
+			body: JSON.stringify(request),
+		});
+	}
 
-        async validateMovement(
-                inviteCode: string,
-                request: { characterId: string; fromX: number; fromY: number; toX: number; toY: number },
-        ): Promise<MovementValidationResponse> {
-                return apiService.fetchApi(`/games/${inviteCode}/map/movement/validate`, {
-                        method: 'POST',
-                        body: JSON.stringify(request),
-                });
-        }
+	async validateMovement(
+		inviteCode: string,
+		request: { characterId: string; fromX: number; fromY: number; toX: number; toY: number },
+	): Promise<MovementValidationResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/map/movement/validate`, {
+			method: 'POST',
+			body: JSON.stringify(request),
+		});
+	}
 
-        async startTurn(
-                inviteCode: string,
-                request: { turnType: 'player' | 'npc' | 'dm'; entityId: string },
-        ): Promise<GameStateResponse> {
-                return apiService.fetchApi(`/games/${inviteCode}/turn/start`, {
-                        method: 'POST',
-                        body: JSON.stringify(request),
-                });
-        }
+	async startTurn(
+		inviteCode: string,
+		request: { turnType: 'player' | 'npc' | 'dm'; entityId: string },
+	): Promise<GameStateResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/turn/start`, {
+			method: 'POST',
+			body: JSON.stringify(request),
+		});
+	}
 
-        async endTurn(inviteCode: string): Promise<GameStateResponse> {
-                return apiService.fetchApi(`/games/${inviteCode}/turn/end`, {
-                        method: 'POST',
-                });
-        }
+	async endTurn(inviteCode: string): Promise<GameStateResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/turn/end`, {
+			method: 'POST',
+		});
+	}
 
-        async getCurrentTurn(inviteCode: string): Promise<{ activeTurn: { type: string; entityId: string; turnNumber: number; startedAt: number } | null }> {
-                return apiService.fetchApi(`/games/${inviteCode}/turn`, {
-                        method: 'GET',
-                });
-        }
+	async getCurrentTurn(inviteCode: string): Promise<{ activeTurn: { type: string; entityId: string; turnNumber: number; startedAt: number } | null }> {
+		return apiService.fetchApi(`/games/${inviteCode}/turn`, {
+			method: 'GET',
+		});
+	}
 }
 
 // Singleton instance
