@@ -5,10 +5,10 @@
  * Processes the OAuth code and exchanges it for a device token
  */
 
-import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState, useRef } from 'react';
-import { ActivityIndicator, StyleSheet } from 'react-native';
 import { authService } from 'expo-auth-template/frontend';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -55,8 +55,8 @@ const AuthIndexScreen: React.FC = () => {
 				setError(null);
 
 				// Get the redirect URI (should match what was used in the auth request)
-				const redirectUri = typeof window !== 'undefined' 
-					? `${window.location.origin}/auth` 
+				const redirectUri = typeof window !== 'undefined'
+					? `${window.location.origin}/auth`
 					: '/auth';
 
 				// Call the auth service to exchange the code for a device token

@@ -52,6 +52,7 @@ const LoginScreen: React.FC = () => {
 			{GOOGLE_CLIENT_ID ? (
 				<GoogleSigninButton
 					clientId={GOOGLE_CLIENT_ID}
+					redirectUri={`${window.location.origin}/login`}
 					apiBaseUrl={API_BASE_URL.endsWith('/') ? API_BASE_URL : `${API_BASE_URL}/`}
 				/>
 			) : (
