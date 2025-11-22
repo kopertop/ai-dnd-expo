@@ -202,6 +202,7 @@ const RootLayout: React.FC = () => {
 									<Stack.Screen name="auth/error" options={{ headerShown: false }} />
 									<Stack.Screen name="new-game" options={{ headerShown: false }} />
 									<Stack.Screen name="game" options={{ headerShown: false }} />
+									<Stack.Screen name="sql" options={{ headerShown: false }} />
 									<Stack.Screen name="+not-found" />
 								</Stack>
 								<StatusBar style="auto" />
