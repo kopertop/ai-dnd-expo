@@ -4,9 +4,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
 	ActivityIndicator,
 	Alert,
+	Modal,
 	Platform,
 	ScrollView,
 	StyleSheet,
+	TextInput,
 	TouchableOpacity,
 	View,
 } from 'react-native';
@@ -326,24 +328,17 @@ const HostGameMapEditorScreen: React.FC = () => {
 	const [selectedPlayer, setSelectedPlayer] = useState<Character | null>(null);
 	const [lobbyCharacters, setLobbyCharacters] = useState<Character[]>([]);
 	const [charactersLoading, setCharactersLoading] = useState(false);
-	const [useCustomNpc, setUseCustomNpc] = useState(false);
-	const [customNpcIcon, setCustomNpcIcon] = useState<string>('🛡️');
 	const [showAddNpcModal, setShowAddNpcModal] = useState(false);
 	const [newNpcForm, setNewNpcForm] = useState({
 		name: '',
 		role: '',
 		alignment: 'neutral',
-		icon: '👤',
-	});
-	const [customNpcForm, setCustomNpcForm] = useState<NonNullable<NpcPlacementRequest['customNpc']>>({
-		name: 'Custom Ally',
-		role: 'Support',
-		alignment: 'neutral',
-		disposition: 'friendly',
-		description: 'Quick ally ready to assist the party.',
+		disposition: 'friendly' as 'friendly' | 'hostile' | 'neutral' | 'vendor',
+		description: '',
 		maxHealth: 18,
 		armorClass: 12,
 		color: '#4A6741',
+		icon: '',
 	});
 	const [editorMode, setEditorMode] = useState<MapEditorMode>('npc');
 	const [mapPreset, setMapPreset] = useState<MapPresetOption>('forest');
@@ -389,19 +384,25 @@ const HostGameMapEditorScreen: React.FC = () => {
 		}
 	}, [inviteCode, mapId, refreshMapState]);
 
-	useEffect(() => {
+	const loadNpcPalette = useCallback(async () => {
 		if (!inviteCode) {
 			setNpcPalette([]);
 			return;
 		}
 
-		multiplayerClient
-			.getNpcDefinitions(inviteCode)
-			.then(response => setNpcPalette(response.npcs))
-			.catch(error => {
-				console.error('Failed to load NPC palette:', error);
-			});
+		try {
+			const response = await multiplayerClient.getNpcDefinitions(inviteCode);
+			// Force state update by creating a new array
+			setNpcPalette([...response.npcs]);
+			console.log('NPC palette loaded:', response.npcs.length, 'NPCs');
+		} catch (error) {
+			console.error('Failed to load NPC palette:', error);
+		}
 	}, [inviteCode]);
+
+	useEffect(() => {
+		loadNpcPalette();
+	}, [loadNpcPalette]);
 
 	useEffect(() => {
 		if (!inviteCode) {
@@ -507,20 +508,18 @@ const HostGameMapEditorScreen: React.FC = () => {
 			}
 
 			if (editorMode === 'npc') {
-				const customPayload = !selectedNpc && useCustomNpc ? customNpcForm : null;
-				if (!selectedNpc && !customPayload) {
+				if (!selectedNpc) {
 					Alert.alert('Select NPC', 'Choose an NPC from the palette first.');
 					return;
 				}
 
 				try {
 					await multiplayerClient.placeNpc(inviteCode, {
-						npcId: selectedNpc?.slug ?? 'custom',
+						npcId: selectedNpc.slug,
 						mapId: mapState?.id || (mapId !== 'new-map' ? mapId : undefined),
 						x,
 						y,
-						label: selectedNpc?.name ?? customPayload?.name,
-						customNpc: customPayload ? { ...customPayload, icon: customNpcIcon } : undefined,
+						label: selectedNpc.name,
 					});
 					await refreshMapState();
 				} catch (error) {
@@ -562,9 +561,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 			selectedPlayer,
 			mapState,
 			refreshMapState,
-			useCustomNpc,
-			customNpcForm,
-			customNpcIcon,
+			mapId,
 		],
 	);
 
@@ -608,7 +605,14 @@ const HostGameMapEditorScreen: React.FC = () => {
 
 			if (token.type === 'npc') {
 				console.log('Looking for NPC with id:', token.id);
-				const npc = npcPalette.find(n => n.id === token.id);
+				console.log('Token data:', token);
+				console.log('NPC Palette:', npcPalette.map(n => ({ id: n.id, slug: n.slug, name: n.name })));
+				// Try matching by id first, then by slug (token might have slug field)
+				const npc = npcPalette.find(n => 
+					n.id === token.id || 
+					n.slug === token.id || 
+					((token as any).slug && n.slug === (token as any).slug)
+				);
 				console.log('Found NPC:', npc ? { name: npc.name, id: npc.id, slug: npc.slug } : 'NOT FOUND');
 
 				if (npc) {
@@ -634,16 +638,9 @@ const HostGameMapEditorScreen: React.FC = () => {
 						console.error('Error details:', error);
 						Alert.alert('Placement Failed', errorMessage);
 					}
-				} else if (token.id === 'custom') {
-					console.log('Custom NPC drop detected');
-					setEditorMode('npc');
-					setUseCustomNpc(true);
-					setTimeout(() => {
-						handleTilePress(x, y);
-					}, 100);
 				} else {
 					console.warn('NPC not found in palette:', token.id);
-					console.warn('Available NPC IDs:', npcPalette.map(n => ({ id: n.id, name: n.name })));
+					console.warn('Available NPC IDs:', npcPalette.map(n => ({ id: n.id, slug: n.slug, name: n.name })));
 					Alert.alert('Error', `NPC with ID "${token.id}" not found in palette. Available: ${npcPalette.length} NPCs`);
 				}
 			} else if (token.type === 'player') {
@@ -693,9 +690,25 @@ const HostGameMapEditorScreen: React.FC = () => {
 		setMapError(null);
 		setMapLoading(true);
 		try {
+			// Delete all NPC tokens before generating new map
+			if (mapState?.tokens) {
+				const npcTokens = mapState.tokens.filter(token => token.type === 'npc');
+				console.log(`Deleting ${npcTokens.length} NPC tokens before map generation`);
+				
+				// Delete all NPC tokens in parallel
+				await Promise.all(
+					npcTokens.map(token => 
+						multiplayerClient.deleteMapToken(inviteCode, token.id).catch(err => {
+							console.warn(`Failed to delete token ${token.id}:`, err);
+						})
+					)
+				);
+			}
+
 			const generated = await multiplayerClient.generateMap(inviteCode, {
 				preset: mapPreset,
 			});
+			console.log('Map generated:', generated.id, 'for game:', inviteCode);
 			setMapState(generated);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Unable to generate map';
@@ -704,7 +717,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 		} finally {
 			setMapLoading(false);
 		}
-	}, [inviteCode, mapPreset]);
+	}, [inviteCode, mapPreset, mapState]);
 
 	const handleTileLongPress = useCallback((x: number, y: number) => {
 		setSelectedTile({ x, y });
@@ -855,6 +868,18 @@ const HostGameMapEditorScreen: React.FC = () => {
 								onTileLongPress={handleTileLongPress}
 								onTokenLongPress={handleTokenLongPress}
 								onTokenDrop={handleTokenDrop}
+								onTokenDragEnd={async (token, x, y) => {
+									// If dragged outside map bounds (x === -1, y === -1), delete the token
+									if (x === -1 && y === -1 && token.type === 'npc') {
+										try {
+											await multiplayerClient.deleteMapToken(inviteCode, token.id);
+											await refreshMapState();
+											Alert.alert('Success', `${token.label || 'NPC'} removed from map`);
+										} catch (error) {
+											Alert.alert('Error', error instanceof Error ? error.message : 'Failed to remove NPC');
+										}
+									}
+								}}
 							/>
 							<TileActionMenu
 								visible={tileMenuVisible}
@@ -900,28 +925,33 @@ const HostGameMapEditorScreen: React.FC = () => {
 						horizontal
 						style={styles.paletteScroll}
 						contentContainerStyle={styles.paletteContent}
-						showsHorizontalScrollIndicator={false}
+						showsHorizontalScrollIndicator={true}
+						nestedScrollEnabled={true}
+						scrollEnabled={true}
+						alwaysBounceHorizontal={false}
 					>
 						{npcPalette.length === 0 && (
-							<ThemedText style={styles.emptyStateText}>
-								No NPC definitions available. NPCs will be loaded automatically.
-							</ThemedText>
+							<View style={styles.emptyStateContainer}>
+								<ThemedText style={styles.emptyStateText}>
+									No NPC definitions available. NPCs will be loaded automatically.
+								</ThemedText>
+							</View>
 						)}
 						{npcPalette.map(npc => {
-							const isSelected = selectedNpc?.id === npc.id && !useCustomNpc;
+							const isSelected = selectedNpc?.id === npc.id;
 							return (
 								<DraggableCard
 									key={npc.id}
 									tokenData={{
 										type: 'npc',
-										id: npc.id,
+										id: npc.id, // Use id for matching
+										slug: npc.slug, // Also include slug as fallback
 										label: npc.name,
 										icon: npc.icon,
 										role: npc.role,
 									}}
 									style={[styles.npcCard, isSelected && styles.npcCardSelected]}
 									onPress={() => {
-										setUseCustomNpc(false);
 										setSelectedNpc(isSelected ? null : npc);
 									}}
 								>
@@ -932,23 +962,6 @@ const HostGameMapEditorScreen: React.FC = () => {
 								</DraggableCard>
 							);
 						})}
-						<DraggableCard
-							tokenData={{
-								type: 'npc',
-								id: 'custom',
-								label: customNpcForm.name || 'Custom NPC',
-								icon: customNpcIcon,
-							}}
-							style={[styles.npcCard, useCustomNpc && styles.npcCardSelected]}
-							onPress={() => {
-								setSelectedNpc(null);
-								setUseCustomNpc(true);
-								setShowAddNpcModal(true);
-							}}
-						>
-							<ThemedText style={styles.npcName}>Custom NPC</ThemedText>
-							<ThemedText style={styles.npcMeta}>Tap to create</ThemedText>
-						</DraggableCard>
 					</ScrollView>
 					{editorMode === 'player' && (
 						<View style={styles.playerPalette}>
@@ -999,16 +1012,333 @@ const HostGameMapEditorScreen: React.FC = () => {
 					)}
 					<View style={styles.actionButtons}>
 						<TouchableOpacity
-							style={styles.doneButton}
-							onPress={() => {
-								router.back();
+							style={[styles.doneButton, mapLoading && styles.doneButtonDisabled]}
+							onPress={async () => {
+								if (!inviteCode) {
+									Alert.alert('Error', 'Missing game session');
+									return;
+								}
+
+								if (!mapState) {
+									Alert.alert('Error', 'No map to save. Please generate a map first.');
+									return;
+								}
+
+								setMapLoading(true);
+								try {
+									console.log('=== SAVING MAP ===');
+									console.log('Map ID:', mapState.id);
+									console.log('Game Invite Code:', inviteCode);
+									console.log('Map State:', { id: mapState.id, width: mapState.width, height: mapState.height, tokens: mapState.tokens?.length || 0 });
+									
+									// Ensure the map is set as the current map for this game
+									// This saves the map association and ensures it persists
+									console.log('Calling updateMapState...');
+									const updatedState = await multiplayerClient.updateMapState(inviteCode, {
+										id: mapState.id,
+									});
+									
+									console.log('Map state updated successfully:', updatedState.id);
+									console.log('Updated map has', updatedState.tokens?.length || 0, 'tokens');
+									
+									// Refresh to ensure everything is synced
+									console.log('Refreshing map state...');
+									await refreshMapState();
+									
+									console.log('Map saved successfully, navigating to lobby');
+									
+									// Navigate back to the lobby screen
+									router.replace(`/host-game/${inviteCode}`);
+								} catch (error) {
+									console.error('=== FAILED TO SAVE MAP ===');
+									console.error('Error:', error);
+									console.error('Error details:', error instanceof Error ? error.stack : 'Unknown error');
+									const errorMessage = error instanceof Error ? error.message : 'Failed to save map';
+									Alert.alert('Error', errorMessage);
+								} finally {
+									setMapLoading(false);
+								}
 							}}
+							disabled={mapLoading || !mapState}
 						>
-							<ThemedText style={styles.doneButtonText}>Done Editing</ThemedText>
+							<ThemedText style={styles.doneButtonText}>
+								{mapLoading ? 'Saving...' : 'Done Editing'}
+							</ThemedText>
 						</TouchableOpacity>
 					</View>
 				</View>
 			</ScrollView>
+			
+			{/* Add NPC Modal */}
+			<Modal
+				visible={showAddNpcModal}
+				transparent
+				animationType="slide"
+				onRequestClose={() => setShowAddNpcModal(false)}
+			>
+				<View style={styles.modalOverlay}>
+					<View style={styles.modalContent}>
+						<View style={styles.modalHeader}>
+							<ThemedText type="title" style={styles.modalTitle}>Create New NPC</ThemedText>
+							<TouchableOpacity
+								onPress={() => setShowAddNpcModal(false)}
+								style={styles.modalCloseButton}
+							>
+								<ThemedText style={styles.modalCloseText}>✕</ThemedText>
+							</TouchableOpacity>
+						</View>
+						
+						<ScrollView style={styles.modalScrollView}>
+							<View style={styles.modalForm}>
+								<ThemedText style={styles.formLabel}>Name *</ThemedText>
+								<TextInput
+									style={styles.formInput}
+									value={newNpcForm.name}
+									onChangeText={(text) => setNewNpcForm({ ...newNpcForm, name: text })}
+									placeholder="NPC Name"
+									placeholderTextColor="#999"
+								/>
+								
+								<ThemedText style={styles.formLabel}>Role *</ThemedText>
+								<TextInput
+									style={styles.formInput}
+									value={newNpcForm.role}
+									onChangeText={(text) => setNewNpcForm({ ...newNpcForm, role: text })}
+									placeholder="e.g., Guard, Merchant, Healer"
+									placeholderTextColor="#999"
+								/>
+								
+								<ThemedText style={styles.formLabel}>Alignment</ThemedText>
+								<View style={styles.alignmentRow}>
+									{['lawful', 'neutral', 'chaotic'].map(align => (
+										<TouchableOpacity
+											key={align}
+											style={[
+												styles.alignmentButton,
+												newNpcForm.alignment === align && styles.alignmentButtonActive,
+											]}
+											onPress={() => setNewNpcForm({ ...newNpcForm, alignment: align })}
+										>
+											<ThemedText style={[
+												styles.alignmentButtonText,
+												newNpcForm.alignment === align && styles.alignmentButtonTextActive,
+											]}>
+												{align}
+											</ThemedText>
+										</TouchableOpacity>
+									))}
+								</View>
+								
+								<ThemedText style={styles.formLabel}>Disposition</ThemedText>
+								<View style={styles.dispositionRow}>
+									{['friendly', 'neutral', 'hostile', 'vendor'].map(disp => (
+										<TouchableOpacity
+											key={disp}
+											style={[
+												styles.dispositionButton,
+												newNpcForm.disposition === disp && styles.dispositionButtonActive,
+											]}
+											onPress={() => setNewNpcForm({ ...newNpcForm, disposition: disp as any })}
+										>
+											<ThemedText style={[
+												styles.dispositionButtonText,
+												newNpcForm.disposition === disp && styles.dispositionButtonTextActive,
+											]}>
+												{disp}
+											</ThemedText>
+										</TouchableOpacity>
+									))}
+								</View>
+								
+								<ThemedText style={styles.formLabel}>Description</ThemedText>
+								<TextInput
+									style={[styles.formInput, styles.formTextArea]}
+									value={newNpcForm.description}
+									onChangeText={(text) => setNewNpcForm({ ...newNpcForm, description: text })}
+									placeholder="Optional description"
+									placeholderTextColor="#999"
+									multiline
+									numberOfLines={3}
+								/>
+								
+								<View style={styles.statsRow}>
+									<View style={styles.statInput}>
+										<ThemedText style={styles.formLabel}>Max Health</ThemedText>
+										<TextInput
+											style={styles.formInput}
+											value={newNpcForm.maxHealth.toString()}
+											onChangeText={(text) => {
+												const num = parseInt(text, 10);
+												if (!isNaN(num)) {
+													setNewNpcForm({ ...newNpcForm, maxHealth: num });
+												}
+											}}
+											keyboardType="numeric"
+											placeholder="18"
+											placeholderTextColor="#999"
+										/>
+									</View>
+									
+									<View style={styles.statInput}>
+										<ThemedText style={styles.formLabel}>Armor Class</ThemedText>
+										<TextInput
+											style={styles.formInput}
+											value={newNpcForm.armorClass.toString()}
+											onChangeText={(text) => {
+												const num = parseInt(text, 10);
+												if (!isNaN(num)) {
+													setNewNpcForm({ ...newNpcForm, armorClass: num });
+												}
+											}}
+											keyboardType="numeric"
+											placeholder="12"
+											placeholderTextColor="#999"
+										/>
+									</View>
+								</View>
+								
+								<ThemedText style={styles.formLabel}>Icon (SVG or Emoji)</ThemedText>
+								<TextInput
+									style={styles.formInput}
+									value={newNpcForm.icon}
+									onChangeText={(text) => setNewNpcForm({ ...newNpcForm, icon: text })}
+									placeholder="Leave empty for auto-generated icon"
+									placeholderTextColor="#999"
+								/>
+								
+								<ThemedText style={styles.formLabel}>Color</ThemedText>
+								<TextInput
+									style={styles.formInput}
+									value={newNpcForm.color}
+									onChangeText={(text) => setNewNpcForm({ ...newNpcForm, color: text })}
+									placeholder="#4A6741"
+									placeholderTextColor="#999"
+								/>
+							</View>
+						</ScrollView>
+						
+						<View style={styles.modalFooter}>
+							<TouchableOpacity
+								style={[styles.modalButton, styles.modalButtonCancel]}
+								onPress={() => {
+									setShowAddNpcModal(false);
+									setNewNpcForm({
+										name: '',
+										role: '',
+										alignment: 'neutral',
+										disposition: 'friendly',
+										description: '',
+										maxHealth: 18,
+										armorClass: 12,
+										color: '#4A6741',
+										icon: '',
+									});
+								}}
+							>
+								<ThemedText style={styles.modalButtonCancelText}>Cancel</ThemedText>
+							</TouchableOpacity>
+							<TouchableOpacity
+								style={[styles.modalButton, styles.modalButtonSave, (!newNpcForm.name || !newNpcForm.role) && styles.modalButtonDisabled]}
+								onPress={async () => {
+									if (!newNpcForm.name || !newNpcForm.role || !inviteCode) {
+										Alert.alert('Error', 'Name and Role are required');
+										return;
+									}
+									
+									try {
+										// Create NPC by placing it off-map, then delete the token
+										// This adds it to the NPC definitions/palette
+										const result = await multiplayerClient.placeNpc(inviteCode, {
+											npcId: 'custom',
+											mapId: mapState?.id || (mapId !== 'new-map' ? mapId : undefined),
+											x: -1, // Off-map
+											y: -1, // Off-map
+											label: newNpcForm.name,
+											customNpc: {
+												name: newNpcForm.name,
+												role: newNpcForm.role,
+												alignment: newNpcForm.alignment,
+												disposition: newNpcForm.disposition,
+												description: newNpcForm.description || undefined,
+												maxHealth: newNpcForm.maxHealth,
+												armorClass: newNpcForm.armorClass,
+												color: newNpcForm.color,
+												icon: newNpcForm.icon || undefined,
+											},
+										});
+										
+										// Delete the token that was created (we just wanted the NPC definition)
+										if (result.tokens && result.tokens.length > 0) {
+											const tokenId = result.tokens[result.tokens.length - 1].id;
+											try {
+												await multiplayerClient.deleteMapToken(inviteCode, tokenId);
+											} catch (err) {
+												console.warn('Failed to delete off-map token:', err);
+											}
+										}
+										
+										// Small delay to ensure backend has fully committed the NPC definition
+										await new Promise(resolve => setTimeout(resolve, 100));
+										
+										// Refresh NPC palette - retry a few times if needed
+										let npcResponse;
+										let retries = 3;
+										while (retries > 0) {
+											try {
+												npcResponse = await multiplayerClient.getNpcDefinitions(inviteCode);
+												// Check if the new NPC is in the response
+												const newNpcFound = npcResponse.npcs.some(n => 
+													n.name === newNpcForm.name && n.role === newNpcForm.role
+												);
+												if (newNpcFound || retries === 1) {
+													break;
+												}
+											} catch (err) {
+												console.warn('Failed to fetch NPC definitions, retrying...', err);
+											}
+											retries--;
+											if (retries > 0) {
+												await new Promise(resolve => setTimeout(resolve, 200));
+											}
+										}
+										
+										if (npcResponse) {
+											// Force state update by creating a new array
+											setNpcPalette([...npcResponse.npcs]);
+											console.log('NPC palette refreshed:', npcResponse.npcs.length, 'NPCs');
+										} else {
+											// Fallback: reload the entire palette
+											await loadNpcPalette();
+										}
+										
+										// Reset form and close modal
+										setNewNpcForm({
+											name: '',
+											role: '',
+											alignment: 'neutral',
+											disposition: 'friendly',
+											description: '',
+											maxHealth: 18,
+											armorClass: 12,
+											color: '#4A6741',
+											icon: '',
+										});
+										setShowAddNpcModal(false);
+										Alert.alert('Success', `${newNpcForm.name} added to NPC palette`);
+									} catch (error) {
+										console.error('Failed to create NPC:', error);
+										Alert.alert('Error', error instanceof Error ? error.message : 'Failed to create NPC');
+									}
+								}}
+								disabled={!newNpcForm.name || !newNpcForm.role}
+							>
+								<ThemedText style={styles.modalButtonSaveText}>Create NPC</ThemedText>
+							</TouchableOpacity>
+						</View>
+					</View>
+				</View>
+			</Modal>
+			
 			<AppFooter />
 		</ThemedView>
 	);
@@ -1149,10 +1479,13 @@ const styles = StyleSheet.create({
 	},
 	paletteScroll: {
 		marginTop: 8,
+		maxHeight: 200,
 	},
 	paletteContent: {
 		gap: 12,
 		paddingRight: 12,
+		paddingLeft: 12,
+		paddingBottom: 8,
 	},
 	playerPalette: {
 		marginTop: 16,
@@ -1163,7 +1496,9 @@ const styles = StyleSheet.create({
 		borderWidth: 1,
 		borderColor: '#E2D3B3',
 		minWidth: 140,
+		maxWidth: 140,
 		backgroundColor: '#FFFFFF',
+		flexShrink: 0,
 	},
 	npcCardSelected: {
 		borderColor: '#8B6914',
@@ -1184,30 +1519,6 @@ const styles = StyleSheet.create({
 		paddingVertical: 6,
 		color: '#3B2F1B',
 		marginTop: 8,
-	},
-	dispositionRow: {
-		flexDirection: 'row',
-		flexWrap: 'wrap',
-		gap: 6,
-		marginTop: 8,
-	},
-	dispositionButton: {
-		paddingHorizontal: 10,
-		paddingVertical: 4,
-		borderRadius: 8,
-		borderWidth: 1,
-		borderColor: '#C9B037',
-	},
-	dispositionButtonActive: {
-		backgroundColor: '#C9B037',
-	},
-	dispositionButtonText: {
-		color: '#6B5B3D',
-		fontSize: 12,
-		textTransform: 'capitalize',
-	},
-	dispositionButtonTextActive: {
-		color: '#1F130A',
 	},
 	customNpcButton: {
 		marginTop: 8,
@@ -1245,6 +1556,9 @@ const styles = StyleSheet.create({
 		borderRadius: 12,
 		alignItems: 'center',
 	},
+	doneButtonDisabled: {
+		opacity: 0.5,
+	},
 	doneButtonText: {
 		color: '#FFF9EF',
 		fontWeight: '700',
@@ -1260,11 +1574,169 @@ const styles = StyleSheet.create({
 		color: '#6B5B3D',
 		textAlign: 'center',
 	},
+	emptyStateContainer: {
+		width: '100%',
+		paddingVertical: 20,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
 	loaderFallback: {
 		flex: 1,
 		alignItems: 'center',
 		justifyContent: 'center',
 		gap: 12,
+	},
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0, 0, 0, 0.5)',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalContent: {
+		backgroundColor: '#FFF9EF',
+		borderRadius: 16,
+		width: '90%',
+		maxWidth: 500,
+		maxHeight: '80%',
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+	},
+	modalHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		padding: 16,
+		borderBottomWidth: 1,
+		borderBottomColor: '#E2D3B3',
+	},
+	modalTitle: {
+		color: '#3B2F1B',
+		fontWeight: '600',
+	},
+	modalCloseButton: {
+		padding: 4,
+	},
+	modalCloseText: {
+		fontSize: 24,
+		color: '#6B5B3D',
+		fontWeight: '600',
+	},
+	modalScrollView: {
+		maxHeight: 400,
+	},
+	modalForm: {
+		padding: 16,
+		gap: 12,
+	},
+	formLabel: {
+		color: '#3B2F1B',
+		fontSize: 14,
+		fontWeight: '600',
+		marginBottom: 4,
+	},
+	formInput: {
+		backgroundColor: '#FFFFFF',
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+		borderRadius: 8,
+		padding: 12,
+		color: '#3B2F1B',
+		fontSize: 14,
+	},
+	formTextArea: {
+		minHeight: 80,
+		textAlignVertical: 'top',
+	},
+	alignmentRow: {
+		flexDirection: 'row',
+		gap: 8,
+	},
+	alignmentButton: {
+		flex: 1,
+		padding: 10,
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+		backgroundColor: '#FFFFFF',
+		alignItems: 'center',
+	},
+	alignmentButtonActive: {
+		backgroundColor: '#8B6914',
+		borderColor: '#8B6914',
+	},
+	alignmentButtonText: {
+		color: '#3B2F1B',
+		fontSize: 12,
+		fontWeight: '600',
+		textTransform: 'capitalize',
+	},
+	alignmentButtonTextActive: {
+		color: '#FFF9EF',
+	},
+	dispositionRow: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 8,
+	},
+	dispositionButton: {
+		flex: 1,
+		minWidth: '45%',
+		padding: 10,
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+		backgroundColor: '#FFFFFF',
+		alignItems: 'center',
+	},
+	dispositionButtonActive: {
+		backgroundColor: '#8B6914',
+		borderColor: '#8B6914',
+	},
+	dispositionButtonText: {
+		color: '#3B2F1B',
+		fontSize: 12,
+		fontWeight: '600',
+		textTransform: 'capitalize',
+	},
+	dispositionButtonTextActive: {
+		color: '#FFF9EF',
+	},
+	statsRow: {
+		flexDirection: 'row',
+		gap: 12,
+	},
+	statInput: {
+		flex: 1,
+	},
+	modalFooter: {
+		flexDirection: 'row',
+		gap: 12,
+		padding: 16,
+		borderTopWidth: 1,
+		borderTopColor: '#E2D3B3',
+	},
+	modalButton: {
+		flex: 1,
+		padding: 12,
+		borderRadius: 8,
+		alignItems: 'center',
+	},
+	modalButtonCancel: {
+		backgroundColor: '#E2D3B3',
+	},
+	modalButtonSave: {
+		backgroundColor: '#8B6914',
+	},
+	modalButtonDisabled: {
+		opacity: 0.5,
+	},
+	modalButtonCancelText: {
+		color: '#3B2F1B',
+		fontWeight: '600',
+	},
+	modalButtonSaveText: {
+		color: '#FFF9EF',
+		fontWeight: '600',
 	},
 });
 
