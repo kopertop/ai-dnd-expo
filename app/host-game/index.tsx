@@ -195,7 +195,7 @@ const HostGameIndexScreen: React.FC = () => {
 								style={[styles.button, styles.refreshButton]}
 								onPress={() => loadHostedGames().catch(() => undefined)}
 							>
-								<ThemedText style={styles.buttonText}>Retry</ThemedText>
+								<ThemedText style={styles.buttonTextGold}>Retry</ThemedText>
 							</TouchableOpacity>
 						</View>
 					) : resumableGames.length === 0 ? (
@@ -240,7 +240,7 @@ const HostGameIndexScreen: React.FC = () => {
 										onPress={() => handleResumeHostedGame(game)}
 										disabled={resumingGame || deletingGameId === game.id}
 									>
-										<ThemedText style={styles.buttonText}>
+										<ThemedText style={styles.resumeButtonText}>
 											{resumingGame
 												? 'Opening...'
 												: game.status === 'active'
@@ -272,7 +272,7 @@ const HostGameIndexScreen: React.FC = () => {
 						style={[styles.button, styles.startNewButton]}
 						onPress={handleStartNewGame}
 					>
-						<ThemedText style={styles.buttonText}>Start a New Game</ThemedText>
+						<ThemedText style={styles.startNewButtonText}>Start a New Game</ThemedText>
 					</TouchableOpacity>
 				</View>
 			</ScrollView>
@@ -406,16 +406,26 @@ const styles = StyleSheet.create({
 		flex: 1,
 		alignItems: 'center',
 	},
+	buttonTextGold: {
+		color: '#FFFFFF',
+		fontWeight: '600',
+		fontSize: 14,
+	},
 	buttonDisabled: {
 		opacity: 0.5,
 	},
 	buttonText: {
-		color: '#1F130A',
+		color: '#FFFFFF',
 		fontWeight: '600',
 		fontSize: 14,
 	},
 	resumeButton: {
 		backgroundColor: '#4A6741',
+	},
+	resumeButtonText: {
+		color: '#FFFFFF',
+		fontWeight: '600',
+		fontSize: 14,
 	},
 	deleteButton: {
 		backgroundColor: '#B91C1C',
@@ -428,6 +438,11 @@ const styles = StyleSheet.create({
 	startNewButton: {
 		backgroundColor: '#8B6914',
 		paddingVertical: 16,
+	},
+	startNewButtonText: {
+		color: '#FFFFFF',
+		fontWeight: '600',
+		fontSize: 14,
 	},
 	loaderFallback: {
 		flex: 1,

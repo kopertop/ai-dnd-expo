@@ -2,18 +2,19 @@ import { useAuth } from 'expo-auth-template/frontend';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-	ActivityIndicator,
-	Alert,
-	ScrollView,
-	StyleSheet,
-	TouchableOpacity,
-	View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppFooter } from '@/components/app-footer';
 import { InviteCodeDisplay } from '@/components/invite-code-display';
 import { LocationChooser } from '@/components/location-chooser';
+import { MapManagementPanel } from '@/components/map-management-panel';
 import { PlayerList } from '@/components/player-list';
 import { QuestSelector } from '@/components/quest-selector';
 import { ThemedText } from '@/components/themed-text';
@@ -21,9 +22,8 @@ import { ThemedView } from '@/components/themed-view';
 import { WorldChooser } from '@/components/world-chooser';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
 import {
-	GameSessionResponse,
-	NpcPlacementRequest,
-	PlacedNpc,
+    GameSessionResponse,
+    PlacedNpc,
 } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
 import { LocationOption } from '@/types/location-option';
@@ -61,6 +61,7 @@ const HostGameLobbyScreen: React.FC = () => {
 	const [npcInstances, setNpcInstances] = useState<PlacedNpc[]>([]);
 	const [npcInstancesLoading, setNpcInstancesLoading] = useState(false);
 	const [npcPalette, setNpcPalette] = useState<NpcDefinition[]>([]);
+	const [currentMapId, setCurrentMapId] = useState<string | null>(null);
 	const insets = useSafeAreaInsets();
 	const { user } = useAuth();
 	const hostId = user?.id ?? null;
@@ -92,13 +93,19 @@ const HostGameLobbyScreen: React.FC = () => {
 		try {
 			const existingSession = await multiplayerClient.getGameSession(inviteCode);
 			setSession(existingSession);
+			// Get current map ID from session response
+			if (existingSession.currentMapId) {
+				setCurrentMapId(existingSession.currentMapId);
+			}
 			if (existingSession.status === 'waiting') {
 				setSelectedQuest(existingSession.quest);
 				setCurrentStep('waiting');
 			} else if (existingSession.status === 'active') {
-				if (hostId) {
-					router.replace(`/multiplayer-game?inviteCode=${inviteCode}&hostId=${hostId}`);
-				}
+				// If game is active, allow host to manage it from the lobby
+				// They can see the current state and make changes
+				setSelectedQuest(existingSession.quest);
+				setCurrentStep('waiting');
+				// Optionally, you could show a banner that the game is active
 			}
 		} catch (error) {
 			console.error('Failed to load session:', error);
@@ -238,6 +245,12 @@ const HostGameLobbyScreen: React.FC = () => {
 
 	const handleStartGame = async () => {
 		if (!session || !hostId) {
+			Alert.alert('Error', 'Session or host ID missing');
+			return;
+		}
+
+		if (!currentMapId) {
+			Alert.alert('Map Required', 'Please select a map before starting the game.');
 			return;
 		}
 
@@ -278,16 +291,29 @@ const HostGameLobbyScreen: React.FC = () => {
 					};
 				});
 
+			// Get world and location from session if not set (for existing games)
+			// selectedWorld and selectedLocation are only set during initial game creation
+			// For existing games, use session data
+			const gameWorld = selectedWorld?.name ?? session.world ?? session.gameState?.gameWorld ?? 'Unknown';
+			const startingArea = selectedLocation?.name ?? session.startingArea ?? session.gameState?.startingArea ?? 'Unknown';
+			const quest = selectedQuest || session.quest;
+
+			if (!quest) {
+				Alert.alert('Error', 'Quest information is missing');
+				setLoading(false);
+				return;
+			}
+
 			const initialGameState = {
 				sessionId: session.sessionId,
 				inviteCode: session.inviteCode,
 				hostId,
-				quest: selectedQuest!,
+				quest,
 				players: session.players,
 				characters,
 				playerCharacterId: session.players[0]?.characterId || '',
-				gameWorld: selectedWorld!.name,
-				startingArea: selectedLocation!.name,
+				gameWorld,
+				startingArea,
 				status: 'active' as const,
 				createdAt: Date.now(),
 				lastUpdated: Date.now(),
@@ -299,6 +325,7 @@ const HostGameLobbyScreen: React.FC = () => {
 			await multiplayerClient.startGame(session.inviteCode, hostId, initialGameState);
 			router.replace(`/multiplayer-game?inviteCode=${session.inviteCode}&hostId=${hostId}`);
 		} catch (error) {
+			console.error('Failed to start game:', error);
 			Alert.alert('Error', error instanceof Error ? error.message : 'Failed to start game');
 		} finally {
 			setLoading(false);
@@ -475,12 +502,35 @@ const HostGameLobbyScreen: React.FC = () => {
 										{renderNpcInstances()}
 									</View>
 									<View style={styles.mapColumn}>
-										<ThemedText type="subtitle">Map Editor</ThemedText>
-										<ThemedText style={styles.paletteHint}>
-											Generate a map to start editing. You can create multiple maps for this game.
-										</ThemedText>
+										<MapManagementPanel
+											inviteCode={inviteCode}
+											currentMapId={currentMapId}
+											onMapSelected={async (mapId) => {
+												try {
+													await multiplayerClient.switchMap(inviteCode, mapId);
+													setCurrentMapId(mapId);
+													await loadSession();
+												} catch (error) {
+													console.error('Failed to switch map:', error);
+												}
+											}}
+											onMapCloned={async (mapId) => {
+												try {
+													await multiplayerClient.switchMap(inviteCode, mapId);
+													setCurrentMapId(mapId);
+													await loadSession();
+												} catch (error) {
+													console.error('Failed to switch to cloned map:', error);
+												}
+											}}
+											onEditMap={(mapId) => {
+												if (inviteCode) {
+													router.push(`/host-game/${inviteCode}/${mapId}`);
+												}
+											}}
+										/>
 										<TouchableOpacity
-											style={[styles.button, styles.startButton]}
+											style={[styles.button, styles.startButton, { marginTop: 16 }]}
 											onPress={() => {
 												if (inviteCode) {
 													router.push(`/host-game/${inviteCode}/new-map`);
@@ -495,13 +545,16 @@ const HostGameLobbyScreen: React.FC = () => {
 									style={[
 										styles.button,
 										styles.startButton,
-										(loading || session.players.length === 0) && styles.buttonDisabled,
+										(loading || session.players.length === 0 || !currentMapId) && styles.buttonDisabled,
 									]}
-									onPress={handleStartGame}
-									disabled={loading || session.players.length === 0}
+									onPress={() => {
+										console.log('Start Encounter clicked', { loading, players: session.players.length, currentMapId });
+										handleStartGame();
+									}}
+									disabled={loading || session.players.length === 0 || !currentMapId}
 								>
-									<ThemedText style={styles.buttonText}>
-										{loading ? 'Starting...' : 'Start Game'}
+									<ThemedText style={styles.startButtonText}>
+										{loading ? 'Starting...' : !currentMapId ? 'Select a Map First' : 'Start Encounter'}
 									</ThemedText>
 								</TouchableOpacity>
 							</>
@@ -599,7 +652,7 @@ const styles = StyleSheet.create({
 		opacity: 0.5,
 	},
 	buttonText: {
-		color: '#1F130A',
+		color: '#FFFFFF',
 		fontWeight: '600',
 		fontSize: 14,
 	},
@@ -627,6 +680,11 @@ const styles = StyleSheet.create({
 	},
 	startButton: {
 		backgroundColor: '#4A6741',
+	},
+	startButtonText: {
+		color: '#FFFFFF',
+		fontWeight: '600',
+		fontSize: 16,
 	},
 	instancePanel: {
 		padding: 16,
@@ -673,7 +731,7 @@ const styles = StyleSheet.create({
 		backgroundColor: '#C9B037',
 	},
 	adjustButtonText: {
-		color: '#1F130A',
+		color: '#FFFFFF',
 		fontSize: 12,
 		fontWeight: '600',
 	},

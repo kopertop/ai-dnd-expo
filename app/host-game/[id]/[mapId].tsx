@@ -2,15 +2,15 @@ import { useAuth } from 'expo-auth-template/frontend';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-	ActivityIndicator,
-	Alert,
-	Modal,
-	Platform,
-	ScrollView,
-	StyleSheet,
-	TextInput,
-	TouchableOpacity,
-	View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -21,9 +21,6 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TokenDetailModal } from '@/components/token-detail-modal';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
-import {
-	NpcPlacementRequest
-} from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
 import { MapState, MapToken, NpcDefinition } from '@/types/multiplayer-map';
 
@@ -608,10 +605,10 @@ const HostGameMapEditorScreen: React.FC = () => {
 				console.log('Token data:', token);
 				console.log('NPC Palette:', npcPalette.map(n => ({ id: n.id, slug: n.slug, name: n.name })));
 				// Try matching by id first, then by slug (token might have slug field)
-				const npc = npcPalette.find(n => 
-					n.id === token.id || 
-					n.slug === token.id || 
-					((token as any).slug && n.slug === (token as any).slug)
+				const npc = npcPalette.find(n =>
+					n.id === token.id ||
+					n.slug === token.id ||
+					((token as any).slug && n.slug === (token as any).slug),
 				);
 				console.log('Found NPC:', npc ? { name: npc.name, id: npc.id, slug: npc.slug } : 'NOT FOUND');
 
@@ -694,14 +691,14 @@ const HostGameMapEditorScreen: React.FC = () => {
 			if (mapState?.tokens) {
 				const npcTokens = mapState.tokens.filter(token => token.type === 'npc');
 				console.log(`Deleting ${npcTokens.length} NPC tokens before map generation`);
-				
+
 				// Delete all NPC tokens in parallel
 				await Promise.all(
-					npcTokens.map(token => 
+					npcTokens.map(token =>
 						multiplayerClient.deleteMapToken(inviteCode, token.id).catch(err => {
 							console.warn(`Failed to delete token ${token.id}:`, err);
-						})
-					)
+						}),
+					),
 				);
 			}
 
@@ -710,6 +707,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 			});
 			console.log('Map generated:', generated.id, 'for game:', inviteCode);
 			setMapState(generated);
+			// The generateMap endpoint already sets the map as current_map_id
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Unable to generate map';
 			setMapError(errorMessage);
@@ -1030,23 +1028,23 @@ const HostGameMapEditorScreen: React.FC = () => {
 									console.log('Map ID:', mapState.id);
 									console.log('Game Invite Code:', inviteCode);
 									console.log('Map State:', { id: mapState.id, width: mapState.width, height: mapState.height, tokens: mapState.tokens?.length || 0 });
-									
+
 									// Ensure the map is set as the current map for this game
 									// This saves the map association and ensures it persists
 									console.log('Calling updateMapState...');
 									const updatedState = await multiplayerClient.updateMapState(inviteCode, {
 										id: mapState.id,
 									});
-									
+
 									console.log('Map state updated successfully:', updatedState.id);
 									console.log('Updated map has', updatedState.tokens?.length || 0, 'tokens');
-									
+
 									// Refresh to ensure everything is synced
 									console.log('Refreshing map state...');
 									await refreshMapState();
-									
+
 									console.log('Map saved successfully, navigating to lobby');
-									
+
 									// Navigate back to the lobby screen
 									router.replace(`/host-game/${inviteCode}`);
 								} catch (error) {
@@ -1068,7 +1066,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 					</View>
 				</View>
 			</ScrollView>
-			
+
 			{/* Add NPC Modal */}
 			<Modal
 				visible={showAddNpcModal}
@@ -1087,7 +1085,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 								<ThemedText style={styles.modalCloseText}>✕</ThemedText>
 							</TouchableOpacity>
 						</View>
-						
+
 						<ScrollView style={styles.modalScrollView}>
 							<View style={styles.modalForm}>
 								<ThemedText style={styles.formLabel}>Name *</ThemedText>
@@ -1098,7 +1096,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 									placeholder="NPC Name"
 									placeholderTextColor="#999"
 								/>
-								
+
 								<ThemedText style={styles.formLabel}>Role *</ThemedText>
 								<TextInput
 									style={styles.formInput}
@@ -1107,7 +1105,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 									placeholder="e.g., Guard, Merchant, Healer"
 									placeholderTextColor="#999"
 								/>
-								
+
 								<ThemedText style={styles.formLabel}>Alignment</ThemedText>
 								<View style={styles.alignmentRow}>
 									{['lawful', 'neutral', 'chaotic'].map(align => (
@@ -1128,7 +1126,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 										</TouchableOpacity>
 									))}
 								</View>
-								
+
 								<ThemedText style={styles.formLabel}>Disposition</ThemedText>
 								<View style={styles.dispositionRow}>
 									{['friendly', 'neutral', 'hostile', 'vendor'].map(disp => (
@@ -1149,7 +1147,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 										</TouchableOpacity>
 									))}
 								</View>
-								
+
 								<ThemedText style={styles.formLabel}>Description</ThemedText>
 								<TextInput
 									style={[styles.formInput, styles.formTextArea]}
@@ -1160,7 +1158,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 									multiline
 									numberOfLines={3}
 								/>
-								
+
 								<View style={styles.statsRow}>
 									<View style={styles.statInput}>
 										<ThemedText style={styles.formLabel}>Max Health</ThemedText>
@@ -1178,7 +1176,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 											placeholderTextColor="#999"
 										/>
 									</View>
-									
+
 									<View style={styles.statInput}>
 										<ThemedText style={styles.formLabel}>Armor Class</ThemedText>
 										<TextInput
@@ -1196,7 +1194,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 										/>
 									</View>
 								</View>
-								
+
 								<ThemedText style={styles.formLabel}>Icon (SVG or Emoji)</ThemedText>
 								<TextInput
 									style={styles.formInput}
@@ -1205,7 +1203,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 									placeholder="Leave empty for auto-generated icon"
 									placeholderTextColor="#999"
 								/>
-								
+
 								<ThemedText style={styles.formLabel}>Color</ThemedText>
 								<TextInput
 									style={styles.formInput}
@@ -1216,7 +1214,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 								/>
 							</View>
 						</ScrollView>
-						
+
 						<View style={styles.modalFooter}>
 							<TouchableOpacity
 								style={[styles.modalButton, styles.modalButtonCancel]}
@@ -1244,7 +1242,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 										Alert.alert('Error', 'Name and Role are required');
 										return;
 									}
-									
+
 									try {
 										// Create NPC by placing it off-map, then delete the token
 										// This adds it to the NPC definitions/palette
@@ -1266,7 +1264,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 												icon: newNpcForm.icon || undefined,
 											},
 										});
-										
+
 										// Delete the token that was created (we just wanted the NPC definition)
 										if (result.tokens && result.tokens.length > 0) {
 											const tokenId = result.tokens[result.tokens.length - 1].id;
@@ -1276,10 +1274,10 @@ const HostGameMapEditorScreen: React.FC = () => {
 												console.warn('Failed to delete off-map token:', err);
 											}
 										}
-										
+
 										// Small delay to ensure backend has fully committed the NPC definition
 										await new Promise(resolve => setTimeout(resolve, 100));
-										
+
 										// Refresh NPC palette - retry a few times if needed
 										let npcResponse;
 										let retries = 3;
@@ -1287,8 +1285,8 @@ const HostGameMapEditorScreen: React.FC = () => {
 											try {
 												npcResponse = await multiplayerClient.getNpcDefinitions(inviteCode);
 												// Check if the new NPC is in the response
-												const newNpcFound = npcResponse.npcs.some(n => 
-													n.name === newNpcForm.name && n.role === newNpcForm.role
+												const newNpcFound = npcResponse.npcs.some(n =>
+													n.name === newNpcForm.name && n.role === newNpcForm.role,
 												);
 												if (newNpcFound || retries === 1) {
 													break;
@@ -1301,7 +1299,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 												await new Promise(resolve => setTimeout(resolve, 200));
 											}
 										}
-										
+
 										if (npcResponse) {
 											// Force state update by creating a new array
 											setNpcPalette([...npcResponse.npcs]);
@@ -1310,7 +1308,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 											// Fallback: reload the entire palette
 											await loadNpcPalette();
 										}
-										
+
 										// Reset form and close modal
 										setNewNpcForm({
 											name: '',
@@ -1338,7 +1336,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 					</View>
 				</View>
 			</Modal>
-			
+
 			<AppFooter />
 		</ThemedView>
 	);

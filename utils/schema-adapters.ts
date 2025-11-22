@@ -97,32 +97,34 @@ const buildFogMatrix = (map: MapRow) => {
 };
 
 const convertTokens = (tokens?: MapTokenRow[]): MapToken[] => {
-        if (!tokens?.length) {
-                return [];
-        }
+	if (!tokens?.length) {
+		return [];
+	}
 
-        return tokens.map(token => {
-                const metadata = parseJson<Record<string, unknown>>(token.metadata, {});
-                const icon =
+	return tokens.map(token => {
+		const metadata = parseJson<Record<string, unknown>>(token.metadata, {});
+		const icon =
                         typeof metadata.icon === 'string'
-                                ? metadata.icon
-                                : typeof metadata.image === 'string'
-                                        ? metadata.image
-                                        : undefined;
+                        	? metadata.icon
+                        	: typeof metadata.image === 'string'
+                        		? metadata.image
+                        		: undefined;
 
-                return {
-                        id: token.id,
-                        type: toTokenType(token.token_type),
-                        entityId: token.character_id ?? token.npc_id ?? undefined,
-                        label: token.label ?? 'Token',
-                        x: token.x,
-                        y: token.y,
-                        zIndex: token.facing ?? 0,
-                        color: token.color ?? undefined,
-                        metadata,
-                        icon,
-                };
-        });
+		return {
+			id: token.id,
+			type: toTokenType(token.token_type),
+			entityId: token.character_id ?? token.npc_id ?? undefined,
+			label: token.label ?? 'Token',
+			x: token.x,
+			y: token.y,
+			zIndex: token.facing ?? 0,
+			color: token.color ?? undefined,
+			hitPoints: token.hit_points ?? undefined,
+			maxHitPoints: token.max_hit_points ?? undefined,
+			metadata,
+			icon,
+		};
+	});
 };
 
 export interface MapStateAdapterOptions {

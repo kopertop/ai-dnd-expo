@@ -318,6 +318,44 @@ export class MultiplayerClient {
 			method: 'GET',
 		});
 	}
+
+	/**
+	 * Get all available maps in the system
+	 */
+	async getAllMaps(): Promise<{ maps: Array<{ id: string; slug: string; name: string; description: string | null; width: number; height: number }> }> {
+		return apiService.fetchApi('/maps', {
+			method: 'GET',
+		});
+	}
+
+	/**
+	 * Clone a map
+	 */
+	async cloneMap(sourceMapId: string, newName: string): Promise<{ map: { id: string; slug: string; name: string; description: string | null; width: number; height: number } }> {
+		return apiService.fetchApi('/maps/clone', {
+			method: 'POST',
+			body: JSON.stringify({ sourceMapId, newName }),
+		});
+	}
+
+	/**
+	 * Switch to a different map for a game
+	 */
+	async switchMap(inviteCode: string, mapId: string): Promise<MapStateResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/map`, {
+			method: 'PATCH',
+			body: JSON.stringify({ mapId }),
+		});
+	}
+
+	/**
+	 * Stop an active game and return it to waiting status
+	 */
+	async stopGame(inviteCode: string): Promise<void> {
+		return apiService.fetchApi(`/games/${inviteCode}/stop`, {
+			method: 'PATCH',
+		});
+	}
 }
 
 // Singleton instance

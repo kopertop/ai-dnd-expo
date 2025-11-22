@@ -251,6 +251,8 @@ export class GameSession {
 			characters: session.characters,
 			createdAt: session.createdAt,
 			gameState: session.gameState,
+			world: session.world,
+			startingArea: session.startingArea,
 		};
 	}
 }

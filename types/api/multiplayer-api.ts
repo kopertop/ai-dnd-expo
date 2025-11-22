@@ -199,6 +199,9 @@ export const GameSessionResponseSchema = z.object({
 	characters: z.array(CharacterSchema).optional().default([]),
 	createdAt: z.number(),
 	gameState: MultiplayerGameStateSchema.optional(),
+	currentMapId: z.string().nullable().optional(),
+	world: z.string().optional(),
+	startingArea: z.string().optional(),
 });
 
 export const GameStateResponseSchema = MultiplayerGameStateSchema;

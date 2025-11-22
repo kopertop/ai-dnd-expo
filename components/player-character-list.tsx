@@ -6,64 +6,114 @@ import { ThemedView } from './themed-view';
 
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { Character } from '@/types/character';
+import { MapToken } from '@/types/multiplayer-map';
 
 interface PlayerCharacterListProps {
 	characters: Character[];
 	currentPlayerId?: string;
+	npcTokens?: MapToken[];
+	activeTurnEntityId?: string;
 }
 
 export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 	characters,
 	currentPlayerId,
+	npcTokens = [],
+	activeTurnEntityId,
 }) => {
 	const { isMobile } = useScreenSize();
+
+	const allEntities = [
+		...characters.map(char => ({ type: 'player' as const, id: char.id, name: char.name, data: char })),
+		...npcTokens.map(token => ({ type: 'npc' as const, id: token.id, name: token.label || 'NPC', data: token })),
+	];
 
 	return (
 		<ThemedView style={styles.container}>
 			<ThemedText type="subtitle" style={styles.title}>
-				Party ({characters.length})
+				Characters ({allEntities.length})
 			</ThemedText>
 			<ScrollView style={styles.scrollView} showsVerticalScrollIndicator={true}>
-				{characters.map((character, index) => {
-					const isCurrentPlayer = character.id === currentPlayerId;
-					const displayName = character.name || character.race || character.class || 'Unknown';
-					return (
-						<View
-							key={character.id}
-							style={[
-								styles.characterCard,
-								isMobile && styles.characterCardMobile,
-								isCurrentPlayer && styles.characterCardCurrent,
-							]}
-						>
-							<View style={styles.characterHeader}>
-								<ThemedText style={styles.characterName}>
-									{displayName}
-									{isCurrentPlayer && ' (You)'}
-								</ThemedText>
-								<ThemedText style={styles.characterLevel}>
-									Level {character.level}
-								</ThemedText>
-							</View>
-							<ThemedText style={styles.characterDetails}>
-								{character.race} {character.class}
-							</ThemedText>
-							<View style={styles.statsRow}>
-								<View style={styles.stat}>
-									<ThemedText style={styles.statLabel}>HP</ThemedText>
-									<ThemedText style={styles.statValue}>
-										{character.health}/{character.maxHealth}
+				{allEntities.map((entity) => {
+					const isCurrentPlayer = entity.type === 'player' && entity.id === currentPlayerId;
+					const isActiveTurn = entity.id === activeTurnEntityId;
+					
+					if (entity.type === 'player') {
+						const character = entity.data as Character;
+						const displayName = character.name || character.race || character.class || 'Unknown';
+						return (
+							<View
+								key={character.id}
+								style={[
+									styles.characterCard,
+									isMobile && styles.characterCardMobile,
+									isCurrentPlayer && styles.characterCardCurrent,
+									isActiveTurn && styles.characterCardActiveTurn,
+								]}
+							>
+								<View style={styles.characterHeader}>
+									<ThemedText style={styles.characterName}>
+										{displayName}
+										{isCurrentPlayer && ' (You)'}
+										{isActiveTurn && ' 🟢'}
+									</ThemedText>
+									<ThemedText style={styles.characterLevel}>
+										Level {character.level}
 									</ThemedText>
 								</View>
-								<View style={styles.stat}>
-									<ThemedText style={styles.statLabel}>AP</ThemedText>
-									<ThemedText style={styles.statValue}>
-										{character.actionPoints}/{character.maxActionPoints}
-									</ThemedText>
+								<ThemedText style={styles.characterDetails}>
+									{character.race} {character.class}
+								</ThemedText>
+								<View style={styles.statsRow}>
+									<View style={styles.stat}>
+										<ThemedText style={styles.statLabel}>HP</ThemedText>
+										<ThemedText style={styles.statValue}>
+											{character.health}/{character.maxHealth}
+										</ThemedText>
+									</View>
+									<View style={styles.stat}>
+										<ThemedText style={styles.statLabel}>AP</ThemedText>
+										<ThemedText style={styles.statValue}>
+											{character.actionPoints}/{character.maxActionPoints}
+										</ThemedText>
+									</View>
 								</View>
 							</View>
-						</View>
-					);
+						);
+					} else {
+						const npcToken = entity.data as MapToken;
+						return (
+							<View
+								key={npcToken.id}
+								style={[
+									styles.characterCard,
+									styles.npcCard,
+									isMobile && styles.characterCardMobile,
+									isActiveTurn && styles.characterCardActiveTurn,
+								]}
+							>
+								<View style={styles.characterHeader}>
+									<ThemedText style={styles.characterName}>
+										{npcToken.label || 'NPC'}
+										{isActiveTurn && ' 🟢'}
+									</ThemedText>
+									<ThemedText style={styles.characterLevel}>
+										NPC
+									</ThemedText>
+								</View>
+								{npcToken.hitPoints !== undefined && (
+									<View style={styles.statsRow}>
+										<View style={styles.stat}>
+											<ThemedText style={styles.statLabel}>HP</ThemedText>
+											<ThemedText style={styles.statValue}>
+												{npcToken.hitPoints}/{npcToken.maxHitPoints || npcToken.hitPoints}
+											</ThemedText>
+										</View>
+									</View>
+								)}
+							</View>
+						);
+					}
 				})}
 			</ScrollView>
 		</ThemedView>
@@ -99,6 +149,15 @@ const styles = StyleSheet.create({
 		borderColor: '#8B6914',
 		borderWidth: 2,
 		backgroundColor: '#F5E6D3',
+	},
+	characterCardActiveTurn: {
+		borderColor: '#4A6741',
+		borderWidth: 2,
+		backgroundColor: '#E8F5E9',
+	},
+	npcCard: {
+		backgroundColor: '#E8E4D8',
+		borderColor: '#A89B7D',
 	},
 	characterHeader: {
 		flexDirection: 'row',

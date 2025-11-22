@@ -501,6 +501,64 @@ export class Database {
 		await this.db.batch([deleteStatement, ...insertStatements]);
 	}
 
+	async cloneMap(sourceMapId: string, newName: string, newSlug: string): Promise<MapRow> {
+		const sourceMap = await this.getMapById(sourceMapId);
+		if (!sourceMap) {
+			throw new Error(`Map not found: ${sourceMapId}`);
+		}
+
+		const sourceTiles = await this.getMapTiles(sourceMapId);
+
+		const now = Date.now();
+		const newMapId = `map_${newSlug}_${now}`;
+
+		const clonedMap: Omit<MapRow, 'created_at' | 'updated_at'> & { created_at: number; updated_at: number } = {
+			id: newMapId,
+			slug: newSlug,
+			name: newName,
+			description: sourceMap.description ? `${sourceMap.description} (Copy)` : null,
+			width: sourceMap.width,
+			height: sourceMap.height,
+			default_terrain: sourceMap.default_terrain,
+			fog_of_war: sourceMap.fog_of_war,
+			terrain_layers: sourceMap.terrain_layers,
+			metadata: sourceMap.metadata,
+			generator_preset: sourceMap.generator_preset,
+			seed: `${sourceMap.seed}_clone_${now}`,
+			theme: sourceMap.theme,
+			biome: sourceMap.biome,
+			is_generated: sourceMap.is_generated,
+			created_at: now,
+			updated_at: now,
+		};
+
+		await this.saveMap(clonedMap);
+
+		// Copy all tiles
+		if (sourceTiles.length > 0) {
+			await this.replaceMapTiles(
+				newMapId,
+				sourceTiles.map(tile => ({
+					x: tile.x,
+					y: tile.y,
+					terrain_type: tile.terrain_type,
+					elevation: tile.elevation,
+					is_blocked: tile.is_blocked,
+					has_fog: tile.has_fog,
+					feature_type: tile.feature_type,
+					metadata: tile.metadata,
+				})),
+			);
+		}
+
+		const result = await this.getMapById(newMapId);
+		if (!result) {
+			throw new Error('Failed to retrieve cloned map');
+		}
+
+		return result;
+	}
+
 	async upsertMapTiles(
 		mapId: string,
 		tiles: Array<{

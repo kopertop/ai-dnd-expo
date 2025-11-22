@@ -282,7 +282,7 @@ games.post('/', async (c) => {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				inviteCode,
-				hostId,
+				hostId: resolvedHostId,
 				quest: questData,
 				world,
 				startingArea,
@@ -345,7 +345,7 @@ games.post('/', async (c) => {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					character: hostCharacter,
-					playerId: hostId,
+					playerId: resolvedHostId,
 				}),
 			}),
 		);
@@ -497,6 +497,30 @@ games.delete('/me/characters/:id', async (c) => {
 	return c.json({ ok: true });
 });
 
+games.patch('/:inviteCode/stop', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden - Only the host can stop this game' }, 403);
+	}
+
+	// Change game status back to 'waiting' to allow lobby access
+	await db.updateGameStatus(game.id, 'waiting');
+
+	return c.json({ ok: true, message: 'Game stopped successfully' });
+});
+
 games.delete('/:inviteCode', async (c) => {
 	const user = c.get('user');
 	if (!user) {
@@ -537,7 +561,23 @@ games.get('/:inviteCode', async (c) => {
 		return jsonWithStatus(c, { error: 'Failed to fetch session', details }, stateResponse.status);
 	}
 
-	return c.json(await stateResponse.json());
+	const sessionData = await stateResponse.json();
+
+	// Add currentMapId, world, and startingArea from database (in case session doesn't have them)
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+	if (game) {
+		sessionData.currentMapId = game.current_map_id;
+		// Fallback to database if session doesn't have these
+		if (!sessionData.world) {
+			sessionData.world = game.world;
+		}
+		if (!sessionData.startingArea) {
+			sessionData.startingArea = game.starting_area;
+		}
+	}
+
+	return c.json(sessionData);
 });
 
 games.post('/:inviteCode/join', async (c) => {
@@ -661,11 +701,20 @@ games.patch('/:inviteCode/map', async (c) => {
 		return c.json({ error: 'Forbidden' }, 403);
 	}
 
-	const payload = (await c.req.json()) as { id?: string };
+	const payload = (await c.req.json()) as { id?: string; mapId?: string };
 
-	if (payload?.id && payload.id !== game.current_map_id) {
-		await db.updateGameMap(game.id, payload.id);
-		game.current_map_id = payload.id;
+	// Support both 'id' and 'mapId' for backward compatibility
+	const mapId = payload?.mapId || payload?.id;
+
+	if (mapId && mapId !== game.current_map_id) {
+		// Verify the map exists
+		const map = await db.getMapById(mapId);
+		if (!map) {
+			return c.json({ error: 'Map not found' }, 404);
+		}
+
+		await db.updateGameMap(game.id, mapId);
+		game.current_map_id = mapId;
 	}
 
 	try {
