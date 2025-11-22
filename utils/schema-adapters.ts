@@ -101,17 +101,30 @@ const convertTokens = (tokens?: MapTokenRow[]): MapToken[] => {
 		return [];
 	}
 
-	return tokens.map(token => ({
-		id: token.id,
-		type: toTokenType(token.token_type),
-		entityId: token.character_id ?? token.npc_id ?? undefined,
-		label: token.label ?? 'Token',
-		x: token.x,
-		y: token.y,
-		zIndex: token.facing ?? 0,
-		color: token.color ?? undefined,
-		metadata: parseJson<Record<string, unknown>>(token.metadata, {}),
-	}));
+	return tokens.map(token => {
+		const metadata = parseJson<Record<string, unknown>>(token.metadata, {});
+		const icon =
+                        typeof metadata.icon === 'string'
+                        	? metadata.icon
+                        	: typeof metadata.image === 'string'
+                        		? metadata.image
+                        		: undefined;
+
+		return {
+			id: token.id,
+			type: toTokenType(token.token_type),
+			entityId: token.character_id ?? token.npc_id ?? undefined,
+			label: token.label ?? 'Token',
+			x: token.x,
+			y: token.y,
+			zIndex: token.facing ?? 0,
+			color: token.color ?? undefined,
+			hitPoints: token.hit_points ?? undefined,
+			maxHitPoints: token.max_hit_points ?? undefined,
+			metadata,
+			icon,
+		};
+	});
 };
 
 export interface MapStateAdapterOptions {

@@ -16,6 +16,7 @@ import { newGameStyles } from '../styles/new-game.styles';
 
 import { AttributePicker } from '@/components/attribute-picker';
 import { ClassChooser } from '@/components/class-chooser';
+import { IconPicker } from '@/components/icon-picker';
 import { LocationChooser } from '@/components/location-chooser';
 import { RaceChooser } from '@/components/race-chooser';
 import { SkillChooser } from '@/components/skill-chooser';
@@ -68,6 +69,7 @@ const NewGameScreen: React.FC = () => {
 	const [selectedAttributes, setSelectedAttributes] = useState<StatBlock | null>(null);
 	const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
 	const [characterName, setCharacterName] = useState('');
+	const [characterIcon, setCharacterIcon] = useState('');
 	const [customStory, setCustomStory] = useState('');
 	const [isSaving, setIsSaving] = useState(false);
 	const { isMobile } = useScreenSize();
@@ -152,6 +154,7 @@ const NewGameScreen: React.FC = () => {
 		name: characterName.trim(),
 		class: selectedClass?.name ?? 'Adventurer',
 		trait: selectedTrait?.name,
+		icon: characterIcon || undefined,
 		description: customStory.trim(),
 		stats: selectedAttributes!,
 		skills: selectedSkills.map(skill => skill.id),
@@ -491,6 +494,11 @@ const NewGameScreen: React.FC = () => {
 									onChangeText={setCharacterName}
 									maxLength={32}
 								/>
+							</View>
+
+							{/* Icon Picker Section */}
+							<View style={{ marginBottom: isMobile ? 16 : 24 }}>
+								<IconPicker value={characterIcon} onChange={setCharacterIcon} label="Character Icon" />
 							</View>
 
 							{/* Background Section - Flexible */}

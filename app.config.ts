@@ -3,11 +3,11 @@ import { ExpoConfig } from 'expo/config';
 // Expo automatically loads .env files, so process.env should be available here
 // We put these in extra so they're accessible via Constants.expoConfig.extra
 // This works for static exports where process.env is not replaced in the bundle
+// NOTE: API keys should NOT be included here - they should only be used server-side
 const env = {
 	apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || '',
 	googleClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '',
 	ollamaBaseUrl: process.env.EXPO_PUBLIC_OLLAMA_BASE_URL || '',
-	ollamaApiKey: process.env.EXPO_PUBLIC_OLLAMA_API_KEY || '',
 	ttsBaseUrl: process.env.EXPO_PUBLIC_TTS_BASE_URL || '',
 };
 
@@ -75,10 +75,10 @@ const config: { expo: ExpoConfig } = {
 			},
 			// Environment variables accessible via Constants.expoConfig.extra
 			// This works for static exports where process.env is not replaced
+			// NOTE: API keys are excluded - they should only be used server-side
 			apiBaseUrl: env.apiBaseUrl,
 			googleClientId: env.googleClientId,
 			ollamaBaseUrl: env.ollamaBaseUrl,
-			ollamaApiKey: env.ollamaApiKey,
 			ttsBaseUrl: env.ttsBaseUrl,
 		},
 		updates: {

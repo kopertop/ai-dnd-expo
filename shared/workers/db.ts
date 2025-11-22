@@ -3,18 +3,18 @@
  */
 
 export interface GameRow {
-        id: string;
-        invite_code: string;
-        host_id: string;
-        host_email: string | null;
+	id: string;
+	invite_code: string;
+	host_id: string;
+	host_email: string | null;
 	quest_id: string;
 	quest_data: string; // JSON
-        world: string;
-        starting_area: string;
-        status: 'waiting' | 'active' | 'completed' | 'cancelled';
-        current_map_id: string | null;
-        created_at: number;
-        updated_at: number;
+	world: string;
+	starting_area: string;
+	status: 'waiting' | 'active' | 'completed' | 'cancelled';
+	current_map_id: string | null;
+	created_at: number;
+	updated_at: number;
 }
 
 export interface CharacterRow {
@@ -49,12 +49,12 @@ export interface GamePlayerRow {
 }
 
 export interface GameStateRow {
-        game_id: string;
-        state_data: string; // JSON
-        map_state: string; // JSON
-        log_entries: string; // JSON
-        state_version: number;
-        updated_at: number;
+	game_id: string;
+	state_data: string; // JSON
+	map_state: string; // JSON
+	log_entries: string; // JSON
+	state_version: number;
+	updated_at: number;
 }
 
 export interface MapRow {
@@ -91,45 +91,45 @@ export interface MapTileRow {
 }
 
 export interface NpcRow {
-        id: string;
-        slug: string;
-        name: string;
-        role: string;
-        alignment: string;
-        disposition: string;
-        description: string | null;
-        base_health: number;
-        base_armor_class: number;
-        challenge_rating: number;
-        archetype: string;
-        default_actions: string;
-        stats: string;
-        abilities: string;
-        loot_table: string;
-        metadata: string;
-        created_at: number;
-        updated_at: number;
+	id: string;
+	slug: string;
+	name: string;
+	role: string;
+	alignment: string;
+	disposition: string;
+	description: string | null;
+	base_health: number;
+	base_armor_class: number;
+	challenge_rating: number;
+	archetype: string;
+	default_actions: string;
+	stats: string;
+	abilities: string;
+	loot_table: string;
+	metadata: string;
+	created_at: number;
+	updated_at: number;
 }
 
 export interface MapTokenRow {
-        id: string;
-        game_id: string | null;
-        map_id: string;
-        character_id: string | null;
-        npc_id: string | null;
-        token_type: string;
-        label: string | null;
-        x: number;
-        y: number;
-        facing: number;
-        color: string | null;
-        status: string;
-        is_visible: number;
-        hit_points: number | null;
-        max_hit_points: number | null;
-        metadata: string;
-        created_at: number;
-        updated_at: number;
+	id: string;
+	game_id: string | null;
+	map_id: string;
+	character_id: string | null;
+	npc_id: string | null;
+	token_type: string;
+	label: string | null;
+	x: number;
+	y: number;
+	facing: number;
+	color: string | null;
+	status: string;
+	is_visible: number;
+	hit_points: number | null;
+	max_hit_points: number | null;
+	metadata: string;
+	created_at: number;
+	updated_at: number;
 }
 
 export interface NpcInstanceRow {
@@ -149,7 +149,7 @@ export interface NpcInstanceRow {
 }
 
 export class Database {
-	constructor(private db: D1Database) {}
+	constructor(private db: D1Database) { }
 
 	// Game operations
 	async createGame(game: Omit<GameRow, 'created_at' | 'updated_at'>): Promise<void> {
@@ -471,7 +471,7 @@ export class Database {
 		}>,
 	) {
 		const deleteStatement = this.db.prepare('DELETE FROM map_tiles WHERE map_id = ?').bind(mapId);
-		
+
 		const insertStatements = tiles.map(tile =>
 			this.db.prepare(
 				`INSERT INTO map_tiles (
@@ -499,6 +499,64 @@ export class Database {
 		);
 
 		await this.db.batch([deleteStatement, ...insertStatements]);
+	}
+
+	async cloneMap(sourceMapId: string, newName: string, newSlug: string): Promise<MapRow> {
+		const sourceMap = await this.getMapById(sourceMapId);
+		if (!sourceMap) {
+			throw new Error(`Map not found: ${sourceMapId}`);
+		}
+
+		const sourceTiles = await this.getMapTiles(sourceMapId);
+
+		const now = Date.now();
+		const newMapId = `map_${newSlug}_${now}`;
+
+		const clonedMap: Omit<MapRow, 'created_at' | 'updated_at'> & { created_at: number; updated_at: number } = {
+			id: newMapId,
+			slug: newSlug,
+			name: newName,
+			description: sourceMap.description ? `${sourceMap.description} (Copy)` : null,
+			width: sourceMap.width,
+			height: sourceMap.height,
+			default_terrain: sourceMap.default_terrain,
+			fog_of_war: sourceMap.fog_of_war,
+			terrain_layers: sourceMap.terrain_layers,
+			metadata: sourceMap.metadata,
+			generator_preset: sourceMap.generator_preset,
+			seed: `${sourceMap.seed}_clone_${now}`,
+			theme: sourceMap.theme,
+			biome: sourceMap.biome,
+			is_generated: sourceMap.is_generated,
+			created_at: now,
+			updated_at: now,
+		};
+
+		await this.saveMap(clonedMap);
+
+		// Copy all tiles
+		if (sourceTiles.length > 0) {
+			await this.replaceMapTiles(
+				newMapId,
+				sourceTiles.map(tile => ({
+					x: tile.x,
+					y: tile.y,
+					terrain_type: tile.terrain_type,
+					elevation: tile.elevation,
+					is_blocked: tile.is_blocked,
+					has_fog: tile.has_fog,
+					feature_type: tile.feature_type,
+					metadata: tile.metadata,
+				})),
+			);
+		}
+
+		const result = await this.getMapById(newMapId);
+		if (!result) {
+			throw new Error('Failed to retrieve cloned map');
+		}
+
+		return result;
 	}
 
 	async upsertMapTiles(
@@ -663,8 +721,9 @@ export class Database {
 			token.hit_points,
 			token.max_hit_points,
 			token.metadata,
-			now,
-			now,
+			now, // created_at
+			now, // updated_at for INSERT
+			now, // updated_at for UPDATE SET
 		).run();
 	}
 

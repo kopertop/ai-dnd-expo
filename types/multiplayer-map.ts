@@ -17,6 +17,8 @@ export const MapTokenSchema = z.object({
 	zIndex: z.number().optional(),
 	color: z.string().optional(),
 	icon: z.string().optional(),
+	hitPoints: z.number().optional(),
+	maxHitPoints: z.number().optional(),
 	metadata: z.record(z.unknown()).optional(),
 });
 

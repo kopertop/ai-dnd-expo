@@ -15,12 +15,14 @@ import {
 	MapTokenListResponse,
 	MapTokenMutationResponse,
 	MapTokenUpsertRequest,
+	MovementValidationResponse,
 	MyGamesResponse,
 	NpcDefinitionListResponse,
 	NpcInstanceListResponse,
 	NpcInstanceUpdateRequest,
 	NpcPlacementRequest,
 	PlayerActionRequest,
+	PlayerPlacementRequest,
 } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
@@ -224,6 +226,16 @@ export class MultiplayerClient {
 		});
 	}
 
+	async placePlayerToken(inviteCode: string, request: PlayerPlacementRequest): Promise<MapTokenMutationResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/map/tokens`, {
+			method: 'POST',
+			body: JSON.stringify({
+				...request,
+				tokenType: 'player',
+			}),
+		});
+	}
+
 	async listMapTokens(inviteCode: string): Promise<MapTokenListResponse> {
 		return apiService.fetchApi(`/games/${inviteCode}/map/tokens`, {
 			method: 'GET',
@@ -272,6 +284,76 @@ export class MultiplayerClient {
 		return apiService.fetchApi(`/games/${inviteCode}/npcs`, {
 			method: 'POST',
 			body: JSON.stringify(request),
+		});
+	}
+
+	async validateMovement(
+		inviteCode: string,
+		request: { characterId: string; fromX: number; fromY: number; toX: number; toY: number },
+	): Promise<MovementValidationResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/map/movement/validate`, {
+			method: 'POST',
+			body: JSON.stringify(request),
+		});
+	}
+
+	async startTurn(
+		inviteCode: string,
+		request: { turnType: 'player' | 'npc' | 'dm'; entityId: string },
+	): Promise<GameStateResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/turn/start`, {
+			method: 'POST',
+			body: JSON.stringify(request),
+		});
+	}
+
+	async endTurn(inviteCode: string): Promise<GameStateResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/turn/end`, {
+			method: 'POST',
+		});
+	}
+
+	async getCurrentTurn(inviteCode: string): Promise<{ activeTurn: { type: string; entityId: string; turnNumber: number; startedAt: number } | null }> {
+		return apiService.fetchApi(`/games/${inviteCode}/turn`, {
+			method: 'GET',
+		});
+	}
+
+	/**
+	 * Get all available maps in the system
+	 */
+	async getAllMaps(): Promise<{ maps: Array<{ id: string; slug: string; name: string; description: string | null; width: number; height: number }> }> {
+		return apiService.fetchApi('/maps', {
+			method: 'GET',
+		});
+	}
+
+	/**
+	 * Clone a map
+	 */
+	async cloneMap(sourceMapId: string, newName: string): Promise<{ map: { id: string; slug: string; name: string; description: string | null; width: number; height: number } }> {
+		return apiService.fetchApi('/maps/clone', {
+			method: 'POST',
+			body: JSON.stringify({ sourceMapId, newName }),
+		});
+	}
+
+	/**
+	 * Switch to a different map for a game
+	 */
+	async switchMap(inviteCode: string, mapId: string): Promise<MapStateResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/map`, {
+			method: 'PATCH',
+			body: JSON.stringify({ mapId }),
+		});
+	}
+
+	/**
+	 * Stop an active game and return it to waiting status
+	 */
+	async stopGame(inviteCode: string): Promise<void> {
+		return apiService.fetchApi(`/games/${inviteCode}/stop`, {
+			method: 'PATCH',
 		});
 	}
 }

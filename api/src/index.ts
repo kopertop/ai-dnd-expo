@@ -5,6 +5,7 @@ import { corsMiddleware } from './cors';
 import type { CloudflareBindings } from './env';
 import adminRoutes from './routes/admin';
 import gameRoutes from './routes/games';
+import mapRoutes from './routes/maps';
 import meRoutes from './routes/me';
 import questRoutes from './routes/quests';
 
@@ -85,6 +86,7 @@ app.post('/api/auth/google/callback', async (c) => {
 app.route('/api/games', gameRoutes);
 app.route('/api/quests', questRoutes);
 app.route('/api/admin', adminRoutes);
+app.route('/api/maps', mapRoutes);
 // Note: /api/auth/exchange and /api/device-tokens routes removed - handled by expo-auth-template
 app.route('/api/me', meRoutes);
 

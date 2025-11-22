@@ -21,7 +21,7 @@ const resolveApiBaseUrl = (): string => {
 	let explicitUrl: string | undefined;
 	try {
 		const Constants = require('expo-constants') as typeof import('expo-constants');
-		explicitUrl = Constants.default?.expoConfig?.extra?.apiBaseUrl;
+		explicitUrl = Constants.expoConfig?.extra?.apiBaseUrl;
 		if (explicitUrl) {
 			return explicitUrl;
 		}

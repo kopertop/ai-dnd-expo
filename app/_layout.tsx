@@ -158,12 +158,6 @@ const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 		}
 	}, [session, user, isLoading, isRouterReady, hasRedirected]);
 
-	// Reset redirect flag after navigation
-	useEffect(() => {
-		const timer = setTimeout(() => setHasRedirected(false), 100);
-		return () => clearTimeout(timer);
-	}, []);
-
 	// Show loading only briefly, then allow redirect even if backend is down
 	if (((isLoading && isRouterReady) || !isRouterReady) && showLoading) {
 		return (
@@ -202,6 +196,7 @@ const RootLayout: React.FC = () => {
 									<Stack.Screen name="auth/error" options={{ headerShown: false }} />
 									<Stack.Screen name="new-game" options={{ headerShown: false }} />
 									<Stack.Screen name="game" options={{ headerShown: false }} />
+									<Stack.Screen name="sql" options={{ headerShown: false }} />
 									<Stack.Screen name="+not-found" />
 								</Stack>
 								<StatusBar style="auto" />
