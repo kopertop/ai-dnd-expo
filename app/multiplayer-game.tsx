@@ -2015,9 +2015,10 @@ const MultiplayerGameScreen: React.FC = () => {
 													key={token.id}
 													style={styles.characterTurnSelectorItem}
 													onPress={async () => {
-														if (!inviteCode || !token.entityId) return;
+														if (!inviteCode) return;
 														try {
-															const response = await multiplayerClient.startCharacterTurn(inviteCode, token.entityId, 'npc');
+															// Use token.id (not token.entityId) to match initiative order entityId
+															const response = await multiplayerClient.startCharacterTurn(inviteCode, token.id, 'npc');
 															if (response) {
 																setGameState(response);
 															} else {

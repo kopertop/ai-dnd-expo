@@ -111,10 +111,10 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 			<ScrollView style={styles.scrollView} showsVerticalScrollIndicator={true}>
 				{allEntities.map((entity) => {
 					const isCurrentPlayer = entity.type === 'player' && entity.id === currentPlayerId;
-					// For active turn check: use entityId for NPCs (from token.entityId), character.id for players
-					const entityIdForTurnCheck = entity.type === 'npc' 
-						? (entity.data as MapToken).entityId || entity.id
-						: entity.id;
+					// For active turn check: use entity.id for both players and NPCs
+					// For NPCs, entity.id is token.id (which matches initiative order entityId)
+					// For players, entity.id is character.id (which matches initiative order entityId)
+					const entityIdForTurnCheck = entity.id;
 					const isActiveTurn = entityIdForTurnCheck === activeTurnEntityId;
 					
 					if (entity.type === 'player') {
