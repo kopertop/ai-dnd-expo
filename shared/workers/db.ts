@@ -616,6 +616,13 @@ export class Database {
 		return result || null;
 	}
 
+	async getNpcById(id: string): Promise<NpcRow | null> {
+		const result = await this.db.prepare(
+			'SELECT * FROM npcs WHERE id = ?',
+		).bind(id).first<NpcRow>();
+		return result || null;
+	}
+
 	async saveNpcDefinition(
 		npc: Omit<NpcRow, 'created_at' | 'updated_at'> & Partial<Pick<NpcRow, 'created_at' | 'updated_at'>>,
 	): Promise<void> {
@@ -729,6 +736,56 @@ export class Database {
 
 	async deleteMapToken(tokenId: string): Promise<void> {
 		await this.db.prepare('DELETE FROM map_tokens WHERE id = ?').bind(tokenId).run();
+	}
+
+	/**
+	 * Remove duplicate tokens for the same character or NPC on the same map.
+	 * Keeps the most recently updated token and deletes the rest.
+	 * Returns the number of duplicate tokens removed.
+	 */
+	async removeDuplicateTokens(gameId: string, mapId: string): Promise<number> {
+		const tokens = await this.listMapTokensForMap(mapId);
+		
+		// Group tokens by character_id or npc_id
+		const tokenGroups = new Map<string, MapTokenRow[]>();
+		
+		for (const token of tokens) {
+			// Create a unique key for character or NPC tokens
+			let key: string | null = null;
+			if (token.character_id) {
+				key = `char:${token.character_id}`;
+			} else if (token.npc_id) {
+				key = `npc:${token.npc_id}`;
+			}
+			
+			// Only process tokens that have a character_id or npc_id (skip object tokens)
+			if (!key) continue;
+			
+			if (!tokenGroups.has(key)) {
+				tokenGroups.set(key, []);
+			}
+			tokenGroups.get(key)!.push(token);
+		}
+		
+		let duplicatesRemoved = 0;
+		
+		// For each group, keep the most recent token and delete the rest
+		for (const [key, group] of tokenGroups.entries()) {
+			if (group.length <= 1) continue; // No duplicates
+			
+			// Sort by updated_at descending (most recent first)
+			group.sort((a, b) => b.updated_at - a.updated_at);
+			
+			// Keep the first (most recent) token, delete the rest
+			const tokensToDelete = group.slice(1);
+			
+			for (const tokenToDelete of tokensToDelete) {
+				await this.deleteMapToken(tokenToDelete.id);
+				duplicatesRemoved++;
+			}
+		}
+		
+		return duplicatesRemoved;
 	}
 
 	async clearTokensForGame(gameId: string): Promise<void> {

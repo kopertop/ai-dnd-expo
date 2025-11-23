@@ -1,5 +1,5 @@
-import React from 'react';
-import { Image, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Image, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { MapToken } from '@/types/multiplayer-map';
@@ -10,6 +10,8 @@ interface TokenDetailModalProps {
 	onClose: () => void;
 	onMove?: () => void;
 	onDelete?: () => void;
+	onDamage?: (amount: number) => void;
+	onHeal?: (amount: number) => void;
 	canEdit?: boolean;
 }
 
@@ -19,14 +21,37 @@ export const TokenDetailModal: React.FC<TokenDetailModalProps> = ({
 	onClose,
 	onMove,
 	onDelete,
+	onDamage,
+	onHeal,
 	canEdit = false,
 }) => {
+	const [damageAmount, setDamageAmount] = useState('');
+	const [healAmount, setHealAmount] = useState('');
+
 	if (!token) {
 		return null;
 	}
 
 	const icon = token.icon || token.metadata?.icon;
 	const isImageIcon = typeof icon === 'string' && (icon.startsWith('http') || icon.startsWith('data:'));
+	const isCharacterOrNpc = token.type === 'player' || token.type === 'npc';
+	const showDamageHeal = canEdit && isCharacterOrNpc && (onDamage || onHeal);
+
+	const handleDamage = () => {
+		const amount = parseInt(damageAmount, 10);
+		if (!isNaN(amount) && amount > 0 && onDamage) {
+			onDamage(amount);
+			setDamageAmount('');
+		}
+	};
+
+	const handleHeal = () => {
+		const amount = parseInt(healAmount, 10);
+		if (!isNaN(amount) && amount > 0 && onHeal) {
+			onHeal(amount);
+			setHealAmount('');
+		}
+	};
 
 	return (
 		<Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -62,6 +87,59 @@ export const TokenDetailModal: React.FC<TokenDetailModalProps> = ({
 							<View style={styles.infoRow}>
 								<ThemedText style={styles.infoLabel}>Entity ID:</ThemedText>
 								<ThemedText style={styles.infoValue}>{token.entityId}</ThemedText>
+							</View>
+						)}
+						{token.hitPoints !== undefined && token.maxHitPoints !== undefined && (
+							<View style={styles.infoRow}>
+								<ThemedText style={styles.infoLabel}>HP:</ThemedText>
+								<ThemedText style={styles.infoValue}>
+									{token.hitPoints} / {token.maxHitPoints}
+								</ThemedText>
+							</View>
+						)}
+						{showDamageHeal && (
+							<View style={styles.damageHealSection}>
+								<ThemedText style={styles.sectionTitle}>Damage / Heal</ThemedText>
+								<View style={styles.damageHealRow}>
+									{onDamage && (
+										<View style={styles.damageHealInput}>
+											<TextInput
+												style={styles.amountInput}
+												value={damageAmount}
+												onChangeText={setDamageAmount}
+												placeholder="Amount"
+												placeholderTextColor="#9B8B7A"
+												keyboardType="numeric"
+											/>
+											<TouchableOpacity
+												style={[styles.damageHealButton, styles.damageButton]}
+												onPress={handleDamage}
+												disabled={!damageAmount || isNaN(parseInt(damageAmount, 10))}
+											>
+												<ThemedText style={styles.damageHealButtonText}>Damage</ThemedText>
+											</TouchableOpacity>
+										</View>
+									)}
+									{onHeal && (
+										<View style={styles.damageHealInput}>
+											<TextInput
+												style={styles.amountInput}
+												value={healAmount}
+												onChangeText={setHealAmount}
+												placeholder="Amount"
+												placeholderTextColor="#9B8B7A"
+												keyboardType="numeric"
+											/>
+											<TouchableOpacity
+												style={[styles.damageHealButton, styles.healButton]}
+												onPress={handleHeal}
+												disabled={!healAmount || isNaN(parseInt(healAmount, 10))}
+											>
+												<ThemedText style={styles.damageHealButtonText}>Heal</ThemedText>
+											</TouchableOpacity>
+										</View>
+									)}
+								</View>
 							</View>
 						)}
 						{canEdit && (
@@ -173,6 +251,52 @@ const styles = StyleSheet.create({
 	},
 	deleteButtonText: {
 		color: '#FFFFFF',
+	},
+	damageHealSection: {
+		marginTop: 12,
+		padding: 12,
+		backgroundColor: '#E2D3B3',
+		borderRadius: 8,
+	},
+	sectionTitle: {
+		fontSize: 14,
+		fontWeight: 'bold',
+		color: '#3B2F1B',
+		marginBottom: 8,
+	},
+	damageHealRow: {
+		flexDirection: 'row',
+		gap: 8,
+	},
+	damageHealInput: {
+		flex: 1,
+		gap: 4,
+	},
+	amountInput: {
+		backgroundColor: '#F5E6D3',
+		borderRadius: 6,
+		padding: 8,
+		borderWidth: 1,
+		borderColor: '#C9B037',
+		color: '#3B2F1B',
+		fontSize: 14,
+		textAlign: 'center',
+	},
+	damageHealButton: {
+		padding: 8,
+		borderRadius: 6,
+		alignItems: 'center',
+	},
+	damageButton: {
+		backgroundColor: '#DC2626',
+	},
+	healButton: {
+		backgroundColor: '#059669',
+	},
+	damageHealButtonText: {
+		color: '#FFFFFF',
+		fontWeight: '600',
+		fontSize: 12,
 	},
 });
 

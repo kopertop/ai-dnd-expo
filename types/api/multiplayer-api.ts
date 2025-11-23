@@ -70,6 +70,7 @@ export const MapTokenUpsertRequestSchema = z.object({
 	y: z.number().int(),
 	color: MapTokenSchema.shape.color.optional(),
 	metadata: MapTokenSchema.shape.metadata.optional(),
+	overrideValidation: z.boolean().optional(),
 });
 
 export const MapTokenDeleteRequestSchema = z.object({

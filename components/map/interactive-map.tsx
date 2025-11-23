@@ -211,9 +211,7 @@ const MapTile: React.FC<{
                                 onLongPress={() => onTileLongPress?.(x, y)}
                         >
                                 {isReachable && (
-                                        <View style={styles.rangeBadge}>
-                                                <Text style={styles.rangeText}>✓</Text>
-                                        </View>
+                                        <View style={styles.rangeOutline} />
                                 )}
                         </TouchableOpacity>
                 </View>
@@ -303,6 +301,191 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
         }, [reachableTiles]);
 
         const pathLookup = useMemo(() => new Set(pathTiles?.map(tile => `${tile.x}-${tile.y}`)), [pathTiles]);
+
+        // Separate component for tokens to avoid hooks in map()
+        const MapTokenComponent: React.FC<{
+                token: MapToken;
+                highlightTokenId?: string;
+                onTokenPress?: (token: MapToken) => void;
+                onTokenLongPress?: (token: MapToken) => void;
+                onTokenDragEnd?: (token: MapToken, x: number, y: number) => void;
+                map: MapState;
+        }> = ({ token, highlightTokenId, onTokenPress, onTokenLongPress, onTokenDragEnd, map }) => {
+                const tokenRef = useRef<View>(null);
+                const isDraggingRef = useRef(false);
+
+                useEffect(() => {
+                        // Enable dragging if we have a drag handler, regardless of isEditable
+                        // (isEditable is for terrain editing, but hosts should be able to drag tokens during gameplay)
+                        if (Platform.OS === 'web' && tokenRef.current && onTokenDragEnd && map) {
+                                const timeoutId = setTimeout(() => {
+                                        const element = tokenRef.current as any;
+                                        if (!element) return;
+
+                                        let domNode: HTMLElement | null = null;
+
+                                        if (element._nativeNode) {
+                                                domNode = element._nativeNode;
+                                        } else if (element.nodeType === 1) {
+                                                domNode = element;
+                                        } else if (element.firstChild && element.firstChild.nodeType === 1) {
+                                                domNode = element.firstChild;
+                                        }
+
+                                        if (domNode && typeof domNode.setAttribute === 'function') {
+                                                domNode.setAttribute('draggable', 'true');
+                                                domNode.style.cursor = 'grab';
+                                                domNode.style.userSelect = 'none';
+
+                                                const handleDragStart = (e: DragEvent) => {
+                                                        if (!e.dataTransfer) return;
+                                                        e.stopPropagation();
+                                                        e.dataTransfer.effectAllowed = 'move';
+                                                        e.dataTransfer.setData('application/json', JSON.stringify(token));
+                                                        if (domNode) {
+                                                                domNode.style.opacity = '0.5';
+                                                        }
+                                                        // Set dragging flag to prevent long press
+                                                        isDraggingRef.current = true;
+                                                        console.log('Token drag started:', token.id);
+                                                };
+
+                                                const handleDragEnd = (e: DragEvent) => {
+                                                        console.log('Token drag ended:', token.id, 'at', e.clientX, e.clientY);
+                                                        if (domNode) {
+                                                                domNode.style.opacity = '1';
+                                                        }
+
+                                                        // Clear dragging flag after a delay to prevent long press
+                                                        setTimeout(() => {
+                                                                isDraggingRef.current = false;
+                                                        }, 200);
+
+                                                        if (!onTokenDragEnd) return;
+
+                                                        // Check if drop was outside map bounds
+                                                        const dropX = e.clientX;
+                                                        const dropY = e.clientY;
+
+                                                        // Get map container bounds - try multiple selectors
+                                                        let mapContainer: HTMLElement | null = null;
+                                                        const wrapper = document.querySelector('[data-map-container]') as HTMLElement;
+                                                        if (wrapper) {
+                                                                mapContainer = wrapper;
+                                                        } else {
+                                                                // Fallback: find the wrapper by class or style
+                                                                const allDivs = Array.from(document.querySelectorAll('div'));
+                                                                mapContainer = allDivs.find(div => {
+                                                                        const style = window.getComputedStyle(div);
+                                                                        return style.position === 'relative' || style.position === 'absolute';
+                                                                }) as HTMLElement || null;
+                                                        }
+
+                                                        if (mapContainer) {
+                                                                const rect = mapContainer.getBoundingClientRect();
+                                                                const isOutsideMap =
+                                                                        dropX < rect.left - 50 ||
+                                                                        dropX > rect.right + 50 ||
+                                                                        dropY < rect.top - 50 ||
+                                                                        dropY > rect.bottom + 50;
+
+                                                                console.log('Map bounds:', rect, 'Drop point:', dropX, dropY, 'Outside:', isOutsideMap);
+
+                                                                if (isOutsideMap) {
+                                                                        console.log('Deleting token:', token.id);
+                                                                        onTokenDragEnd(token, -1, -1);
+                                                                } else {
+                                                                        // Calculate tile coordinates from drop position
+                                                                        // Find the grid container (the actual map grid)
+                                                                        const gridContainer = mapContainer.querySelector('[style*="gridContainer"]') ||
+                                                                                mapContainer.querySelector('[style*="transform"]') as HTMLElement;
+
+                                                                        let relativeX = dropX - rect.left;
+                                                                        let relativeY = dropY - rect.top;
+
+                                                                        // Account for pan offset if the map is panned
+                                                                        if (gridContainer) {
+                                                                                const gridRect = gridContainer.getBoundingClientRect();
+                                                                                relativeX = dropX - gridRect.left;
+                                                                                relativeY = dropY - gridRect.top;
+                                                                        }
+
+                                                                        // Calculate tile coordinates
+                                                                        const tileX = Math.max(0, Math.min(map.width - 1, Math.floor(relativeX / TILE_SIZE)));
+                                                                        const tileY = Math.max(0, Math.min(map.height - 1, Math.floor(relativeY / TILE_SIZE)));
+
+                                                                        console.log('Moving token to tile:', tileX, tileY, 'from drop position:', dropX, dropY, 'relative:', relativeX, relativeY);
+                                                                        onTokenDragEnd(token, tileX, tileY);
+                                                                }
+                                                        } else {
+                                                                // If we can't find the container, assume it's outside if dropped far from center
+                                                                console.warn('Could not find map container, using fallback detection');
+                                                                const windowCenterX = window.innerWidth / 2;
+                                                                const windowCenterY = window.innerHeight / 2;
+                                                                const distanceFromCenter = Math.sqrt(
+                                                                        Math.pow(dropX - windowCenterX, 2) +
+                                                                        Math.pow(dropY - windowCenterY, 2)
+                                                                );
+                                                                // If dropped more than 300px from center, consider it deleted
+                                                                if (distanceFromCenter > 300) {
+                                                                        console.log('Deleting token (fallback):', token.id);
+                                                                        onTokenDragEnd(token, -1, -1);
+                                                                } else {
+                                                                        // Try to calculate tile from center position as fallback
+                                                                        // This is a rough estimate - ideally we'd find the map container
+                                                                        const estimatedTileX = Math.floor((dropX - windowCenterX + 200) / TILE_SIZE);
+                                                                        const estimatedTileY = Math.floor((dropY - windowCenterY + 200) / TILE_SIZE);
+                                                                        console.log('Moving token to estimated tile (fallback):', estimatedTileX, estimatedTileY);
+                                                                        onTokenDragEnd(token, estimatedTileX, estimatedTileY);
+                                                                }
+                                                        }
+                                                };
+
+                                                domNode.addEventListener('dragstart', handleDragStart);
+                                                domNode.addEventListener('dragend', handleDragEnd);
+
+                                                return () => {
+                                                        domNode?.removeEventListener('dragstart', handleDragStart);
+                                                        domNode?.removeEventListener('dragend', handleDragEnd);
+                                                };
+                                        }
+                                }, 0);
+
+                                return () => clearTimeout(timeoutId);
+                        }
+                }, [token, onTokenDragEnd, map]);
+
+                // Prevent long press when dragging
+                const handleLongPress = () => {
+                        if (!isDraggingRef.current && onTokenLongPress) {
+                                onTokenLongPress(token);
+                        }
+                };
+
+                return (
+                        <TouchableOpacity
+                                ref={tokenRef}
+                                style={[
+                                        styles.token,
+                                        {
+                                                left: token.x * TILE_SIZE,
+                                                top: token.y * TILE_SIZE,
+                                                width: TILE_SIZE,
+                                                height: TILE_SIZE,
+                                                borderColor:
+                                                        token.id === highlightTokenId
+                                                                ? '#FFD447'
+                                                                : token.color || '#3B2F1B',
+                                        },
+                                ]}
+                                onPress={() => onTokenPress?.(token)}
+                                onLongPress={handleLongPress}
+                                disabled={!onTokenPress && !onTokenLongPress}
+                        >
+                                {renderTokenContent(token)}
+                        </TouchableOpacity>
+                );
+        };
 
         const renderTokenContent = (token: MapToken) => {
                 const icon = token.icon || token.metadata?.icon;
@@ -478,136 +661,17 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
                                                 pointerEvents="box-none"
                                                 style={[StyleSheet.absoluteFill, styles.tokenLayer]}
                                         >
-                                                {map.tokens?.map(token => {
-                                                        const tokenRef = useRef<View>(null);
-                                                        
-                                                        useEffect(() => {
-                                                                if (Platform.OS === 'web' && isEditable && tokenRef.current && onTokenDragEnd) {
-                                                                        const timeoutId = setTimeout(() => {
-                                                                                const element = tokenRef.current as any;
-                                                                                if (!element) return;
-                                                                                
-                                                                                let domNode: HTMLElement | null = null;
-                                                                                
-                                                                                if (element._nativeNode) {
-                                                                                        domNode = element._nativeNode;
-                                                                                } else if (element.nodeType === 1) {
-                                                                                        domNode = element;
-                                                                                } else if (element.firstChild && element.firstChild.nodeType === 1) {
-                                                                                        domNode = element.firstChild;
-                                                                                }
-                                                                                
-                                                                                if (domNode && typeof domNode.setAttribute === 'function') {
-                                                                                        domNode.setAttribute('draggable', 'true');
-                                                                                        domNode.style.cursor = 'grab';
-                                                                                        domNode.style.userSelect = 'none';
-                                                                                        
-                                                                                        const handleDragStart = (e: DragEvent) => {
-                                                                                                if (!e.dataTransfer) return;
-                                                                                                e.stopPropagation();
-                                                                                                e.dataTransfer.effectAllowed = 'move';
-                                                                                                e.dataTransfer.setData('application/json', JSON.stringify(token));
-                                                                                                if (domNode) {
-                                                                                                        domNode.style.opacity = '0.5';
-                                                                                                }
-                                                                                                console.log('Token drag started:', token.id);
-                                                                                        };
-                                                                                        
-                                                                                        const handleDragEnd = (e: DragEvent) => {
-                                                                                                console.log('Token drag ended:', token.id, 'at', e.clientX, e.clientY);
-                                                                                                if (domNode) {
-                                                                                                        domNode.style.opacity = '1';
-                                                                                                }
-                                                                                                
-                                                                                                if (!onTokenDragEnd) return;
-                                                                                                
-                                                                                                // Check if drop was outside map bounds
-                                                                                                const dropX = e.clientX;
-                                                                                                const dropY = e.clientY;
-                                                                                                
-                                                                                                // Get map container bounds - try multiple selectors
-                                                                                                let mapContainer: HTMLElement | null = null;
-                                                                                                const wrapper = document.querySelector('[data-map-container]') as HTMLElement;
-                                                                                                if (wrapper) {
-                                                                                                        mapContainer = wrapper;
-                                                                                                } else {
-                                                                                                        // Fallback: find the wrapper by class or style
-                                                                                                        const allDivs = Array.from(document.querySelectorAll('div'));
-                                                                                                        mapContainer = allDivs.find(div => {
-                                                                                                                const style = window.getComputedStyle(div);
-                                                                                                                return style.position === 'relative' || style.position === 'absolute';
-                                                                                                        }) as HTMLElement || null;
-                                                                                                }
-                                                                                                
-                                                                                                if (mapContainer) {
-                                                                                                        const rect = mapContainer.getBoundingClientRect();
-                                                                                                        const isOutsideMap = 
-                                                                                                                dropX < rect.left - 50 || 
-                                                                                                                dropX > rect.right + 50 || 
-                                                                                                                dropY < rect.top - 50 || 
-                                                                                                                dropY > rect.bottom + 50;
-                                                                                                        
-                                                                                                        console.log('Map bounds:', rect, 'Drop point:', dropX, dropY, 'Outside:', isOutsideMap);
-                                                                                                        
-                                                                                                        if (isOutsideMap) {
-                                                                                                                console.log('Deleting token:', token.id);
-                                                                                                                onTokenDragEnd(token, -1, -1);
-                                                                                                        }
-                                                                                                } else {
-                                                                                                        // If we can't find the container, assume it's outside if dropped far from center
-                                                                                                        console.warn('Could not find map container, using fallback detection');
-                                                                                                        const windowCenterX = window.innerWidth / 2;
-                                                                                                        const windowCenterY = window.innerHeight / 2;
-                                                                                                        const distanceFromCenter = Math.sqrt(
-                                                                                                                Math.pow(dropX - windowCenterX, 2) + 
-                                                                                                                Math.pow(dropY - windowCenterY, 2)
-                                                                                                        );
-                                                                                                        // If dropped more than 300px from center, consider it deleted
-                                                                                                        if (distanceFromCenter > 300) {
-                                                                                                                console.log('Deleting token (fallback):', token.id);
-                                                                                                                onTokenDragEnd(token, -1, -1);
-                                                                                                        }
-                                                                                                }
-                                                                                        };
-                                                                                        
-                                                                                        domNode.addEventListener('dragstart', handleDragStart);
-                                                                                        domNode.addEventListener('dragend', handleDragEnd);
-                                                                                        
-                                                                                        return () => {
-                                                                                                domNode?.removeEventListener('dragstart', handleDragStart);
-                                                                                                domNode?.removeEventListener('dragend', handleDragEnd);
-                                                                                        };
-                                                                                }
-                                                                        }, 0);
-                                                                        
-                                                                        return () => clearTimeout(timeoutId);
-                                                                }
-                                                        }, [token, isEditable, onTokenDragEnd]);
-                                                        
-                                                        return (
-                                                                <TouchableOpacity
-                                                                        key={token.id}
-                                                                        ref={tokenRef}
-                                                                        style={[
-                                                                                styles.token,
-                                                                                {
-                                                                                        left: token.x * TILE_SIZE,
-                                                                                        top: token.y * TILE_SIZE,
-                                                                                        width: TILE_SIZE,
-                                                                                        height: TILE_SIZE,
-                                                                                        borderColor:
-                                                                                                token.id === highlightTokenId
-                                                                                                        ? '#FFD447'
-                                                                                                        : token.color || '#3B2F1B',
-                                                                                },
-                                                                        ]}
-                                                                        onPress={() => onTokenPress?.(token)}
-                                                                        disabled={!onTokenPress}
-                                                                >
-                                                                        {renderTokenContent(token)}
-                                                                </TouchableOpacity>
-                                                        );
-                                                })}
+                                                {map.tokens?.map(token => (
+                                                        <MapTokenComponent
+                                                                key={token.id}
+                                                                token={token}
+                                                                highlightTokenId={highlightTokenId}
+                                                                onTokenPress={onTokenPress}
+                                                                onTokenLongPress={onTokenLongPress}
+                                                                onTokenDragEnd={onTokenDragEnd}
+                                                                map={map}
+                                                        />
+                                                ))}
                                         </View>
                                 </View>
                         </View>
@@ -661,6 +725,17 @@ const styles = StyleSheet.create({
                 fontSize: 10,
                 fontWeight: '700',
                 color: '#1F130A',
+        },
+        rangeOutline: {
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                borderWidth: 2,
+                borderColor: '#4CAF50',
+                borderRadius: 2,
+                backgroundColor: 'rgba(76, 175, 80, 0.15)',
         },
         tokenLayer: {
                 position: 'absolute',

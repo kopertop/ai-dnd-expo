@@ -18,17 +18,23 @@ interface DMControlsPanelProps {
 	gameState: MultiplayerGameState;
 	onDMAction: (type: string, data: any) => void;
 	onAIRequest?: (prompt: string) => Promise<string>;
+	onDamage?: (characterId: string, amount: number) => void;
+	onHeal?: (characterId: string, amount: number) => void;
 }
 
 export const DMControlsPanel: React.FC<DMControlsPanelProps> = ({
 	gameState,
 	onDMAction,
 	onAIRequest,
+	onDamage,
+	onHeal,
 }) => {
 	const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
 	const [aiPrompt, setAiPrompt] = useState('');
 	const [aiResponse, setAiResponse] = useState<string | null>(null);
 	const [aiLoading, setAiLoading] = useState(false);
+	const [damageAmount, setDamageAmount] = useState('');
+	const [healAmount, setHealAmount] = useState('');
 	const { isMobile } = useScreenSize();
 
 	const selectedCharacter = selectedCharacterId
@@ -137,6 +143,63 @@ export const DMControlsPanel: React.FC<DMControlsPanelProps> = ({
 								keyboardType="numeric"
 							/>
 						</View>
+						{(onDamage || onHeal) && (
+							<View style={styles.damageHealSection}>
+								<ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
+								<View style={styles.damageHealRow}>
+									{onDamage && (
+										<View style={styles.damageHealInput}>
+											<TextInput
+												style={styles.amountInput}
+												value={damageAmount}
+												onChangeText={setDamageAmount}
+												placeholder="Damage"
+												placeholderTextColor="#9B8B7A"
+												keyboardType="numeric"
+											/>
+											<TouchableOpacity
+												style={[styles.damageHealButton, styles.damageButton]}
+												onPress={() => {
+													const amount = parseInt(damageAmount, 10);
+													if (!isNaN(amount) && amount > 0 && selectedCharacterId) {
+														onDamage(selectedCharacterId, amount);
+														setDamageAmount('');
+													}
+												}}
+												disabled={!damageAmount || isNaN(parseInt(damageAmount, 10)) || !selectedCharacterId}
+											>
+												<ThemedText style={styles.damageHealButtonText}>Deal Damage</ThemedText>
+											</TouchableOpacity>
+										</View>
+									)}
+									{onHeal && (
+										<View style={styles.damageHealInput}>
+											<TextInput
+												style={styles.amountInput}
+												value={healAmount}
+												onChangeText={setHealAmount}
+												placeholder="Heal"
+												placeholderTextColor="#9B8B7A"
+												keyboardType="numeric"
+											/>
+											<TouchableOpacity
+												style={[styles.damageHealButton, styles.healButton]}
+												onPress={() => {
+													const amount = parseInt(healAmount, 10);
+													if (!isNaN(amount) && amount > 0 && selectedCharacterId) {
+														onHeal(selectedCharacterId, amount);
+														setHealAmount('');
+													}
+												}}
+												disabled={!healAmount || isNaN(parseInt(healAmount, 10)) || !selectedCharacterId}
+											>
+												<ThemedText style={styles.damageHealButtonText}>Heal</ThemedText>
+											</TouchableOpacity>
+										</View>
+									)}
+								</View>
+							</View>
+						)}
 					</View>
 				)}
 
@@ -308,6 +371,46 @@ const styles = StyleSheet.create({
 		color: '#3B2F1B',
 		fontSize: 14,
 		lineHeight: 20,
+	},
+	damageHealSection: {
+		marginTop: 12,
+		padding: 12,
+		backgroundColor: '#E2D3B3',
+		borderRadius: 8,
+	},
+	damageHealRow: {
+		flexDirection: 'row',
+		gap: 8,
+	},
+	damageHealInput: {
+		flex: 1,
+		gap: 4,
+	},
+	amountInput: {
+		backgroundColor: '#F5E6D3',
+		borderRadius: 6,
+		padding: 8,
+		borderWidth: 1,
+		borderColor: '#C9B037',
+		color: '#3B2F1B',
+		fontSize: 14,
+		textAlign: 'center',
+	},
+	damageHealButton: {
+		padding: 8,
+		borderRadius: 6,
+		alignItems: 'center',
+	},
+	damageButton: {
+		backgroundColor: '#DC2626',
+	},
+	healButton: {
+		backgroundColor: '#059669',
+	},
+	damageHealButtonText: {
+		color: '#FFFFFF',
+		fontWeight: '600',
+		fontSize: 12,
 	},
 });
 

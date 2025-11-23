@@ -3,19 +3,23 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CharacterDMModal } from '@/components/character-dm-modal';
 import { CommandPalette, type Command } from '@/components/command-palette';
 import { InteractiveMap } from '@/components/map/interactive-map';
+import { TileActionMenu, type TileAction } from '@/components/map/tile-action-menu';
 import { NotificationsPanel } from '@/components/notifications-panel';
 import { PlayerCharacterList } from '@/components/player-character-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TokenDetailModal } from '@/components/token-detail-modal';
 import { usePollingGameState } from '@/hooks/use-polling-game-state';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { PlayerActionMessage } from '@/types/api/websocket-messages';
+import { Character } from '@/types/character';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
-import { MapState } from '@/types/multiplayer-map';
+import { MapState, MapToken } from '@/types/multiplayer-map';
 import { calculateMovementRange, findPathWithCosts } from '@/utils/movement-calculator';
 
 const MultiplayerGameScreen: React.FC = () => {
@@ -37,6 +41,18 @@ const MultiplayerGameScreen: React.FC = () => {
 	const [showNotifications, setShowNotifications] = useState(false);
 	const [showCommandPalette, setShowCommandPalette] = useState(false);
 	const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+	const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
+	const [selectedTokenMovementRange, setSelectedTokenMovementRange] = useState<Array<{ x: number; y: number; cost: number }>>([]);
+	const [isMapEditMode, setIsMapEditMode] = useState(false);
+	const [hasRolledInitiative, setHasRolledInitiative] = useState(false);
+	const [selectedToken, setSelectedToken] = useState<MapToken | null>(null);
+	const [showTokenModal, setShowTokenModal] = useState(false);
+	const [tileActionMenu, setTileActionMenu] = useState<{ x: number; y: number } | null>(null);
+	const [selectedItemType, setSelectedItemType] = useState<'fire' | 'trap' | 'obstacle' | null>(null);
+	const [selectedCharacterForDM, setSelectedCharacterForDM] = useState<{ id: string; type: 'player' | 'npc' } | null>(null);
+	const [showCharacterDMModal, setShowCharacterDMModal] = useState(false);
+	const placingCharactersRef = useRef<Set<string>>(new Set());
+	const isPlacingRef = useRef(false);
 	const { isMobile } = useScreenSize();
 	const insets = useSafeAreaInsets();
 
@@ -198,6 +214,161 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	}, [gameState?.mapState]);
 
+	const loadGameState = useCallback(async () => {
+		if (!inviteCode) return;
+		try {
+			const session = await multiplayerClient.getGameSession(inviteCode);
+			if (session.gameState) {
+				setGameState(session.gameState);
+			}
+		} catch (error) {
+			Alert.alert('Error', 'Failed to load game state');
+			console.error(error);
+		}
+	}, [inviteCode]);
+
+	// Check for characters without tokens on the map
+	const charactersWithoutTokens = useMemo(() => {
+		if (!gameState?.characters || !sharedMap?.tokens) return [];
+		return gameState.characters.filter(char => {
+			const hasToken = sharedMap.tokens.some(token => token.type === 'player' && token.entityId === char.id);
+			return !hasToken;
+		});
+	}, [gameState?.characters, sharedMap?.tokens]);
+
+	// Auto-place missing characters on the map
+	useEffect(() => {
+		if (
+			isHost &&
+			sharedMap &&
+			charactersWithoutTokens.length > 0 &&
+			inviteCode &&
+			gameState?.status === 'active' &&
+			!isPlacingRef.current // Prevent concurrent placement runs
+		) {
+			const autoPlaceCharacters = async () => {
+				// Prevent concurrent runs
+				if (isPlacingRef.current) return;
+				isPlacingRef.current = true;
+
+				try {
+					// Filter out characters that are already being placed or already have tokens
+					const charactersToPlace = charactersWithoutTokens.filter(char => {
+						// Skip if already being placed
+						if (placingCharactersRef.current.has(char.id)) {
+							return false;
+						}
+						// Double-check: verify character doesn't already have a token
+						const hasToken = sharedMap.tokens?.some(
+							token => token.type === 'player' && token.entityId === char.id,
+						);
+						return !hasToken;
+					});
+
+					if (charactersToPlace.length === 0) {
+						isPlacingRef.current = false;
+						return; // All characters already placed or being placed
+					}
+
+					// Find open tiles (not blocked, not occupied, preferring roads/gravel)
+					const occupiedTiles = new Set(
+						(sharedMap.tokens || []).map(t => `${t.x},${t.y}`),
+					);
+
+					const openTiles: Array<{ x: number; y: number; priority: number }> = [];
+
+					// Iterate through map to find open tiles
+					for (let y = 0; y < sharedMap.height; y++) {
+						for (let x = 0; x < sharedMap.width; x++) {
+							const key = `${x},${y}`;
+							if (occupiedTiles.has(key)) continue;
+
+							// Check if tile is blocked
+							const cell = sharedMap.terrain?.[y]?.[x];
+							if (cell?.difficult) continue; // Skip difficult terrain
+
+							// Prefer roads/gravel over other terrain
+							const terrain = cell?.terrain || sharedMap.defaultTerrain || 'stone';
+							const isRoad = terrain === 'road' || terrain === 'gravel';
+							const priority = isRoad ? 1 : 2; // Lower number = higher priority
+
+							openTiles.push({ x, y, priority });
+						}
+					}
+
+					// Sort by priority (roads first), then randomize within same priority
+					openTiles.sort((a, b) => {
+						if (a.priority !== b.priority) return a.priority - b.priority;
+						return Math.random() - 0.5; // Randomize
+					});
+
+					// Place each missing character
+					for (let i = 0; i < charactersToPlace.length && i < openTiles.length; i++) {
+						const character = charactersToPlace[i];
+						const tile = openTiles[i];
+
+						// Mark as being placed
+						placingCharactersRef.current.add(character.id);
+
+						try {
+							await multiplayerClient.placePlayerToken(inviteCode, {
+								characterId: character.id,
+								x: tile.x,
+								y: tile.y,
+								label: character.name || 'Unknown',
+								icon: character.icon,
+							});
+							// Remove from placing set after successful placement
+							placingCharactersRef.current.delete(character.id);
+						} catch (error) {
+							console.error(`Failed to auto-place character ${character.id}:`, error);
+							// Remove from placing set on error so it can be retried
+							placingCharactersRef.current.delete(character.id);
+						}
+					}
+
+					// Refresh map after placing
+					await refreshSharedMap();
+				} catch (error) {
+					console.error('Failed to auto-place characters:', error);
+				} finally {
+					isPlacingRef.current = false;
+				}
+			};
+
+			autoPlaceCharacters();
+		}
+	}, [isHost, sharedMap, charactersWithoutTokens, inviteCode, gameState?.status, refreshSharedMap]);
+
+	// Auto-roll initiative when encounter starts (map is set, game is active, and all characters are placed)
+	useEffect(() => {
+		if (
+			isHost &&
+			gameState?.mapState &&
+			gameState.status === 'active' &&
+			charactersWithoutTokens.length === 0 && // All characters must be placed
+			!hasRolledInitiative &&
+			!gameState.initiativeOrder &&
+			inviteCode
+		) {
+			const rollInitiative = async () => {
+				try {
+					setHasRolledInitiative(true);
+					await multiplayerClient.rollInitiative(inviteCode);
+					// Refresh game state to get updated initiative order
+					setTimeout(() => {
+						loadGameState();
+					}, 500);
+				} catch (error) {
+					console.error('Failed to roll initiative:', error);
+					setHasRolledInitiative(false);
+				}
+			};
+
+			rollInitiative();
+		}
+	}, [isHost, gameState?.mapState, gameState?.status, charactersWithoutTokens.length, hasRolledInitiative, gameState?.initiativeOrder, inviteCode, loadGameState]);
+
 	// Track unread messages
 	useEffect(() => {
 		if (gameState?.messages) {
@@ -234,7 +405,7 @@ const MultiplayerGameScreen: React.FC = () => {
 			refreshSharedMap().catch(() => undefined);
 		}, 5000);
 		return () => clearInterval(interval);
-	}, [inviteCode, refreshSharedMap]);
+	}, [inviteCode, refreshSharedMap, loadGameState, gameState]);
 
 	// Handle CMD+K / CTRL+K keyboard shortcut for command palette
 	useEffect(() => {
@@ -252,25 +423,13 @@ const MultiplayerGameScreen: React.FC = () => {
 		return () => window.removeEventListener('keydown', handleKeyDown);
 	}, []);
 
-	const loadGameState = async () => {
-		try {
-			const session = await multiplayerClient.getGameSession(inviteCode);
-			if (session.gameState) {
-				setGameState(session.gameState);
-			}
-		} catch (error) {
-			Alert.alert('Error', 'Failed to load game state');
-			console.error(error);
-		}
-	};
-
 	const handleDMAction = useCallback(
-		async (type: string, data: any) => {
+		async (type: string, data: Record<string, unknown>) => {
 			if (!inviteCode || !hostId || !gameState) return;
 
 			try {
 				await multiplayerClient.submitDMAction(inviteCode, {
-					type: type as any,
+					type: type as 'narrate' | 'update_character' | 'update_npc' | 'advance_story' | 'roll_dice',
 					data,
 					hostId,
 				});
@@ -284,17 +443,17 @@ const MultiplayerGameScreen: React.FC = () => {
 				console.error(error);
 			}
 		},
-		[inviteCode, hostId, gameState, wsIsConnected],
+		[inviteCode, hostId, gameState, wsIsConnected, loadGameState],
 	);
 
-	const handleAIRequest = useCallback(async (_prompt: string): Promise<string> => {
+	const handleAIRequest = useCallback(async (prompt: string): Promise<string> => {
 		if (!inviteCode || !hostId) {
 			return 'AI assistance requires host privileges';
 		}
 
 		// TODO: Implement AI request - for now return placeholder
 		// This should call the AI service to generate DM responses
-		return 'AI assistance is not yet implemented. This will generate DM narration and suggestions based on your prompt.';
+		return `AI assistance is not yet implemented. Your prompt: "${prompt}". This will generate DM narration and suggestions based on your prompt.`;
 	}, [inviteCode, hostId]);
 
 	// Build command palette commands
@@ -309,9 +468,18 @@ const MultiplayerGameScreen: React.FC = () => {
 					description: 'Start encounter by rolling initiative for all characters and NPCs',
 					keywords: ['initiative', 'roll', 'encounter', 'combat', 'start'],
 					category: 'Encounter',
-					action: () => {
-						// TODO: Implement initiative rolling
-						Alert.alert('Initiative', 'Initiative rolling will be implemented soon');
+					action: async () => {
+						try {
+							await multiplayerClient.rollInitiative(inviteCode);
+							setHasRolledInitiative(true);
+							setTimeout(() => {
+								loadGameState();
+							}, 500);
+							Alert.alert('Success', 'Initiative rolled!');
+						} catch (error) {
+							console.error('Failed to roll initiative:', error);
+							Alert.alert('Error', error instanceof Error ? error.message : 'Failed to roll initiative');
+						}
 					},
 				},
 				{
@@ -361,14 +529,380 @@ const MultiplayerGameScreen: React.FC = () => {
 		);
 
 		return commands;
-	}, [isHost, inviteCode]);
+	}, [isHost, inviteCode, loadGameState]);
+
+	const handleTokenPress = useCallback(
+		(token: MapToken) => {
+			if (!sharedMap) return;
+
+			// Toggle: if same token is already selected, hide movement range
+			if (selectedTokenId === token.id && selectedTokenMovementRange.length > 0) {
+				setSelectedTokenId(null);
+				setSelectedTokenMovementRange([]);
+				return;
+			}
+
+			// Calculate movement range for the clicked token
+			let movementBudget = 6; // Default movement budget
+			let tokenPosition = { x: token.x, y: token.y };
+
+			// If it's a player token, get their actual movement budget
+			if (token.type === 'player' && token.entityId) {
+				const character = gameState?.characters.find(c => c.id === token.entityId);
+				if (character) {
+					movementBudget = character.actionPoints ?? character.maxActionPoints ?? 6;
+				}
+			} else if (token.type === 'npc') {
+				// NPCs typically have movement budget of 6
+				movementBudget = 6;
+			}
+
+			// Calculate and show movement range (outline only, no modal)
+			const reachable = calculateMovementRange(sharedMap, tokenPosition, movementBudget);
+			setSelectedTokenId(token.id);
+			setSelectedTokenMovementRange(reachable);
+		},
+		[sharedMap, gameState?.characters, selectedTokenId, selectedTokenMovementRange],
+	);
+
+	const handleTokenLongPress = useCallback(
+		(token: MapToken) => {
+			// Only show token detail modal on long press for host
+			if (isHost) {
+				setSelectedToken(token);
+				setShowTokenModal(true);
+			}
+		},
+		[isHost],
+	);
+
+	const handleMovementRangeTilePress = useCallback(
+		async (x: number, y: number) => {
+			// Handle clicking on a movement range tile to move the selected token
+			if (!selectedTokenId || !sharedMap || !inviteCode) {
+				console.log('Movement blocked: missing requirements', { selectedTokenId, sharedMap: !!sharedMap, inviteCode });
+				return;
+			}
+
+			const selectedToken = sharedMap.tokens?.find(t => t.id === selectedTokenId);
+			if (!selectedToken) {
+				console.log('Movement blocked: token not found', selectedTokenId);
+				return;
+			}
+
+			// Check if clicked tile is in movement range
+			const isInRange = selectedTokenMovementRange.some(tile => tile.x === x && tile.y === y);
+			if (!isInRange) {
+				// Clear selection if clicking outside range
+				console.log('Movement blocked: tile not in range', { x, y, range: selectedTokenMovementRange.length });
+				setSelectedTokenId(null);
+				setSelectedTokenMovementRange([]);
+				return;
+			}
+
+			// Don't move if clicking the same tile
+			if (selectedToken.x === x && selectedToken.y === y) {
+				console.log('Movement blocked: same tile');
+				return;
+			}
+
+			// Move the token
+			try {
+				// If it's a player token and not host, validate movement
+				if (selectedToken.type === 'player' && !isHost) {
+					// Player movement - validate
+					if (selectedToken.entityId !== currentCharacterId || !isPlayerTurn) {
+						Alert.alert('Not your turn', 'You can only move your character during your turn.');
+						return;
+					}
+
+					const validation = await multiplayerClient.validateMovement(inviteCode, {
+						characterId: selectedToken.entityId || '',
+						fromX: selectedToken.x,
+						fromY: selectedToken.y,
+						toX: x,
+						toY: y,
+					});
+
+					if (!validation?.valid) {
+						Alert.alert('Move blocked', 'That move is not allowed.');
+						return;
+					}
+
+					// Optimistic update: update local state immediately
+					if (sharedMap) {
+						const updatedTokens = (sharedMap.tokens || []).map(t =>
+							t.id === selectedToken.id ? { ...t, x, y, metadata: { ...t.metadata, path: validation.path } } : t,
+						);
+						setSharedMap({ ...sharedMap, tokens: updatedTokens });
+					}
+
+					// Save to backend asynchronously
+					multiplayerClient.saveMapToken(inviteCode, {
+						id: selectedToken.id,
+						tokenType: 'player',
+						x,
+						y,
+						characterId: selectedToken.entityId,
+						label: selectedToken.label,
+						color: selectedToken.color,
+						metadata: { ...selectedToken.metadata, path: validation.path },
+					}).catch(error => {
+						console.error('Failed to save token movement:', error);
+						// Revert optimistic update on error
+						if (sharedMap) {
+							const revertedTokens = (sharedMap.tokens || []).map(t =>
+								t.id === selectedToken.id ? { ...t, x: selectedToken.x, y: selectedToken.y } : t,
+							);
+							setSharedMap({ ...sharedMap, tokens: revertedTokens });
+							Alert.alert('Error', 'Failed to save movement. Changes reverted.');
+						}
+					});
+
+					// Refresh map state in background (non-blocking)
+					refreshSharedMap().catch(console.error);
+				} else {
+					// Host can move any token with override
+					const tokenData: {
+						id: string;
+						tokenType: 'player' | 'npc' | 'object';
+						x: number;
+						y: number;
+						characterId?: string;
+						npcId?: string;
+						label: string;
+						color?: string;
+						overrideValidation: boolean;
+					} = {
+						id: selectedToken.id,
+						tokenType: selectedToken.type,
+						x,
+						y,
+						label: selectedToken.label,
+						color: selectedToken.color,
+						overrideValidation: true,
+					};
+
+					// Set the appropriate ID field based on token type
+					if (selectedToken.type === 'npc' && selectedToken.entityId) {
+						tokenData.npcId = selectedToken.entityId;
+					} else if (selectedToken.type === 'player' && selectedToken.entityId) {
+						tokenData.characterId = selectedToken.entityId;
+					}
+
+					// Optimistic update: update local state immediately
+					if (sharedMap) {
+						const updatedTokens = (sharedMap.tokens || []).map(t =>
+							t.id === selectedToken.id ? { ...t, x, y } : t,
+						);
+						setSharedMap({ ...sharedMap, tokens: updatedTokens });
+					}
+
+					// Save to backend asynchronously
+					multiplayerClient.saveMapToken(inviteCode, tokenData).catch(error => {
+						console.error('Failed to save token movement:', error);
+						// Revert optimistic update on error
+						if (sharedMap) {
+							const revertedTokens = (sharedMap.tokens || []).map(t =>
+								t.id === selectedToken.id ? { ...t, x: selectedToken.x, y: selectedToken.y } : t,
+							);
+							setSharedMap({ ...sharedMap, tokens: revertedTokens });
+							Alert.alert('Error', 'Failed to save movement. Changes reverted.');
+						}
+					});
+
+					// Refresh map state in background (non-blocking)
+					refreshSharedMap().catch(console.error);
+				}
+
+				// Clear selection after move (immediate UI feedback)
+				setSelectedTokenId(null);
+				setSelectedTokenMovementRange([]);
+			} catch (error) {
+				console.error('Failed to move token:', error);
+				Alert.alert('Error', 'Failed to move token');
+			}
+		},
+		[selectedTokenId, sharedMap, inviteCode, selectedTokenMovementRange, isHost, currentCharacterId, isPlayerTurn, refreshSharedMap],
+	);
+
+	const handleTokenDamage = useCallback(
+		async (amount: number) => {
+			if (!selectedToken?.entityId || !inviteCode) return;
+			try {
+				await multiplayerClient.dealDamage(inviteCode, selectedToken.entityId, amount);
+				await loadGameState();
+				await refreshSharedMap();
+			} catch (error) {
+				console.error('Failed to deal damage:', error);
+				Alert.alert('Error', 'Failed to deal damage');
+			}
+		},
+		[selectedToken, inviteCode, loadGameState, refreshSharedMap],
+	);
+
+	const handleTokenHeal = useCallback(
+		async (amount: number) => {
+			if (!selectedToken?.entityId || !inviteCode) return;
+			try {
+				await multiplayerClient.healCharacter(inviteCode, selectedToken.entityId, amount);
+				await loadGameState();
+				await refreshSharedMap();
+			} catch (error) {
+				console.error('Failed to heal:', error);
+				Alert.alert('Error', 'Failed to heal character');
+			}
+		},
+		[selectedToken, inviteCode, loadGameState, refreshSharedMap],
+	);
+
+	const handleCharacterDamage = useCallback(
+		async (characterId: string, amount: number) => {
+			if (!inviteCode) return;
+			try {
+				await multiplayerClient.dealDamage(inviteCode, characterId, amount);
+				await loadGameState();
+			} catch (error) {
+				console.error('Failed to deal damage:', error);
+				Alert.alert('Error', 'Failed to deal damage');
+			}
+		},
+		[inviteCode, loadGameState],
+	);
+
+	const handleCharacterHeal = useCallback(
+		async (characterId: string, amount: number) => {
+			if (!inviteCode) return;
+			try {
+				await multiplayerClient.healCharacter(inviteCode, characterId, amount);
+				await loadGameState();
+			} catch (error) {
+				console.error('Failed to heal:', error);
+				Alert.alert('Error', 'Failed to heal character');
+			}
+		},
+		[inviteCode, loadGameState],
+	);
+
+	const handleCharacterSelect = useCallback(
+		(characterId: string, type: 'player' | 'npc') => {
+			if (!isHost) return;
+			setSelectedCharacterForDM({ id: characterId, type });
+			setShowCharacterDMModal(true);
+		},
+		[isHost],
+	);
+
+	const handleUpdateCharacter = useCallback(
+		async (characterId: string, updates: Partial<Character>) => {
+			if (!inviteCode) return;
+			try {
+				// Use DMAction to update character
+				await handleDMAction('update_character', {
+					characterId,
+					updates,
+				});
+				await loadGameState();
+			} catch (error) {
+				console.error('Failed to update character:', error);
+				Alert.alert('Error', 'Failed to update character');
+			}
+		},
+		[inviteCode, handleDMAction, loadGameState],
+	);
+
+	const handleTileLongPress = useCallback(
+		(x: number, y: number) => {
+			if (isHost && isMapEditMode) {
+				setTileActionMenu({ x, y });
+			}
+		},
+		[isHost, isMapEditMode],
+	);
+
+	const handleTileAction = useCallback(
+		async (action: TileAction, x: number, y: number) => {
+			if (!inviteCode || !sharedMap) return;
+
+			try {
+				switch (action) {
+					case 'changeTerrain':
+					case 'placeWater':
+					case 'placeRoad':
+					case 'clearTile': {
+						const terrainType = action === 'placeWater' ? 'water' : action === 'placeRoad' ? 'road' : action === 'clearTile' ? 'grass' : 'stone';
+						await multiplayerClient.mutateTerrain(inviteCode, {
+							tiles: [
+								{
+									x,
+									y,
+									terrainType,
+								},
+							],
+						});
+						await refreshSharedMap();
+						break;
+					}
+					case 'placeNpc':
+					case 'placePlayer':
+						// These are handled via drag-and-drop from palette
+						break;
+				}
+			} catch (error) {
+				console.error('Failed to perform tile action:', error);
+				Alert.alert('Error', 'Failed to modify terrain');
+			}
+		},
+		[inviteCode, sharedMap, refreshSharedMap],
+	);
+
+	const handlePlaceItemToken = useCallback(
+		(x: number, y: number) => {
+			if (!inviteCode || !selectedItemType) return;
+
+			const placeItem = async () => {
+				try {
+					const itemLabels: Record<string, string> = {
+						fire: '🔥 Fire',
+						trap: '⚠️ Trap',
+						obstacle: '🪨 Obstacle',
+					};
+
+					await multiplayerClient.saveMapToken(inviteCode, {
+						tokenType: 'object',
+						x,
+						y,
+						label: itemLabels[selectedItemType] || 'Item',
+						metadata: { itemType: selectedItemType },
+						overrideValidation: true,
+					});
+					await refreshSharedMap();
+					setSelectedItemType(null);
+				} catch (error) {
+					console.error('Failed to place item token:', error);
+					Alert.alert('Error', 'Failed to place item');
+				}
+			};
+
+			placeItem();
+		},
+		[inviteCode, selectedItemType, refreshSharedMap],
+	);
 
 	const handleMovementTilePress = useCallback(
 		(x: number, y: number) => {
-			if (!movementMode || !sharedMap || !playerToken || !currentCharacterId || movementInFlight || !isPlayerTurn) {
-				if (!isPlayerTurn) {
-					Alert.alert('Not your turn', 'Wait for your turn to move.');
-				}
+			// DM can move tokens in edit mode (handled by token drag)
+			if (isHost && isMapEditMode) {
+				return;
+			}
+
+			// Enforce turn-based movement for players
+			if (!isHost && !isPlayerTurn) {
+				Alert.alert('Not your turn', 'Wait for your turn to move.');
+				return;
+			}
+
+			if (!movementMode || !sharedMap || !playerToken || !currentCharacterId || movementInFlight) {
 				return;
 			}
 
@@ -443,6 +977,8 @@ const MultiplayerGameScreen: React.FC = () => {
 			inviteCode,
 			refreshSharedMap,
 			isPlayerTurn,
+			isHost,
+			isMapEditMode,
 		],
 	);
 
@@ -488,22 +1024,143 @@ const MultiplayerGameScreen: React.FC = () => {
 						</TouchableOpacity>
 					)}
 				</View>
-				{!isPlayerTurn && currentTurnName && (
+				{gameState?.pausedTurn && (
+					<View style={styles.pausedIndicator}>
+						<ThemedText style={styles.pausedText}>⏸️ Turn Paused - DM Action</ThemedText>
+					</View>
+				)}
+				{isHost && isMapEditMode && (
+					<View style={styles.editModeIndicator}>
+						<ThemedText style={styles.editModeText}>✏️ Edit Mode Active - Drag tokens or long-press tiles</ThemedText>
+					</View>
+				)}
+				{!isPlayerTurn && currentTurnName && !gameState?.pausedTurn && (
 					<ThemedText style={styles.mapHint}>Waiting for your turn... (Current: {currentTurnName})</ThemedText>
 				)}
 				{movementMode && isPlayerTurn && (
 					<ThemedText style={styles.mapHint}>Tap a highlighted tile to move (budget {movementBudget}).</ThemedText>
 				)}
+				{selectedTokenId && (
+					<ThemedText style={styles.mapHint}>
+						Showing movement range for selected token. Click another token to see its range.
+					</ThemedText>
+				)}
 				{sharedMap ? (
 					<InteractiveMap
 						map={sharedMap}
+						isEditable={isHost && isMapEditMode}
+						// Allow token dragging for hosts during gameplay (not just edit mode)
+						onTokenDragEnd={isHost ? async (token, x, y) => {
+							try {
+								// Skip if invalid coordinates (deletion case)
+								if (x === -1 && y === -1) {
+									return;
+								}
+
+								// For NPCs, we need to pass npcId instead of characterId
+								const tokenData: {
+									id: string;
+									tokenType: 'player' | 'npc' | 'object';
+									x: number;
+									y: number;
+									characterId?: string;
+									npcId?: string;
+									label: string;
+									color?: string;
+									overrideValidation: boolean;
+								} = {
+									id: token.id,
+									tokenType: token.type,
+									x,
+									y,
+									label: token.label,
+									color: token.color,
+									overrideValidation: true, // DM override - can move at any time
+								};
+
+								// Set the appropriate ID field based on token type
+								if (token.type === 'npc' && token.entityId) {
+									tokenData.npcId = token.entityId;
+								} else if (token.type === 'player' && token.entityId) {
+									tokenData.characterId = token.entityId;
+								}
+
+								// Optimistic update: update local state immediately
+								if (sharedMap) {
+									const updatedTokens = (sharedMap.tokens || []).map(t =>
+										t.id === token.id ? { ...t, x, y } : t,
+									);
+									setSharedMap({ ...sharedMap, tokens: updatedTokens });
+								}
+
+								// Save to backend asynchronously
+								multiplayerClient.saveMapToken(inviteCode || '', tokenData).catch(error => {
+									console.error('Failed to save token movement:', error);
+									// Revert optimistic update on error
+									if (sharedMap) {
+										const revertedTokens = (sharedMap.tokens || []).map(t =>
+											t.id === token.id ? { ...t, x: token.x, y: token.y } : t,
+										);
+										setSharedMap({ ...sharedMap, tokens: revertedTokens });
+										Alert.alert('Error', 'Failed to save movement. Changes reverted.');
+									}
+								});
+
+								// Refresh map state in background (non-blocking)
+								refreshSharedMap().catch(console.error);
+							} catch (error) {
+								console.error('Failed to move token:', error);
+								Alert.alert('Error', 'Failed to move token');
+							}
+						} : undefined}
 						highlightTokenId={currentCharacterId || undefined}
-						onTilePress={playerToken ? handleMovementTilePress : undefined}
-						reachableTiles={movementRange}
+						onTilePress={
+							isHost && isMapEditMode && selectedItemType
+								? handlePlaceItemToken
+								: selectedTokenId
+									? handleMovementRangeTilePress
+									: playerToken
+										? handleMovementTilePress
+										: undefined
+						}
+						onTileLongPress={isHost && isMapEditMode ? handleTileLongPress : undefined}
+						onTokenPress={handleTokenPress}
+						onTokenLongPress={handleTokenLongPress}
+						reachableTiles={selectedTokenId ? selectedTokenMovementRange : movementRange}
 						pathTiles={pathPreview?.path}
 					/>
 				) : (
 					<ThemedText style={styles.mapHint}>Waiting for the DM to configure a map.</ThemedText>
+				)}
+				{isHost && isMapEditMode && (
+					<View style={styles.itemPalette}>
+						<ThemedText style={styles.itemPaletteTitle}>Place Items</ThemedText>
+						<View style={styles.itemPaletteButtons}>
+							<TouchableOpacity
+								style={[styles.itemButton, selectedItemType === 'fire' && styles.itemButtonSelected]}
+								onPress={() => setSelectedItemType(selectedItemType === 'fire' ? null : 'fire')}
+							>
+								<ThemedText style={styles.itemButtonText}>🔥 Fire</ThemedText>
+							</TouchableOpacity>
+							<TouchableOpacity
+								style={[styles.itemButton, selectedItemType === 'trap' && styles.itemButtonSelected]}
+								onPress={() => setSelectedItemType(selectedItemType === 'trap' ? null : 'trap')}
+							>
+								<ThemedText style={styles.itemButtonText}>⚠️ Trap</ThemedText>
+							</TouchableOpacity>
+							<TouchableOpacity
+								style={[styles.itemButton, selectedItemType === 'obstacle' && styles.itemButtonSelected]}
+								onPress={() => setSelectedItemType(selectedItemType === 'obstacle' ? null : 'obstacle')}
+							>
+								<ThemedText style={styles.itemButtonText}>🪨 Obstacle</ThemedText>
+							</TouchableOpacity>
+						</View>
+						{selectedItemType && (
+							<ThemedText style={styles.itemPaletteHint}>
+								Tap a tile to place {selectedItemType}
+							</ThemedText>
+						)}
+					</View>
 				)}
 			</View>
 		</ScrollView>
@@ -549,6 +1206,50 @@ const MultiplayerGameScreen: React.FC = () => {
 					</TouchableOpacity>
 					{isHost && (
 						<>
+							{gameState?.pausedTurn && (
+								<TouchableOpacity
+									style={[styles.lobbyButton, styles.resumeButton]}
+									onPress={async () => {
+										try {
+											await multiplayerClient.resumeTurn(inviteCode || '');
+											setTimeout(() => {
+												loadGameState();
+											}, 500);
+										} catch (error) {
+											console.error('Failed to resume turn:', error);
+											Alert.alert('Error', 'Failed to resume turn');
+										}
+									}}
+								>
+									<ThemedText style={styles.lobbyButtonText}>Resume Turn</ThemedText>
+								</TouchableOpacity>
+							)}
+							{gameState?.activeTurn && gameState.activeTurn.type !== 'dm' && (
+								<TouchableOpacity
+									style={[styles.lobbyButton, styles.interruptButton]}
+									onPress={async () => {
+										try {
+											await multiplayerClient.interruptTurn(inviteCode || '');
+											setTimeout(() => {
+												loadGameState();
+											}, 500);
+										} catch (error) {
+											console.error('Failed to interrupt turn:', error);
+											Alert.alert('Error', 'Failed to interrupt turn');
+										}
+									}}
+								>
+									<ThemedText style={styles.lobbyButtonText}>DM Action</ThemedText>
+								</TouchableOpacity>
+							)}
+							<TouchableOpacity
+								style={[styles.lobbyButton, isMapEditMode && styles.editButtonActive]}
+								onPress={() => setIsMapEditMode(mode => !mode)}
+							>
+								<ThemedText style={styles.lobbyButtonText}>
+									{isMapEditMode ? 'Edit Mode: On' : 'Edit Map'}
+								</ThemedText>
+							</TouchableOpacity>
 							<TouchableOpacity
 								style={[styles.lobbyButton, styles.stopButton]}
 								onPress={async () => {
@@ -584,6 +1285,8 @@ const MultiplayerGameScreen: React.FC = () => {
 							currentPlayerId={currentCharacterId}
 							npcTokens={sharedMap?.tokens?.filter(t => t.type === 'npc') || []}
 							activeTurnEntityId={gameState?.activeTurn?.entityId}
+							onCharacterSelect={isHost ? handleCharacterSelect : undefined}
+							canSelect={isHost}
 						/>
 						{renderMapSection()}
 					</ScrollView>
@@ -591,11 +1294,60 @@ const MultiplayerGameScreen: React.FC = () => {
 					// Tablet/Desktop: Side-by-side layout
 					<View style={styles.desktopLayout}>
 						<View style={styles.sidebar}>
+							{isHost && charactersWithoutTokens.length > 0 && (
+								<View style={styles.warningContainer}>
+									<ThemedText style={styles.warningTitle}>⚠️ Characters Not Placed</ThemedText>
+									<ThemedText style={styles.warningText}>
+										{charactersWithoutTokens.length} character{charactersWithoutTokens.length > 1 ? 's' : ''} need to be placed on the map before the encounter can begin:
+									</ThemedText>
+									{charactersWithoutTokens.map(char => (
+										<ThemedText key={char.id} style={styles.warningCharacter}>
+											• {char.name || 'Unknown'}
+										</ThemedText>
+									))}
+									<ThemedText style={styles.warningHint}>
+										Go to the map editor to place these characters.
+									</ThemedText>
+								</View>
+							)}
+							{gameState.initiativeOrder && gameState.initiativeOrder.length > 0 && (
+								<View style={styles.initiativeOrderContainer}>
+									<ThemedText style={styles.initiativeOrderTitle}>Initiative Order</ThemedText>
+									<ScrollView style={styles.initiativeOrderList}>
+										{gameState.initiativeOrder.map((entry, index) => {
+											const isActive = gameState?.activeTurn?.entityId === entry.entityId;
+											const character = entry.type === 'player'
+												? gameState.characters.find(c => c.id === entry.entityId)
+												: null;
+											const npcToken = entry.type === 'npc'
+												? sharedMap?.tokens.find(t => t.id === entry.entityId)
+												: null;
+											const name = character?.name || npcToken?.label || `Entity ${index + 1}`;
+
+											return (
+												<View
+													key={entry.entityId}
+													style={[
+														styles.initiativeOrderItem,
+														isActive && styles.initiativeOrderItemActive,
+													]}
+												>
+													<ThemedText style={styles.initiativeOrderNumber}>{index + 1}.</ThemedText>
+													<ThemedText style={styles.initiativeOrderName}>{name}</ThemedText>
+													<ThemedText style={styles.initiativeOrderValue}>{entry.initiative}</ThemedText>
+												</View>
+											);
+										})}
+									</ScrollView>
+								</View>
+							)}
 							<PlayerCharacterList
 								characters={gameState.characters}
 								currentPlayerId={currentCharacterId}
 								npcTokens={sharedMap?.tokens?.filter(t => t.type === 'npc') || []}
 								activeTurnEntityId={gameState?.activeTurn?.entityId}
+								onCharacterSelect={isHost ? handleCharacterSelect : undefined}
+								canSelect={isHost}
 							/>
 						</View>
 						<View style={styles.mainContent}>
@@ -664,6 +1416,68 @@ const MultiplayerGameScreen: React.FC = () => {
 				commands={commandPaletteCommands}
 				onAIRequest={handleAIRequest}
 			/>
+
+			{/* Token Detail Modal */}
+			<TokenDetailModal
+				visible={showTokenModal}
+				token={selectedToken}
+				onClose={() => {
+					setShowTokenModal(false);
+					setSelectedToken(null);
+				}}
+				onDamage={isHost && selectedToken?.entityId ? handleTokenDamage : undefined}
+				onHeal={isHost && selectedToken?.entityId ? handleTokenHeal : undefined}
+				onDelete={isHost ? async () => {
+					if (selectedToken?.id && inviteCode) {
+						try {
+							await multiplayerClient.deleteMapToken(inviteCode, selectedToken.id);
+							await refreshSharedMap();
+							setShowTokenModal(false);
+							setSelectedToken(null);
+						} catch (error) {
+							console.error('Failed to delete token:', error);
+							Alert.alert('Error', 'Failed to delete token');
+						}
+					}
+				} : undefined}
+				canEdit={isHost}
+			/>
+
+			{/* Tile Action Menu */}
+			{tileActionMenu && (
+				<TileActionMenu
+					visible={!!tileActionMenu}
+					x={tileActionMenu.x}
+					y={tileActionMenu.y}
+					availableActions={['changeTerrain', 'placeWater', 'placeRoad', 'clearTile']}
+					onAction={handleTileAction}
+					onClose={() => setTileActionMenu(null)}
+				/>
+			)}
+
+			{/* Character DM Modal */}
+			{selectedCharacterForDM && (
+				<CharacterDMModal
+					visible={showCharacterDMModal}
+					character={
+						selectedCharacterForDM.type === 'player'
+							? gameState.characters.find(c => c.id === selectedCharacterForDM.id) || null
+							: null
+					}
+					npcToken={
+						selectedCharacterForDM.type === 'npc'
+							? sharedMap?.tokens.find(t => t.id === selectedCharacterForDM.id) || null
+							: null
+					}
+					onClose={() => {
+						setShowCharacterDMModal(false);
+						setSelectedCharacterForDM(null);
+					}}
+					onDamage={handleCharacterDamage}
+					onHeal={handleCharacterHeal}
+					onUpdateCharacter={selectedCharacterForDM.type === 'player' ? handleUpdateCharacter : undefined}
+				/>
+			)}
 		</ThemedView>
 	);
 };
@@ -696,6 +1510,14 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 		color: '#8B6914',
 	},
+	editModeBadge: {
+		backgroundColor: '#DBEAFE',
+		color: '#1E40AF',
+		paddingHorizontal: 8,
+		paddingVertical: 4,
+		borderRadius: 4,
+		marginLeft: 8,
+	},
 	lobbyButton: {
 		paddingHorizontal: 12,
 		paddingVertical: 6,
@@ -705,6 +1527,15 @@ const styles = StyleSheet.create({
 	},
 	stopButton: {
 		backgroundColor: '#B91C1C',
+	},
+	interruptButton: {
+		backgroundColor: '#DC2626',
+	},
+	resumeButton: {
+		backgroundColor: '#059669',
+	},
+	editButtonActive: {
+		backgroundColor: '#7C3AED',
 	},
 	lobbyButtonText: {
 		color: '#FFFFFF',
@@ -895,9 +1726,161 @@ const styles = StyleSheet.create({
 	},
 	mapSwitcherEmpty: {
 		color: '#6B5B3D',
+	},
+	initiativeOrderContainer: {
+		padding: 12,
+		borderBottomWidth: 1,
+		borderBottomColor: '#C9B037',
+		backgroundColor: '#FFF9EF',
+	},
+	initiativeOrderTitle: {
+		fontSize: 16,
+		fontWeight: '700',
+		color: '#3B2F1B',
+		marginBottom: 8,
+	},
+	initiativeOrderList: {
+		maxHeight: 200,
+	},
+	initiativeOrderItem: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		paddingVertical: 6,
+		paddingHorizontal: 8,
+		borderRadius: 4,
+		marginBottom: 4,
+		backgroundColor: '#F5E6D3',
+	},
+	initiativeOrderItemActive: {
+		backgroundColor: '#C9B037',
+	},
+	initiativeOrderNumber: {
+		fontSize: 12,
+		fontWeight: '600',
+		color: '#6B5B3D',
+		width: 24,
+	},
+	initiativeOrderName: {
+		flex: 1,
+		fontSize: 14,
+		color: '#3B2F1B',
+		fontWeight: '500',
+	},
+	initiativeOrderValue: {
+		fontSize: 12,
+		fontWeight: '700',
+		color: '#8B6914',
+		marginLeft: 8,
+	},
+	warningContainer: {
+		backgroundColor: '#FFF3CD',
+		borderRadius: 12,
+		padding: 12,
+		marginBottom: 16,
+		borderWidth: 2,
+		borderColor: '#FFC107',
+	},
+	warningTitle: {
+		fontSize: 16,
+		fontWeight: 'bold',
+		color: '#856404',
+		marginBottom: 8,
+	},
+	warningText: {
+		fontSize: 14,
+		color: '#856404',
+		marginBottom: 8,
+	},
+	warningCharacter: {
+		fontSize: 13,
+		color: '#856404',
+		marginLeft: 8,
+		marginBottom: 4,
+	},
+	warningHint: {
+		fontSize: 12,
+		color: '#856404',
+		fontStyle: 'italic',
+		marginTop: 8,
+	},
+	itemPalette: {
+		position: 'absolute',
+		bottom: 16,
+		left: 16,
+		right: 16,
+		backgroundColor: '#FFF9EF',
+		borderRadius: 12,
+		padding: 12,
+		borderWidth: 1,
+		borderColor: '#C9B037',
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.25,
+		shadowRadius: 3.84,
+		elevation: 5,
+	},
+	itemPaletteTitle: {
+		fontSize: 14,
+		fontWeight: '700',
+		color: '#3B2F1B',
+		marginBottom: 8,
+	},
+	itemPaletteButtons: {
+		flexDirection: 'row',
+		gap: 8,
+	},
+	itemButton: {
+		flex: 1,
+		padding: 10,
+		borderRadius: 8,
+		backgroundColor: '#E6DDC6',
+		alignItems: 'center',
+		borderWidth: 1,
+		borderColor: '#C9B037',
+	},
+	itemButtonSelected: {
+		backgroundColor: '#C9B037',
+		borderColor: '#8B6914',
+		borderWidth: 2,
+	},
+	itemButtonText: {
+		color: '#3B2F1B',
+		fontWeight: '600',
+		fontSize: 12,
+	},
+	itemPaletteHint: {
+		marginTop: 8,
+		fontSize: 12,
+		color: '#6B5B3D',
+		textAlign: 'center',
+	},
+	pausedIndicator: {
+		backgroundColor: '#FEF3C7',
+		borderColor: '#F59E0B',
+		borderWidth: 2,
+		borderRadius: 8,
+		padding: 8,
+		marginBottom: 8,
+	},
+	pausedText: {
+		color: '#92400E',
+		fontWeight: '700',
 		fontSize: 14,
 		textAlign: 'center',
-		paddingVertical: 20,
+	},
+	editModeIndicator: {
+		backgroundColor: '#DBEAFE',
+		borderColor: '#3B82F6',
+		borderWidth: 2,
+		borderRadius: 8,
+		padding: 8,
+		marginBottom: 8,
+	},
+	editModeText: {
+		color: '#1E40AF',
+		fontWeight: '700',
+		fontSize: 14,
+		textAlign: 'center',
 	},
 	logItem: {
 		borderRadius: 8,

@@ -72,6 +72,12 @@ export class GameSession {
 					return this.handleState();
 				case '/start':
 					return this.handleStart(request);
+				case '/initiative/roll':
+					return this.handleRollInitiative(request);
+				case '/turn/interrupt':
+					return this.handleInterruptTurn(request);
+				case '/turn/resume':
+					return this.handleResumeTurn(request);
 				case '/action':
 				case '/dm-action':
 					return json({ ok: true });
@@ -226,6 +232,165 @@ export class GameSession {
 
 		await this.storage.put(SESSION_KEY, updated);
 		return json(this.toResponse(updated));
+	}
+
+	private rollD20(): number {
+		return Math.floor(Math.random() * 20) + 1;
+	}
+
+	private getDexModifier(dex: number): number {
+		return Math.floor((dex - 10) / 2);
+	}
+
+	private async handleRollInitiative(request: Request): Promise<Response> {
+		const session = await this.getSession();
+		if (!session || !session.gameState) {
+			return json({ error: 'Game not started' }, 400);
+		}
+
+		// Get all characters and NPCs from the request payload
+		const payload = (await request.json()) as {
+			characters: Array<{ id: string; stats: { DEX: number } }>;
+			npcs: Array<{ id: string; stats?: { DEX: number }; entityId: string }>;
+		};
+
+		const initiativeEntries: Array<{ entityId: string; initiative: number; type: 'player' | 'npc'; dex: number }> = [];
+
+		// Roll for characters
+		for (const char of payload.characters || []) {
+			const dex = char.stats?.DEX ?? 10;
+			const dexMod = this.getDexModifier(dex);
+			const roll = this.rollD20();
+			const initiative = roll + dexMod;
+			initiativeEntries.push({
+				entityId: char.id,
+				initiative,
+				type: 'player',
+				dex,
+			});
+		}
+
+		// Roll for NPCs
+		for (const npc of payload.npcs || []) {
+			const dex = npc.stats?.DEX ?? 10;
+			const dexMod = this.getDexModifier(dex);
+			const roll = this.rollD20();
+			const initiative = roll + dexMod;
+			initiativeEntries.push({
+				entityId: npc.entityId || npc.id,
+				initiative,
+				type: 'npc',
+				dex,
+			});
+		}
+
+		// Sort by initiative (descending), then by DEX (descending) for ties
+		initiativeEntries.sort((a, b) => {
+			if (b.initiative !== a.initiative) {
+				return b.initiative - a.initiative;
+			}
+			return b.dex - a.dex;
+		});
+
+		const initiativeOrder = initiativeEntries.map(({ entityId, initiative, type }) => ({
+			entityId,
+			initiative,
+			type,
+		}));
+
+		// Set first entity as active turn
+		const firstEntity = initiativeOrder[0];
+		const activeTurn = firstEntity
+			? {
+					type: firstEntity.type,
+					entityId: firstEntity.entityId,
+					turnNumber: 1,
+					startedAt: Date.now(),
+				}
+			: null;
+
+		// Update game state
+		const updatedGameState: MultiplayerGameState = {
+			...session.gameState,
+			initiativeOrder,
+			activeTurn,
+			lastUpdated: Date.now(),
+		};
+
+		const updated: StoredSession = {
+			...session,
+			gameState: updatedGameState,
+			lastUpdated: Date.now(),
+		};
+
+		await this.storage.put(SESSION_KEY, updated);
+		return json({ initiativeOrder, activeTurn });
+	}
+
+	private async handleInterruptTurn(request: Request): Promise<Response> {
+		const session = await this.getSession();
+		if (!session || !session.gameState) {
+			return json({ error: 'Game not started' }, 400);
+		}
+
+		// Store current turn as paused
+		const pausedTurn = session.gameState.activeTurn;
+		const activeTurn = {
+			type: 'dm' as const,
+			entityId: session.hostId,
+			turnNumber: (session.gameState.activeTurn?.turnNumber ?? 0) + 1,
+			startedAt: Date.now(),
+		};
+
+		const updatedGameState: MultiplayerGameState = {
+			...session.gameState,
+			pausedTurn,
+			activeTurn,
+			lastUpdated: Date.now(),
+		};
+
+		const updated: StoredSession = {
+			...session,
+			gameState: updatedGameState,
+			lastUpdated: Date.now(),
+		};
+
+		await this.storage.put(SESSION_KEY, updated);
+		return json({ activeTurn, pausedTurn });
+	}
+
+	private async handleResumeTurn(request: Request): Promise<Response> {
+		const session = await this.getSession();
+		if (!session || !session.gameState) {
+			return json({ error: 'Game not started' }, 400);
+		}
+
+		// Restore paused turn
+		const pausedTurn = session.gameState.pausedTurn;
+		if (!pausedTurn) {
+			return json({ error: 'No paused turn to resume' }, 400);
+		}
+
+		const activeTurn = {
+			...pausedTurn,
+			startedAt: Date.now(),
+		};
+
+		const updatedGameState: MultiplayerGameState = {
+			...session.gameState,
+			activeTurn,
+			pausedTurn: undefined,
+			lastUpdated: Date.now(),
+		};
+
+		const updated: StoredSession = {
+			...session,
+			gameState: updatedGameState,
+			lastUpdated: Date.now(),
+		};
+
+		await this.storage.put(SESSION_KEY, updated);
+		return json({ activeTurn });
 	}
 
 	private async getSession(): Promise<StoredSession | null> {

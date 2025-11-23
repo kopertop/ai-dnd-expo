@@ -60,6 +60,23 @@ export interface MultiplayerGameState {
 	createdAt: number;
 	lastUpdated: number;
 	messages: GameMessage[];
+	activeTurn?: {
+		type: 'player' | 'npc' | 'dm';
+		entityId: string;
+		turnNumber: number;
+		startedAt: number;
+	} | null;
+	initiativeOrder?: Array<{
+		entityId: string;
+		initiative: number;
+		type: 'player' | 'npc';
+	}>;
+	pausedTurn?: {
+		type: 'player' | 'npc' | 'dm';
+		entityId: string;
+		turnNumber: number;
+		startedAt: number;
+	};
 }
 
 export interface Character {

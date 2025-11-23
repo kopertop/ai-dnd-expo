@@ -51,6 +51,23 @@ export const MultiplayerGameStateSchema = GameStateSchema.extend({
 		})
 		.nullable()
 		.optional(),
+	initiativeOrder: z
+		.array(
+			z.object({
+				entityId: z.string(),
+				initiative: z.number(),
+				type: z.enum(['player', 'npc']),
+			}),
+		)
+		.optional(),
+	pausedTurn: z
+		.object({
+			type: z.enum(['player', 'npc', 'dm']),
+			entityId: z.string(),
+			turnNumber: z.number().int(),
+			startedAt: z.number(),
+		})
+		.optional(),
 });
 
 export type MultiplayerGameState = z.infer<typeof MultiplayerGameStateSchema>;

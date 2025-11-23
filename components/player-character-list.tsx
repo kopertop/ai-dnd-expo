@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
@@ -13,6 +13,8 @@ interface PlayerCharacterListProps {
 	currentPlayerId?: string;
 	npcTokens?: MapToken[];
 	activeTurnEntityId?: string;
+	onCharacterSelect?: (characterId: string, type: 'player' | 'npc') => void;
+	canSelect?: boolean;
 }
 
 export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
@@ -20,6 +22,8 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 	currentPlayerId,
 	npcTokens = [],
 	activeTurnEntityId,
+	onCharacterSelect,
+	canSelect = false,
 }) => {
 	const { isMobile } = useScreenSize();
 
@@ -41,15 +45,19 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 					if (entity.type === 'player') {
 						const character = entity.data as Character;
 						const displayName = character.name || character.race || character.class || 'Unknown';
+						const CardComponent = canSelect && onCharacterSelect ? TouchableOpacity : View;
 						return (
-							<View
+							<CardComponent
 								key={character.id}
 								style={[
 									styles.characterCard,
 									isMobile && styles.characterCardMobile,
 									isCurrentPlayer && styles.characterCardCurrent,
 									isActiveTurn && styles.characterCardActiveTurn,
+									canSelect && styles.characterCardSelectable,
 								]}
+								onPress={canSelect && onCharacterSelect ? () => onCharacterSelect(character.id, 'player') : undefined}
+								activeOpacity={canSelect ? 0.7 : 1}
 							>
 								<View style={styles.characterHeader}>
 									<ThemedText style={styles.characterName}>
@@ -78,19 +86,23 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 										</ThemedText>
 									</View>
 								</View>
-							</View>
+							</CardComponent>
 						);
 					} else {
 						const npcToken = entity.data as MapToken;
+						const CardComponent = canSelect && onCharacterSelect ? TouchableOpacity : View;
 						return (
-							<View
+							<CardComponent
 								key={npcToken.id}
 								style={[
 									styles.characterCard,
 									styles.npcCard,
 									isMobile && styles.characterCardMobile,
 									isActiveTurn && styles.characterCardActiveTurn,
+									canSelect && styles.characterCardSelectable,
 								]}
+								onPress={canSelect && onCharacterSelect ? () => onCharacterSelect(npcToken.id, 'npc') : undefined}
+								activeOpacity={canSelect ? 0.7 : 1}
 							>
 								<View style={styles.characterHeader}>
 									<ThemedText style={styles.characterName}>
@@ -111,7 +123,7 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 										</View>
 									</View>
 								)}
-							</View>
+							</CardComponent>
 						);
 					}
 				})}
@@ -198,6 +210,9 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		color: '#3B2F1B',
 		fontWeight: 'bold',
+	},
+	characterCardSelectable: {
+		cursor: 'pointer',
 	},
 });
 

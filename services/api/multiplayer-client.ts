@@ -244,7 +244,7 @@ export class MultiplayerClient {
 
 	async saveMapToken(
 		inviteCode: string,
-		request: MapTokenUpsertRequest & { id?: string },
+		request: MapTokenUpsertRequest & { id?: string; overrideValidation?: boolean },
 	): Promise<MapTokenMutationResponse> {
 		return apiService.fetchApi(`/games/${inviteCode}/map/tokens`, {
 			method: 'POST',
@@ -345,6 +345,61 @@ export class MultiplayerClient {
 		return apiService.fetchApi(`/games/${inviteCode}/map`, {
 			method: 'PATCH',
 			body: JSON.stringify({ mapId }),
+		});
+	}
+
+	/**
+	 * Roll initiative for all characters and NPCs
+	 */
+	async rollInitiative(inviteCode: string): Promise<{
+		initiativeOrder: Array<{ entityId: string; initiative: number; type: 'player' | 'npc' }>;
+		activeTurn: { type: string; entityId: string; turnNumber: number; startedAt: number } | null;
+	}> {
+		return apiService.fetchApi(`/games/${inviteCode}/initiative/roll`, {
+			method: 'POST',
+		});
+	}
+
+	/**
+	 * Interrupt the current turn (DM action)
+	 */
+	async interruptTurn(inviteCode: string): Promise<{
+		activeTurn: { type: string; entityId: string; turnNumber: number; startedAt: number };
+		pausedTurn?: { type: string; entityId: string; turnNumber: number; startedAt: number };
+	}> {
+		return apiService.fetchApi(`/games/${inviteCode}/turn/interrupt`, {
+			method: 'POST',
+		});
+	}
+
+	/**
+	 * Resume a paused turn
+	 */
+	async resumeTurn(inviteCode: string): Promise<{
+		activeTurn: { type: string; entityId: string; turnNumber: number; startedAt: number };
+	}> {
+		return apiService.fetchApi(`/games/${inviteCode}/turn/resume`, {
+			method: 'POST',
+		});
+	}
+
+	/**
+	 * Deal damage to a character
+	 */
+	async dealDamage(inviteCode: string, characterId: string, amount: number): Promise<{ character: Character | null }> {
+		return apiService.fetchApi(`/games/${inviteCode}/characters/${characterId}/damage`, {
+			method: 'POST',
+			body: JSON.stringify({ amount }),
+		});
+	}
+
+	/**
+	 * Heal a character
+	 */
+	async healCharacter(inviteCode: string, characterId: string, amount: number): Promise<{ character: Character | null }> {
+		return apiService.fetchApi(`/games/${inviteCode}/characters/${characterId}/heal`, {
+			method: 'POST',
+			body: JSON.stringify({ amount }),
 		});
 	}
 
