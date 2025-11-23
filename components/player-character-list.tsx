@@ -57,21 +57,11 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 	let allEntities: Array<{ type: 'player' | 'npc'; id: string; name: string; data: Character | MapToken; initiative?: number; initiativeIndex?: number }>;
 	
 	if (initiativeOrder && initiativeOrder.length > 0) {
-		if (__DEV__) {
-			console.log('[Initiative Debug] Initiative Order:', initiativeOrder);
-			console.log('[Initiative Debug] Entity Map Keys:', Array.from(entityMap.keys()));
-			console.log('[Initiative Debug] Characters:', characters.map(c => ({ id: c.id, name: c.name })));
-			console.log('[Initiative Debug] NPC Tokens:', npcTokens.map(t => ({ id: t.id, entityId: t.entityId, label: t.label })));
-		}
-		
 		// Map initiative order entries to entities (already sorted highest to lowest)
 		// Only show entities that are in the initiative order - no duplicates
 		allEntities = initiativeOrder
 			.map((entry, index) => {
 				const entity = entityMap.get(entry.entityId);
-				if (__DEV__ && !entity) {
-					console.warn('[Initiative Debug] No entity found for:', entry.entityId, 'Type:', entry.type);
-				}
 				if (!entity) return null;
 				return {
 					...entity,
@@ -90,14 +80,6 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 			seenIds.add(entity.id);
 			return true;
 		});
-		
-		if (__DEV__) {
-			console.log('[Initiative Debug] Final Entities:', allEntities.map(e => ({ 
-				name: e.name, 
-				initiative: e.initiative, 
-				initiativeIndex: e.initiativeIndex 
-			})));
-		}
 	} else {
 		// No initiative order, use original order
 		allEntities = Array.from(entityMap.values());

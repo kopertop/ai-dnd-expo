@@ -52,7 +52,6 @@ export class WebSocketClient {
 				const ws = new WebSocket(url);
 
 				ws.onopen = () => {
-					console.log('WebSocket connected');
 					this.ws = ws;
 					this.isConnecting = false;
 					this.reconnectAttempts = 0;
@@ -75,7 +74,6 @@ export class WebSocketClient {
 				};
 
 				ws.onclose = () => {
-					console.log('WebSocket closed');
 					this.ws = null;
 					this.isConnecting = false;
 					this.attemptReconnect();
@@ -154,10 +152,9 @@ export class WebSocketClient {
 		const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
 
 		setTimeout(() => {
-			console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
 			this.connect(this.inviteCode, this.playerId, this.characterId).catch(
 				(error) => {
-					console.error('Reconnection failed:', error);
+					// Silently handle reconnection failures
 				},
 			);
 		}, delay);

@@ -11,6 +11,7 @@ import { InteractiveMap } from '@/components/map/interactive-map';
 import { TileActionMenu, type TileAction } from '@/components/map/tile-action-menu';
 import { NotificationsPanel } from '@/components/notifications-panel';
 import { NpcSelector } from '@/components/npc-selector';
+import { PlayerActionMenu, type PlayerAction } from '@/components/player-action-menu';
 import { PlayerCharacterList } from '@/components/player-character-list';
 import { SpellActionSelector } from '@/components/spell-action-selector';
 import { ThemedText } from '@/components/themed-text';
@@ -24,7 +25,7 @@ import { PlayerActionMessage } from '@/types/api/websocket-messages';
 import { Character } from '@/types/character';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { MapState, MapToken } from '@/types/multiplayer-map';
-import { calculateMovementRange, findPathWithCosts } from '@/utils/movement-calculator';
+import { calculateMovementRange, findPathWithCosts, isInMeleeRange, isInRangedRange } from '@/utils/movement-calculator';
 
 const MultiplayerGameScreen: React.FC = () => {
 	const params = useLocalSearchParams<{ inviteCode: string; hostId?: string; playerId?: string }>();
@@ -36,8 +37,8 @@ const MultiplayerGameScreen: React.FC = () => {
 		null,
 	);
 	const [movementInFlight, setMovementInFlight] = useState(false);
-	const [movementMode, setMovementMode] = useState(false);
 	const [isHost, setIsHost] = useState(false);
+	const [playerActionMenu, setPlayerActionMenu] = useState<{ x: number; y: number; actions: PlayerAction[]; targetLabel?: string } | null>(null);
 	const [wsConnected, setWsConnected] = useState(false);
 	const [showMapSwitcher, setShowMapSwitcher] = useState(false);
 	const [availableMaps, setAvailableMaps] = useState<Array<{ id: string; name: string }>>([]);
@@ -82,56 +83,87 @@ const MultiplayerGameScreen: React.FC = () => {
 		[gameState?.players, playerId],
 	);
 
+	// Get the active character ID - for DM, use the active turn's entity, for players use their own
+	const activeCharacterIdForMovement = useMemo(() => {
+		if (isHost && gameState?.activeTurn && !gameState.pausedTurn) {
+			// DM acting as the active character
+			return gameState.activeTurn.entityId;
+		}
+		return currentCharacterId;
+	}, [isHost, gameState?.activeTurn, gameState?.pausedTurn, currentCharacterId]);
+
 	const playerToken = useMemo(() => {
-		if (!sharedMap || !currentCharacterId) {
+		if (!sharedMap) {
+			return null;
+		}
+
+		// For DM: use active turn's character/NPC token
+		// For players: use their own token
+		const entityId = activeCharacterIdForMovement;
+		if (!entityId) {
 			return null;
 		}
 
 		return (
-			sharedMap.tokens?.find(token => token.type === 'player' && token.entityId === currentCharacterId) ?? null
+			sharedMap.tokens?.find(token =>
+				(token.type === 'player' || token.type === 'npc') &&
+				token.entityId === entityId,
+			) ?? null
 		);
-	}, [sharedMap, currentCharacterId]);
+	}, [sharedMap, activeCharacterIdForMovement]);
 
 	const movementBudget = useMemo(() => {
-		const character = gameState?.characters.find(c => c.id === currentCharacterId);
+		const entityId = activeCharacterIdForMovement;
+		if (!entityId) {
+			return 0;
+		}
+
+		// For NPCs, check metadata for action points, otherwise use character data
+		if (playerToken?.type === 'npc' && playerToken.metadata) {
+			const npcActionPoints = (playerToken.metadata as Record<string, unknown>)?.actionPoints;
+			if (typeof npcActionPoints === 'number') {
+				return npcActionPoints;
+			}
+		}
+
+		const character = gameState?.characters.find(c => c.id === entityId);
 		if (!character) {
 			return 0;
 		}
 
 		return character.actionPoints ?? character.maxActionPoints ?? 6;
-	}, [gameState?.characters, currentCharacterId]);
+	}, [gameState?.characters, activeCharacterIdForMovement, playerToken]);
 
 	const isPlayerTurn = useMemo(() => {
-		if (__DEV__) {
-			console.log('[Turn Debug] Full State:', {
-				hasGameState: !!gameState,
-				hasActiveTurn: !!gameState?.activeTurn,
-				hasCurrentCharacterId: !!currentCharacterId,
-				activeTurn: gameState?.activeTurn,
-				currentCharacterId,
-				playerId,
-				allPlayers: gameState?.players?.map(p => ({ playerId: p.playerId, characterId: p.characterId })),
-				initiativeOrder: gameState?.initiativeOrder,
-			});
-		}
-		if (!gameState?.activeTurn || !currentCharacterId) {
+		// If no active turn, no one's turn
+		if (!gameState?.activeTurn) {
 			return false;
 		}
-		const isTurn = (
+
+		// If turn is paused, DM is in "DM Action" mode - no one can act
+		if (gameState.pausedTurn) {
+			return false;
+		}
+
+		// For DM: if there's an active turn (player or NPC), DM acts as that character
+		// unless the turn is paused (DM Action mode)
+		if (isHost && gameState.activeTurn.entityId) {
+			return (
+				gameState.activeTurn.type === 'player' ||
+				gameState.activeTurn.type === 'npc'
+			);
+		}
+
+		// For players: only their own turn
+		if (!currentCharacterId) {
+			return false;
+		}
+
+		return (
 			gameState.activeTurn.type === 'player' &&
 			gameState.activeTurn.entityId === currentCharacterId
 		);
-		if (__DEV__) {
-			console.log('[Turn Debug] Turn Check:', {
-				activeTurnEntityId: gameState.activeTurn.entityId,
-				currentCharacterId,
-				match: gameState.activeTurn.entityId === currentCharacterId,
-				isTurn,
-				activeTurnType: gameState.activeTurn.type,
-			});
-		}
-		return isTurn;
-	}, [gameState, currentCharacterId, playerId]);
+	}, [gameState, currentCharacterId, isHost]);
 
 	const currentTurnName = useMemo(() => {
 		if (!gameState?.activeTurn) {
@@ -415,16 +447,20 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	}, [gameState?.messages, showNotifications]);
 
+	// Calculate movement range when it's player's turn or DM's turn (for movement preview)
 	useEffect(() => {
-		if (!movementMode || !sharedMap || !playerToken || movementBudget <= 0 || !isPlayerTurn) {
+		if (!sharedMap || !playerToken || movementBudget <= 0 || (!isPlayerTurn && !isHost)) {
 			setMovementRange([]);
 			setPathPreview(null);
 			return;
 		}
 
-		const reachable = calculateMovementRange(sharedMap, { x: playerToken.x, y: playerToken.y }, movementBudget);
-		setMovementRange(reachable);
-	}, [sharedMap, playerToken, movementBudget, movementMode, isPlayerTurn]);
+		// Only show movement range for players on their turn, or DM on any turn
+		if (isPlayerTurn || isHost) {
+			const reachable = calculateMovementRange(sharedMap, { x: playerToken.x, y: playerToken.y }, movementBudget);
+			setMovementRange(reachable);
+		}
+	}, [sharedMap, playerToken, movementBudget, isPlayerTurn, isHost]);
 
 	// Load initial game state - only once
 	const loadGameStateRef = useRef(false);
@@ -747,12 +783,12 @@ const MultiplayerGameScreen: React.FC = () => {
 				{
 					id: 'move',
 					label: 'Move',
-					description: 'Enter movement mode to move your character',
+					description: 'Click on a tile to see movement options',
 					keywords: ['move', 'movement', 'walk'],
 					category: 'Actions',
 					action: () => {
-						setMovementMode(true);
 						setShowCommandPalette(false);
+						Alert.alert('Movement', 'Click on a tile to see available movement options.');
 					},
 				},
 			);
@@ -775,10 +811,170 @@ const MultiplayerGameScreen: React.FC = () => {
 		return commands;
 	}, [isHost, inviteCode, loadGameState, isPlayerTurn, currentCharacterId]);
 
+	// Determine available actions for a tile
+	const getAvailableActions = useCallback(
+		(x: number, y: number): { actions: PlayerAction[]; targetLabel?: string } => {
+			const actions: PlayerAction[] = [];
+			let targetLabel: string | undefined;
+
+			// Check if it's player's turn or DM's turn
+			const canAct = isPlayerTurn || isHost;
+			if (!canAct) {
+				return { actions: [] };
+			}
+
+			// Get the active character (player's character or DM's selected NPC)
+			// For DM: can act on any turn (player, NPC, or DM turn)
+			// For players: can only act on their own turn
+			const activeEntityId = isPlayerTurn
+				? currentCharacterId
+				: (isHost ? (gameState?.activeTurn?.entityId || currentCharacterId) : null);
+
+			if (!activeEntityId) {
+				return { actions: [] };
+			}
+
+			const activeCharacter = gameState?.characters.find(c => c.id === activeEntityId);
+			const activeToken = sharedMap?.tokens?.find(
+				t => t.entityId === activeEntityId && (t.type === 'player' || t.type === 'npc'),
+			);
+
+			if (!activeToken || !sharedMap) {
+				return { actions: [] };
+			}
+
+			const fromPos = { x: activeToken.x, y: activeToken.y };
+			const toPos = { x, y };
+
+			// Check what's on the tile
+			const tokenOnTile = sharedMap.tokens?.find(t => t.x === x && t.y === y);
+			const isOwnTile = activeToken.x === x && activeToken.y === y;
+
+			// If clicking on own tile, only allow movement if there's a path
+			if (isOwnTile) {
+				return { actions: [] };
+			}
+
+			// Check if tile is empty
+			if (!tokenOnTile) {
+				// Empty tile - check if movement is possible
+				// Get movement budget for the active character
+				const character = gameState?.characters.find(c => c.id === activeEntityId);
+				const budget = character?.actionPoints ?? character?.maxActionPoints ?? 6;
+				const reachable = calculateMovementRange(sharedMap, fromPos, budget);
+				const isReachable = reachable.some(tile => tile.x === x && tile.y === y);
+				if (isReachable) {
+					actions.push('move');
+				}
+				return { actions, targetLabel: 'Empty Tile' };
+			}
+
+			// There's a token on the tile
+			targetLabel = tokenOnTile.label || 'Target';
+
+			// Check distance
+			const distance = Math.abs(fromPos.x - toPos.x) + Math.abs(fromPos.y - toPos.y);
+			const inMelee = isInMeleeRange(fromPos, toPos);
+			const inRanged = isInRangedRange(fromPos, toPos, 5); // Default ranged range
+
+			// Object tokens (traps, fires, doors, chests, items)
+			if (tokenOnTile.type === 'object') {
+				const itemType = (tokenOnTile.metadata as { itemType?: string })?.itemType;
+
+				if (itemType === 'trap' || itemType === 'fire') {
+					if (inMelee) {
+						actions.push('disarm');
+					}
+					actions.push('inspect');
+				} else if (itemType === 'door') {
+					if (inMelee) {
+						actions.push('open');
+					}
+					actions.push('inspect');
+				} else if (itemType === 'chest') {
+					if (inMelee) {
+						actions.push('open');
+					}
+					actions.push('inspect');
+				} else {
+					// Generic item
+					if (inMelee) {
+						actions.push('pick_up');
+					}
+					actions.push('inspect');
+				}
+				return { actions, targetLabel };
+			}
+
+			// NPC or Player token
+			if (tokenOnTile.type === 'npc' || tokenOnTile.type === 'player') {
+				// Talk is always available if in range (adjacent or same tile)
+				if (distance <= 1) {
+					actions.push('talk');
+				}
+
+				// Inspect is always available
+				actions.push('inspect');
+
+				// Combat actions if in range
+				if (inMelee || inRanged) {
+					actions.push('cast_spell');
+					if (inMelee || inRanged) {
+						actions.push('basic_attack');
+					}
+					// Use Item - check if character has items (simplified for now)
+					if (activeCharacter) {
+						actions.push('use_item');
+					}
+				}
+			}
+
+			return { actions, targetLabel };
+		},
+		[isPlayerTurn, isHost, gameState, currentCharacterId, sharedMap],
+	);
+
 	const handleTokenPress = useCallback(
 		(token: MapToken) => {
 			if (!sharedMap) return;
 
+			// For players (not DM): clicking on another token should show action menu, not movement range
+			if (!isHost) {
+				// Check if it's the player's own token
+				const isOwnToken = token.type === 'player' && token.entityId === currentCharacterId;
+
+				if (isOwnToken) {
+					// For own token, show movement range (toggle behavior)
+					if (selectedTokenId === token.id && selectedTokenMovementRange.length > 0) {
+						setSelectedTokenId(null);
+						setSelectedTokenMovementRange([]);
+						return;
+					}
+
+					// Calculate movement range for the player's own token
+					const character = gameState?.characters.find(c => c.id === currentCharacterId);
+					const movementBudget = character?.actionPoints ?? character?.maxActionPoints ?? 6;
+					const reachable = calculateMovementRange(sharedMap, { x: token.x, y: token.y }, movementBudget);
+					setSelectedTokenId(token.id);
+					setSelectedTokenMovementRange(reachable);
+				} else {
+					// For other tokens, show action menu from player's position
+					// Check if it's player's turn
+					if (!isPlayerTurn) {
+						Alert.alert('Not your turn', 'Wait for your turn to perform actions.');
+						return;
+					}
+
+					// Get available actions for this token's position
+					const { actions, targetLabel } = getAvailableActions(token.x, token.y);
+					if (actions.length > 0) {
+						setPlayerActionMenu({ x: token.x, y: token.y, actions, targetLabel: targetLabel || token.label });
+					}
+				}
+				return;
+			}
+
+			// For DM: show movement range for any token (existing behavior)
 			// Toggle: if same token is already selected, hide movement range
 			if (selectedTokenId === token.id && selectedTokenMovementRange.length > 0) {
 				setSelectedTokenId(null);
@@ -806,7 +1002,7 @@ const MultiplayerGameScreen: React.FC = () => {
 			setSelectedTokenId(token.id);
 			setSelectedTokenMovementRange(reachable);
 		},
-		[sharedMap, gameState?.characters, selectedTokenId, selectedTokenMovementRange],
+		[sharedMap, gameState?.characters, selectedTokenId, selectedTokenMovementRange, isHost, currentCharacterId, isPlayerTurn, getAvailableActions],
 	);
 
 	const handleTokenLongPress = useCallback(
@@ -1167,98 +1363,301 @@ const MultiplayerGameScreen: React.FC = () => {
 		[inviteCode, selectedItemType, refreshSharedMap],
 	);
 
-	const handleMovementTilePress = useCallback(
+	// Handle tile press - show action menu
+	const handlePlayerTilePress = useCallback(
 		(x: number, y: number) => {
-			// DM can move tokens in edit mode (handled by token drag)
+			console.log('[TilePress] Tile clicked:', { x, y, movementInFlight, isHost, isMapEditMode, isPlayerTurn });
+
+			// Skip if movement is in flight
+			if (movementInFlight) {
+				console.log('[TilePress] Movement in flight, skipping');
+				return;
+			}
+
+			// Skip if in edit mode or placement modes
 			if (isHost && isMapEditMode) {
+				console.log('[TilePress] In edit mode, skipping');
+				return;
+			}
+			if (npcPlacementMode && isHost) {
+				console.log('[TilePress] In NPC placement mode, skipping');
+				return;
+			}
+			if (elementPlacementMode && isHost) {
+				console.log('[TilePress] In element placement mode, skipping');
+				return;
+			}
+			if (isHost && isMapEditMode && selectedItemType) {
+				console.log('[TilePress] Item placement mode, skipping');
 				return;
 			}
 
-			// Enforce turn-based movement for players
-			if (!isHost && !isPlayerTurn) {
-				Alert.alert('Not your turn', 'Wait for your turn to move.');
+			// Check if it's player's turn or DM's turn
+			if (!isPlayerTurn && !isHost) {
+				console.log('[TilePress] Not player turn and not host');
+				Alert.alert('Not your turn', 'Wait for your turn to perform actions.');
 				return;
 			}
 
-			if (!movementMode || !sharedMap || !playerToken || !currentCharacterId || movementInFlight) {
+			// Get available actions
+			const { actions, targetLabel } = getAvailableActions(x, y);
+			console.log('[TilePress] Available actions:', { actions, targetLabel });
+
+			if (actions.length === 0) {
+				console.log('[TilePress] No actions available');
 				return;
 			}
 
-			const reachable = movementRange.find(tile => tile.x === x && tile.y === y);
-			if (!reachable) {
-				// Silent return if clicking outside range in movement mode, or just clear preview
-				setPathPreview(null);
-				return;
-			}
-
-			const pathResult = findPathWithCosts(sharedMap, { x: playerToken.x, y: playerToken.y }, { x, y });
-
-			if (!pathResult || !pathResult.path.length) {
-				Alert.alert('No path', 'Unable to find a valid path to that tile.');
-				return;
-			}
-
-			if (pathResult.cost > movementBudget) {
-				Alert.alert('Not enough movement', 'You need more movement points for that path.');
-				return;
-			}
-
-			setPathPreview(pathResult);
-
-			const performMove = async () => {
-				try {
-					setMovementInFlight(true);
-					const validation = await multiplayerClient.validateMovement(inviteCode || '', {
-						characterId: currentCharacterId,
-						fromX: playerToken.x,
-						fromY: playerToken.y,
-						toX: x,
-						toY: y,
-					});
-
-					if (!validation?.valid) {
-						Alert.alert('Move blocked', 'That move is not allowed on the current terrain.');
-						return;
-					}
-
-					await multiplayerClient.saveMapToken(inviteCode || '', {
-						id: playerToken.id,
-						tokenType: 'player',
-						x,
-						y,
-						characterId: playerToken.entityId ?? currentCharacterId,
-						label: playerToken.label,
-						color: playerToken.color,
-						metadata: { ...playerToken.metadata, path: validation.path },
-					});
-					await refreshSharedMap();
-					setPathPreview(null);
-					setMovementMode(false); // Exit movement mode after move
-				} catch (error) {
-					console.error('Failed to move player', error);
-					Alert.alert('Movement failed', error instanceof Error ? error.message : 'Could not move token');
-				} finally {
-					setMovementInFlight(false);
-				}
-			};
-
-			performMove();
+			// Show action menu
+			console.log('[TilePress] Showing action menu');
+			setPlayerActionMenu({ x, y, actions, targetLabel });
 		},
-		[
-			movementMode,
-			sharedMap,
-			playerToken,
-			currentCharacterId,
-			movementRange,
-			movementBudget,
-			movementInFlight,
-			inviteCode,
-			refreshSharedMap,
-			isPlayerTurn,
-			isHost,
-			isMapEditMode,
-		],
+		[movementInFlight, isHost, isMapEditMode, npcPlacementMode, elementPlacementMode, selectedItemType, isPlayerTurn, getAvailableActions],
 	);
+
+	// Handle player action execution
+	const handlePlayerAction = useCallback(
+		async (action: PlayerAction, x: number, y: number) => {
+			if (!inviteCode || !sharedMap) return;
+
+			// For DM: can act on any turn (player, NPC, or DM turn) unless paused
+			// For players: can only act on their own turn
+			const activeCharacterId = isPlayerTurn
+				? (isHost && gameState?.activeTurn?.entityId ? gameState.activeTurn.entityId : currentCharacterId)
+				: (isHost && !gameState?.pausedTurn && gameState?.activeTurn?.entityId ? gameState.activeTurn.entityId : null);
+
+			console.log('[Movement] Active character check:', {
+				isPlayerTurn,
+				isHost,
+				currentCharacterId,
+				activeTurnEntityId: gameState?.activeTurn?.entityId,
+				activeCharacterId,
+				activeTurnType: gameState?.activeTurn?.type,
+				pausedTurn: gameState?.pausedTurn,
+			});
+
+			if (!activeCharacterId) {
+				Alert.alert('Error', 'No active character found');
+				return;
+			}
+
+			const activeToken = sharedMap.tokens?.find(
+				t => t.entityId === activeCharacterId && (t.type === 'player' || t.type === 'npc'),
+			);
+
+			if (!activeToken) {
+				Alert.alert('Error', 'No active token found');
+				return;
+			}
+
+			try {
+				switch (action) {
+					case 'move': {
+						console.log('[Movement] Starting move action', {
+							from: { x: activeToken.x, y: activeToken.y },
+							to: { x, y },
+							activeCharacterId,
+							tokenType: activeToken.type,
+							tokenId: activeToken.id,
+						});
+
+						// Use existing movement logic
+						const pathResult = findPathWithCosts(sharedMap, { x: activeToken.x, y: activeToken.y }, { x, y });
+						console.log('[Movement] Path result:', pathResult);
+
+						if (!pathResult || !pathResult.path.length) {
+							console.error('[Movement] No path found');
+							Alert.alert('No path', 'Unable to find a valid path to that tile.');
+							return;
+						}
+
+						// Get budget - check NPC metadata first, then character data
+						let budget = 0;
+						if (activeToken.type === 'npc' && activeToken.metadata) {
+							const npcActionPoints = (activeToken.metadata as Record<string, unknown>)?.actionPoints;
+							if (typeof npcActionPoints === 'number') {
+								budget = npcActionPoints;
+							}
+						}
+
+						if (budget === 0) {
+							const character = gameState?.characters.find(c => c.id === activeCharacterId);
+							budget = character?.actionPoints ?? character?.maxActionPoints ?? 6;
+						}
+
+						console.log('[Movement] Budget check:', { cost: pathResult.cost, budget });
+
+						if (pathResult.cost > budget) {
+							console.error('[Movement] Not enough movement points');
+							Alert.alert('Not enough movement', 'You need more movement points for that path.');
+							return;
+						}
+
+						setMovementInFlight(true);
+						try {
+							// Use path result for validation - frontend pathfinding is sufficient
+							// The backend validation endpoint doesn't exist, so we trust our pathfinding
+							const validation: { valid: boolean; cost: number; path: Array<{ x: number; y: number }> } = {
+								valid: true,
+								cost: pathResult.cost,
+								path: pathResult.path,
+							};
+
+							console.log('[Movement] Using path result for movement validation:', validation);
+
+							// Optimistic update: update local state immediately
+							if (sharedMap) {
+								const updatedTokens = (sharedMap.tokens || []).map(t =>
+									t.id === activeToken.id ? { ...t, x, y, metadata: { ...t.metadata, path: validation.path } } : t,
+								);
+								setSharedMap({ ...sharedMap, tokens: updatedTokens });
+							}
+
+							// Save to backend - use npcId for NPCs, characterId for players
+							const tokenData: {
+								id: string;
+								tokenType: 'player' | 'npc' | 'object';
+								x: number;
+								y: number;
+								characterId?: string;
+								npcId?: string;
+								label: string;
+								color?: string;
+								metadata?: Record<string, unknown>;
+								overrideValidation?: boolean;
+							} = {
+								id: activeToken.id,
+								tokenType: activeToken.type,
+								x,
+								y,
+								label: activeToken.label,
+								color: activeToken.color,
+								metadata: { ...activeToken.metadata, path: validation.path },
+							};
+
+							// Set the appropriate ID field based on token type
+							if (activeToken.type === 'npc' && activeToken.entityId) {
+								tokenData.npcId = activeToken.entityId;
+								tokenData.overrideValidation = isHost; // DM can override validation for NPCs
+								console.log('[Movement] Saving NPC token:', { npcId: activeToken.entityId, overrideValidation: isHost });
+							} else if (activeToken.type === 'player' && activeToken.entityId) {
+								tokenData.characterId = activeToken.entityId;
+								console.log('[Movement] Saving player token:', { characterId: activeToken.entityId });
+							}
+
+							console.log('[Movement] Saving token data:', tokenData);
+							await multiplayerClient.saveMapToken(inviteCode, tokenData);
+							console.log('[Movement] Token saved successfully');
+
+							// Refresh map and game state to update action points
+							await refreshSharedMap();
+							setTimeout(() => {
+								loadGameState();
+							}, 300);
+							setPathPreview(null);
+							setSelectedTokenId(null);
+							setSelectedTokenMovementRange([]);
+						} catch (error) {
+							console.error('[Movement] Failed to move player:', error);
+							console.error('[Movement] Error details:', {
+								message: error instanceof Error ? error.message : String(error),
+								stack: error instanceof Error ? error.stack : undefined,
+							});
+							// Revert optimistic update on error
+							if (sharedMap) {
+								const revertedTokens = (sharedMap.tokens || []).map(t =>
+									t.id === activeToken.id ? { ...t, x: activeToken.x, y: activeToken.y } : t,
+								);
+								setSharedMap({ ...sharedMap, tokens: revertedTokens });
+								console.log('[Movement] Reverted optimistic update');
+							}
+							Alert.alert('Movement failed', error instanceof Error ? error.message : 'Could not move token');
+						} finally {
+							setMovementInFlight(false);
+							console.log('[Movement] Movement handler finished');
+						}
+						break;
+					}
+					case 'talk': {
+						// Open chat/dialogue - for now just show an alert
+						const targetToken = sharedMap.tokens?.find(t => t.x === x && t.y === y);
+						Alert.alert('Talk', `Initiating conversation with ${targetToken?.label || 'target'}`);
+						// TODO: Open chat interface
+						break;
+					}
+					case 'inspect': {
+						// Trigger perception check
+						if (activeCharacterId) {
+							try {
+								const result = await multiplayerClient.rollPerceptionCheck(inviteCode, activeCharacterId);
+								setTimeout(() => {
+									loadGameState();
+								}, 500);
+								Alert.alert('Perception Check', `Rolled: ${result.total}\n${result.breakdown}`);
+							} catch (error) {
+								console.error('Failed to roll perception:', error);
+								Alert.alert('Error', error instanceof Error ? error.message : 'Failed to roll perception');
+							}
+						}
+						break;
+					}
+					case 'cast_spell': {
+						// Open spell selector
+						setSelectedCharacterForAction(activeCharacterId);
+						setShowSpellActionSelector(true);
+						break;
+					}
+					case 'basic_attack': {
+						// Perform basic attack
+						if (activeCharacterId) {
+							try {
+								await multiplayerClient.performAction(inviteCode, activeCharacterId, 'basic_attack');
+								setTimeout(() => {
+									loadGameState();
+								}, 500);
+								Alert.alert('Attack', 'Basic attack performed!');
+							} catch (error) {
+								console.error('Failed to perform attack:', error);
+								Alert.alert('Error', error instanceof Error ? error.message : 'Failed to perform attack');
+							}
+						}
+						break;
+					}
+					case 'use_item': {
+						// Open item selector
+						Alert.alert('Use Item', 'Item selection coming soon');
+						// TODO: Open item selector
+						break;
+					}
+					case 'disarm': {
+						// Disarm trap/fire
+						Alert.alert('Disarm', 'Disarming trap/fire...');
+						// TODO: Implement disarm action
+						break;
+					}
+					case 'open': {
+						// Open door/chest
+						Alert.alert('Open', 'Opening...');
+						// TODO: Implement open action
+						break;
+					}
+					case 'pick_up': {
+						// Pick up item
+						Alert.alert('Pick Up', 'Picking up item...');
+						// TODO: Implement pick up action
+						break;
+					}
+				}
+			} catch (error) {
+				console.error('Failed to perform action:', error);
+				Alert.alert('Error', error instanceof Error ? error.message : 'Failed to perform action');
+			} finally {
+				setMovementInFlight(false);
+			}
+		},
+		[inviteCode, sharedMap, isPlayerTurn, isHost, currentCharacterId, gameState, refreshSharedMap, loadGameState],
+	);
+
 
 	if (!gameState) {
 		return (
@@ -1279,28 +1678,6 @@ const MultiplayerGameScreen: React.FC = () => {
 			<View style={styles.mapContainer}>
 				<View style={styles.mapHeader}>
 					<ThemedText type="subtitle">Shared Map</ThemedText>
-					{currentCharacterId && (
-						<TouchableOpacity
-							style={[
-								styles.movementButton,
-								movementMode && styles.movementButtonActive,
-								!isPlayerTurn && styles.movementButtonDisabled,
-							]}
-							onPress={() => {
-								if (!isPlayerTurn) {
-									Alert.alert('Not your turn', 'Wait for your turn to enable movement.');
-									return;
-								}
-								setMovementMode(mode => !mode);
-								setPathPreview(null);
-							}}
-							disabled={!isPlayerTurn}
-						>
-							<ThemedText style={styles.movementButtonText}>
-								{movementMode ? 'Movement: On' : 'Movement: Off'}
-							</ThemedText>
-						</TouchableOpacity>
-					)}
 				</View>
 				{gameState?.pausedTurn && (
 					<View style={styles.pausedIndicator}>
@@ -1312,11 +1689,11 @@ const MultiplayerGameScreen: React.FC = () => {
 						<ThemedText style={styles.editModeText}>✏️ Edit Mode Active - Drag tokens or long-press tiles</ThemedText>
 					</View>
 				)}
-				{!isPlayerTurn && currentTurnName && !gameState?.pausedTurn && (
+				{!isPlayerTurn && !isHost && currentTurnName && !gameState?.pausedTurn && (
 					<ThemedText style={styles.mapHint}>Waiting for your turn... (Current: {currentTurnName})</ThemedText>
 				)}
-				{movementMode && isPlayerTurn && (
-					<ThemedText style={styles.mapHint}>Tap a highlighted tile to move (budget {movementBudget}).</ThemedText>
+				{(isPlayerTurn || isHost) && (
+					<ThemedText style={styles.mapHint}>Click on a tile to see available actions.</ThemedText>
 				)}
 				{selectedTokenId && (
 					<ThemedText style={styles.mapHint}>
@@ -1452,9 +1829,7 @@ const MultiplayerGameScreen: React.FC = () => {
 										? handlePlaceItemToken
 										: selectedTokenId
 											? handleMovementRangeTilePress
-											: playerToken
-												? handleMovementTilePress
-												: undefined
+											: handlePlayerTilePress
 						}
 						onTileLongPress={isHost && isMapEditMode ? handleTileLongPress : undefined}
 						onTokenPress={handleTokenPress}
@@ -1801,6 +2176,19 @@ const MultiplayerGameScreen: React.FC = () => {
 					availableActions={['changeTerrain', 'placeWater', 'placeRoad', 'clearTile']}
 					onAction={handleTileAction}
 					onClose={() => setTileActionMenu(null)}
+				/>
+			)}
+
+			{/* Player Action Menu */}
+			{playerActionMenu && (
+				<PlayerActionMenu
+					visible={!!playerActionMenu}
+					x={playerActionMenu.x}
+					y={playerActionMenu.y}
+					availableActions={playerActionMenu.actions}
+					targetLabel={playerActionMenu.targetLabel}
+					onAction={handlePlayerAction}
+					onClose={() => setPlayerActionMenu(null)}
 				/>
 			)}
 

@@ -892,10 +892,7 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 		return c.json({ error: 'Game not found' }, 404);
 	}
 
-	if (!isHostUser(game, user)) {
-		return c.json({ error: 'Forbidden' }, 403);
-	}
-
+	const isHost = isHostUser(game, user);
 	const body = (await c.req.json()) as {
 		id?: string;
 		mapId?: string;
@@ -908,7 +905,77 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 		npcId?: string;
 		elementType?: string;
 		metadata?: Record<string, unknown>;
+		overrideValidation?: boolean;
 	};
+
+	// Permission check: Host can move any token, players can only move their own character during their turn
+	if (!isHost) {
+		// For players: must be moving their own character token during their turn
+		if (body.tokenType === 'player' && body.characterId) {
+			// Check if this is the player's own character
+			const characterRow = await db.getCharacterById(body.characterId);
+			if (!characterRow || characterRow.player_id !== user.id) {
+				return c.json({ error: 'Forbidden: Not your character' }, 403);
+			}
+
+			// Check if it's currently this character's turn
+			const sessionStub = getSessionStub(c.env, inviteCode);
+			const stateResponse = await sessionStub.fetch(
+				buildDurableRequest(c.req.raw, '/state'),
+			);
+
+			if (stateResponse.ok) {
+				const gameState = await stateResponse.json() as MultiplayerGameState;
+				const isPlayerTurn = (
+					gameState.activeTurn?.type === 'player' &&
+					gameState.activeTurn.entityId === body.characterId &&
+					!gameState.pausedTurn
+				);
+
+				if (!isPlayerTurn) {
+					// Log the mismatch for debugging
+					console.log('[Token Save] Turn check failed:', {
+						activeTurnType: gameState.activeTurn?.type,
+						activeTurnEntityId: gameState.activeTurn?.entityId,
+						requestCharacterId: body.characterId,
+						pausedTurn: gameState.pausedTurn,
+						isPlayerTurn,
+						entityIdMatch: gameState.activeTurn?.entityId === body.characterId,
+					});
+
+					// If the turn type is player but entityId doesn't match, it might be a different player's turn
+					// If there's no active turn, allow the move (game might not have started turns yet)
+					if (!gameState.activeTurn) {
+						console.warn('[Token Save] No active turn in game state, allowing move');
+						// Allow the move if there's no active turn (game might not have started)
+					} else {
+						return c.json({
+							error: 'Forbidden: Not your turn',
+							details: {
+								activeTurnType: gameState.activeTurn?.type,
+								activeTurnEntityId: gameState.activeTurn?.entityId,
+								requestCharacterId: body.characterId,
+								pausedTurn: gameState.pausedTurn,
+							},
+						}, 403);
+					}
+				}
+			} else {
+				// If we can't fetch game state, allow the move (fail open for now)
+				// This prevents blocking movement if the durable object is unavailable
+				console.warn('[Token Save] Could not fetch game state, allowing move:', stateResponse.status);
+			}
+		} else if (body.tokenType === 'npc') {
+			// Players cannot move NPC tokens
+			return c.json({ error: 'Forbidden: Cannot move NPC tokens' }, 403);
+		} else if (body.tokenType === 'element') {
+			// Players cannot place elements
+			return c.json({ error: 'Forbidden: Only DM can place elements' }, 403);
+		} else {
+			// Unknown token type or missing characterId
+			return c.json({ error: 'Forbidden' }, 403);
+		}
+	}
 
 	const mapRow = await resolveMapRow(db, game);
 
@@ -953,7 +1020,7 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 		character_id: body.tokenType === 'element' ? null : body.characterId || null,
 		npc_id: body.tokenType === 'element' ? null : body.npcId || null,
 		token_type: body.tokenType || 'player',
-		label: body.label || (body.tokenType === 'element' ? body.elementType : null),
+		label: body.label || (body.tokenType === 'element' ? body.elementType || null : null) || null,
 		x: body.x,
 		y: body.y,
 		facing: 0,
@@ -1087,20 +1154,20 @@ games.post('/:inviteCode/npcs', async (c) => {
 	const mapRow = await resolveMapRow(db, game);
 	const npcMetadata = JSON.parse(npc.metadata || '{}');
 	const tokenId = createId('npc');
-	
+
 	// Use DM override if provided, otherwise default to 10/10 for health, 3/3 for AP
 	const maxHealth = payload.maxHealth ?? npc.base_health ?? 10;
 	const currentHealth = maxHealth;
 	const actionPoints = payload.actionPoints ?? 3;
 	const maxActionPoints = 3;
-	
+
 	// Store action points in metadata
 	const tokenMetadata = {
 		...(JSON.parse(npc.metadata || '{}')),
 		actionPoints,
 		maxActionPoints,
 	};
-	
+
 	await db.saveMapToken({
 		id: tokenId,
 		game_id: game.id,
@@ -1211,11 +1278,11 @@ games.patch('/:inviteCode/npcs/:tokenId', async (c) => {
 		typeof payload.currentHealth === 'number'
 			? Math.max(0, Math.min(maxHealth, payload.currentHealth))
 			: instance.current_health;
-	
+
 	const instanceMetadata = JSON.parse(instance.metadata || '{}');
 	const actionPoints = typeof payload.actionPoints === 'number' ? payload.actionPoints : (instanceMetadata.actionPoints ?? 3);
 	const maxActionPoints = typeof payload.maxActionPoints === 'number' ? payload.maxActionPoints : (instanceMetadata.maxActionPoints ?? 3);
-	
+
 	await db.saveNpcInstance({
 		...instance,
 		name: payload.name ?? instance.name,
@@ -1233,7 +1300,7 @@ games.patch('/:inviteCode/npcs/:tokenId', async (c) => {
 			...(payload.metadata ?? {}),
 		}),
 	});
-	
+
 	// Also update the token's hit points and metadata
 	const tokens = await db.listMapTokensForGame(game.id);
 	const token = tokens.find(t => t.id === tokenId);
@@ -1317,7 +1384,7 @@ games.post('/:inviteCode/characters/:characterId/actions', async (c) => {
 	// DM can cast for any character, players can only cast for themselves
 	const characterId = c.req.param('characterId');
 	const isHost = isHostUser(game, user);
-	
+
 	if (!isHost) {
 		// Check if this is the player's own character
 		const characterRow = await db.getCharacterById(characterId);
@@ -1521,18 +1588,18 @@ games.post('/:inviteCode/initiative/roll', async (c) => {
 	}
 
 	const gameState = await response.json() as MultiplayerGameState;
-	
+
 	// Log detailed initiative roll to database
 	try {
 		if (gameState.initiativeOrder && gameState.initiativeOrder.length > 0) {
 			// Get NPC tokens for name lookup
 			const npcTokens = await db.listMapTokensForGame(game.id);
-			
+
 			// Build detailed initiative roll descriptions
 			const rollDetails = gameState.initiativeOrder.map((entry, index) => {
 				let name = 'Unknown';
 				let rollInfo = '';
-				
+
 				if (entry.type === 'player') {
 					const character = validCharacters.find(c => c.id === entry.entityId);
 					name = character?.name || 'Unknown';
@@ -1556,10 +1623,10 @@ games.post('/:inviteCode/initiative/roll', async (c) => {
 						rollInfo = ` (Total: ${entry.initiative})`;
 					}
 				}
-				
+
 				return `${index + 1}. ${name}: ${entry.initiative}${rollInfo}`;
 			});
-			
+
 			const firstEntity = gameState.initiativeOrder[0];
 			let firstName = 'Unknown';
 			if (firstEntity.type === 'player') {
@@ -1569,7 +1636,7 @@ games.post('/:inviteCode/initiative/roll', async (c) => {
 				const token = npcTokens.find(t => t.id === firstEntity.entityId);
 				firstName = token?.label || 'Unknown NPC';
 			}
-			
+
 			await db.saveActivityLog({
 				id: createId('log'),
 				game_id: game.id,
@@ -1585,7 +1652,7 @@ games.post('/:inviteCode/initiative/roll', async (c) => {
 					activeTurn: gameState.activeTurn,
 				}),
 			});
-			
+
 			// Also log individual rolls for each character
 			for (const entry of gameState.initiativeOrder) {
 				let name = 'Unknown';
@@ -1596,13 +1663,13 @@ games.post('/:inviteCode/initiative/roll', async (c) => {
 					const token = npcTokens.find(t => t.id === entry.entityId);
 					name = token?.label || 'Unknown NPC';
 				}
-				
+
 				const roll = entry.roll;
 				const dexMod = entry.dexMod;
 				const rollDescription = roll !== undefined && dexMod !== undefined
 					? `${name} rolled ${roll}${dexMod >= 0 ? '+' : ''}${dexMod} = ${entry.initiative} for initiative`
 					: `${name} has initiative ${entry.initiative}`;
-				
+
 				await db.saveActivityLog({
 					id: createId('log'),
 					game_id: game.id,
@@ -1723,7 +1790,7 @@ games.post('/:inviteCode/turn/end', async (c) => {
 	}
 
 	const gameState = await response.json() as MultiplayerGameState;
-	
+
 	// Log turn end to database
 	try {
 		const currentTurn = gameState.activeTurn;
@@ -1789,12 +1856,12 @@ games.post('/:inviteCode/turn/start', async (c) => {
 	}
 
 	const gameState = await response.json() as MultiplayerGameState;
-	
+
 	// Log turn start to database
 	try {
 		const characterName = body.turnType === 'player'
 			? gameState.characters.find(c => c.id === body.entityId)?.name
-			: gameState.initiativeOrder?.find(e => e.entityId === body.entityId) 
+			: gameState.initiativeOrder?.find(e => e.entityId === body.entityId)
 				? 'NPC'
 				: 'Unknown';
 		await db.saveActivityLog({
@@ -1850,7 +1917,7 @@ games.post('/:inviteCode/turn/next', async (c) => {
 	}
 
 	const gameState = await response.json() as MultiplayerGameState;
-	
+
 	// Log turn skip to database
 	try {
 		const currentTurn = gameState.activeTurn;
@@ -1914,7 +1981,7 @@ games.post('/:inviteCode/dice/roll', async (c) => {
 	}
 
 	const rollResult = await response.json() as { notation: string; total: number; rolls: number[]; breakdown: string };
-	
+
 	// Log dice roll to database
 	try {
 		await db.saveActivityLog({
@@ -1967,7 +2034,7 @@ games.get('/:inviteCode/log', async (c) => {
 	// Check if user is part of the game (host or player)
 	const isHost = isHostUser(game, user);
 	const isPlayer = await db.getGamePlayers(game.id).then(players =>
-		players.some(p => p.player_id === user.id)
+		players.some(p => p.player_id === user.id),
 	);
 
 	if (!isHost && !isPlayer) {
@@ -1998,7 +2065,7 @@ games.post('/:inviteCode/log', async (c) => {
 	// Check if user is part of the game (host or player)
 	const isHost = isHostUser(game, user);
 	const isPlayer = await db.getGamePlayers(game.id).then(players =>
-		players.some(p => p.player_id === user.id)
+		players.some(p => p.player_id === user.id),
 	);
 
 	if (!isHost && !isPlayer) {

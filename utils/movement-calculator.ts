@@ -176,5 +176,33 @@ export const findPathWithCosts = (
                 }
         }
 
-        return null;
+	return null;
+};
+
+/**
+ * Calculate Manhattan distance between two tiles
+ */
+export const calculateDistance = (a: Coordinate, b: Coordinate): number => {
+	return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+};
+
+/**
+ * Check if target is in melee range (1 tile)
+ */
+export const isInMeleeRange = (from: Coordinate, to: Coordinate): boolean => {
+	return calculateDistance(from, to) <= 1;
+};
+
+/**
+ * Check if target is in ranged range (default 5 tiles, or custom range)
+ */
+export const isInRangedRange = (from: Coordinate, to: Coordinate, range: number = 5): boolean => {
+	return calculateDistance(from, to) <= range;
+};
+
+/**
+ * Check if target is in spell range (default 5 tiles, or custom range)
+ */
+export const isInSpellRange = (from: Coordinate, to: Coordinate, range: number = 5): boolean => {
+	return calculateDistance(from, to) <= range;
 };
