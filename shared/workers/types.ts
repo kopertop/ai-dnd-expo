@@ -77,6 +77,12 @@ export interface MultiplayerGameState {
 		turnNumber: number;
 		startedAt: number;
 	};
+	activityLog?: Array<{
+		type: string;
+		timestamp: number;
+		description: string;
+		data?: Record<string, unknown>;
+	}>;
 }
 
 export interface Character {

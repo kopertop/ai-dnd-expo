@@ -78,6 +78,14 @@ export class GameSession {
 					return this.handleInterruptTurn(request);
 				case '/turn/resume':
 					return this.handleResumeTurn(request);
+				case '/turn/end':
+					return this.handleEndTurn(request);
+				case '/turn/start':
+					return this.handleStartTurn(request);
+				case '/turn/next':
+					return this.handleNextTurn(request);
+				case '/dice/roll':
+					return this.handleDiceRoll(request);
 				case '/action':
 				case '/dm-action':
 					return json({ ok: true });
@@ -391,6 +399,218 @@ export class GameSession {
 
 		await this.storage.put(SESSION_KEY, updated);
 		return json({ activeTurn });
+	}
+
+	private async handleEndTurn(request: Request): Promise<Response> {
+		const session = await this.getSession();
+		if (!session || !session.gameState) {
+			return json({ error: 'Game not started' }, 400);
+		}
+
+		if (!session.gameState.initiativeOrder || session.gameState.initiativeOrder.length === 0) {
+			return json({ error: 'No initiative order set' }, 400);
+		}
+
+		const currentTurn = session.gameState.activeTurn;
+		if (!currentTurn) {
+			return json({ error: 'No active turn' }, 400);
+		}
+
+		// Find current entity in initiative order
+		const currentIndex = session.gameState.initiativeOrder.findIndex(
+			entry => entry.entityId === currentTurn.entityId,
+		);
+
+		if (currentIndex === -1) {
+			return json({ error: 'Current turn entity not found in initiative order' }, 400);
+		}
+
+		// Move to next entity (wrap around if at end)
+		const nextIndex = (currentIndex + 1) % session.gameState.initiativeOrder.length;
+		const nextEntity = session.gameState.initiativeOrder[nextIndex];
+
+		const activeTurn = {
+			type: nextEntity.type,
+			entityId: nextEntity.entityId,
+			turnNumber: (currentTurn.turnNumber ?? 0) + 1,
+			startedAt: Date.now(),
+		};
+
+		// Reset action points for the new turn's character
+		const updatedCharacters = session.gameState.characters.map(char => {
+			if (char.id === nextEntity.entityId) {
+				return {
+					...char,
+					actionPoints: char.maxActionPoints ?? 3,
+				};
+			}
+			return char;
+		});
+
+		const updatedGameState: MultiplayerGameState = {
+			...session.gameState,
+			characters: updatedCharacters,
+			activeTurn,
+			lastUpdated: Date.now(),
+		};
+
+		const updated: StoredSession = {
+			...session,
+			gameState: updatedGameState,
+			lastUpdated: Date.now(),
+		};
+
+		await this.storage.put(SESSION_KEY, updated);
+		return json({ activeTurn });
+	}
+
+	private async handleStartTurn(request: Request): Promise<Response> {
+		const session = await this.getSession();
+		if (!session || !session.gameState) {
+			return json({ error: 'Game not started' }, 400);
+		}
+
+		const payload = (await request.json()) as {
+			turnType: 'player' | 'npc' | 'dm';
+			entityId: string;
+		};
+
+		if (!payload.turnType || !payload.entityId) {
+			return json({ error: 'Invalid payload: turnType and entityId required' }, 400);
+		}
+
+		const currentTurnNumber = session.gameState.activeTurn?.turnNumber ?? 0;
+
+		const activeTurn = {
+			type: payload.turnType,
+			entityId: payload.entityId,
+			turnNumber: currentTurnNumber + 1,
+			startedAt: Date.now(),
+		};
+
+		// Reset action points for the character starting their turn
+		const updatedCharacters = session.gameState.characters.map(char => {
+			if (char.id === payload.entityId) {
+				return {
+					...char,
+					actionPoints: char.maxActionPoints ?? 3,
+				};
+			}
+			return char;
+		});
+
+		const updatedGameState: MultiplayerGameState = {
+			...session.gameState,
+			characters: updatedCharacters,
+			activeTurn,
+			lastUpdated: Date.now(),
+		};
+
+		const updated: StoredSession = {
+			...session,
+			gameState: updatedGameState,
+			lastUpdated: Date.now(),
+		};
+
+		await this.storage.put(SESSION_KEY, updated);
+		return json({ activeTurn });
+	}
+
+	private async handleNextTurn(request: Request): Promise<Response> {
+		// Skip to next turn (same as end turn, but DM-only)
+		return this.handleEndTurn(request);
+	}
+
+	private async handleDiceRoll(request: Request): Promise<Response> {
+		const session = await this.getSession();
+		if (!session || !session.gameState) {
+			return json({ error: 'Game not started' }, 400);
+		}
+
+		const payload = (await request.json()) as {
+			notation: string;
+			advantage?: boolean;
+			disadvantage?: boolean;
+			purpose?: string;
+		};
+
+		if (!payload.notation) {
+			return json({ error: 'Dice notation required' }, 400);
+		}
+
+		// Parse dice notation: XdY+Z or XdY-Z
+		const notationMatch = payload.notation.match(/^(\d+)d(\d+)([+-]\d+)?$/i);
+		if (!notationMatch) {
+			return json({ error: 'Invalid dice notation. Use format: XdY+Z (e.g., 1d20+3)' }, 400);
+		}
+
+		const numDice = parseInt(notationMatch[1], 10);
+		const dieSize = parseInt(notationMatch[2], 10);
+		const modifier = notationMatch[3] ? parseInt(notationMatch[3], 10) : 0;
+
+		if (numDice < 1 || numDice > 100) {
+			return json({ error: 'Number of dice must be between 1 and 100' }, 400);
+		}
+
+		if (dieSize < 2 || dieSize > 100) {
+			return json({ error: 'Die size must be between 2 and 100' }, 400);
+		}
+
+		// Handle advantage/disadvantage (only for d20)
+		let rolls: number[];
+		if (dieSize === 20 && numDice === 1 && (payload.advantage || payload.disadvantage)) {
+			const roll1 = Math.floor(Math.random() * dieSize) + 1;
+			const roll2 = Math.floor(Math.random() * dieSize) + 1;
+			if (payload.advantage) {
+				rolls = [Math.max(roll1, roll2)];
+			} else {
+				rolls = [Math.min(roll1, roll2)];
+			}
+		} else {
+			rolls = Array.from({ length: numDice }, () => Math.floor(Math.random() * dieSize) + 1);
+		}
+
+		const total = rolls.reduce((sum, roll) => sum + roll, 0) + modifier;
+		const breakdown = `${rolls.join(' + ')}${modifier !== 0 ? (modifier > 0 ? ' + ' : ' - ') + Math.abs(modifier) : ''} = ${total}`;
+
+		// Log to activity log
+		const activityEntry = {
+			type: 'dice_roll' as const,
+			timestamp: Date.now(),
+			description: payload.purpose
+				? `${payload.purpose}: ${payload.notation} = ${total}`
+				: `Rolled ${payload.notation} = ${total}`,
+			data: {
+				notation: payload.notation,
+				total,
+				rolls,
+				modifier,
+				breakdown,
+				purpose: payload.purpose,
+			},
+		};
+
+		const updatedGameState: MultiplayerGameState = {
+			...session.gameState,
+			activityLog: [...(session.gameState.activityLog || []), activityEntry],
+			lastUpdated: Date.now(),
+		};
+
+		const updated: StoredSession = {
+			...session,
+			gameState: updatedGameState,
+			lastUpdated: Date.now(),
+		};
+
+		await this.storage.put(SESSION_KEY, updated);
+
+		return json({
+			total,
+			rolls,
+			modifier,
+			breakdown,
+			purpose: payload.purpose,
+		});
 	}
 
 	private async getSession(): Promise<StoredSession | null> {

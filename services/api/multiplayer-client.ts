@@ -410,6 +410,127 @@ export class MultiplayerClient {
 	}
 
 	/**
+	 * Skip to next turn (DM only)
+	 */
+	async nextTurn(inviteCode: string): Promise<GameStateResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/turn/next`, {
+			method: 'POST',
+		});
+	}
+
+	/**
+	 * Start a specific character's turn (DM only)
+	 */
+	async startCharacterTurn(
+		inviteCode: string,
+		entityId: string,
+		turnType: 'player' | 'npc' | 'dm',
+	): Promise<GameStateResponse> {
+		return this.startTurn(inviteCode, { turnType, entityId });
+	}
+
+	/**
+	 * Cast a spell for a character
+	 */
+	async castSpell(
+		inviteCode: string,
+		characterId: string,
+		spellName: string,
+		targetId?: string,
+	): Promise<{ character: Character | null; actionPerformed: string }> {
+		return apiService.fetchApi(`/games/${inviteCode}/characters/${characterId}/actions`, {
+			method: 'POST',
+			body: JSON.stringify({
+				actionType: 'cast_spell',
+				spellName,
+				targetId,
+			}),
+		});
+	}
+
+	/**
+	 * Perform an action for a character
+	 */
+	async performAction(
+		inviteCode: string,
+		characterId: string,
+		actionType: 'cast_spell' | 'basic_attack' | 'use_item' | 'heal_potion',
+		params?: { spellName?: string; targetId?: string; itemId?: string; [key: string]: unknown },
+	): Promise<{ character: Character | null; actionPerformed: string }> {
+		return apiService.fetchApi(`/games/${inviteCode}/characters/${characterId}/actions`, {
+			method: 'POST',
+			body: JSON.stringify({
+				actionType,
+				...params,
+			}),
+		});
+	}
+
+	/**
+	 * Roll dice with notation (e.g., "1d20+3")
+	 */
+	async rollDice(
+		inviteCode: string,
+		notation: string,
+		options?: { advantage?: boolean; disadvantage?: boolean; purpose?: string },
+	): Promise<{
+		total: number;
+		rolls: number[];
+		modifier: number;
+		breakdown: string;
+		purpose?: string;
+	}> {
+		return apiService.fetchApi(`/games/${inviteCode}/dice/roll`, {
+			method: 'POST',
+			body: JSON.stringify({
+				notation,
+				...options,
+			}),
+		});
+	}
+
+	/**
+	 * Roll a perception check for a character
+	 */
+	async rollPerceptionCheck(inviteCode: string, characterId: string): Promise<{
+		total: number;
+		rolls: number[];
+		modifier: number;
+		breakdown: string;
+		purpose?: string;
+	}> {
+		// Get character to calculate WIS modifier
+		const characters = await this.getGameCharacters(inviteCode);
+		const character = characters.characters.find(c => c.id === characterId);
+		const wisModifier = character ? Math.floor((character.stats.WIS - 10) / 2) : 0;
+		const notation = `1d20${wisModifier >= 0 ? '+' : ''}${wisModifier}`;
+
+		return this.rollDice(inviteCode, notation, {
+			purpose: 'Perception Check',
+		});
+	}
+
+	/**
+	 * Place a map element (fire, water, chest, etc.)
+	 */
+	async placeMapElement(
+		inviteCode: string,
+		elementType: string,
+		x: number,
+		y: number,
+	): Promise<MapTokenMutationResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/map/tokens`, {
+			method: 'POST',
+			body: JSON.stringify({
+				tokenType: 'element',
+				elementType,
+				x,
+				y,
+			}),
+		});
+	}
+
+	/**
 	 * Stop an active game and return it to waiting status
 	 */
 	async stopGame(inviteCode: string): Promise<void> {

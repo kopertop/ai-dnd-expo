@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import { CharacterRow, Database, GameRow, MapRow, NpcInstanceRow } from '../../../shared/workers/db';
 import { generateProceduralMap, MapGeneratorPreset } from '../../../shared/workers/map-generator';
 import { generateInviteCode, getSessionId, getSessionStub } from '../../../shared/workers/session-manager';
-import { Character, Quest } from '../../../shared/workers/types';
+import { Character, MultiplayerGameState, Quest } from '../../../shared/workers/types';
 import type { CloudflareBindings } from '../env';
 
 import { mapStateFromDb, npcFromDb } from '@/utils/schema-adapters';
@@ -906,14 +906,28 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 		color?: string;
 		characterId?: string;
 		npcId?: string;
+		elementType?: string;
 		metadata?: Record<string, unknown>;
 	};
 
 	const mapRow = await resolveMapRow(db, game);
 
+	// Validate element types if tokenType is 'element'
+	if (body.tokenType === 'element') {
+		const validElementTypes = ['fire', 'water', 'chest', 'barrel', 'rock', 'tree', 'bush', 'rubble'];
+		if (!body.elementType || !validElementTypes.includes(body.elementType)) {
+			return c.json(
+				{
+					error: `Invalid element type. Must be one of: ${validElementTypes.join(', ')}`,
+				},
+				400,
+			);
+		}
+	}
+
 	// Check if a token already exists for this character (to prevent duplicates)
 	let existingTokenId: string | null = null;
-	if (body.characterId) {
+	if (body.characterId && body.tokenType !== 'element') {
 		const existingTokens = await db.listMapTokensForGame(game.id);
 		const existingToken = existingTokens.find(
 			token => token.character_id === body.characterId && token.token_type === 'player',
@@ -926,14 +940,20 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 	// Use existing token ID if found, otherwise create new one
 	const tokenId = body.id || existingTokenId || createId('token');
 
+	// Build metadata for elements
+	const metadata = body.metadata || {};
+	if (body.tokenType === 'element' && body.elementType) {
+		metadata.elementType = body.elementType;
+	}
+
 	await db.saveMapToken({
 		id: tokenId,
 		game_id: game.id,
 		map_id: body.mapId || mapRow.id,
-		character_id: body.characterId || null,
-		npc_id: body.npcId || null,
+		character_id: body.tokenType === 'element' ? null : body.characterId || null,
+		npc_id: body.tokenType === 'element' ? null : body.npcId || null,
 		token_type: body.tokenType || 'player',
-		label: body.label || null,
+		label: body.label || (body.tokenType === 'element' ? body.elementType : null),
 		x: body.x,
 		y: body.y,
 		facing: 0,
@@ -942,7 +962,7 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 		is_visible: 1,
 		hit_points: null,
 		max_hit_points: null,
-		metadata: JSON.stringify(body.metadata ?? {}),
+		metadata: JSON.stringify(metadata),
 	});
 
 	// Clean up any duplicate tokens that may exist
@@ -1280,6 +1300,114 @@ games.post('/:inviteCode/characters/:characterId/:action', async (c) => {
 	return c.json({ character: updated ? deserializeCharacter(updated) : null });
 });
 
+games.post('/:inviteCode/characters/:characterId/actions', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	// DM can cast for any character, players can only cast for themselves
+	const characterId = c.req.param('characterId');
+	const isHost = isHostUser(game, user);
+	
+	if (!isHost) {
+		// Check if this is the player's own character
+		const characterRow = await db.getCharacterById(characterId);
+		if (!characterRow || characterRow.player_id !== user.id) {
+			return c.json({ error: 'Forbidden' }, 403);
+		}
+	}
+
+	const body = (await c.req.json().catch(() => ({}))) as {
+		actionType: 'cast_spell' | 'basic_attack' | 'use_item' | 'heal_potion';
+		spellName?: string;
+		targetId?: string;
+		itemId?: string;
+		params?: Record<string, unknown>;
+	};
+
+	if (!body.actionType) {
+		return c.json({ error: 'actionType is required' }, 400);
+	}
+
+	const characterRow = await db.getCharacterById(characterId);
+	if (!characterRow) {
+		return c.json({ error: 'Character not found' }, 404);
+	}
+
+	const character = deserializeCharacter(characterRow);
+
+	// Validate action points
+	const actionPointCost = body.actionType === 'cast_spell' ? 2 : body.actionType === 'basic_attack' ? 1 : 1;
+	if (character.actionPoints < actionPointCost) {
+		return c.json({ error: 'Not enough action points' }, 400);
+	}
+
+	// Update character action points
+	const updatedActionPoints = character.actionPoints - actionPointCost;
+	await db.updateCharacter(characterId, { actionPoints: updatedActionPoints });
+
+	// Log the action
+	const sessionStub = getSessionStub(c.env, inviteCode);
+	const activityEntry = {
+		type: 'action' as const,
+		timestamp: Date.now(),
+		description: `${character.name} performed ${body.actionType}${body.spellName ? `: ${body.spellName}` : ''}`,
+		data: {
+			characterId,
+			actionType: body.actionType,
+			spellName: body.spellName,
+			targetId: body.targetId,
+			itemId: body.itemId,
+			params: body.params,
+		},
+	};
+
+	// Update game state activity log via durable object
+	try {
+		await sessionStub.fetch(
+			buildDurableRequest(c.req.raw, '/state'),
+		).then(async (response) => {
+			if (response.ok) {
+				const session = await response.json() as { gameState?: MultiplayerGameState };
+				if (session.gameState) {
+					const updatedGameState = {
+						...session.gameState,
+						activityLog: [...(session.gameState.activityLog || []), activityEntry],
+					};
+					await sessionStub.fetch(
+						buildDurableRequest(c.req.raw, '/start', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								hostId: game.host_id,
+								gameState: updatedGameState,
+							}),
+						}),
+					);
+				}
+			}
+		});
+	} catch (error) {
+		console.error('Failed to update activity log:', error);
+		// Continue anyway - action was successful
+	}
+
+	const updated = await db.getCharacterById(characterId);
+	return c.json({
+		character: updated ? deserializeCharacter(updated) : null,
+		actionPerformed: body.actionType,
+	});
+});
+
 const forwardJsonRequest = async (c: Context<GamesContext>, path: string) => {
 	const body = await c.req.text();
 	const sessionStub = getSessionStub(c.env, c.req.param('inviteCode'));
@@ -1477,6 +1605,146 @@ games.post('/:inviteCode/turn/resume', async (c) => {
 	if (!response.ok) {
 		const details = await response.text();
 		return jsonWithStatus(c, { error: 'Failed to resume turn', details }, response.status);
+	}
+
+	return jsonWithStatus(c, await response.json(), response.status);
+});
+
+games.post('/:inviteCode/turn/end', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	const sessionStub = getSessionStub(c.env, inviteCode);
+	const response = await sessionStub.fetch(
+		buildDurableRequest(c.req.raw, '/turn/end', {
+			method: 'POST',
+		}),
+	);
+
+	if (!response.ok) {
+		const details = await response.text();
+		return jsonWithStatus(c, { error: 'Failed to end turn', details }, response.status);
+	}
+
+	return jsonWithStatus(c, await response.json(), response.status);
+});
+
+games.post('/:inviteCode/turn/start', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const body = (await c.req.json().catch(() => ({}))) as {
+		turnType: 'player' | 'npc' | 'dm';
+		entityId: string;
+	};
+
+	const sessionStub = getSessionStub(c.env, inviteCode);
+	const response = await sessionStub.fetch(
+		buildDurableRequest(c.req.raw, '/turn/start', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body),
+		}),
+	);
+
+	if (!response.ok) {
+		const details = await response.text();
+		return jsonWithStatus(c, { error: 'Failed to start turn', details }, response.status);
+	}
+
+	return jsonWithStatus(c, await response.json(), response.status);
+});
+
+games.post('/:inviteCode/turn/next', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const sessionStub = getSessionStub(c.env, inviteCode);
+	const response = await sessionStub.fetch(
+		buildDurableRequest(c.req.raw, '/turn/next', {
+			method: 'POST',
+		}),
+	);
+
+	if (!response.ok) {
+		const details = await response.text();
+		return jsonWithStatus(c, { error: 'Failed to skip to next turn', details }, response.status);
+	}
+
+	return jsonWithStatus(c, await response.json(), response.status);
+});
+
+games.post('/:inviteCode/dice/roll', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	const body = (await c.req.json().catch(() => ({}))) as {
+		notation: string;
+		advantage?: boolean;
+		disadvantage?: boolean;
+		purpose?: string;
+	};
+
+	const sessionStub = getSessionStub(c.env, inviteCode);
+	const response = await sessionStub.fetch(
+		buildDurableRequest(c.req.raw, '/dice/roll', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body),
+		}),
+	);
+
+	if (!response.ok) {
+		const details = await response.text();
+		return jsonWithStatus(c, { error: 'Failed to roll dice', details }, response.status);
 	}
 
 	return jsonWithStatus(c, await response.json(), response.status);

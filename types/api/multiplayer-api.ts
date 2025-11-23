@@ -87,7 +87,7 @@ export const MapStateUpdateRequestSchema = z.object({
 });
 
 export const NpcPlacementRequestSchema = z.object({
-	npcId: z.string(),
+	npcId: z.string().optional(),
 	mapId: z.string().optional(),
 	x: z.number().int(),
 	y: z.number().int(),
@@ -105,6 +105,8 @@ export const NpcPlacementRequestSchema = z.object({
 			icon: z.string().optional(),
 		})
 		.optional(),
+}).refine(data => data.npcId || data.customNpc, {
+	message: 'Either npcId or customNpc must be provided',
 });
 
 export const MapTerrainMutationSchema = z.object({

@@ -1,15 +1,18 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharacterDMModal } from '@/components/character-dm-modal';
 import { CharacterViewModal } from '@/components/character-view-modal';
 import { CommandPalette, type Command } from '@/components/command-palette';
+import { MapElementPicker, type MapElementType } from '@/components/map-element-picker';
 import { InteractiveMap } from '@/components/map/interactive-map';
 import { TileActionMenu, type TileAction } from '@/components/map/tile-action-menu';
 import { NotificationsPanel } from '@/components/notifications-panel';
+import { NpcSelector } from '@/components/npc-selector';
 import { PlayerCharacterList } from '@/components/player-character-list';
+import { SpellActionSelector } from '@/components/spell-action-selector';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TokenDetailModal } from '@/components/token-detail-modal';
@@ -55,6 +58,13 @@ const MultiplayerGameScreen: React.FC = () => {
 	const [npcStats, setNpcStats] = useState<{ STR: number; DEX: number; CON: number; INT: number; WIS: number; CHA: number } | undefined>(undefined);
 	const [selectedCharacterForView, setSelectedCharacterForView] = useState<{ id: string; type: 'player' | 'npc' } | null>(null);
 	const [showCharacterViewModal, setShowCharacterViewModal] = useState(false);
+	const [showMapElementPicker, setShowMapElementPicker] = useState(false);
+	const [showSpellActionSelector, setShowSpellActionSelector] = useState(false);
+	const [selectedCharacterForAction, setSelectedCharacterForAction] = useState<string | null>(null);
+	const [elementPlacementMode, setElementPlacementMode] = useState<MapElementType | null>(null);
+	const [showCharacterTurnSelector, setShowCharacterTurnSelector] = useState(false);
+	const [showNpcSelector, setShowNpcSelector] = useState(false);
+	const [npcPlacementMode, setNpcPlacementMode] = useState<{ npcId: string; npcName: string } | null>(null);
 	const placingCharactersRef = useRef<Set<string>>(new Set());
 	const isPlacingRef = useRef(false);
 	const { isMobile } = useScreenSize();
@@ -170,7 +180,7 @@ const MultiplayerGameScreen: React.FC = () => {
 		if (hostId && gameState) {
 			setIsHost(gameState.hostId === hostId);
 		}
-	}, [hostId, gameState?.hostId]);
+	}, [hostId, gameState]);
 
 	// Stable callback for game state updates
 	const handleGameStateUpdate = useCallback((newState: MultiplayerGameState) => {
@@ -179,7 +189,7 @@ const MultiplayerGameScreen: React.FC = () => {
 	}, []);
 
 	// WebSocket connection - only connect when we have characterId
-	const { isConnected: wsIsConnected, send: wsSend } = useWebSocket({
+	const { isConnected: wsIsConnected } = useWebSocket({
 		inviteCode: inviteCode || '',
 		playerId: playerId || '',
 		characterId: characterId,
@@ -487,6 +497,71 @@ const MultiplayerGameScreen: React.FC = () => {
 					},
 				},
 				{
+					id: 'add-character-npc',
+					label: 'Add Character/NPC',
+					description: 'Add a new NPC or character to the game',
+					keywords: ['add', 'npc', 'character', 'create', 'spawn'],
+					category: 'DM',
+					action: () => {
+						setShowNpcSelector(true);
+						setShowCommandPalette(false);
+					},
+				},
+				{
+					id: 'skip-next-turn',
+					label: 'Skip to Next Turn',
+					description: 'Advance to the next character\'s turn',
+					keywords: ['skip', 'next', 'turn', 'advance'],
+					category: 'DM',
+					action: async () => {
+						if (inviteCode) {
+							try {
+								await multiplayerClient.nextTurn(inviteCode);
+								setTimeout(() => {
+									loadGameState();
+								}, 500);
+								setShowCommandPalette(false);
+							} catch (error) {
+								console.error('Failed to skip turn:', error);
+								Alert.alert('Error', error instanceof Error ? error.message : 'Failed to skip turn');
+							}
+						}
+					},
+				},
+				{
+					id: 'add-map-element',
+					label: 'Add Map Element',
+					description: 'Place environmental elements (fire, water, chest, etc.)',
+					keywords: ['element', 'fire', 'water', 'chest', 'barrel', 'object'],
+					category: 'Map',
+					action: () => {
+						setShowMapElementPicker(true);
+						setShowCommandPalette(false);
+					},
+				},
+				{
+					id: 'cast-spell-action',
+					label: 'Cast Spell/Action',
+					description: 'Cast a spell or perform an action for any character',
+					keywords: ['cast', 'spell', 'action', 'ability'],
+					category: 'DM',
+					action: () => {
+						setShowSpellActionSelector(true);
+						setShowCommandPalette(false);
+					},
+				},
+				{
+					id: 'start-character-turn',
+					label: 'Start Character Turn',
+					description: 'Start a specific character\'s or NPC\'s turn',
+					keywords: ['start', 'turn', 'character', 'npc'],
+					category: 'DM',
+					action: () => {
+						setShowCharacterTurnSelector(true);
+						setShowCommandPalette(false);
+					},
+				},
+				{
 					id: 'switch-map',
 					label: 'Switch Map',
 					description: 'Change to a different map',
@@ -518,6 +593,144 @@ const MultiplayerGameScreen: React.FC = () => {
 			);
 		}
 
+		// Player commands (during their turn)
+		if (isPlayerTurn && currentCharacterId) {
+			commands.push(
+				{
+					id: 'cast-spell',
+					label: 'Cast Spell',
+					description: 'Cast a spell from your available spells',
+					keywords: ['cast', 'spell', 'magic'],
+					category: 'Actions',
+					action: () => {
+						setSelectedCharacterForAction(currentCharacterId);
+						setShowSpellActionSelector(true);
+						setShowCommandPalette(false);
+					},
+				},
+				{
+					id: 'basic-attack',
+					label: 'Basic Attack',
+					description: 'Perform a basic melee or ranged attack',
+					keywords: ['attack', 'basic', 'melee', 'ranged'],
+					category: 'Actions',
+					action: async () => {
+						if (inviteCode && currentCharacterId) {
+							try {
+								await multiplayerClient.performAction(inviteCode, currentCharacterId, 'basic_attack');
+								setTimeout(() => {
+									loadGameState();
+								}, 500);
+								setShowCommandPalette(false);
+								Alert.alert('Attack', 'Basic attack performed!');
+							} catch (error) {
+								console.error('Failed to perform attack:', error);
+								Alert.alert('Error', error instanceof Error ? error.message : 'Failed to perform attack');
+							}
+						}
+					},
+				},
+				{
+					id: 'use-item',
+					label: 'Use Item',
+					description: 'Use an item from your inventory',
+					keywords: ['use', 'item', 'inventory'],
+					category: 'Actions',
+					action: () => {
+						Alert.alert('Use Item', 'Item selection coming soon');
+						setShowCommandPalette(false);
+					},
+				},
+				{
+					id: 'heal-potion',
+					label: 'Heal with Potion',
+					description: 'Use a healing potion to restore health',
+					keywords: ['heal', 'potion', 'health'],
+					category: 'Actions',
+					action: async () => {
+						if (inviteCode && currentCharacterId) {
+							try {
+								await multiplayerClient.performAction(inviteCode, currentCharacterId, 'heal_potion');
+								setTimeout(() => {
+									loadGameState();
+								}, 500);
+								setShowCommandPalette(false);
+								Alert.alert('Heal', 'Healing potion used!');
+							} catch (error) {
+								console.error('Failed to use potion:', error);
+								Alert.alert('Error', error instanceof Error ? error.message : 'Failed to use potion');
+							}
+						}
+					},
+				},
+				{
+					id: 'delay-turn',
+					label: 'Delay Turn',
+					description: 'Delay your turn (move to end of initiative)',
+					keywords: ['delay', 'wait', 'hold'],
+					category: 'Turn',
+					action: () => {
+						Alert.alert('Delay Turn', 'Turn delay feature coming soon');
+						setShowCommandPalette(false);
+					},
+				},
+				{
+					id: 'skip-turn',
+					label: 'Skip Turn',
+					description: 'End your turn immediately',
+					keywords: ['skip', 'end', 'turn'],
+					category: 'Turn',
+					action: async () => {
+						if (inviteCode) {
+							try {
+								await multiplayerClient.endTurn(inviteCode);
+								setTimeout(() => {
+									loadGameState();
+								}, 500);
+								setShowCommandPalette(false);
+							} catch (error) {
+								console.error('Failed to skip turn:', error);
+								Alert.alert('Error', error instanceof Error ? error.message : 'Failed to skip turn');
+							}
+						}
+					},
+				},
+				{
+					id: 'roll-perception',
+					label: 'Roll Perception',
+					description: 'Roll a perception check',
+					keywords: ['perception', 'roll', 'check', 'wisdom'],
+					category: 'Actions',
+					action: async () => {
+						if (inviteCode && currentCharacterId) {
+							try {
+								const result = await multiplayerClient.rollPerceptionCheck(inviteCode, currentCharacterId);
+								setTimeout(() => {
+									loadGameState();
+								}, 500);
+								setShowCommandPalette(false);
+								Alert.alert('Perception Check', `Rolled: ${result.total}\n${result.breakdown}`);
+							} catch (error) {
+								console.error('Failed to roll perception:', error);
+								Alert.alert('Error', error instanceof Error ? error.message : 'Failed to roll perception');
+							}
+						}
+					},
+				},
+				{
+					id: 'move',
+					label: 'Move',
+					description: 'Enter movement mode to move your character',
+					keywords: ['move', 'movement', 'walk'],
+					category: 'Actions',
+					action: () => {
+						setMovementMode(true);
+						setShowCommandPalette(false);
+					},
+				},
+			);
+		}
+
 		commands.push(
 			{
 				id: 'open-notifications',
@@ -533,7 +746,7 @@ const MultiplayerGameScreen: React.FC = () => {
 		);
 
 		return commands;
-	}, [isHost, inviteCode, loadGameState]);
+	}, [isHost, inviteCode, loadGameState, isPlayerTurn, currentCharacterId]);
 
 	const handleTokenPress = useCallback(
 		(token: MapToken) => {
@@ -1083,6 +1296,26 @@ const MultiplayerGameScreen: React.FC = () => {
 						Showing movement range for selected token. Click another token to see its range.
 					</ThemedText>
 				)}
+				{elementPlacementMode && isHost && (
+					<ThemedText style={styles.mapHint}>
+						Tap on the map to place {elementPlacementMode}. Tap the element picker again to cancel.
+					</ThemedText>
+				)}
+				{npcPlacementMode && isHost && (
+					<View style={styles.placementHintContainer}>
+						<ThemedText style={styles.mapHint}>
+							Click to place the {npcPlacementMode.npcName}
+						</ThemedText>
+						<TouchableOpacity
+							style={styles.cancelPlacementButton}
+							onPress={() => {
+								setNpcPlacementMode(null);
+							}}
+						>
+							<ThemedText style={styles.cancelPlacementButtonText}>Cancel</ThemedText>
+						</TouchableOpacity>
+					</View>
+				)}
 				{sharedMap ? (
 					<InteractiveMap
 						map={sharedMap}
@@ -1153,13 +1386,48 @@ const MultiplayerGameScreen: React.FC = () => {
 						} : undefined}
 						highlightTokenId={currentCharacterId || undefined}
 						onTilePress={
-							isHost && isMapEditMode && selectedItemType
-								? handlePlaceItemToken
-								: selectedTokenId
-									? handleMovementRangeTilePress
-									: playerToken
-										? handleMovementTilePress
-										: undefined
+							npcPlacementMode && isHost
+								? async (x, y) => {
+									if (!inviteCode || !sharedMap || !npcPlacementMode) return;
+									try {
+										await multiplayerClient.placeNpc(inviteCode, {
+											npcId: npcPlacementMode.npcId,
+											x,
+											y,
+											label: npcPlacementMode.npcName,
+										});
+										// Refresh both map and game state to ensure NPC appears in character list
+										await refreshSharedMap();
+										setTimeout(() => {
+											loadGameState();
+										}, 300);
+										setNpcPlacementMode(null);
+										Alert.alert('Success', `${npcPlacementMode.npcName} placed on map and added to character list`);
+									} catch (error) {
+										console.error('Failed to place NPC:', error);
+										Alert.alert('Error', error instanceof Error ? error.message : 'Failed to place NPC');
+									}
+								}
+								: elementPlacementMode && isHost
+									? async (x, y) => {
+										if (!inviteCode || !sharedMap) return;
+										try {
+											await multiplayerClient.placeMapElement(inviteCode, elementPlacementMode, x, y);
+											await refreshSharedMap();
+											setElementPlacementMode(null);
+											Alert.alert('Success', `${elementPlacementMode} placed on map`);
+										} catch (error) {
+											console.error('Failed to place element:', error);
+											Alert.alert('Error', 'Failed to place map element');
+										}
+									}
+									: isHost && isMapEditMode && selectedItemType
+										? handlePlaceItemToken
+										: selectedTokenId
+											? handleMovementRangeTilePress
+											: playerToken
+												? handleMovementTilePress
+												: undefined
 						}
 						onTileLongPress={isHost && isMapEditMode ? handleTileLongPress : undefined}
 						onTokenPress={handleTokenPress}
@@ -1242,6 +1510,26 @@ const MultiplayerGameScreen: React.FC = () => {
 							{Platform.OS === 'web' ? '⌘K' : '⚡'}
 						</ThemedText>
 					</TouchableOpacity>
+					{isPlayerTurn && (
+						<TouchableOpacity
+							style={[styles.lobbyButton, styles.endTurnButton]}
+							onPress={async () => {
+								if (inviteCode) {
+									try {
+										await multiplayerClient.endTurn(inviteCode);
+										setTimeout(() => {
+											loadGameState();
+										}, 500);
+									} catch (error) {
+										console.error('Failed to end turn:', error);
+										Alert.alert('Error', 'Failed to end turn');
+									}
+								}
+							}}
+						>
+							<ThemedText style={styles.lobbyButtonText}>End Turn</ThemedText>
+						</TouchableOpacity>
+					)}
 					{isHost && (
 						<>
 							{gameState?.pausedTurn && (
@@ -1557,6 +1845,192 @@ const MultiplayerGameScreen: React.FC = () => {
 					initiativeOrder={gameState?.initiativeOrder}
 				/>
 			)}
+
+			{/* Map Element Picker */}
+			<MapElementPicker
+				visible={showMapElementPicker}
+				onClose={() => {
+					setShowMapElementPicker(false);
+					setElementPlacementMode(null);
+				}}
+				onSelect={(elementType: MapElementType) => {
+					// Enter placement mode - user will click on map to place
+					setElementPlacementMode(elementType);
+					setShowMapElementPicker(false);
+					Alert.alert('Place Element', `Tap on the map to place ${elementType}. Tap again to cancel.`);
+				}}
+			/>
+
+			{/* Spell/Action Selector */}
+			<SpellActionSelector
+				visible={showSpellActionSelector}
+				onClose={() => {
+					setShowSpellActionSelector(false);
+					setSelectedCharacterForAction(null);
+				}}
+				character={
+					selectedCharacterForAction
+						? gameState?.characters.find(c => c.id === selectedCharacterForAction) || null
+						: currentCharacterId
+							? gameState?.characters.find(c => c.id === currentCharacterId) || null
+							: null
+				}
+				isDM={isHost && !!selectedCharacterForAction}
+				onSelect={async (action) => {
+					if (!inviteCode) return;
+
+					const characterId = selectedCharacterForAction || currentCharacterId;
+					if (!characterId) return;
+
+					try {
+						if (action.type === 'cast_spell') {
+							await multiplayerClient.castSpell(inviteCode, characterId, action.name);
+						} else {
+							await multiplayerClient.performAction(inviteCode, characterId, action.type);
+						}
+						setTimeout(() => {
+							loadGameState();
+						}, 500);
+						Alert.alert('Success', `${action.name} performed!`);
+					} catch (error) {
+						console.error('Failed to perform action:', error);
+						Alert.alert('Error', error instanceof Error ? error.message : 'Failed to perform action');
+					}
+				}}
+			/>
+
+			{/* NPC Selector */}
+			{showNpcSelector && inviteCode && (
+				<NpcSelector
+					visible={showNpcSelector}
+					onClose={() => {
+						// Only close the selector, don't clear placement mode if NPC was already selected
+						setShowNpcSelector(false);
+						// Only clear placement mode if user explicitly closes without selecting
+						// (This will be handled by the Cancel button in placement hint)
+					}}
+					inviteCode={inviteCode}
+					onSelectNpc={(npcId, npcName) => {
+						setNpcPlacementMode({ npcId, npcName });
+						setShowNpcSelector(false);
+					}}
+					onCreateCustomNpc={async (customNpc) => {
+						if (!inviteCode || !sharedMap) return;
+						// For custom NPCs, we'll place them at the center of the map
+						// The user can move them later
+						const centerX = Math.floor((sharedMap.width || 20) / 2);
+						const centerY = Math.floor((sharedMap.height || 20) / 2);
+						try {
+							await multiplayerClient.placeNpc(inviteCode, {
+								customNpc: {
+									name: customNpc.name,
+									role: customNpc.role,
+									alignment: customNpc.alignment,
+									disposition: customNpc.disposition,
+									description: customNpc.description,
+									maxHealth: customNpc.maxHealth,
+									armorClass: customNpc.armorClass,
+									color: customNpc.color,
+								},
+								x: centerX,
+								y: centerY,
+								label: customNpc.name,
+							});
+							await refreshSharedMap();
+							setTimeout(() => {
+								loadGameState();
+							}, 300);
+							Alert.alert('Success', `${customNpc.name} created and placed on map`);
+						} catch (error) {
+							console.error('Failed to create NPC:', error);
+							Alert.alert('Error', 'Failed to create NPC');
+						}
+					}}
+				/>
+			)}
+
+			{/* Character Turn Selector */}
+			{showCharacterTurnSelector && (
+				<Modal visible={showCharacterTurnSelector} transparent animationType="fade" onRequestClose={() => setShowCharacterTurnSelector(false)}>
+					<TouchableOpacity
+						style={styles.modalOverlay}
+						activeOpacity={1}
+						onPress={() => setShowCharacterTurnSelector(false)}
+					>
+						<ThemedView style={styles.characterTurnSelectorContainer}>
+							<ThemedText type="subtitle" style={styles.characterTurnSelectorTitle}>
+								Start Character Turn
+							</ThemedText>
+							<ScrollView style={styles.characterTurnSelectorList}>
+								{/* Player Characters */}
+								{gameState?.characters && gameState.characters.length > 0 && (
+									<>
+										<ThemedText style={styles.characterTurnSelectorSectionTitle}>Player Characters</ThemedText>
+										{gameState.characters.map((character) => (
+											<TouchableOpacity
+												key={character.id}
+												style={styles.characterTurnSelectorItem}
+												onPress={async () => {
+													if (!inviteCode) return;
+													try {
+														await multiplayerClient.startCharacterTurn(inviteCode, character.id, 'player');
+														setTimeout(() => {
+															loadGameState();
+														}, 500);
+														setShowCharacterTurnSelector(false);
+														Alert.alert('Success', `Started ${character.name}'s turn`);
+													} catch (error) {
+														console.error('Failed to start turn:', error);
+														Alert.alert('Error', error instanceof Error ? error.message : 'Failed to start turn');
+													}
+												}}
+											>
+												<ThemedText style={styles.characterTurnSelectorItemName}>{character.name}</ThemedText>
+												<ThemedText style={styles.characterTurnSelectorItemType}>(Player)</ThemedText>
+											</TouchableOpacity>
+										))}
+									</>
+								)}
+								{/* NPCs */}
+								{sharedMap?.tokens?.filter(t => t.type === 'npc').length && (sharedMap?.tokens?.filter(t => t.type === 'npc').length ?? 0) > 0 && (
+									<>
+										<ThemedText style={styles.characterTurnSelectorSectionTitle}>NPCs</ThemedText>
+										{sharedMap?.tokens
+											?.filter(t => t.type === 'npc')
+											.map((token) => (
+												<TouchableOpacity
+													key={token.id}
+													style={styles.characterTurnSelectorItem}
+													onPress={async () => {
+														if (!inviteCode || !token.entityId) return;
+														try {
+															await multiplayerClient.startCharacterTurn(inviteCode, token.entityId, 'npc');
+															setTimeout(() => {
+																loadGameState();
+															}, 500);
+															setShowCharacterTurnSelector(false);
+															Alert.alert('Success', `Started ${token.label || 'NPC'}'s turn`);
+														} catch (error) {
+															console.error('Failed to start turn:', error);
+															Alert.alert('Error', error instanceof Error ? error.message : 'Failed to start turn');
+														}
+													}}
+												>
+													<ThemedText style={styles.characterTurnSelectorItemName}>{token.label || `NPC ${token.id.slice(-4)}`}</ThemedText>
+													<ThemedText style={styles.characterTurnSelectorItemType}>(NPC)</ThemedText>
+												</TouchableOpacity>
+											))}
+									</>
+								)}
+								{(!gameState?.characters || gameState.characters.length === 0) &&
+									(!sharedMap?.tokens?.filter(t => t.type === 'npc').length || (sharedMap?.tokens?.filter(t => t.type === 'npc').length ?? 0) === 0) && (
+									<ThemedText style={styles.characterTurnSelectorEmpty}>No characters or NPCs available</ThemedText>
+								)}
+							</ScrollView>
+						</ThemedView>
+					</TouchableOpacity>
+				</Modal>
+			)}
 		</ThemedView>
 	);
 };
@@ -1603,6 +2077,11 @@ const styles = StyleSheet.create({
 		backgroundColor: '#8B6914',
 		borderRadius: 6,
 		marginRight: 8,
+	},
+	endTurnButton: {
+		backgroundColor: '#059669',
+		borderColor: '#047857',
+		borderWidth: 1,
 	},
 	stopButton: {
 		backgroundColor: '#B91C1C',
@@ -1988,6 +2467,92 @@ const styles = StyleSheet.create({
 		maxHeight: 320,
 		borderTopWidth: 1,
 		borderTopColor: '#C9B037',
+	},
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0, 0, 0, 0.5)',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	characterTurnSelectorContainer: {
+		width: '90%',
+		maxWidth: 500,
+		maxHeight: '80%',
+		backgroundColor: '#FFF9EF',
+		borderRadius: 16,
+		borderWidth: 1,
+		borderColor: '#C9B037',
+		padding: 20,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.3,
+		shadowRadius: 8,
+		elevation: 8,
+	},
+	characterTurnSelectorTitle: {
+		fontSize: 20,
+		fontWeight: '700',
+		marginBottom: 20,
+		textAlign: 'center',
+	},
+	characterTurnSelectorList: {
+		maxHeight: 400,
+	},
+	characterTurnSelectorSectionTitle: {
+		fontSize: 16,
+		fontWeight: '700',
+		color: '#8B6914',
+		marginTop: 10,
+		marginBottom: 5,
+	},
+	characterTurnSelectorItem: {
+		backgroundColor: '#FFFFFF',
+		borderRadius: 8,
+		padding: 12,
+		marginBottom: 8,
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+	},
+	characterTurnSelectorItemName: {
+		fontSize: 16,
+		fontWeight: '600',
+		color: '#3B2F1B',
+	},
+	characterTurnSelectorItemType: {
+		fontSize: 14,
+		color: '#6B5B3D',
+	},
+	characterTurnSelectorEmpty: {
+		textAlign: 'center',
+		color: '#6B5B3D',
+		fontStyle: 'italic',
+		padding: 20,
+	},
+	placementHintContainer: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		backgroundColor: '#FFF9EF',
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: '#C9B037',
+		padding: 8,
+		marginBottom: 8,
+		gap: 8,
+	},
+	cancelPlacementButton: {
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		backgroundColor: '#B91C1C',
+		borderRadius: 6,
+	},
+	cancelPlacementButtonText: {
+		color: '#FFFFFF',
+		fontSize: 12,
+		fontWeight: '600',
 	},
 });
 
