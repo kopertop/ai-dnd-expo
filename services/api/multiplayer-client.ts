@@ -264,6 +264,12 @@ export class MultiplayerClient {
 		});
 	}
 
+	async getNpcDefinition(inviteCode: string, npcId: string): Promise<NpcDefinition> {
+		return apiService.fetchApi(`/games/${inviteCode}/npcs/${npcId}`, {
+			method: 'GET',
+		});
+	}
+
 	async getNpcInstances(inviteCode: string): Promise<NpcInstanceListResponse> {
 		return apiService.fetchApi(`/games/${inviteCode}/npc-instances`, {
 			method: 'GET',

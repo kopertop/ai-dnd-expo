@@ -4,6 +4,7 @@ import { Alert, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharacterDMModal } from '@/components/character-dm-modal';
+import { CharacterViewModal } from '@/components/character-view-modal';
 import { CommandPalette, type Command } from '@/components/command-palette';
 import { InteractiveMap } from '@/components/map/interactive-map';
 import { TileActionMenu, type TileAction } from '@/components/map/tile-action-menu';
@@ -51,6 +52,9 @@ const MultiplayerGameScreen: React.FC = () => {
 	const [selectedItemType, setSelectedItemType] = useState<'fire' | 'trap' | 'obstacle' | null>(null);
 	const [selectedCharacterForDM, setSelectedCharacterForDM] = useState<{ id: string; type: 'player' | 'npc' } | null>(null);
 	const [showCharacterDMModal, setShowCharacterDMModal] = useState(false);
+	const [npcStats, setNpcStats] = useState<{ STR: number; DEX: number; CON: number; INT: number; WIS: number; CHA: number } | undefined>(undefined);
+	const [selectedCharacterForView, setSelectedCharacterForView] = useState<{ id: string; type: 'player' | 'npc' } | null>(null);
+	const [showCharacterViewModal, setShowCharacterViewModal] = useState(false);
 	const placingCharactersRef = useRef<Set<string>>(new Set());
 	const isPlacingRef = useRef(false);
 	const { isMobile } = useScreenSize();
@@ -785,12 +789,46 @@ const MultiplayerGameScreen: React.FC = () => {
 	);
 
 	const handleCharacterSelect = useCallback(
-		(characterId: string, type: 'player' | 'npc') => {
+		async (characterId: string, type: 'player' | 'npc') => {
 			if (!isHost) return;
 			setSelectedCharacterForDM({ id: characterId, type });
+
+			// If it's an NPC, fetch the NPC definition to get stats
+			if (type === 'npc' && inviteCode) {
+				try {
+					const token = sharedMap?.tokens.find(t => t.id === characterId);
+					if (token?.entityId) {
+						// For NPCs, entityId should be the npc_id (from convertTokens: token.npc_id)
+						const npcId = token.entityId;
+						const npcDef = await multiplayerClient.getNpcDefinition(inviteCode, npcId).catch(() => null);
+						if (npcDef && npcDef.stats) {
+							// Stats is a Record<string, unknown>, extract the stat values
+							const stats = npcDef.stats as Record<string, unknown>;
+							setNpcStats({
+								STR: (typeof stats.STR === 'number' ? stats.STR : 10) as number,
+								DEX: (typeof stats.DEX === 'number' ? stats.DEX : 10) as number,
+								CON: (typeof stats.CON === 'number' ? stats.CON : 10) as number,
+								INT: (typeof stats.INT === 'number' ? stats.INT : 10) as number,
+								WIS: (typeof stats.WIS === 'number' ? stats.WIS : 10) as number,
+								CHA: (typeof stats.CHA === 'number' ? stats.CHA : 10) as number,
+							});
+						} else {
+							setNpcStats(undefined);
+						}
+					} else {
+						setNpcStats(undefined);
+					}
+				} catch (error) {
+					console.error('Failed to fetch NPC stats:', error);
+					setNpcStats(undefined);
+				}
+			} else {
+				setNpcStats(undefined);
+			}
+
 			setShowCharacterDMModal(true);
 		},
-		[isHost],
+		[isHost, inviteCode, sharedMap],
 	);
 
 	const handleUpdateCharacter = useCallback(
@@ -1285,8 +1323,15 @@ const MultiplayerGameScreen: React.FC = () => {
 							currentPlayerId={currentCharacterId}
 							npcTokens={sharedMap?.tokens?.filter(t => t.type === 'npc') || []}
 							activeTurnEntityId={gameState?.activeTurn?.entityId}
-							onCharacterSelect={isHost ? handleCharacterSelect : undefined}
-							canSelect={isHost}
+							onCharacterSelect={
+								isHost
+									? handleCharacterSelect
+									: (characterId: string, type: 'player' | 'npc') => {
+										setSelectedCharacterForView({ id: characterId, type });
+										setShowCharacterViewModal(true);
+									}
+							}
+							canSelect={true}
 						/>
 						{renderMapSection()}
 					</ScrollView>
@@ -1294,6 +1339,21 @@ const MultiplayerGameScreen: React.FC = () => {
 					// Tablet/Desktop: Side-by-side layout
 					<View style={styles.desktopLayout}>
 						<View style={styles.sidebar}>
+							<PlayerCharacterList
+								characters={gameState.characters}
+								currentPlayerId={currentCharacterId}
+								npcTokens={sharedMap?.tokens?.filter(t => t.type === 'npc') || []}
+								activeTurnEntityId={gameState?.activeTurn?.entityId}
+								onCharacterSelect={
+									isHost
+										? handleCharacterSelect
+										: (characterId: string, type: 'player' | 'npc') => {
+											setSelectedCharacterForView({ id: characterId, type });
+											setShowCharacterViewModal(true);
+										}
+								}
+								canSelect={true}
+							/>
 							{isHost && charactersWithoutTokens.length > 0 && (
 								<View style={styles.warningContainer}>
 									<ThemedText style={styles.warningTitle}>⚠️ Characters Not Placed</ThemedText>
@@ -1341,14 +1401,6 @@ const MultiplayerGameScreen: React.FC = () => {
 									</ScrollView>
 								</View>
 							)}
-							<PlayerCharacterList
-								characters={gameState.characters}
-								currentPlayerId={currentCharacterId}
-								npcTokens={sharedMap?.tokens?.filter(t => t.type === 'npc') || []}
-								activeTurnEntityId={gameState?.activeTurn?.entityId}
-								onCharacterSelect={isHost ? handleCharacterSelect : undefined}
-								canSelect={isHost}
-							/>
 						</View>
 						<View style={styles.mainContent}>
 							{renderMapSection()}
@@ -1455,7 +1507,7 @@ const MultiplayerGameScreen: React.FC = () => {
 				/>
 			)}
 
-			{/* Character DM Modal */}
+			{/* Character DM Modal (Host only) */}
 			{selectedCharacterForDM && (
 				<CharacterDMModal
 					visible={showCharacterDMModal}
@@ -1472,10 +1524,37 @@ const MultiplayerGameScreen: React.FC = () => {
 					onClose={() => {
 						setShowCharacterDMModal(false);
 						setSelectedCharacterForDM(null);
+						setNpcStats(undefined);
 					}}
 					onDamage={handleCharacterDamage}
 					onHeal={handleCharacterHeal}
 					onUpdateCharacter={selectedCharacterForDM.type === 'player' ? handleUpdateCharacter : undefined}
+					initiativeOrder={gameState?.initiativeOrder}
+					npcStats={npcStats}
+				/>
+			)}
+
+			{/* Character View Modal (Players) */}
+			{selectedCharacterForView && (
+				<CharacterViewModal
+					visible={showCharacterViewModal}
+					character={
+						selectedCharacterForView.type === 'player'
+							? gameState.characters.find(c => c.id === selectedCharacterForView.id) || null
+							: null
+					}
+					npcToken={
+						selectedCharacterForView.type === 'npc'
+							? sharedMap?.tokens.find(t => t.id === selectedCharacterForView.id) || null
+							: null
+					}
+					onClose={() => {
+						setShowCharacterViewModal(false);
+						setSelectedCharacterForView(null);
+					}}
+					isNPC={selectedCharacterForView.type === 'npc'}
+					showFullStats={selectedCharacterForView.type === 'player'} // Full stats for players, limited for NPCs
+					initiativeOrder={gameState?.initiativeOrder}
 				/>
 			)}
 		</ThemedView>

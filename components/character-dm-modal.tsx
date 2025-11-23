@@ -6,6 +6,7 @@ import { ThemedView } from './themed-view';
 
 import { Character } from '@/types/character';
 import { MapToken } from '@/types/multiplayer-map';
+import { STAT_KEYS } from '@/types/stats';
 
 interface CharacterDMModalProps {
 	visible: boolean;
@@ -15,6 +16,8 @@ interface CharacterDMModalProps {
 	onDamage?: (entityId: string, amount: number) => void;
 	onHeal?: (entityId: string, amount: number) => void;
 	onUpdateCharacter?: (characterId: string, updates: Partial<Character>) => void;
+	initiativeOrder?: Array<{ entityId: string; initiative: number; type: 'player' | 'npc' }>;
+	npcStats?: { STR: number; DEX: number; CON: number; INT: number; WIS: number; CHA: number };
 }
 
 export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
@@ -25,6 +28,8 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 	onDamage,
 	onHeal,
 	onUpdateCharacter,
+	initiativeOrder,
+	npcStats,
 }) => {
 	const [damageAmount, setDamageAmount] = useState('');
 	const [healAmount, setHealAmount] = useState('');
@@ -32,6 +37,13 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 	const entityId = character?.id || npcToken?.id;
 	const entityName = character?.name || npcToken?.label || 'Unknown';
 	const isNPC = !!npcToken;
+	
+	// Get initiative value from initiative order
+	const initiativeEntry = entityId ? initiativeOrder?.find(entry => entry.entityId === entityId) : null;
+	const initiativeValue = initiativeEntry?.initiative;
+	
+	// Get stats - from character or NPC
+	const stats = character?.stats || npcStats || { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 };
 
 	if (!visible || (!character && !npcToken)) {
 		return null;
@@ -65,10 +77,83 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 					</View>
 
 					<ScrollView style={styles.content} showsVerticalScrollIndicator={true}>
-						{character && (
-							<>
-								<View style={styles.section}>
-									<ThemedText style={styles.sectionTitle}>Character Stats</ThemedText>
+						{/* Basic Information */}
+						<View style={styles.section}>
+							<ThemedText style={styles.sectionTitle}>Basic Information</ThemedText>
+							{character && (
+								<>
+									<View style={styles.infoRow}>
+										<ThemedText style={styles.infoLabel}>Name:</ThemedText>
+										<ThemedText style={styles.infoValue}>{character.name}</ThemedText>
+									</View>
+									<View style={styles.infoRow}>
+										<ThemedText style={styles.infoLabel}>Level:</ThemedText>
+										<ThemedText style={styles.infoValue}>{character.level}</ThemedText>
+									</View>
+									<View style={styles.infoRow}>
+										<ThemedText style={styles.infoLabel}>Race:</ThemedText>
+										<ThemedText style={styles.infoValue}>{character.race}</ThemedText>
+									</View>
+									<View style={styles.infoRow}>
+										<ThemedText style={styles.infoLabel}>Class:</ThemedText>
+										<ThemedText style={styles.infoValue}>{character.class}</ThemedText>
+									</View>
+									{character.trait && (
+										<View style={styles.infoRow}>
+											<ThemedText style={styles.infoLabel}>Trait:</ThemedText>
+											<ThemedText style={styles.infoValue}>{character.trait}</ThemedText>
+										</View>
+									)}
+									{character.description && (
+										<View style={styles.infoRow}>
+											<ThemedText style={styles.infoLabel}>Description:</ThemedText>
+											<ThemedText style={styles.infoValue}>{character.description}</ThemedText>
+										</View>
+									)}
+								</>
+							)}
+							{npcToken && (
+								<>
+									<View style={styles.infoRow}>
+										<ThemedText style={styles.infoLabel}>Name:</ThemedText>
+										<ThemedText style={styles.infoValue}>{npcToken.label}</ThemedText>
+									</View>
+									<View style={styles.infoRow}>
+										<ThemedText style={styles.infoLabel}>Type:</ThemedText>
+										<ThemedText style={styles.infoValue}>NPC</ThemedText>
+									</View>
+								</>
+							)}
+							{initiativeValue !== undefined && (
+								<View style={styles.infoRow}>
+									<ThemedText style={styles.infoLabel}>Initiative:</ThemedText>
+									<ThemedText style={styles.infoValue}>{initiativeValue}</ThemedText>
+								</View>
+							)}
+						</View>
+
+						{/* Ability Scores */}
+						<View style={styles.section}>
+							<ThemedText style={styles.sectionTitle}>Ability Scores</ThemedText>
+							<View style={styles.statsGrid}>
+								{STAT_KEYS.map(statKey => (
+									<View key={statKey} style={styles.statBox}>
+										<ThemedText style={styles.statBoxLabel}>{statKey}</ThemedText>
+										<ThemedText style={styles.statBoxValue}>{stats[statKey]}</ThemedText>
+										<ThemedText style={styles.statBoxModifier}>
+											({Math.floor((stats[statKey] - 10) / 2) >= 0 ? '+' : ''}
+											{Math.floor((stats[statKey] - 10) / 2)})
+										</ThemedText>
+									</View>
+								))}
+							</View>
+						</View>
+
+						{/* Health & Action Points */}
+						<View style={styles.section}>
+							<ThemedText style={styles.sectionTitle}>Health & Resources</ThemedText>
+							{character && (
+								<>
 									<View style={styles.statRow}>
 										<ThemedText style={styles.statLabel}>Health:</ThemedText>
 										<TextInput
@@ -108,9 +193,51 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 											}}
 											keyboardType="numeric"
 										/>
+										<ThemedText style={styles.statLabel}>/</ThemedText>
+										<TextInput
+											style={styles.statInput}
+											value={character.maxActionPoints.toString()}
+											onChangeText={(text) => {
+												const value = parseInt(text, 10);
+												if (!isNaN(value) && onUpdateCharacter) {
+													onUpdateCharacter(character.id, { maxActionPoints: value });
+												}
+											}}
+											keyboardType="numeric"
+										/>
 									</View>
+								</>
+							)}
+							{npcToken && (
+								<>
+									<View style={styles.statRow}>
+										<ThemedText style={styles.statLabel}>Health:</ThemedText>
+										<ThemedText style={styles.statValue}>
+											{npcToken.hitPoints ?? 10} / {npcToken.maxHitPoints ?? 10}
+										</ThemedText>
+									</View>
+									<View style={styles.statRow}>
+										<ThemedText style={styles.statLabel}>Action Points:</ThemedText>
+										<ThemedText style={styles.statValue}>
+											{(npcToken.metadata?.actionPoints as number) ?? 3} / {(npcToken.metadata?.maxActionPoints as number) ?? 3}
+										</ThemedText>
+									</View>
+								</>
+							)}
+						</View>
+
+						{/* Skills */}
+						{character && character.skills && character.skills.length > 0 && (
+							<View style={styles.section}>
+								<ThemedText style={styles.sectionTitle}>Skills</ThemedText>
+								<View style={styles.skillsContainer}>
+									{character.skills.map((skill, index) => (
+										<View key={index} style={styles.skillTag}>
+											<ThemedText style={styles.skillText}>{skill}</ThemedText>
+										</View>
+									))}
 								</View>
-							</>
+							</View>
 						)}
 
 						{(onDamage || onHeal) && (
@@ -271,6 +398,76 @@ const styles = StyleSheet.create({
 		color: '#FFFFFF',
 		fontWeight: '600',
 		fontSize: 12,
+	},
+	infoRow: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginBottom: 8,
+		paddingVertical: 4,
+	},
+	infoLabel: {
+		fontSize: 14,
+		color: '#6B5B3D',
+		fontWeight: '600',
+	},
+	infoValue: {
+		fontSize: 14,
+		color: '#3B2F1B',
+		flex: 1,
+		textAlign: 'right',
+	},
+	statsGrid: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 8,
+	},
+	statBox: {
+		width: '30%',
+		backgroundColor: '#E2D3B3',
+		borderRadius: 8,
+		padding: 8,
+		alignItems: 'center',
+		borderWidth: 1,
+		borderColor: '#C9B037',
+	},
+	statBoxLabel: {
+		fontSize: 12,
+		color: '#6B5B3D',
+		fontWeight: '600',
+		marginBottom: 4,
+	},
+	statBoxValue: {
+		fontSize: 18,
+		color: '#3B2F1B',
+		fontWeight: 'bold',
+	},
+	statBoxModifier: {
+		fontSize: 11,
+		color: '#6B5B3D',
+		marginTop: 2,
+	},
+	statValue: {
+		fontSize: 14,
+		color: '#3B2F1B',
+		fontWeight: '600',
+	},
+	skillsContainer: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 6,
+	},
+	skillTag: {
+		backgroundColor: '#E2D3B3',
+		borderRadius: 6,
+		paddingHorizontal: 8,
+		paddingVertical: 4,
+		borderWidth: 1,
+		borderColor: '#C9B037',
+	},
+	skillText: {
+		fontSize: 12,
+		color: '#3B2F1B',
 	},
 });
 
