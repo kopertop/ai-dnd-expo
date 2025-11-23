@@ -7,6 +7,8 @@ import { generateInviteCode, getSessionId, getSessionStub } from '../../../share
 import { Character, MultiplayerGameState, Quest } from '../../../shared/workers/types';
 import type { CloudflareBindings } from '../env';
 
+import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
+import { getTerrainCost } from '@/utils/movement-calculator';
 import { mapStateFromDb, npcFromDb } from '@/utils/schema-adapters';
 
 type Variables = {
@@ -908,6 +910,9 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 		overrideValidation?: boolean;
 	};
 
+	const sessionStub = getSessionStub(c.env, inviteCode);
+	let latestGameState: MultiplayerGameState | null = null;
+
 	// Permission check: Host can move any token, players can only move their own character during their turn
 	if (!isHost) {
 		// For players: must be moving their own character token during their turn
@@ -919,13 +924,13 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 			}
 
 			// Check if it's currently this character's turn
-			const sessionStub = getSessionStub(c.env, inviteCode);
 			const stateResponse = await sessionStub.fetch(
 				buildDurableRequest(c.req.raw, '/state'),
 			);
 
 			if (stateResponse.ok) {
 				const gameState = await stateResponse.json() as MultiplayerGameState;
+				latestGameState = gameState;
 				const isPlayerTurn = (
 					gameState.activeTurn?.type === 'player' &&
 					gameState.activeTurn.entityId === body.characterId &&
@@ -978,6 +983,7 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 	}
 
 	const mapRow = await resolveMapRow(db, game);
+	const parsedMapState = mapStateFromDb(mapRow);
 
 	// Validate element types if tokenType is 'element'
 	if (body.tokenType === 'element') {
@@ -1013,6 +1019,40 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 		metadata.elementType = body.elementType;
 	}
 
+	let playerMoveCost: number | null = null;
+	if (!isHost && body.tokenType === 'player' && body.characterId) {
+		const path = (metadata.path as Array<{ x: number; y: number }> | undefined);
+		if (!path || path.length < 2) {
+			return c.json({ error: 'Movement path missing' }, 400);
+		}
+
+		let cost = 0;
+		for (let i = 1; i < path.length; i++) {
+			const step = path[i];
+			const cell = parsedMapState.terrain?.[step.y]?.[step.x];
+			const stepCost = getTerrainCost(cell);
+			if (!Number.isFinite(stepCost)) {
+				cost = Number.POSITIVE_INFINITY;
+				break;
+			}
+			cost += stepCost;
+		}
+
+		if (!Number.isFinite(cost)) {
+			return c.json({ error: 'Forbidden: Path crosses invalid terrain' }, 403);
+		}
+
+		playerMoveCost = cost;
+
+		if (latestGameState?.activeTurn?.entityId === body.characterId) {
+			const speed = latestGameState.activeTurn.speed ?? DEFAULT_RACE_SPEED;
+			const used = latestGameState.activeTurn.movementUsed ?? 0;
+			if (used + cost > speed + 1e-6) {
+				return c.json({ error: 'Forbidden: Not enough movement remaining' }, 403);
+			}
+		}
+	}
+
 	await db.saveMapToken({
 		id: tokenId,
 		game_id: game.id,
@@ -1036,6 +1076,32 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 	const duplicatesRemoved = await db.removeDuplicateTokens(game.id, body.mapId || mapRow.id);
 	if (duplicatesRemoved > 0) {
 		console.log(`Removed ${duplicatesRemoved} duplicate token(s) for game ${game.id}`);
+	}
+
+	if (
+		!isHost &&
+		body.tokenType === 'player' &&
+		body.characterId &&
+		playerMoveCost !== null &&
+		latestGameState?.activeTurn?.entityId === body.characterId
+	) {
+		const speed = latestGameState.activeTurn.speed ?? DEFAULT_RACE_SPEED;
+		const used = latestGameState.activeTurn.movementUsed ?? 0;
+		const updatedMovement = Math.min(speed, used + playerMoveCost);
+		try {
+			await sessionStub.fetch(
+				buildDurableRequest(c.req.raw, '/turn/update', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						movementUsed: updatedMovement,
+						actorEntityId: body.characterId,
+					}),
+				}),
+			);
+		} catch (error) {
+			console.error('Failed to update movement usage after token save', error);
+		}
 	}
 
 	const mapState = await buildMapState(db, game);
@@ -1420,7 +1486,7 @@ games.post('/:inviteCode/characters/:characterId/actions', async (c) => {
 
 	// Update character action points
 	const updatedActionPoints = character.actionPoints - actionPointCost;
-	await db.updateCharacter(characterId, { actionPoints: updatedActionPoints });
+	await db.updateCharacter(characterId, { action_points: updatedActionPoints });
 
 	// Log the action to database
 	try {
@@ -1758,6 +1824,59 @@ games.post('/:inviteCode/turn/resume', async (c) => {
 	if (!response.ok) {
 		const details = await response.text();
 		return jsonWithStatus(c, { error: 'Failed to resume turn', details }, response.status);
+	}
+
+	return jsonWithStatus(c, await response.json(), response.status);
+});
+
+games.post('/:inviteCode/turn/update', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	const isHost = isHostUser(game, user);
+	const players = await db.getGamePlayers(game.id);
+	const membership = players.find(p => p.player_id === user.id);
+
+	if (!isHost && !membership) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const body = (await c.req.json().catch(() => ({}))) as {
+		movementUsed?: number;
+		majorActionUsed?: boolean;
+		minorActionUsed?: boolean;
+		actorEntityId?: string;
+	};
+
+	const payload = {
+		movementUsed: body.movementUsed,
+		majorActionUsed: body.majorActionUsed,
+		minorActionUsed: body.minorActionUsed,
+		actorEntityId: isHost ? body.actorEntityId : membership?.character_id,
+	};
+
+	const sessionStub = getSessionStub(c.env, inviteCode);
+	const response = await sessionStub.fetch(
+		buildDurableRequest(c.req.raw, '/turn/update', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload),
+		}),
+	);
+
+	if (!response.ok) {
+		const details = await response.text();
+		return jsonWithStatus(c, { error: 'Failed to update turn state', details }, response.status);
 	}
 
 	return jsonWithStatus(c, await response.json(), response.status);

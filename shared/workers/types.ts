@@ -65,6 +65,10 @@ export interface MultiplayerGameState {
 		entityId: string;
 		turnNumber: number;
 		startedAt: number;
+		movementUsed?: number;
+		majorActionUsed?: boolean;
+		minorActionUsed?: boolean;
+		speed?: number;
 	} | null;
 	initiativeOrder?: Array<{
 		entityId: string;

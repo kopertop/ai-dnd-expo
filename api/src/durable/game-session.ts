@@ -1,6 +1,8 @@
 import { DurableObjectState, DurableObjectStorage } from '@cloudflare/workers-types';
 
 import type { Character, MultiplayerGameState, PlayerInfo, Quest } from '../../../shared/workers/types';
+import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
+import { getCharacterSpeed } from '@/utils/character-utils';
 
 type SessionStatus = 'waiting' | 'active' | 'completed' | 'cancelled';
 
@@ -78,6 +80,8 @@ export class GameSession {
 					return this.handleInterruptTurn(request);
 				case '/turn/resume':
 					return this.handleResumeTurn(request);
+				case '/turn/update':
+					return this.handleUpdateTurnState(request);
 				case '/turn/end':
 					return this.handleEndTurn(request);
 				case '/turn/start':
@@ -487,11 +491,18 @@ export class GameSession {
 
 		const currentTurnNumber = session.gameState.activeTurn?.turnNumber ?? 0;
 
+		const activeCharacter = session.gameState.characters.find(char => char.id === payload.entityId);
+		const calculatedSpeed = activeCharacter ? getCharacterSpeed(activeCharacter) : DEFAULT_RACE_SPEED;
+
 		const activeTurn = {
 			type: payload.turnType,
 			entityId: payload.entityId,
 			turnNumber: currentTurnNumber + 1,
 			startedAt: Date.now(),
+			movementUsed: 0,
+			majorActionUsed: false,
+			minorActionUsed: false,
+			speed: calculatedSpeed,
 		};
 
 		// Reset action points for the character starting their turn
@@ -509,6 +520,66 @@ export class GameSession {
 			...session.gameState,
 			characters: updatedCharacters,
 			activeTurn,
+			lastUpdated: Date.now(),
+		};
+
+		const updated: StoredSession = {
+			...session,
+			gameState: updatedGameState,
+			lastUpdated: Date.now(),
+		};
+
+		await this.storage.put(SESSION_KEY, updated);
+		return json(updatedGameState);
+	}
+
+	private async handleUpdateTurnState(request: Request): Promise<Response> {
+		const session = await this.getSession();
+		if (!session || !session.gameState) {
+			return json({ error: 'Game not started' }, 400);
+		}
+
+		if (!session.gameState.activeTurn) {
+			return json({ error: 'No active turn' }, 400);
+		}
+
+		const payload = (await request.json().catch(() => ({}))) as {
+			movementUsed?: number;
+			majorActionUsed?: boolean;
+			minorActionUsed?: boolean;
+			actorEntityId?: string;
+		};
+
+		const currentTurn = session.gameState.activeTurn;
+
+		if (payload.actorEntityId && payload.actorEntityId !== currentTurn.entityId) {
+			return json({ error: 'Forbidden: Invalid actor' }, 403);
+		}
+
+		const speed = currentTurn.speed ?? DEFAULT_RACE_SPEED;
+
+		let movementUsed = currentTurn.movementUsed ?? 0;
+		if (typeof payload.movementUsed === 'number' && Number.isFinite(payload.movementUsed)) {
+			movementUsed = Math.min(speed, Math.max(0, payload.movementUsed));
+		}
+
+		const majorActionUsed =
+			typeof payload.majorActionUsed === 'boolean'
+				? payload.majorActionUsed
+				: currentTurn.majorActionUsed ?? false;
+		const minorActionUsed =
+			typeof payload.minorActionUsed === 'boolean'
+				? payload.minorActionUsed
+				: currentTurn.minorActionUsed ?? false;
+
+		const updatedGameState: MultiplayerGameState = {
+			...session.gameState,
+			activeTurn: {
+				...currentTurn,
+				movementUsed,
+				majorActionUsed,
+				minorActionUsed,
+			},
 			lastUpdated: Date.now(),
 		};
 

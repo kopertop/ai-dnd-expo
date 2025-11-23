@@ -17,6 +17,7 @@ import { SpellActionSelector } from '@/components/spell-action-selector';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TokenDetailModal } from '@/components/token-detail-modal';
+import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import { usePollingGameState } from '@/hooks/use-polling-game-state';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { useWebSocket } from '@/hooks/use-websocket';
@@ -25,6 +26,7 @@ import { PlayerActionMessage } from '@/types/api/websocket-messages';
 import { Character } from '@/types/character';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { MapState, MapToken } from '@/types/multiplayer-map';
+import { getCharacterSpeed } from '@/utils/character-utils';
 import { calculateMovementRange, findPathWithCosts, isInMeleeRange, isInRangedRange } from '@/utils/movement-calculator';
 
 const MultiplayerGameScreen: React.FC = () => {
@@ -92,6 +94,13 @@ const MultiplayerGameScreen: React.FC = () => {
 		return currentCharacterId;
 	}, [isHost, gameState?.activeTurn, gameState?.pausedTurn, currentCharacterId]);
 
+	const activeCharacter = useMemo(() => {
+		if (!activeCharacterIdForMovement) {
+			return null;
+		}
+		return gameState?.characters.find(c => c.id === activeCharacterIdForMovement) ?? null;
+	}, [gameState?.characters, activeCharacterIdForMovement]);
+
 	const playerToken = useMemo(() => {
 		if (!sharedMap) {
 			return null;
@@ -112,27 +121,32 @@ const MultiplayerGameScreen: React.FC = () => {
 		);
 	}, [sharedMap, activeCharacterIdForMovement]);
 
+	const activeTurnForMovement = useMemo(() => {
+		if (!gameState?.activeTurn) {
+			return null;
+		}
+		return gameState.activeTurn.entityId === activeCharacterIdForMovement ? gameState.activeTurn : null;
+	}, [gameState, activeCharacterIdForMovement]);
+
+	const totalMovementSpeedForActive = useMemo(() => {
+		if (typeof activeTurnForMovement?.speed === 'number') {
+			return activeTurnForMovement.speed;
+		}
+		if (activeCharacter) {
+			return getCharacterSpeed(activeCharacter);
+		}
+		return DEFAULT_RACE_SPEED;
+	}, [activeTurnForMovement?.speed, activeCharacter]);
+
 	const movementBudget = useMemo(() => {
-		const entityId = activeCharacterIdForMovement;
-		if (!entityId) {
-			return 0;
-		}
+		const used = activeTurnForMovement?.movementUsed ?? 0;
+		return Math.max(0, totalMovementSpeedForActive - used);
+	}, [totalMovementSpeedForActive, activeTurnForMovement?.movementUsed]);
 
-		// For NPCs, check metadata for action points, otherwise use character data
-		if (playerToken?.type === 'npc' && playerToken.metadata) {
-			const npcActionPoints = (playerToken.metadata as Record<string, unknown>)?.actionPoints;
-			if (typeof npcActionPoints === 'number') {
-				return npcActionPoints;
-			}
-		}
-
-		const character = gameState?.characters.find(c => c.id === entityId);
-		if (!character) {
-			return 0;
-		}
-
-		return character.actionPoints ?? character.maxActionPoints ?? 6;
-	}, [gameState?.characters, activeCharacterIdForMovement, playerToken]);
+	const movementUsedAmount = useMemo(
+		() => Math.max(0, totalMovementSpeedForActive - movementBudget),
+		[totalMovementSpeedForActive, movementBudget],
+	);
 
 	const isPlayerTurn = useMemo(() => {
 		// If no active turn, no one's turn
@@ -180,6 +194,12 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 		return 'DM';
 	}, [gameState?.activeTurn, gameState?.characters]);
+
+	const hostActingAsActiveCharacter = useMemo(() => {
+		return Boolean(
+			isHost && !gameState?.pausedTurn && gameState?.activeTurn?.entityId,
+		);
+	}, [isHost, gameState?.pausedTurn, gameState?.activeTurn?.entityId]);
 
 	const refreshSharedMap = useCallback(async () => {
 		if (!inviteCode) {
@@ -823,18 +843,12 @@ const MultiplayerGameScreen: React.FC = () => {
 				return { actions: [] };
 			}
 
-			// Get the active character (player's character or DM's selected NPC)
-			// For DM: can act on any turn (player, NPC, or DM turn)
-			// For players: can only act on their own turn
-			const activeEntityId = isPlayerTurn
-				? currentCharacterId
-				: (isHost ? (gameState?.activeTurn?.entityId || currentCharacterId) : null);
+			const activeEntityId = activeCharacterIdForMovement;
 
 			if (!activeEntityId) {
 				return { actions: [] };
 			}
 
-			const activeCharacter = gameState?.characters.find(c => c.id === activeEntityId);
 			const activeToken = sharedMap?.tokens?.find(
 				t => t.entityId === activeEntityId && (t.type === 'player' || t.type === 'npc'),
 			);
@@ -845,6 +859,8 @@ const MultiplayerGameScreen: React.FC = () => {
 
 			const fromPos = { x: activeToken.x, y: activeToken.y };
 			const toPos = { x, y };
+			const majorActionAvailable = !(activeTurnForMovement?.majorActionUsed ?? false);
+			const minorActionAvailable = !(activeTurnForMovement?.minorActionUsed ?? false);
 
 			// Check what's on the tile
 			const tokenOnTile = sharedMap.tokens?.find(t => t.x === x && t.y === y);
@@ -858,12 +874,9 @@ const MultiplayerGameScreen: React.FC = () => {
 			// Check if tile is empty
 			if (!tokenOnTile) {
 				// Empty tile - check if movement is possible
-				// Get movement budget for the active character
-				const character = gameState?.characters.find(c => c.id === activeEntityId);
-				const budget = character?.actionPoints ?? character?.maxActionPoints ?? 6;
-				const reachable = calculateMovementRange(sharedMap, fromPos, budget);
+				const reachable = calculateMovementRange(sharedMap, fromPos, movementBudget);
 				const isReachable = reachable.some(tile => tile.x === x && tile.y === y);
-				if (isReachable) {
+				if (isReachable && movementBudget > 0) {
 					actions.push('move');
 				}
 				return { actions, targetLabel: 'Empty Tile' };
@@ -917,55 +930,58 @@ const MultiplayerGameScreen: React.FC = () => {
 				actions.push('inspect');
 
 				// Combat actions if in range
-				if (inMelee || inRanged) {
+				if ((inMelee || inRanged) && majorActionAvailable) {
 					actions.push('cast_spell');
-					if (inMelee || inRanged) {
-						actions.push('basic_attack');
-					}
-					// Use Item - check if character has items (simplified for now)
-					if (activeCharacter) {
-						actions.push('use_item');
-					}
+					actions.push('basic_attack');
+				}
+				// Use Item - check if character has items (simplified for now)
+				if (minorActionAvailable && activeCharacter) {
+					actions.push('use_item');
 				}
 			}
 
 			return { actions, targetLabel };
 		},
-		[isPlayerTurn, isHost, gameState, currentCharacterId, sharedMap],
+		[
+			isPlayerTurn,
+			isHost,
+			activeCharacterIdForMovement,
+			sharedMap,
+			movementBudget,
+			activeTurnForMovement,
+			activeCharacter,
+		],
 	);
 
 	const handleTokenPress = useCallback(
 		(token: MapToken) => {
 			if (!sharedMap) return;
 
-			// For players (not DM): clicking on another token should show action menu, not movement range
-			if (!isHost) {
-				// Check if it's the player's own token
-				const isOwnToken = token.type === 'player' && token.entityId === currentCharacterId;
+			const actingCharacterId = hostActingAsActiveCharacter
+				? gameState?.activeTurn?.entityId
+				: currentCharacterId;
+
+			if (!isHost || hostActingAsActiveCharacter) {
+				const isOwnToken = token.type === 'player' && token.entityId === actingCharacterId;
 
 				if (isOwnToken) {
-					// For own token, show movement range (toggle behavior)
 					if (selectedTokenId === token.id && selectedTokenMovementRange.length > 0) {
 						setSelectedTokenId(null);
 						setSelectedTokenMovementRange([]);
 						return;
 					}
 
-					// Calculate movement range for the player's own token
-					const character = gameState?.characters.find(c => c.id === currentCharacterId);
-					const movementBudget = character?.actionPoints ?? character?.maxActionPoints ?? 6;
-					const reachable = calculateMovementRange(sharedMap, { x: token.x, y: token.y }, movementBudget);
+					const character = gameState?.characters.find(c => c.id === actingCharacterId);
+					const personalMovementBudget = character ? getCharacterSpeed(character) : DEFAULT_RACE_SPEED;
+					const reachable = calculateMovementRange(sharedMap, { x: token.x, y: token.y }, personalMovementBudget);
 					setSelectedTokenId(token.id);
 					setSelectedTokenMovementRange(reachable);
 				} else {
-					// For other tokens, show action menu from player's position
-					// Check if it's player's turn
 					if (!isPlayerTurn) {
 						Alert.alert('Not your turn', 'Wait for your turn to perform actions.');
 						return;
 					}
 
-					// Get available actions for this token's position
 					const { actions, targetLabel } = getAvailableActions(token.x, token.y);
 					if (actions.length > 0) {
 						setPlayerActionMenu({ x: token.x, y: token.y, actions, targetLabel: targetLabel || token.label });
@@ -974,35 +990,40 @@ const MultiplayerGameScreen: React.FC = () => {
 				return;
 			}
 
-			// For DM: show movement range for any token (existing behavior)
-			// Toggle: if same token is already selected, hide movement range
 			if (selectedTokenId === token.id && selectedTokenMovementRange.length > 0) {
 				setSelectedTokenId(null);
 				setSelectedTokenMovementRange([]);
 				return;
 			}
 
-			// Calculate movement range for the clicked token
-			let movementBudget = 6; // Default movement budget
-			let tokenPosition = { x: token.x, y: token.y };
+			let movementBudget = DEFAULT_RACE_SPEED; // Default movement budget
+			const tokenPosition = { x: token.x, y: token.y };
 
-			// If it's a player token, get their actual movement budget
 			if (token.type === 'player' && token.entityId) {
 				const character = gameState?.characters.find(c => c.id === token.entityId);
 				if (character) {
-					movementBudget = character.actionPoints ?? character.maxActionPoints ?? 6;
+					movementBudget = getCharacterSpeed(character);
 				}
 			} else if (token.type === 'npc') {
-				// NPCs typically have movement budget of 6
-				movementBudget = 6;
+				movementBudget = DEFAULT_RACE_SPEED;
 			}
 
-			// Calculate and show movement range (outline only, no modal)
 			const reachable = calculateMovementRange(sharedMap, tokenPosition, movementBudget);
 			setSelectedTokenId(token.id);
 			setSelectedTokenMovementRange(reachable);
 		},
-		[sharedMap, gameState?.characters, selectedTokenId, selectedTokenMovementRange, isHost, currentCharacterId, isPlayerTurn, getAvailableActions],
+		[
+			sharedMap,
+			gameState?.characters,
+			gameState?.activeTurn?.entityId,
+			selectedTokenId,
+			selectedTokenMovementRange,
+			isHost,
+			hostActingAsActiveCharacter,
+			currentCharacterId,
+			isPlayerTurn,
+			getAvailableActions,
+		],
 	);
 
 	const handleTokenLongPress = useCallback(
@@ -1416,6 +1437,35 @@ const MultiplayerGameScreen: React.FC = () => {
 	);
 
 	// Handle player action execution
+	const updateTurnUsage = useCallback(
+		async (
+			update: { movementUsed?: number; majorActionUsed?: boolean; minorActionUsed?: boolean },
+			actorEntityId?: string | null,
+		) => {
+			if (!inviteCode) {
+				return;
+			}
+			const entityId = actorEntityId ?? gameState?.activeTurn?.entityId;
+			if (!entityId) {
+				return;
+			}
+
+			try {
+				await multiplayerClient.updateTurnState(inviteCode, {
+					...update,
+					actorEntityId: entityId,
+				});
+			} catch (error) {
+				console.error('Failed to update turn state usage:', error);
+			}
+		},
+		[inviteCode, gameState?.activeTurn?.entityId],
+	);
+
+	const formatMovementValue = useCallback((value: number) => {
+		return Math.abs(value - Math.round(value)) < 0.01 ? Math.round(value).toString() : value.toFixed(1);
+	}, []);
+
 	const handlePlayerAction = useCallback(
 		async (action: PlayerAction, x: number, y: number) => {
 			if (!inviteCode || !sharedMap) return;
@@ -1450,6 +1500,13 @@ const MultiplayerGameScreen: React.FC = () => {
 				return;
 			}
 
+			const activeTurnForEntity = gameState?.activeTurn?.entityId === activeCharacterId ? gameState.activeTurn : null;
+			const totalMovementSpeed = totalMovementSpeedForActive;
+			const movementUsed = activeTurnForEntity?.movementUsed ?? 0;
+			const remainingMovement = Math.max(0, totalMovementSpeed - movementUsed);
+			const majorActionAvailable = !(activeTurnForEntity?.majorActionUsed ?? false);
+			const minorActionAvailable = !(activeTurnForEntity?.minorActionUsed ?? false);
+
 			try {
 				switch (action) {
 					case 'move': {
@@ -1471,23 +1528,14 @@ const MultiplayerGameScreen: React.FC = () => {
 							return;
 						}
 
-						// Get budget - check NPC metadata first, then character data
-						let budget = 0;
-						if (activeToken.type === 'npc' && activeToken.metadata) {
-							const npcActionPoints = (activeToken.metadata as Record<string, unknown>)?.actionPoints;
-							if (typeof npcActionPoints === 'number') {
-								budget = npcActionPoints;
-							}
-						}
+						console.log('[Movement] Budget check:', {
+							cost: pathResult.cost,
+							remainingMovement,
+							totalMovementSpeed,
+							movementUsed,
+						});
 
-						if (budget === 0) {
-							const character = gameState?.characters.find(c => c.id === activeCharacterId);
-							budget = character?.actionPoints ?? character?.maxActionPoints ?? 6;
-						}
-
-						console.log('[Movement] Budget check:', { cost: pathResult.cost, budget });
-
-						if (pathResult.cost > budget) {
+						if (pathResult.cost > remainingMovement) {
 							console.error('[Movement] Not enough movement points');
 							Alert.alert('Not enough movement', 'You need more movement points for that path.');
 							return;
@@ -1549,8 +1597,11 @@ const MultiplayerGameScreen: React.FC = () => {
 							await multiplayerClient.saveMapToken(inviteCode, tokenData);
 							console.log('[Movement] Token saved successfully');
 
+							const updatedMovementUsed = Math.min(totalMovementSpeed, movementUsed + pathResult.cost);
+
 							// Refresh map and game state to update action points
 							await refreshSharedMap();
+							await updateTurnUsage({ movementUsed: updatedMovementUsed }, activeCharacterId);
 							setTimeout(() => {
 								loadGameState();
 							}, 300);
@@ -1602,16 +1653,25 @@ const MultiplayerGameScreen: React.FC = () => {
 						break;
 					}
 					case 'cast_spell': {
+						if (!majorActionAvailable) {
+							Alert.alert('Major Action Used', 'You have already used your major action this turn.');
+							break;
+						}
 						// Open spell selector
 						setSelectedCharacterForAction(activeCharacterId);
 						setShowSpellActionSelector(true);
 						break;
 					}
 					case 'basic_attack': {
+						if (!majorActionAvailable) {
+							Alert.alert('Major Action Used', 'You have already used your major action this turn.');
+							break;
+						}
 						// Perform basic attack
 						if (activeCharacterId) {
 							try {
 								await multiplayerClient.performAction(inviteCode, activeCharacterId, 'basic_attack');
+								await updateTurnUsage({ majorActionUsed: true }, activeCharacterId);
 								setTimeout(() => {
 									loadGameState();
 								}, 500);
@@ -1624,9 +1684,13 @@ const MultiplayerGameScreen: React.FC = () => {
 						break;
 					}
 					case 'use_item': {
+						if (!minorActionAvailable) {
+							Alert.alert('Minor Action Used', 'You have already used your minor action this turn.');
+							break;
+						}
 						// Open item selector
 						Alert.alert('Use Item', 'Item selection coming soon');
-						// TODO: Open item selector
+						await updateTurnUsage({ minorActionUsed: true }, activeCharacterId);
 						break;
 					}
 					case 'disarm': {
@@ -1655,7 +1719,18 @@ const MultiplayerGameScreen: React.FC = () => {
 				setMovementInFlight(false);
 			}
 		},
-		[inviteCode, sharedMap, isPlayerTurn, isHost, currentCharacterId, gameState, refreshSharedMap, loadGameState],
+		[
+			inviteCode,
+			sharedMap,
+			isPlayerTurn,
+			isHost,
+			currentCharacterId,
+			gameState,
+			refreshSharedMap,
+			loadGameState,
+			updateTurnUsage,
+			totalMovementSpeedForActive,
+		],
 	);
 
 
@@ -1679,6 +1754,38 @@ const MultiplayerGameScreen: React.FC = () => {
 				<View style={styles.mapHeader}>
 					<ThemedText type="subtitle">Shared Map</ThemedText>
 				</View>
+				{(isPlayerTurn || isHost) && (
+					<View style={styles.turnResourceRow}>
+						<View style={styles.turnResourceBadge}>
+							<ThemedText style={styles.turnResourceLabel}>Movement</ThemedText>
+							<ThemedText style={styles.turnResourceValue}>
+								{formatMovementValue(movementUsedAmount)} / {formatMovementValue(totalMovementSpeedForActive)}
+							</ThemedText>
+						</View>
+						<View
+							style={[
+								styles.turnResourceBadge,
+								activeTurnForMovement?.majorActionUsed && styles.turnResourceBadgeUsed,
+							]}
+						>
+							<ThemedText style={styles.turnResourceLabel}>Major</ThemedText>
+							<ThemedText style={styles.turnResourceValue}>
+								{activeTurnForMovement?.majorActionUsed ? 'Used' : 'Ready'}
+							</ThemedText>
+						</View>
+						<View
+							style={[
+								styles.turnResourceBadge,
+								activeTurnForMovement?.minorActionUsed && styles.turnResourceBadgeUsed,
+							]}
+						>
+							<ThemedText style={styles.turnResourceLabel}>Minor</ThemedText>
+							<ThemedText style={styles.turnResourceValue}>
+								{activeTurnForMovement?.minorActionUsed ? 'Used' : 'Ready'}
+							</ThemedText>
+						</View>
+					</View>
+				)}
 				{gameState?.pausedTurn && (
 					<View style={styles.pausedIndicator}>
 						<ThemedText style={styles.pausedText}>⏸️ Turn Paused - DM Action</ThemedText>
@@ -1888,7 +1995,7 @@ const MultiplayerGameScreen: React.FC = () => {
 				<View style={styles.statusRight}>
 					{currentTurnName && (
 						<ThemedText style={styles.turnIndicator}>
-							{isPlayerTurn ? '🟢 Your Turn' : `Turn: ${currentTurnName}`}
+							{isPlayerTurn && !isHost ? '🟢 Your Turn' : `🟢 ${currentTurnName}'s Turn`}
 						</ThemedText>
 					)}
 					{__DEV__ && gameState?.activeTurn && (
@@ -2279,11 +2386,32 @@ const MultiplayerGameScreen: React.FC = () => {
 					const characterId = selectedCharacterForAction || currentCharacterId;
 					if (!characterId) return;
 
+					const isActiveEntity = gameState?.activeTurn?.entityId === characterId;
+					if (isActiveEntity) {
+						const majorActionAlreadyUsed = gameState?.activeTurn?.majorActionUsed ?? false;
+						const minorActionAlreadyUsed = gameState?.activeTurn?.minorActionUsed ?? false;
+
+						if ((action.type === 'cast_spell' || action.type === 'basic_attack') && majorActionAlreadyUsed) {
+							Alert.alert('Major Action Used', 'You have already used your major action this turn.');
+							return;
+						}
+
+						if ((action.type === 'heal_potion' || action.type === 'use_item') && minorActionAlreadyUsed) {
+							Alert.alert('Minor Action Used', 'You have already used your minor action this turn.');
+							return;
+						}
+					}
+
 					try {
 						if (action.type === 'cast_spell') {
 							await multiplayerClient.castSpell(inviteCode, characterId, action.name);
 						} else {
 							await multiplayerClient.performAction(inviteCode, characterId, action.type);
+						}
+						if (action.type === 'cast_spell' || action.type === 'basic_attack') {
+							await updateTurnUsage({ majorActionUsed: true }, characterId);
+						} else if (action.type === 'heal_potion' || action.type === 'use_item') {
+							await updateTurnUsage({ minorActionUsed: true }, characterId);
 						}
 						setTimeout(() => {
 							loadGameState();
@@ -2550,6 +2678,33 @@ const styles = StyleSheet.create({
 		justifyContent: 'space-between',
 		alignItems: 'center',
 		gap: 8,
+	},
+	turnResourceRow: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 8,
+	},
+	turnResourceBadge: {
+		flexDirection: 'column',
+		backgroundColor: '#FFF3CD',
+		borderRadius: 8,
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		borderWidth: 1,
+		borderColor: '#F0C36D',
+	},
+	turnResourceBadgeUsed: {
+		opacity: 0.6,
+	},
+	turnResourceLabel: {
+		fontSize: 12,
+		color: '#6B4F1D',
+		textTransform: 'uppercase',
+	},
+	turnResourceValue: {
+		fontSize: 14,
+		fontWeight: '700',
+		color: '#2F1B0C',
 	},
 	movementButton: {
 		backgroundColor: '#E6DDC6',

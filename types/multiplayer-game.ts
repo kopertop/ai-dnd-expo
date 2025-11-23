@@ -48,6 +48,10 @@ export const MultiplayerGameStateSchema = GameStateSchema.extend({
 			entityId: z.string(),
 			turnNumber: z.number().int(),
 			startedAt: z.number(),
+			movementUsed: z.number().min(0).default(0),
+			majorActionUsed: z.boolean().default(false),
+			minorActionUsed: z.boolean().default(false),
+			speed: z.number().min(0).optional(),
 		})
 		.nullable()
 		.optional(),

@@ -304,6 +304,16 @@ export class MultiplayerClient {
 		});
 	}
 
+	async updateTurnState(
+		inviteCode: string,
+		request: { movementUsed?: number; majorActionUsed?: boolean; minorActionUsed?: boolean; actorEntityId?: string },
+	): Promise<MultiplayerGameState> {
+		return apiService.fetchApi(`/games/${inviteCode}/turn/update`, {
+			method: 'POST',
+			body: JSON.stringify(request),
+		});
+	}
+
 	async startTurn(
 		inviteCode: string,
 		request: { turnType: 'player' | 'npc' | 'dm'; entityId: string },

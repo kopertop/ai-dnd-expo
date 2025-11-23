@@ -1,3 +1,4 @@
+import { getRaceBaseSpeed } from '@/constants/race-speed';
 import { RaceOption } from '@/types/race-option';
 
 export const RACES: RaceOption[] = [
@@ -7,6 +8,7 @@ export const RACES: RaceOption[] = [
 		description: 'Versatile and ambitious, humans are found throughout the world.',
 		image: require('../assets/images/races/human.png'),
 		statBonuses: { STR: 1, DEX: 1, CON: 1, INT: 1, WIS: 1, CHA: 1 },
+		speed: getRaceBaseSpeed('human'),
 	},
 	{
 		id: 'elf',
@@ -14,6 +16,7 @@ export const RACES: RaceOption[] = [
 		description: 'Graceful, swift, and attuned to nature and magic.',
 		image: require('../assets/images/races/elf.png'),
 		statBonuses: { DEX: 2 },
+		speed: getRaceBaseSpeed('elf'),
 	},
 	{
 		id: 'dwarf',
@@ -21,6 +24,7 @@ export const RACES: RaceOption[] = [
 		description: 'Stout, hardy, and strong, dwarves are known for their resilience.',
 		image: require('../assets/images/races/dwarf.png'),
 		statBonuses: { CON: 2 },
+		speed: getRaceBaseSpeed('dwarf'),
 	},
 	{
 		id: 'dragonborn',
@@ -28,6 +32,7 @@ export const RACES: RaceOption[] = [
 		description: 'Proud, honorable warriors with draconic ancestry.',
 		image: require('../assets/images/races/dragonborn.png'),
 		statBonuses: { STR: 2, CHA: 1 },
+		speed: getRaceBaseSpeed('dragonborn'),
 	},
 	{
 		id: 'tiefling',
@@ -35,6 +40,7 @@ export const RACES: RaceOption[] = [
 		description: 'Descendants of infernal pacts, marked by horns and tails.',
 		image: require('../assets/images/races/tiefling.png'),
 		statBonuses: { CHA: 2, INT: 1 },
+		speed: getRaceBaseSpeed('tiefling'),
 	},
 	{
 		id: 'halfling',
@@ -42,6 +48,7 @@ export const RACES: RaceOption[] = [
 		description: 'Small, nimble, and lucky, halflings are cheerful wanderers.',
 		image: require('../assets/images/races/halfling.png'),
 		statBonuses: { DEX: 2 },
+		speed: getRaceBaseSpeed('halfling'),
 	},
 	{
 		id: 'half-elf',
@@ -49,6 +56,7 @@ export const RACES: RaceOption[] = [
 		description: 'Blending human versatility and elven grace.',
 		image: require('../assets/images/races/half-elf.png'),
 		statBonuses: { CHA: 2, DEX: 1, CON: 1 },
+		speed: getRaceBaseSpeed('half-elf'),
 	},
 	{
 		id: 'half-orc',
@@ -56,6 +64,7 @@ export const RACES: RaceOption[] = [
 		description: 'Strong and fierce, half-orcs are often misunderstood.',
 		image: require('../assets/images/races/half-orc.png'),
 		statBonuses: { STR: 2, CON: 1 },
+		speed: getRaceBaseSpeed('half-orc'),
 	},
 	{
 		id: 'gnome',
@@ -63,6 +72,7 @@ export const RACES: RaceOption[] = [
 		description: 'Inventive and magical, gnomes are clever tricksters.',
 		image: require('../assets/images/races/gnome.png'),
 		statBonuses: { INT: 2 },
+		speed: getRaceBaseSpeed('gnome'),
 	},
 	{
 		id: 'eladrin',
@@ -70,6 +80,7 @@ export const RACES: RaceOption[] = [
 		description: 'Fey-touched elves with strong ties to the arcane.',
 		image: require('../assets/images/races/eladrin.png'),
 		statBonuses: { DEX: 2, CHA: 1 },
+		speed: getRaceBaseSpeed('eladrin'),
 	},
 	{
 		id: 'custom',
@@ -77,6 +88,7 @@ export const RACES: RaceOption[] = [
 		description: 'Create your own race! Name and describe your unique ancestry.',
 		image: require('../assets/images/custom.png'),
 		isCustom: true,
+		speed: getRaceBaseSpeed('custom'),
 	},
 ];
 
