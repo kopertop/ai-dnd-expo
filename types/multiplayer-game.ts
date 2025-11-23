@@ -57,6 +57,8 @@ export const MultiplayerGameStateSchema = GameStateSchema.extend({
 				entityId: z.string(),
 				initiative: z.number(),
 				type: z.enum(['player', 'npc']),
+				roll: z.number().optional(),
+				dexMod: z.number().optional(),
 			}),
 		)
 		.optional(),

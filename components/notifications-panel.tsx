@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+	Alert,
 	Animated,
 	Modal,
+	Platform,
 	ScrollView,
 	StyleSheet,
 	TouchableOpacity,
@@ -11,6 +13,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { multiplayerClient } from '@/services/api/multiplayer-client';
+import { ActivityLog } from '@/types/api/multiplayer-api';
 
 interface GameMessage {
 	id: string;
@@ -24,6 +28,8 @@ interface NotificationsPanelProps {
 	visible: boolean;
 	onClose: () => void;
 	unreadCount?: number;
+	inviteCode?: string;
+	isHost?: boolean;
 }
 
 export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
@@ -31,9 +37,14 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
 	visible,
 	onClose,
 	unreadCount = 0,
+	inviteCode,
+	isHost = false,
 }) => {
 	const insets = useSafeAreaInsets();
 	const slideAnim = React.useRef(new Animated.Value(0)).current;
+	const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+	const [loadingLogs, setLoadingLogs] = useState(false);
+	const [clearingLogs, setClearingLogs] = useState(false);
 
 	React.useEffect(() => {
 		if (visible) {
@@ -52,6 +63,50 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
 			}).start();
 		}
 	}, [visible, slideAnim]);
+
+	// Fetch activity logs when panel opens
+	const fetchLogs = React.useCallback(() => {
+		if (inviteCode) {
+			setLoadingLogs(true);
+			multiplayerClient
+				.getActivityLogs(inviteCode, 100, 0)
+				.then(response => {
+					setActivityLogs(response.logs || []);
+					setLoadingLogs(false);
+				})
+				.catch(error => {
+					console.error('Failed to fetch activity logs:', error);
+					setLoadingLogs(false);
+				});
+		}
+	}, [inviteCode]);
+
+	useEffect(() => {
+		if (visible && inviteCode) {
+			fetchLogs();
+		}
+	}, [visible, inviteCode, fetchLogs]);
+
+	const handleClearLogs = React.useCallback(async () => {
+		console.log('[Activity Log] Clear logs called', { isHost, inviteCode });
+		if (!isHost || !inviteCode) {
+			console.warn('[Activity Log] Cannot clear - not host or no invite code');
+			return;
+		}
+		
+		setClearingLogs(true);
+		try {
+			console.log('[Activity Log] Calling clearActivityLogs API');
+			await multiplayerClient.clearActivityLogs(inviteCode);
+			console.log('[Activity Log] Successfully cleared logs');
+			setActivityLogs([]);
+		} catch (error) {
+			console.error('[Activity Log] Failed to clear activity logs:', error);
+			Alert.alert('Error', error instanceof Error ? error.message : 'Failed to clear activity logs');
+		} finally {
+			setClearingLogs(false);
+		}
+	}, [isHost, inviteCode]);
 
 	const translateX = slideAnim.interpolate({
 		inputRange: [0, 1],
@@ -80,38 +135,119 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
 						},
 					]}
 				>
-					<TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+					<TouchableOpacity 
+						activeOpacity={1} 
+						onPress={(e) => e.stopPropagation()}
+						style={styles.touchableContent}
+					>
 						<ThemedView style={styles.panelContent}>
 							<View style={styles.header}>
 								<ThemedText type="subtitle">Activity Log</ThemedText>
-								{unreadCount > 0 && (
-									<View style={styles.badge}>
-										<ThemedText style={styles.badgeText}>{unreadCount}</ThemedText>
-									</View>
-								)}
-								<TouchableOpacity style={styles.closeButton} onPress={onClose}>
-									<ThemedText style={styles.closeButtonText}>✕</ThemedText>
-								</TouchableOpacity>
+								<View style={styles.headerRight}>
+									{unreadCount > 0 && (
+										<View style={styles.badge}>
+											<ThemedText style={styles.badgeText}>{unreadCount}</ThemedText>
+										</View>
+									)}
+									{isHost && activityLogs.length > 0 && (
+										<TouchableOpacity
+											style={[styles.clearButton, clearingLogs && styles.clearButtonDisabled]}
+											onPress={() => {
+												console.log('[Activity Log] Clear button pressed', { isHost, inviteCode, logsCount: activityLogs.length });
+												
+												if (Platform.OS === 'web') {
+													const confirmed = window.confirm(
+														'Are you sure you want to clear all activity logs? This cannot be undone.'
+													);
+													if (confirmed) {
+														console.log('[Activity Log] Clear confirmed (web), calling handleClearLogs');
+														handleClearLogs();
+													} else {
+														console.log('[Activity Log] Clear cancelled (web)');
+													}
+													return;
+												}
+												
+												Alert.alert(
+													'Clear Activity Log',
+													'Are you sure you want to clear all activity logs? This cannot be undone.',
+													[
+														{ 
+															text: 'Cancel', 
+															style: 'cancel',
+															onPress: () => console.log('[Activity Log] Clear cancelled'),
+														},
+														{ 
+															text: 'Clear', 
+															style: 'destructive', 
+															onPress: () => {
+																console.log('[Activity Log] Clear confirmed, calling handleClearLogs');
+																handleClearLogs();
+															},
+														},
+													]
+												);
+											}}
+											disabled={clearingLogs}
+										>
+											<ThemedText style={styles.clearButtonText}>
+												{clearingLogs ? 'Clearing...' : 'Clear'}
+											</ThemedText>
+										</TouchableOpacity>
+									)}
+									<TouchableOpacity style={styles.closeButton} onPress={onClose}>
+										<ThemedText style={styles.closeButtonText}>✕</ThemedText>
+									</TouchableOpacity>
+								</View>
 							</View>
-							<ScrollView style={styles.scrollView} showsVerticalScrollIndicator={true}>
-								{messages.length === 0 ? (
+							<ScrollView 
+								style={styles.scrollView} 
+								contentContainerStyle={styles.scrollContent}
+								showsVerticalScrollIndicator={true}
+							>
+								{loadingLogs ? (
+									<View style={styles.emptyState}>
+										<ThemedText style={styles.emptyText}>Loading activity logs...</ThemedText>
+									</View>
+								) : activityLogs.length === 0 && messages.length === 0 ? (
 									<View style={styles.emptyState}>
 										<ThemedText style={styles.emptyText}>No activity yet</ThemedText>
 									</View>
 								) : (
-									messages.slice().reverse().map(message => (
-										<View key={message.id} style={styles.messageItem}>
-											<ThemedText style={styles.messageContent}>{message.content}</ThemedText>
-											<View style={styles.messageMeta}>
-												{message.speaker && (
-													<ThemedText style={styles.messageSpeaker}>{message.speaker}</ThemedText>
-												)}
-												<ThemedText style={styles.messageTime}>
-													{new Date(message.timestamp).toLocaleTimeString()}
-												</ThemedText>
+									<>
+										{activityLogs.map(log => {
+											const logData = log.data ? JSON.parse(log.data) : null;
+											return (
+												<View key={log.id} style={styles.messageItem}>
+													<ThemedText style={styles.messageContent}>{log.description}</ThemedText>
+													<View style={styles.messageMeta}>
+														{log.actor_name && (
+															<ThemedText style={styles.messageSpeaker}>{log.actor_name}</ThemedText>
+														)}
+														<ThemedText style={styles.messageTime}>
+															{new Date(log.timestamp).toLocaleTimeString()}
+														</ThemedText>
+													</View>
+													{log.type && (
+														<ThemedText style={styles.logType}>Type: {log.type}</ThemedText>
+													)}
+												</View>
+											);
+										})}
+										{messages.slice().reverse().map(message => (
+											<View key={message.id} style={styles.messageItem}>
+												<ThemedText style={styles.messageContent}>{message.content}</ThemedText>
+												<View style={styles.messageMeta}>
+													{message.speaker && (
+														<ThemedText style={styles.messageSpeaker}>{message.speaker}</ThemedText>
+													)}
+													<ThemedText style={styles.messageTime}>
+														{new Date(message.timestamp).toLocaleTimeString()}
+													</ThemedText>
+												</View>
 											</View>
-										</View>
-									))
+										))}
+									</>
 								)}
 							</ScrollView>
 						</ThemedView>
@@ -135,11 +271,15 @@ const styles = StyleSheet.create({
 		width: 350,
 		zIndex: 1000,
 	},
+	touchableContent: {
+		flex: 1,
+	},
 	panelContent: {
 		flex: 1,
 		backgroundColor: '#FFF9EF',
 		borderLeftWidth: 1,
 		borderLeftColor: '#C9B037',
+		height: '100%',
 	},
 	header: {
 		flexDirection: 'row',
@@ -149,6 +289,11 @@ const styles = StyleSheet.create({
 		paddingVertical: 12,
 		borderBottomWidth: 1,
 		borderBottomColor: '#E2D3B3',
+		gap: 8,
+	},
+	headerRight: {
+		flexDirection: 'row',
+		alignItems: 'center',
 		gap: 8,
 	},
 	badge: {
@@ -175,6 +320,24 @@ const styles = StyleSheet.create({
 	},
 	scrollView: {
 		flex: 1,
+	},
+	scrollContent: {
+		flexGrow: 1,
+		paddingBottom: 16,
+	},
+	clearButton: {
+		backgroundColor: '#DC2626',
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		borderRadius: 6,
+	},
+	clearButtonDisabled: {
+		opacity: 0.5,
+	},
+	clearButtonText: {
+		color: '#FFFFFF',
+		fontSize: 12,
+		fontWeight: '600',
 	},
 	emptyState: {
 		padding: 32,
@@ -210,6 +373,12 @@ const styles = StyleSheet.create({
 	messageTime: {
 		fontSize: 11,
 		color: '#6B5B3D',
+	},
+	logType: {
+		fontSize: 11,
+		color: '#8B6914',
+		fontStyle: 'italic',
+		marginTop: 4,
 	},
 });
 

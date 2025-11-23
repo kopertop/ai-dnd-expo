@@ -294,3 +294,24 @@ export type MapState = z.infer<typeof MapStateSchema>;
 export type MapTile = z.infer<typeof MapTileSchema>;
 export type MapToken = z.infer<typeof MapTokenSchema>;
 export type NpcDefinition = z.infer<typeof NpcDefinitionSchema>;
+
+// Activity log types
+export const ActivityLogSchema = z.object({
+	id: z.string(),
+	game_id: z.string(),
+	invite_code: z.string(),
+	type: z.string(),
+	timestamp: z.number(),
+	description: z.string(),
+	actor_id: z.string().nullable(),
+	actor_name: z.string().nullable(),
+	data: z.string().nullable(),
+	created_at: z.number(),
+});
+
+export const ActivityLogListResponseSchema = z.object({
+	logs: z.array(ActivityLogSchema),
+});
+
+export type ActivityLog = z.infer<typeof ActivityLogSchema>;
+export type ActivityLogListResponse = z.infer<typeof ActivityLogListResponseSchema>;

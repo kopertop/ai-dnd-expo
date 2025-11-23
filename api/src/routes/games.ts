@@ -1355,49 +1355,28 @@ games.post('/:inviteCode/characters/:characterId/actions', async (c) => {
 	const updatedActionPoints = character.actionPoints - actionPointCost;
 	await db.updateCharacter(characterId, { actionPoints: updatedActionPoints });
 
-	// Log the action
-	const sessionStub = getSessionStub(c.env, inviteCode);
-	const activityEntry = {
-		type: 'action' as const,
-		timestamp: Date.now(),
-		description: `${character.name} performed ${body.actionType}${body.spellName ? `: ${body.spellName}` : ''}`,
-		data: {
-			characterId,
-			actionType: body.actionType,
-			spellName: body.spellName,
-			targetId: body.targetId,
-			itemId: body.itemId,
-			params: body.params,
-		},
-	};
-
-	// Update game state activity log via durable object
+	// Log the action to database
 	try {
-		await sessionStub.fetch(
-			buildDurableRequest(c.req.raw, '/state'),
-		).then(async (response) => {
-			if (response.ok) {
-				const session = await response.json() as { gameState?: MultiplayerGameState };
-				if (session.gameState) {
-					const updatedGameState = {
-						...session.gameState,
-						activityLog: [...(session.gameState.activityLog || []), activityEntry],
-					};
-					await sessionStub.fetch(
-						buildDurableRequest(c.req.raw, '/start', {
-							method: 'POST',
-							headers: { 'Content-Type': 'application/json' },
-							body: JSON.stringify({
-								hostId: game.host_id,
-								gameState: updatedGameState,
-							}),
-						}),
-					);
-				}
-			}
+		await db.saveActivityLog({
+			id: createId('log'),
+			game_id: game.id,
+			invite_code: inviteCode,
+			type: 'action',
+			timestamp: Date.now(),
+			description: `${character.name} performed ${body.actionType}${body.spellName ? `: ${body.spellName}` : ''}`,
+			actor_id: user.id,
+			actor_name: user.name || user.email || null,
+			data: JSON.stringify({
+				characterId,
+				actionType: body.actionType,
+				spellName: body.spellName,
+				targetId: body.targetId,
+				itemId: body.itemId,
+				params: body.params,
+			}),
 		});
 	} catch (error) {
-		console.error('Failed to update activity log:', error);
+		console.error('Failed to log action:', error);
 		// Continue anyway - action was successful
 	}
 
@@ -1541,7 +1520,114 @@ games.post('/:inviteCode/initiative/roll', async (c) => {
 		return jsonWithStatus(c, { error: 'Failed to roll initiative', details }, response.status);
 	}
 
-	return jsonWithStatus(c, await response.json(), response.status);
+	const gameState = await response.json() as MultiplayerGameState;
+	
+	// Log detailed initiative roll to database
+	try {
+		if (gameState.initiativeOrder && gameState.initiativeOrder.length > 0) {
+			// Get NPC tokens for name lookup
+			const npcTokens = await db.listMapTokensForGame(game.id);
+			
+			// Build detailed initiative roll descriptions
+			const rollDetails = gameState.initiativeOrder.map((entry, index) => {
+				let name = 'Unknown';
+				let rollInfo = '';
+				
+				if (entry.type === 'player') {
+					const character = validCharacters.find(c => c.id === entry.entityId);
+					name = character?.name || 'Unknown';
+					// Get roll details from the entry if available (roll and dexMod)
+					const roll = entry.roll;
+					const dexMod = entry.dexMod;
+					if (roll !== undefined && dexMod !== undefined) {
+						rollInfo = ` (d20: ${roll}${dexMod >= 0 ? '+' : ''}${dexMod} = ${entry.initiative})`;
+					} else {
+						rollInfo = ` (Total: ${entry.initiative})`;
+					}
+				} else {
+					// NPC
+					const token = npcTokens.find(t => t.id === entry.entityId);
+					name = token?.label || 'Unknown NPC';
+					const roll = entry.roll;
+					const dexMod = entry.dexMod;
+					if (roll !== undefined && dexMod !== undefined) {
+						rollInfo = ` (d20: ${roll}${dexMod >= 0 ? '+' : ''}${dexMod} = ${entry.initiative})`;
+					} else {
+						rollInfo = ` (Total: ${entry.initiative})`;
+					}
+				}
+				
+				return `${index + 1}. ${name}: ${entry.initiative}${rollInfo}`;
+			});
+			
+			const firstEntity = gameState.initiativeOrder[0];
+			let firstName = 'Unknown';
+			if (firstEntity.type === 'player') {
+				const character = validCharacters.find(c => c.id === firstEntity.entityId);
+				firstName = character?.name || 'Unknown';
+			} else {
+				const token = npcTokens.find(t => t.id === firstEntity.entityId);
+				firstName = token?.label || 'Unknown NPC';
+			}
+			
+			await db.saveActivityLog({
+				id: createId('log'),
+				game_id: game.id,
+				invite_code: inviteCode,
+				type: 'initiative_roll',
+				timestamp: Date.now(),
+				description: `Initiative rolled. ${firstName} goes first.`,
+				actor_id: user.id,
+				actor_name: user.name || user.email || null,
+				data: JSON.stringify({
+					initiativeOrder: gameState.initiativeOrder,
+					rollDetails: rollDetails,
+					activeTurn: gameState.activeTurn,
+				}),
+			});
+			
+			// Also log individual rolls for each character
+			for (const entry of gameState.initiativeOrder) {
+				let name = 'Unknown';
+				if (entry.type === 'player') {
+					const character = validCharacters.find(c => c.id === entry.entityId);
+					name = character?.name || 'Unknown';
+				} else {
+					const token = npcTokens.find(t => t.id === entry.entityId);
+					name = token?.label || 'Unknown NPC';
+				}
+				
+				const roll = entry.roll;
+				const dexMod = entry.dexMod;
+				const rollDescription = roll !== undefined && dexMod !== undefined
+					? `${name} rolled ${roll}${dexMod >= 0 ? '+' : ''}${dexMod} = ${entry.initiative} for initiative`
+					: `${name} has initiative ${entry.initiative}`;
+				
+				await db.saveActivityLog({
+					id: createId('log'),
+					game_id: game.id,
+					invite_code: inviteCode,
+					type: 'initiative_roll_individual',
+					timestamp: Date.now(),
+					description: rollDescription,
+					actor_id: user.id,
+					actor_name: user.name || user.email || null,
+					data: JSON.stringify({
+						entityId: entry.entityId,
+						entityType: entry.type,
+						initiative: entry.initiative,
+						roll: roll,
+						dexMod: dexMod,
+					}),
+				});
+			}
+		}
+	} catch (error) {
+		console.error('Failed to log initiative roll:', error);
+		// Continue anyway
+	}
+
+	return jsonWithStatus(c, gameState, response.status);
 });
 
 games.post('/:inviteCode/turn/interrupt', async (c) => {
@@ -1636,7 +1722,33 @@ games.post('/:inviteCode/turn/end', async (c) => {
 		return jsonWithStatus(c, { error: 'Failed to end turn', details }, response.status);
 	}
 
-	return jsonWithStatus(c, await response.json(), response.status);
+	const gameState = await response.json() as MultiplayerGameState;
+	
+	// Log turn end to database
+	try {
+		const currentTurn = gameState.activeTurn;
+		const characterName = gameState.characters.find(c => c.id === currentTurn?.entityId)?.name || 'Unknown';
+		await db.saveActivityLog({
+			id: createId('log'),
+			game_id: game.id,
+			invite_code: inviteCode,
+			type: 'turn_end',
+			timestamp: Date.now(),
+			description: `${characterName} ended their turn`,
+			actor_id: user.id,
+			actor_name: user.name || user.email || null,
+			data: JSON.stringify({
+				entityId: currentTurn?.entityId,
+				entityType: currentTurn?.type,
+				turnNumber: currentTurn?.turnNumber,
+			}),
+		});
+	} catch (error) {
+		console.error('Failed to log turn end:', error);
+		// Continue anyway
+	}
+
+	return jsonWithStatus(c, gameState, response.status);
 });
 
 games.post('/:inviteCode/turn/start', async (c) => {
@@ -1676,7 +1788,35 @@ games.post('/:inviteCode/turn/start', async (c) => {
 		return jsonWithStatus(c, { error: 'Failed to start turn', details }, response.status);
 	}
 
-	return jsonWithStatus(c, await response.json(), response.status);
+	const gameState = await response.json() as MultiplayerGameState;
+	
+	// Log turn start to database
+	try {
+		const characterName = body.turnType === 'player'
+			? gameState.characters.find(c => c.id === body.entityId)?.name
+			: gameState.initiativeOrder?.find(e => e.entityId === body.entityId) 
+				? 'NPC'
+				: 'Unknown';
+		await db.saveActivityLog({
+			id: createId('log'),
+			game_id: game.id,
+			invite_code: inviteCode,
+			type: 'turn_start',
+			timestamp: Date.now(),
+			description: `${characterName || 'Character'} started their turn`,
+			actor_id: user.id,
+			actor_name: user.name || user.email || null,
+			data: JSON.stringify({
+				entityId: body.entityId,
+				entityType: body.turnType,
+			}),
+		});
+	} catch (error) {
+		console.error('Failed to log turn start:', error);
+		// Continue anyway
+	}
+
+	return jsonWithStatus(c, gameState, response.status);
 });
 
 games.post('/:inviteCode/turn/next', async (c) => {
@@ -1709,7 +1849,33 @@ games.post('/:inviteCode/turn/next', async (c) => {
 		return jsonWithStatus(c, { error: 'Failed to skip to next turn', details }, response.status);
 	}
 
-	return jsonWithStatus(c, await response.json(), response.status);
+	const gameState = await response.json() as MultiplayerGameState;
+	
+	// Log turn skip to database
+	try {
+		const currentTurn = gameState.activeTurn;
+		const characterName = gameState.characters.find(c => c.id === currentTurn?.entityId)?.name || 'Unknown';
+		await db.saveActivityLog({
+			id: createId('log'),
+			game_id: game.id,
+			invite_code: inviteCode,
+			type: 'turn_skip',
+			timestamp: Date.now(),
+			description: `DM skipped to ${characterName}'s turn`,
+			actor_id: user.id,
+			actor_name: user.name || user.email || null,
+			data: JSON.stringify({
+				entityId: currentTurn?.entityId,
+				entityType: currentTurn?.type,
+				turnNumber: currentTurn?.turnNumber,
+			}),
+		});
+	} catch (error) {
+		console.error('Failed to log turn skip:', error);
+		// Continue anyway
+	}
+
+	return jsonWithStatus(c, gameState, response.status);
 });
 
 games.post('/:inviteCode/dice/roll', async (c) => {
@@ -1747,12 +1913,149 @@ games.post('/:inviteCode/dice/roll', async (c) => {
 		return jsonWithStatus(c, { error: 'Failed to roll dice', details }, response.status);
 	}
 
-	return jsonWithStatus(c, await response.json(), response.status);
+	const rollResult = await response.json() as { notation: string; total: number; rolls: number[]; breakdown: string };
+	
+	// Log dice roll to database
+	try {
+		await db.saveActivityLog({
+			id: createId('log'),
+			game_id: game.id,
+			invite_code: inviteCode,
+			type: 'dice_roll',
+			timestamp: Date.now(),
+			description: `${user.name || 'Player'} rolled ${body.notation}${body.purpose ? ` for ${body.purpose}` : ''}: ${rollResult.total}`,
+			actor_id: user.id,
+			actor_name: user.name || user.email || null,
+			data: JSON.stringify({
+				notation: body.notation,
+				purpose: body.purpose,
+				total: rollResult.total,
+				rolls: rollResult.rolls,
+				breakdown: rollResult.breakdown,
+				advantage: body.advantage,
+				disadvantage: body.disadvantage,
+			}),
+		});
+	} catch (error) {
+		console.error('Failed to log dice roll:', error);
+		// Continue anyway
+	}
+
+	return jsonWithStatus(c, rollResult, response.status);
 });
 
 games.get('/:inviteCode/ws', async (c) => {
 	const sessionStub = getSessionStub(c.env, c.req.param('inviteCode'));
 	return sessionStub.fetch(c.req.raw);
+});
+
+// Activity log routes
+games.get('/:inviteCode/log', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	// Check if user is part of the game (host or player)
+	const isHost = isHostUser(game, user);
+	const isPlayer = await db.getGamePlayers(game.id).then(players =>
+		players.some(p => p.player_id === user.id)
+	);
+
+	if (!isHost && !isPlayer) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const limit = parseInt(c.req.query('limit') || '100', 10);
+	const offset = parseInt(c.req.query('offset') || '0', 10);
+
+	const logs = await db.getActivityLogs(inviteCode, limit, offset);
+	return c.json({ logs });
+});
+
+games.post('/:inviteCode/log', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	// Check if user is part of the game (host or player)
+	const isHost = isHostUser(game, user);
+	const isPlayer = await db.getGamePlayers(game.id).then(players =>
+		players.some(p => p.player_id === user.id)
+	);
+
+	if (!isHost && !isPlayer) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const body = (await c.req.json()) as {
+		type: string;
+		description: string;
+		data?: Record<string, unknown>;
+		actorId?: string;
+		actorName?: string;
+	};
+
+	if (!body.type || !body.description) {
+		return c.json({ error: 'type and description are required' }, 400);
+	}
+
+	const logId = createId('log');
+	await db.saveActivityLog({
+		id: logId,
+		game_id: game.id,
+		invite_code: inviteCode,
+		type: body.type,
+		timestamp: Date.now(),
+		description: body.description,
+		actor_id: body.actorId || user.id,
+		actor_name: body.actorName || user.name || user.email || null,
+		data: body.data ? JSON.stringify(body.data) : null,
+	});
+
+	return c.json({ id: logId, success: true });
+});
+
+games.delete('/:inviteCode/log', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	// Only host can clear activity logs
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	// Delete all activity logs for this game
+	await db.deleteActivityLogs(game.id);
+
+	return c.json({ success: true });
 });
 
 export default games;

@@ -70,6 +70,8 @@ export interface MultiplayerGameState {
 		entityId: string;
 		initiative: number;
 		type: 'player' | 'npc';
+		roll?: number;
+		dexMod?: number;
 	}>;
 	pausedTurn?: {
 		type: 'player' | 'npc' | 'dm';

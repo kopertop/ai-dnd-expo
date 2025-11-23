@@ -262,7 +262,7 @@ export class GameSession {
 			npcs: Array<{ id: string; stats?: { DEX: number }; entityId: string }>;
 		};
 
-		const initiativeEntries: Array<{ entityId: string; initiative: number; type: 'player' | 'npc'; dex: number }> = [];
+		const initiativeEntries: Array<{ entityId: string; initiative: number; type: 'player' | 'npc'; dex: number; roll: number; dexMod: number }> = [];
 
 		// Roll for characters
 		for (const char of payload.characters || []) {
@@ -275,6 +275,8 @@ export class GameSession {
 				initiative,
 				type: 'player',
 				dex,
+				roll,
+				dexMod,
 			});
 		}
 
@@ -289,6 +291,8 @@ export class GameSession {
 				initiative,
 				type: 'npc',
 				dex,
+				roll,
+				dexMod,
 			});
 		}
 
@@ -300,10 +304,12 @@ export class GameSession {
 			return b.dex - a.dex;
 		});
 
-		const initiativeOrder = initiativeEntries.map(({ entityId, initiative, type }) => ({
+		const initiativeOrder = initiativeEntries.map(({ entityId, initiative, type, roll, dexMod }) => ({
 			entityId,
 			initiative,
 			type,
+			roll,
+			dexMod,
 		}));
 
 		// Set first entity as active turn
@@ -332,7 +338,7 @@ export class GameSession {
 		};
 
 		await this.storage.put(SESSION_KEY, updated);
-		return json({ initiativeOrder, activeTurn });
+		return json(updatedGameState);
 	}
 
 	private async handleInterruptTurn(request: Request): Promise<Response> {
@@ -461,7 +467,7 @@ export class GameSession {
 		};
 
 		await this.storage.put(SESSION_KEY, updated);
-		return json({ activeTurn });
+		return json(updatedGameState);
 	}
 
 	private async handleStartTurn(request: Request): Promise<Response> {
@@ -513,7 +519,7 @@ export class GameSession {
 		};
 
 		await this.storage.put(SESSION_KEY, updated);
-		return json({ activeTurn });
+		return json(updatedGameState);
 	}
 
 	private async handleNextTurn(request: Request): Promise<Response> {

@@ -102,14 +102,36 @@ const MultiplayerGameScreen: React.FC = () => {
 	}, [gameState?.characters, currentCharacterId]);
 
 	const isPlayerTurn = useMemo(() => {
+		if (__DEV__) {
+			console.log('[Turn Debug] Full State:', {
+				hasGameState: !!gameState,
+				hasActiveTurn: !!gameState?.activeTurn,
+				hasCurrentCharacterId: !!currentCharacterId,
+				activeTurn: gameState?.activeTurn,
+				currentCharacterId,
+				playerId,
+				allPlayers: gameState?.players?.map(p => ({ playerId: p.playerId, characterId: p.characterId })),
+				initiativeOrder: gameState?.initiativeOrder,
+			});
+		}
 		if (!gameState?.activeTurn || !currentCharacterId) {
 			return false;
 		}
-		return (
+		const isTurn = (
 			gameState.activeTurn.type === 'player' &&
-                        gameState.activeTurn.entityId === currentCharacterId
+			gameState.activeTurn.entityId === currentCharacterId
 		);
-	}, [gameState?.activeTurn, currentCharacterId]);
+		if (__DEV__) {
+			console.log('[Turn Debug] Turn Check:', {
+				activeTurnEntityId: gameState.activeTurn.entityId,
+				currentCharacterId,
+				match: gameState.activeTurn.entityId === currentCharacterId,
+				isTurn,
+				activeTurnType: gameState.activeTurn.type,
+			});
+		}
+		return isTurn;
+	}, [gameState, currentCharacterId, playerId]);
 
 	const currentTurnName = useMemo(() => {
 		if (!gameState?.activeTurn) {
@@ -368,11 +390,8 @@ const MultiplayerGameScreen: React.FC = () => {
 			const rollInitiative = async () => {
 				try {
 					setHasRolledInitiative(true);
-					await multiplayerClient.rollInitiative(inviteCode);
-					// Refresh game state to get updated initiative order
-					setTimeout(() => {
-						loadGameState();
-					}, 500);
+					const response = await multiplayerClient.rollInitiative(inviteCode);
+					setGameState(response); // Directly update game state with response
 				} catch (error) {
 					console.error('Failed to roll initiative:', error);
 					setHasRolledInitiative(false);
@@ -516,10 +535,14 @@ const MultiplayerGameScreen: React.FC = () => {
 					action: async () => {
 						if (inviteCode) {
 							try {
-								await multiplayerClient.nextTurn(inviteCode);
-								setTimeout(() => {
-									loadGameState();
-								}, 500);
+								const response = await multiplayerClient.nextTurn(inviteCode);
+								if (response) {
+									setGameState(response);
+								} else {
+									setTimeout(() => {
+										loadGameState();
+									}, 500);
+								}
 								setShowCommandPalette(false);
 							} catch (error) {
 								console.error('Failed to skip turn:', error);
@@ -683,10 +706,14 @@ const MultiplayerGameScreen: React.FC = () => {
 					action: async () => {
 						if (inviteCode) {
 							try {
-								await multiplayerClient.endTurn(inviteCode);
-								setTimeout(() => {
-									loadGameState();
-								}, 500);
+								const response = await multiplayerClient.endTurn(inviteCode);
+								if (response) {
+									setGameState(response);
+								} else {
+									setTimeout(() => {
+										loadGameState();
+									}, 500);
+								}
 								setShowCommandPalette(false);
 							} catch (error) {
 								console.error('Failed to skip turn:', error);
@@ -1489,6 +1516,11 @@ const MultiplayerGameScreen: React.FC = () => {
 							{isPlayerTurn ? '🟢 Your Turn' : `Turn: ${currentTurnName}`}
 						</ThemedText>
 					)}
+					{__DEV__ && gameState?.activeTurn && (
+						<ThemedText style={[styles.turnIndicator, { fontSize: 10, opacity: 0.7 }]}>
+							[Debug: {gameState.activeTurn.type} {gameState.activeTurn.entityId?.slice(-4)} vs {currentCharacterId?.slice(-4)}]
+						</ThemedText>
+					)}
 					<TouchableOpacity
 						style={styles.notificationButton}
 						onPress={() => setShowNotifications(true)}
@@ -1516,10 +1548,14 @@ const MultiplayerGameScreen: React.FC = () => {
 							onPress={async () => {
 								if (inviteCode) {
 									try {
-										await multiplayerClient.endTurn(inviteCode);
-										setTimeout(() => {
-											loadGameState();
-										}, 500);
+										const response = await multiplayerClient.endTurn(inviteCode);
+										if (response) {
+											setGameState(response);
+										} else {
+											setTimeout(() => {
+												loadGameState();
+											}, 500);
+										}
 									} catch (error) {
 										console.error('Failed to end turn:', error);
 										Alert.alert('Error', 'Failed to end turn');
@@ -1620,6 +1656,7 @@ const MultiplayerGameScreen: React.FC = () => {
 									}
 							}
 							canSelect={true}
+							initiativeOrder={gameState.initiativeOrder}
 						/>
 						{renderMapSection()}
 					</ScrollView>
@@ -1641,6 +1678,7 @@ const MultiplayerGameScreen: React.FC = () => {
 										}
 								}
 								canSelect={true}
+								initiativeOrder={gameState.initiativeOrder}
 							/>
 							{isHost && charactersWithoutTokens.length > 0 && (
 								<View style={styles.warningContainer}>
@@ -1656,37 +1694,6 @@ const MultiplayerGameScreen: React.FC = () => {
 									<ThemedText style={styles.warningHint}>
 										Go to the map editor to place these characters.
 									</ThemedText>
-								</View>
-							)}
-							{gameState.initiativeOrder && gameState.initiativeOrder.length > 0 && (
-								<View style={styles.initiativeOrderContainer}>
-									<ThemedText style={styles.initiativeOrderTitle}>Initiative Order</ThemedText>
-									<ScrollView style={styles.initiativeOrderList}>
-										{gameState.initiativeOrder.map((entry, index) => {
-											const isActive = gameState?.activeTurn?.entityId === entry.entityId;
-											const character = entry.type === 'player'
-												? gameState.characters.find(c => c.id === entry.entityId)
-												: null;
-											const npcToken = entry.type === 'npc'
-												? sharedMap?.tokens.find(t => t.id === entry.entityId)
-												: null;
-											const name = character?.name || npcToken?.label || `Entity ${index + 1}`;
-
-											return (
-												<View
-													key={entry.entityId}
-													style={[
-														styles.initiativeOrderItem,
-														isActive && styles.initiativeOrderItemActive,
-													]}
-												>
-													<ThemedText style={styles.initiativeOrderNumber}>{index + 1}.</ThemedText>
-													<ThemedText style={styles.initiativeOrderName}>{name}</ThemedText>
-													<ThemedText style={styles.initiativeOrderValue}>{entry.initiative}</ThemedText>
-												</View>
-											);
-										})}
-									</ScrollView>
 								</View>
 							)}
 						</View>
@@ -1747,6 +1754,8 @@ const MultiplayerGameScreen: React.FC = () => {
 				visible={showNotifications}
 				onClose={() => setShowNotifications(false)}
 				unreadCount={unreadMessageCount}
+				inviteCode={inviteCode}
+				isHost={isHost}
 			/>
 
 			{/* Command Palette */}
@@ -1973,10 +1982,14 @@ const MultiplayerGameScreen: React.FC = () => {
 												onPress={async () => {
 													if (!inviteCode) return;
 													try {
-														await multiplayerClient.startCharacterTurn(inviteCode, character.id, 'player');
-														setTimeout(() => {
-															loadGameState();
-														}, 500);
+														const response = await multiplayerClient.startCharacterTurn(inviteCode, character.id, 'player');
+														if (response) {
+															setGameState(response);
+														} else {
+															setTimeout(() => {
+																loadGameState();
+															}, 500);
+														}
 														setShowCharacterTurnSelector(false);
 														Alert.alert('Success', `Started ${character.name}'s turn`);
 													} catch (error) {
@@ -2004,10 +2017,14 @@ const MultiplayerGameScreen: React.FC = () => {
 													onPress={async () => {
 														if (!inviteCode || !token.entityId) return;
 														try {
-															await multiplayerClient.startCharacterTurn(inviteCode, token.entityId, 'npc');
-															setTimeout(() => {
-																loadGameState();
-															}, 500);
+															const response = await multiplayerClient.startCharacterTurn(inviteCode, token.entityId, 'npc');
+															if (response) {
+																setGameState(response);
+															} else {
+																setTimeout(() => {
+																	loadGameState();
+																}, 500);
+															}
 															setShowCharacterTurnSelector(false);
 															Alert.alert('Success', `Started ${token.label || 'NPC'}'s turn`);
 														} catch (error) {
@@ -2284,51 +2301,6 @@ const styles = StyleSheet.create({
 	},
 	mapSwitcherEmpty: {
 		color: '#6B5B3D',
-	},
-	initiativeOrderContainer: {
-		padding: 12,
-		borderBottomWidth: 1,
-		borderBottomColor: '#C9B037',
-		backgroundColor: '#FFF9EF',
-	},
-	initiativeOrderTitle: {
-		fontSize: 16,
-		fontWeight: '700',
-		color: '#3B2F1B',
-		marginBottom: 8,
-	},
-	initiativeOrderList: {
-		maxHeight: 200,
-	},
-	initiativeOrderItem: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingVertical: 6,
-		paddingHorizontal: 8,
-		borderRadius: 4,
-		marginBottom: 4,
-		backgroundColor: '#F5E6D3',
-	},
-	initiativeOrderItemActive: {
-		backgroundColor: '#C9B037',
-	},
-	initiativeOrderNumber: {
-		fontSize: 12,
-		fontWeight: '600',
-		color: '#6B5B3D',
-		width: 24,
-	},
-	initiativeOrderName: {
-		flex: 1,
-		fontSize: 14,
-		color: '#3B2F1B',
-		fontWeight: '500',
-	},
-	initiativeOrderValue: {
-		fontSize: 12,
-		fontWeight: '700',
-		color: '#8B6914',
-		marginLeft: 8,
 	},
 	warningContainer: {
 		backgroundColor: '#FFF3CD',

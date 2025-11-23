@@ -148,6 +148,19 @@ export interface NpcInstanceRow {
 	updated_at: number;
 }
 
+export interface ActivityLogRow {
+	id: string;
+	game_id: string;
+	invite_code: string;
+	type: string;
+	timestamp: number;
+	description: string;
+	actor_id: string | null;
+	actor_name: string | null;
+	data: string | null; // JSON
+	created_at: number;
+}
+
 export class Database {
 	constructor(private db: D1Database) { }
 
@@ -854,6 +867,8 @@ export class Database {
 
 	async deleteGame(gameId: string): Promise<void> {
 		// Delete related data first (foreign key constraints will handle game_players via CASCADE)
+		// Delete activity logs
+		await this.db.prepare('DELETE FROM activity_logs WHERE game_id = ?').bind(gameId).run();
 		// Delete NPC instances
 		await this.db.prepare('DELETE FROM npc_instances WHERE game_id = ?').bind(gameId).run();
 		// Delete map tokens
@@ -862,6 +877,45 @@ export class Database {
 		await this.db.prepare('DELETE FROM game_states WHERE game_id = ?').bind(gameId).run();
 		// Delete the game itself (this will CASCADE delete game_players)
 		await this.db.prepare('DELETE FROM games WHERE id = ?').bind(gameId).run();
+	}
+
+	// Activity log operations
+	async saveActivityLog(log: Omit<ActivityLogRow, 'created_at'>): Promise<void> {
+		const now = Date.now();
+		await this.db.prepare(
+			`INSERT INTO activity_logs (
+				id, game_id, invite_code, type, timestamp, description, actor_id, actor_name, data, created_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		).bind(
+			log.id,
+			log.game_id,
+			log.invite_code,
+			log.type,
+			log.timestamp,
+			log.description,
+			log.actor_id || null,
+			log.actor_name || null,
+			log.data || null,
+			now,
+		).run();
+	}
+
+	async getActivityLogs(inviteCode: string, limit: number = 100, offset: number = 0): Promise<ActivityLogRow[]> {
+		const result = await this.db.prepare(
+			'SELECT * FROM activity_logs WHERE invite_code = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?',
+		).bind(inviteCode, limit, offset).all<ActivityLogRow>();
+		return result.results || [];
+	}
+
+	async getActivityLogsByGameId(gameId: string, limit: number = 100, offset: number = 0): Promise<ActivityLogRow[]> {
+		const result = await this.db.prepare(
+			'SELECT * FROM activity_logs WHERE game_id = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?',
+		).bind(gameId, limit, offset).all<ActivityLogRow>();
+		return result.results || [];
+	}
+
+	async deleteActivityLogs(gameId: string): Promise<void> {
+		await this.db.prepare('DELETE FROM activity_logs WHERE game_id = ?').bind(gameId).run();
 	}
 }
 

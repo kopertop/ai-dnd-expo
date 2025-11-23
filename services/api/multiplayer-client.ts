@@ -2,6 +2,7 @@ import { apiService, authService } from 'expo-auth-template/frontend';
 
 import { API_BASE_URL } from '@/services/config/api-base-url';
 import {
+	ActivityLogListResponse,
 	CharacterListResponse,
 	CreateGameRequest,
 	DMActionRequest,
@@ -357,10 +358,7 @@ export class MultiplayerClient {
 	/**
 	 * Roll initiative for all characters and NPCs
 	 */
-	async rollInitiative(inviteCode: string): Promise<{
-		initiativeOrder: Array<{ entityId: string; initiative: number; type: 'player' | 'npc' }>;
-		activeTurn: { type: string; entityId: string; turnNumber: number; startedAt: number } | null;
-	}> {
+	async rollInitiative(inviteCode: string): Promise<GameStateResponse> {
 		return apiService.fetchApi(`/games/${inviteCode}/initiative/roll`, {
 			method: 'POST',
 		});
@@ -536,6 +534,38 @@ export class MultiplayerClient {
 	async stopGame(inviteCode: string): Promise<void> {
 		return apiService.fetchApi(`/games/${inviteCode}/stop`, {
 			method: 'PATCH',
+		});
+	}
+
+	async getActivityLogs(inviteCode: string, limit: number = 100, offset: number = 0): Promise<ActivityLogListResponse> {
+		const queryParams = new URLSearchParams({
+			limit: limit.toString(),
+			offset: offset.toString(),
+		});
+		return apiService.fetchApi(`/games/${inviteCode}/log?${queryParams.toString()}`, {
+			method: 'GET',
+		});
+	}
+
+	async createActivityLog(
+		inviteCode: string,
+		type: string,
+		description: string,
+		data?: Record<string, unknown>,
+	): Promise<{ id: string; success: boolean }> {
+		return apiService.fetchApi(`/games/${inviteCode}/log`, {
+			method: 'POST',
+			body: JSON.stringify({
+				type,
+				description,
+				data,
+			}),
+		});
+	}
+
+	async clearActivityLogs(inviteCode: string): Promise<void> {
+		return apiService.fetchApi(`/games/${inviteCode}/log`, {
+			method: 'DELETE',
 		});
 	}
 }
