@@ -1,6 +1,7 @@
 import { DurableObjectState, DurableObjectStorage } from '@cloudflare/workers-types';
 
 import type { Character, MultiplayerGameState, PlayerInfo, Quest } from '../../../shared/workers/types';
+
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import { getCharacterSpeed } from '@/utils/character-utils';
 
@@ -320,11 +321,11 @@ export class GameSession {
 		const firstEntity = initiativeOrder[0];
 		const activeTurn = firstEntity
 			? {
-					type: firstEntity.type,
-					entityId: firstEntity.entityId,
-					turnNumber: 1,
-					startedAt: Date.now(),
-				}
+				type: firstEntity.type,
+				entityId: firstEntity.entityId,
+				turnNumber: 1,
+				startedAt: Date.now(),
+			}
 			: null;
 
 		// Update game state

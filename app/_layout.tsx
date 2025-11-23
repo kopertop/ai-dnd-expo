@@ -48,6 +48,21 @@ const AudioButton: React.FC = () => {
 	);
 };
 
+const GlobalHomeButton: React.FC = () => (
+	<View style={[styles.globalHomeButtonContainer, { pointerEvents: 'box-none' }]}>
+		<View style={{ pointerEvents: 'auto' }}>
+			<TouchableOpacity
+				accessibilityLabel="Go to Home"
+				style={styles.globalHomeButton}
+				onPress={() => router.push('/')}
+				hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+			>
+				<Feather name="home" size={20} color="#3B2F1B" />
+			</TouchableOpacity>
+		</View>
+	</View>
+);
+
 const UserMenu: React.FC = () => {
 	const { user, signOut } = useAuth();
 	const [isMenuVisible, setMenuVisible] = React.useState(false);
@@ -188,7 +203,14 @@ const RootLayout: React.FC = () => {
 					<AudioProvider>
 						<ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
 							<AuthGuard>
-								<Stack initialRouteName="index">
+								<Stack
+									initialRouteName="index"
+									screenOptions={{
+										headerBackVisible: false,
+										headerLeft: () => null,
+										headerTitleAlign: 'center',
+									}}
+								>
 									<Stack.Screen name="index" options={{ headerShown: false }} />
 									<Stack.Screen name="login" options={{ headerShown: false }} />
 									<Stack.Screen name="auth" options={{ headerShown: false }} />
@@ -200,6 +222,7 @@ const RootLayout: React.FC = () => {
 									<Stack.Screen name="+not-found" />
 								</Stack>
 								<StatusBar style="auto" />
+								<GlobalHomeButton />
 								<UserMenu />
 								{/* Only show sound button on web */}
 								{Platform.OS === 'web' && (
@@ -228,10 +251,30 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'center',
 	},
+	globalHomeButtonContainer: {
+		position: 'absolute',
+		top: Platform.OS === 'web' ? 8 : 18,
+		left: 8,
+		zIndex: 1050,
+	},
+	globalHomeButton: {
+		backgroundColor: 'rgba(255,255,255,0.95)',
+		padding: 10,
+		borderRadius: 999,
+		alignItems: 'center',
+		justifyContent: 'center',
+		borderWidth: 1,
+		borderColor: 'rgba(0,0,0,0.08)',
+		shadowColor: '#000',
+		shadowOpacity: 0.12,
+		shadowOffset: { width: 0, height: 2 },
+		shadowRadius: 4,
+		elevation: 3,
+	},
 	userMenuContainer: {
 		position: 'absolute',
-		top: Platform.OS === 'web' ? 24 : 36,
-		right: 16,
+		top: Platform.OS === 'web' ? 8 : 18,
+		right: 8,
 		zIndex: 1100,
 	},
 	avatarButton: {

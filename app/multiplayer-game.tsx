@@ -977,7 +977,8 @@ const MultiplayerGameScreen: React.FC = () => {
 					setSelectedTokenId(token.id);
 					setSelectedTokenMovementRange(reachable);
 				} else {
-					if (!isPlayerTurn) {
+					const isActingCharacterTurn = isPlayerTurn || hostActingAsActiveCharacter;
+					if (!isActingCharacterTurn) {
 						Alert.alert('Not your turn', 'Wait for your turn to perform actions.');
 						return;
 					}
