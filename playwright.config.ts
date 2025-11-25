@@ -19,4 +19,10 @@ export default defineConfig({
 			use: { ...devices['Desktop Chrome'] },
 		},
 	],
+	webServer: {
+		command: 'bun run start:full',
+		port: 8081,
+		timeout: 180_000,
+		reuseExistingServer: !process.env.CI,
+	},
 });

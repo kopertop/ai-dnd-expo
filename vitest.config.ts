@@ -8,6 +8,28 @@ export default defineConfig({
 	esbuild: {
 		target: 'es2020',
 	},
+	optimizeDeps: {
+		exclude: ['react-native', '@expo/vector-icons'],
+	},
+	resolve: {
+		alias: {
+			'react-native': resolve(__dirname, './tests/setup/react-native-mock.ts'),
+			'@expo/vector-icons/MaterialIcons': resolve(__dirname, './tests/setup/expo-vector-icons/MaterialIcons.ts'),
+			'@expo/vector-icons/Feather': resolve(__dirname, './tests/setup/expo-vector-icons/Feather.ts'),
+			'@expo/vector-icons': resolve(__dirname, './tests/setup/expo-vector-icons-mock.ts'),
+			'@expo/vector-icons/build/createIconSet': resolve(__dirname, './tests/setup/expo-vector-icons-mock.ts'),
+			'@': resolve(__dirname, '.'),
+			'@/assets': resolve(__dirname, './assets'),
+			'@/components': resolve(__dirname, './components'),
+			'@/constants': resolve(__dirname, './constants'),
+			'@/hooks': resolve(__dirname, './hooks'),
+			'@/services': resolve(__dirname, './services'),
+			'@/styles': resolve(__dirname, './styles'),
+			'@/types': resolve(__dirname, './types'),
+			'@/tests': resolve(__dirname, './tests'),
+		},
+		conditions: ['browser', 'module', 'import'],
+	},
 	test: {
 		// Use jsdom environment for component tests (React Native components can be tested in jsdom)
 		environment: 'jsdom',
@@ -83,19 +105,6 @@ export default defineConfig({
 				resources: 'usable',
 				runScripts: 'dangerously',
 			},
-		},
-	},
-	resolve: {
-		alias: {
-			'@': resolve(__dirname, '.'),
-			'@/assets': resolve(__dirname, './assets'),
-			'@/components': resolve(__dirname, './components'),
-			'@/constants': resolve(__dirname, './constants'),
-			'@/hooks': resolve(__dirname, './hooks'),
-			'@/services': resolve(__dirname, './services'),
-			'@/styles': resolve(__dirname, './styles'),
-			'@/types': resolve(__dirname, './types'),
-			'@/tests': resolve(__dirname, './tests'),
 		},
 	},
 });

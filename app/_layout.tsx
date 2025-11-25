@@ -4,7 +4,7 @@ import { authService, SessionProvider, useAuth } from 'expo-auth-template/fronte
 import { useFonts } from 'expo-font';
 import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
 	ActivityIndicator,
 	Image,
@@ -131,6 +131,9 @@ const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	const [isRouterReady, setIsRouterReady] = React.useState(false);
 	const [hasRedirected, setHasRedirected] = React.useState(false);
 	const [showLoading, setShowLoading] = React.useState(true);
+	// Test hook: allow e2e to bypass auth redirect when a global flag is set
+	const bypassAuth = (globalThis as any).__E2E_BYPASS_AUTH === true || process.env.EXPO_PUBLIC_E2E_BYPASS_AUTH === 'true';
+	const devTestTokenRef = useRef(false);
 
 	useEffect(() => {
 		// Mark router as ready after a brief delay to ensure it's mounted
@@ -142,6 +145,42 @@ const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	useEffect(() => {
 		const timer = setTimeout(() => setShowLoading(false), 2000); // Max 2 seconds loading
 		return () => clearTimeout(timer);
+	}, []);
+
+	// Dev-only: support ?token=TEST to inject a mock session/user (simulates OAuth callback)
+	// Runs as early as possible to minimize AuthGuard redirects.
+	useEffect(() => {
+		if (!__DEV__) return;
+		if (devTestTokenRef.current) return;
+		if (Platform.OS !== 'web') return;
+		if (typeof window === 'undefined') return;
+
+		try {
+			const params = new URLSearchParams(window.location.search);
+			const token = params.get('token');
+			if (!token) return;
+
+			devTestTokenRef.current = true;
+			const mockSession = {
+				id: 'dev-test-session',
+				name: 'Test User',
+				email: 'test@example.com',
+				accessToken: token,
+				provider: 'google' as const,
+			};
+			const mockUser = {
+				id: 'dev-test-user',
+				email: 'test@example.com',
+				name: 'Test User',
+				role: 'tester',
+			};
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(authService as any).setSession?.(mockSession);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(authService as any).setUser?.(mockUser);
+		} catch (error) {
+			console.warn('Failed to set dev test session', error);
+		}
 	}, []);
 
 	useEffect(() => {
@@ -157,6 +196,11 @@ const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 		const isAuthPage = currentPath.startsWith('/auth');
 		const inAuthGroup = isLoginPage || isAuthPage;
 		const isAuthenticated = !!session && !!user;
+
+		// In E2E mode, bypass redirects entirely
+		if (bypassAuth) {
+			return;
+		}
 
 		// If not authenticated and not on auth pages, redirect to login
 		if (!isAuthenticated && !inAuthGroup) {

@@ -19,7 +19,7 @@
         "expo-asset": "~12.0.10",
         "expo-audio": "~1.0.14",
         "expo-auth-session": "^7.0.9",
-        "expo-auth-template": "^1.0.13",
+        "expo-auth-template": "^1.1.0",
         "expo-av": "~16.0.7",
         "expo-blur": "~15.0.7",
         "expo-constants": "~18.0.10",
@@ -908,6 +908,10 @@
 
     "@standard-schema/spec": ["@standard-schema/spec@1.0.0", "", {}, "sha512-m2bOd0f2RT9k8QJx1JN85cZYyH1RqFBdlwtkSlf4tBDYLCiiZnv1fIIwacK6cqwXavOydf0NPToMQgpKq+dVlA=="],
 
+    "@tanstack/query-core": ["@tanstack/query-core@5.90.11", "", {}, "sha512-f9z/nXhCgWDF4lHqgIE30jxLe4sYv15QodfdPDKYAk7nAEjNcndy4dHz3ezhdUaR23BpWa4I2EH4/DZ0//Uf8A=="],
+
+    "@tanstack/react-query": ["@tanstack/react-query@5.90.11", "", { "dependencies": { "@tanstack/query-core": "5.90.11" }, "peerDependencies": { "react": "^18 || ^19" } }, "sha512-3uyzz01D1fkTLXuxF3JfoJoHQMU2fxsfJwE+6N5hHy0dVNoZOvwKP8Z2k7k1KDeD54N20apcJnG75TBAStIrBA=="],
+
     "@testing-library/react-native": ["@testing-library/react-native@13.3.3", "", { "dependencies": { "jest-matcher-utils": "^30.0.5", "picocolors": "^1.1.1", "pretty-format": "^30.0.5", "redent": "^3.0.0" }, "peerDependencies": { "jest": ">=29.0.0", "react": ">=18.2.0", "react-native": ">=0.71", "react-test-renderer": ">=18.2.0" }, "optionalPeers": ["jest"] }, "sha512-k6Mjsd9dbZgvY4Bl7P1NIpePQNi+dfYtlJ5voi9KQlynxSyQkfOgJmYGCYmw/aSgH/rUcFvG8u5gd4npzgRDyg=="],
 
     "@tootallnate/once": ["@tootallnate/once@1.1.2", "", {}, "sha512-RbzJvlNzmRq5c3O09UipeuXno4tA1FE6ikOjxZK0tuxVv3412l64l5t1W5pj4+rJq9vpkm/kwiR07aZXnsKPxw=="],
@@ -1498,7 +1502,7 @@
 
     "expo-auth-session": ["expo-auth-session@7.0.9", "", { "dependencies": { "expo-application": "~7.0.7", "expo-constants": "~18.0.10", "expo-crypto": "~15.0.7", "expo-linking": "~8.0.9", "expo-web-browser": "~15.0.9", "invariant": "^2.2.4" }, "peerDependencies": { "react": "*", "react-native": "*" } }, "sha512-mPSwaRWOJYas160lXi5P/7BkLy0xbh+er+IMmAYHqf2+iz2WWs9W/4lMAklQVJG2mCyOZi24XrkffvB2izCa1g=="],
 
-    "expo-auth-template": ["expo-auth-template@1.0.13", "", { "dependencies": { "expo-apple-authentication": "~8.0.7", "expo-auth-session": "~7.0.8", "expo-constants": "~18.0.8", "expo-secure-store": "~15.0.7" }, "peerDependencies": { "react": ">=18.0.0", "react-native": ">=0.70.0" } }, "sha512-0+kND7qvNbfjJ1gnqnBZrgFZkgVEgwqsT0X0AHJDRJBk0hEaVDJvPt2gwcejVFwIsNUpVmVcTJPGwWRuxc+SJA=="],
+    "expo-auth-template": ["expo-auth-template@1.1.0", "", { "dependencies": { "expo-apple-authentication": "~8.0.7", "expo-auth-session": "~7.0.8", "expo-constants": "~18.0.8", "expo-secure-store": "~15.0.7", "jiti": "^2.6.1" }, "peerDependencies": { "@tanstack/react-query": ">=5.0.0", "react": ">=18.0.0", "react-native": ">=0.70.0" } }, "sha512-weA/CH8o3qtPoC1JGHHZYi408/WdtDeCVQKqN3TKBGGCbg5Kvgh0sL8XKrd/1CdgnRTT1cevMnlpb0Vrfc91vA=="],
 
     "expo-av": ["expo-av@16.0.7", "", { "peerDependencies": { "expo": "*", "react": "*", "react-native": "*", "react-native-web": "*" }, "optionalPeers": ["react-native-web"] }, "sha512-QReef6/RYuZ4GekTcZZw5zY26pcPOmHqK6LMgFlPhnsT0ga97HJrgMc63pvIiojDP+q4oIv24g+QPD8ljZu4XQ=="],
 

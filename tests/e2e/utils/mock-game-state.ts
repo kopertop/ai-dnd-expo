@@ -108,10 +108,97 @@ export const setupMockGameState = async (page: Page) => {
 
 	const respond = (route: Route, body: unknown) => route.fulfill({ status: 200, body: JSON.stringify(body) });
 
+	// Monkey-patch expo-auth-template frontend modules before app scripts run
+	await page.addInitScript(() => {
+		const mockSession = {
+			id: 'session-1',
+			name: 'Test User',
+			email: 'test@example.com',
+			accessToken: 'fake-token',
+			provider: 'google',
+		};
+		const mockUser = {
+			id: 'user-1',
+			email: 'test@example.com',
+			name: 'Test User',
+		};
+
+		// Shim the auth-service exports used by the app
+		const authShim = {
+			currentSession: mockSession,
+			currentUser: mockUser,
+			getSession: async () => mockSession,
+			getUser: async () => mockUser,
+			getAuthError: () => null,
+			signIn: async () => mockSession,
+			signInWithGoogle: async () => mockSession,
+			signInWithApple: async () => mockSession,
+			signOut: async () => {},
+			refreshTokens: async () => mockSession,
+			setAuthError: () => {},
+			assumeUser: async () => mockUser,
+			isImpersonating: () => false,
+			endImpersonation: async () => {},
+			onSessionChange: (cb: (s: any) => void) => {
+				cb(mockSession);
+				return () => {};
+			},
+			onUserChange: (cb: (u: any) => void) => {
+				cb(mockUser);
+				return () => {};
+			},
+			onAuthError: () => () => {},
+		};
+
+		const apiShim = {
+			fetchApi: async (_url: string, _init?: any) => {
+				// Fallback; individual routes are intercepted below
+				return {};
+			},
+		};
+
+		// Install shims on window so bundled code can pick them up via require cache override
+		(window as any).__E2E_MOCK_AUTH = authShim;
+		(window as any).__E2E_MOCK_API = apiShim;
+
+		// Monkey-patch require cache if available (CommonJS)
+		if ((window as any).webpackChunkai_dnd_expo) {
+			const chunk = (window as any).webpackChunkai_dnd_expo;
+			// naive hook: replace exports when module loads
+			const originalPush = chunk.push.bind(chunk);
+			chunk.push = function patchHook(args: any) {
+				const modules = args?.[1];
+				if (modules) {
+					for (const key of Object.keys(modules)) {
+						const modFn = modules[key];
+						modules[key] = function patchedModule(module: any, exports: any, require: any) {
+							modFn(module, exports, require);
+							try {
+								if (module?.id?.toString().includes('expo-auth-template')) {
+									module.exports = { ...module.exports, authService: authShim };
+								}
+								if (module?.id?.toString().includes('services/api-base-url')) {
+									// leave as-is
+								}
+								if (module?.id?.toString().includes('expo-auth-template/frontend/services/api-service')) {
+									module.exports = { ...module.exports, apiService: apiShim };
+								}
+							} catch {
+								// ignore
+							}
+						};
+					}
+				}
+				return originalPush(args);
+			};
+		}
+	});
+
 	await page.route('**/api/games/TEST01', route => respond(route, { gameState: baseGameState }));
 	await page.route('**/api/games/TEST01/state', route => respond(route, { gameState: baseGameState }));
 	await page.route('**/api/games/TEST01/map', route => respond(route, mockMap));
 	await page.route('**/api/games/TEST01/map/tokens', route => respond(route, { tokens: mockMap.tokens }));
+	await page.route('**/api/games/TEST01/characters', route => respond(route, { characters: mockCharacters }));
 
 	// Turn updates
 	await page.route('**/api/games/TEST01/turn/update', route => respond(route, { ...baseGameState }));

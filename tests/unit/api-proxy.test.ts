@@ -53,7 +53,7 @@ describe('api-proxy', () => {
 		};
 
 		(global.fetch as any).mockImplementation(async (url: string, _init: any) => {
-			expect(url).toBe('https://my-api.youracct.workers.dev/bar');
+			expect(url).toBe('https://ai-dnd.kopertop.workers.dev/bar');
 			return {
 				status: 200,
 				statusText: 'OK',
