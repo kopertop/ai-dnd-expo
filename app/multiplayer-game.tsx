@@ -302,7 +302,7 @@ const MultiplayerGameScreen: React.FC = () => {
 	const { gameState: polledState } = usePollingGameState({
 		inviteCode: inviteCode || '',
 		enabled: (!wsIsConnected && !!inviteCode) || !gameState, // Poll if WS not connected OR no gameState yet
-		pollInterval: 3000,
+		pollInterval: 15000,
 		onGameStateUpdate: handlePollingUpdate,
 	});
 
