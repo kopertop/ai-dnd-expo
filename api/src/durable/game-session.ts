@@ -103,6 +103,67 @@ export class GameSession {
 		}
 	}
 
+	private getEntitySpeed(
+		entityId: string,
+		type: 'player' | 'npc' | 'dm',
+		characters: Character[],
+	): number {
+		if (type === 'player') {
+			const character = characters.find(c => c.id === entityId);
+			if (character) {
+				return getCharacterSpeed(character);
+			}
+		}
+
+		// For NPCs and DM (or if character not found), fall back to default movement
+		return DEFAULT_RACE_SPEED;
+	}
+
+	private buildActiveTurn(
+		entity: { entityId: string; type: 'player' | 'npc' | 'dm' },
+		currentTurnNumber: number,
+		characters: Character[],
+	): NonNullable<MultiplayerGameState['activeTurn']> {
+		return {
+			type: entity.type,
+			entityId: entity.entityId,
+			turnNumber: currentTurnNumber + 1,
+			startedAt: Date.now(),
+			movementUsed: 0,
+			majorActionUsed: false,
+			minorActionUsed: false,
+			speed: this.getEntitySpeed(entity.entityId, entity.type, characters),
+		};
+	}
+
+	private resetTurnUsage(
+		turn: MultiplayerGameState['activeTurn'],
+		characters: Character[],
+	): MultiplayerGameState['activeTurn'] {
+		if (!turn) {
+			return turn;
+		}
+
+		return {
+			...turn,
+			movementUsed: 0,
+			majorActionUsed: false,
+			minorActionUsed: false,
+			speed: turn.speed ?? this.getEntitySpeed(turn.entityId, turn.type, characters),
+		};
+	}
+
+	private resetActionPointsForEntity(characters: Character[], entityId: string): Character[] {
+		return characters.map(char =>
+			char.id === entityId
+				? {
+					...char,
+					actionPoints: char.maxActionPoints ?? 3,
+				}
+				: char,
+		);
+	}
+
 	private async handleInitialize(request: Request): Promise<Response> {
 		const payload = (await request.json()) as InitializePayload;
 
@@ -234,11 +295,18 @@ export class GameSession {
 			}
 			: null;
 
+		const normalizedGameState = updatedGameState?.activeTurn
+			? {
+				...updatedGameState,
+				activeTurn: this.resetTurnUsage(updatedGameState.activeTurn, mergedCharacters),
+			}
+			: updatedGameState;
+
 		const updated: StoredSession = {
 			...session,
 			status: payload.gameState?.status ?? 'active',
-			gameState: updatedGameState,
-			players: updatedGameState?.players ?? session.players,
+			gameState: normalizedGameState,
+			players: normalizedGameState?.players ?? session.players,
 			characters: mergedCharacters,
 			lastUpdated: Date.now(),
 		};
@@ -319,13 +387,12 @@ export class GameSession {
 
 		// Set first entity as active turn
 		const firstEntity = initiativeOrder[0];
+		const characters = session.gameState.characters ?? [];
 		const activeTurn = firstEntity
-			? {
-				type: firstEntity.type,
-				entityId: firstEntity.entityId,
-				turnNumber: 1,
-				startedAt: Date.now(),
-			}
+			? this.resetTurnUsage(
+				this.buildActiveTurn(firstEntity, session.gameState.activeTurn?.turnNumber ?? 0, characters),
+				characters,
+			)
 			: null;
 
 		// Update game state
@@ -333,6 +400,7 @@ export class GameSession {
 			...session.gameState,
 			initiativeOrder,
 			activeTurn,
+			characters: activeTurn ? this.resetActionPointsForEntity(characters, activeTurn.entityId) : characters,
 			lastUpdated: Date.now(),
 		};
 
@@ -352,8 +420,8 @@ export class GameSession {
 			return json({ error: 'Game not started' }, 400);
 		}
 
-		// Store current turn as paused
-		const pausedTurn = session.gameState.activeTurn;
+		// Store current turn as paused (only if it exists)
+		const pausedTurn = session.gameState.activeTurn ?? undefined;
 		const activeTurn = {
 			type: 'dm' as const,
 			entityId: session.hostId,
@@ -440,28 +508,20 @@ export class GameSession {
 		const nextIndex = (currentIndex + 1) % session.gameState.initiativeOrder.length;
 		const nextEntity = session.gameState.initiativeOrder[nextIndex];
 
-		const activeTurn = {
-			type: nextEntity.type,
-			entityId: nextEntity.entityId,
-			turnNumber: (currentTurn.turnNumber ?? 0) + 1,
-			startedAt: Date.now(),
-		};
+		const characters = session.gameState.characters ?? [];
+		const activeTurn = this.buildActiveTurn(
+			{ entityId: nextEntity.entityId, type: nextEntity.type },
+			currentTurn.turnNumber ?? 0,
+			characters,
+		);
 
 		// Reset action points for the new turn's character
-		const updatedCharacters = session.gameState.characters.map(char => {
-			if (char.id === nextEntity.entityId) {
-				return {
-					...char,
-					actionPoints: char.maxActionPoints ?? 3,
-				};
-			}
-			return char;
-		});
+		const updatedCharacters = this.resetActionPointsForEntity(characters, nextEntity.entityId);
 
 		const updatedGameState: MultiplayerGameState = {
 			...session.gameState,
 			characters: updatedCharacters,
-			activeTurn,
+			activeTurn: this.resetTurnUsage(activeTurn, characters),
 			lastUpdated: Date.now(),
 		};
 
@@ -491,36 +551,21 @@ export class GameSession {
 		}
 
 		const currentTurnNumber = session.gameState.activeTurn?.turnNumber ?? 0;
+		const characters = session.gameState.characters ?? [];
 
-		const activeCharacter = session.gameState.characters.find(char => char.id === payload.entityId);
-		const calculatedSpeed = activeCharacter ? getCharacterSpeed(activeCharacter) : DEFAULT_RACE_SPEED;
-
-		const activeTurn = {
-			type: payload.turnType,
-			entityId: payload.entityId,
-			turnNumber: currentTurnNumber + 1,
-			startedAt: Date.now(),
-			movementUsed: 0,
-			majorActionUsed: false,
-			minorActionUsed: false,
-			speed: calculatedSpeed,
-		};
+		const activeTurn = this.buildActiveTurn(
+			{ entityId: payload.entityId, type: payload.turnType },
+			currentTurnNumber,
+			characters,
+		);
 
 		// Reset action points for the character starting their turn
-		const updatedCharacters = session.gameState.characters.map(char => {
-			if (char.id === payload.entityId) {
-				return {
-					...char,
-					actionPoints: char.maxActionPoints ?? 3,
-				};
-			}
-			return char;
-		});
+		const updatedCharacters = this.resetActionPointsForEntity(characters, payload.entityId);
 
 		const updatedGameState: MultiplayerGameState = {
 			...session.gameState,
 			characters: updatedCharacters,
-			activeTurn,
+			activeTurn: this.resetTurnUsage(activeTurn, characters),
 			lastUpdated: Date.now(),
 		};
 

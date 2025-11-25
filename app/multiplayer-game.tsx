@@ -116,10 +116,32 @@ const MultiplayerGameScreen: React.FC = () => {
 		return (
 			sharedMap.tokens?.find(token =>
 				(token.type === 'player' || token.type === 'npc') &&
-				token.entityId === entityId,
+				(token.entityId === entityId || token.id === entityId),
 			) ?? null
 		);
 	}, [sharedMap, activeCharacterIdForMovement]);
+
+	// Token ID for the entity whose turn it is (players match by characterId, NPCs by token.id)
+	const activeTurnTokenId = useMemo(() => {
+		const turn = gameState?.activeTurn;
+		if (!turn || gameState?.pausedTurn) {
+			return null;
+		}
+		if (turn.type !== 'player' && turn.type !== 'npc') {
+			return null;
+		}
+		const tokenMatch = sharedMap?.tokens?.find(token => {
+			if (token.type !== 'player' && token.type !== 'npc') {
+				return false;
+			}
+			// Player turns: entityId is character id; NPC turns: entityId is token id
+			if (turn.type === 'player') {
+				return token.entityId === turn.entityId || token.id === turn.entityId;
+			}
+			return token.id === turn.entityId || token.entityId === turn.entityId;
+		});
+		return tokenMatch?.id ?? null;
+	}, [gameState?.activeTurn, gameState?.pausedTurn, sharedMap?.tokens]);
 
 	const activeTurnForMovement = useMemo(() => {
 		if (!gameState?.activeTurn) {
@@ -142,11 +164,6 @@ const MultiplayerGameScreen: React.FC = () => {
 		const used = activeTurnForMovement?.movementUsed ?? 0;
 		return Math.max(0, totalMovementSpeedForActive - used);
 	}, [totalMovementSpeedForActive, activeTurnForMovement?.movementUsed]);
-
-	const movementUsedAmount = useMemo(
-		() => Math.max(0, totalMovementSpeedForActive - movementBudget),
-		[totalMovementSpeedForActive, movementBudget],
-	);
 
 	const isPlayerTurn = useMemo(() => {
 		// If no active turn, no one's turn
@@ -843,14 +860,17 @@ const MultiplayerGameScreen: React.FC = () => {
 				return { actions: [] };
 			}
 
-			const activeEntityId = activeCharacterIdForMovement;
+			// Prefer the active turn's token id (handles NPC turns where entityId is token.id)
+			const activeEntityId = activeTurnTokenId ?? activeCharacterIdForMovement;
 
 			if (!activeEntityId) {
 				return { actions: [] };
 			}
 
 			const activeToken = sharedMap?.tokens?.find(
-				t => t.entityId === activeEntityId && (t.type === 'player' || t.type === 'npc'),
+				t =>
+					(t.entityId === activeEntityId || t.id === activeEntityId) &&
+					(t.type === 'player' || t.type === 'npc'),
 			);
 
 			if (!activeToken || !sharedMap) {
@@ -946,6 +966,7 @@ const MultiplayerGameScreen: React.FC = () => {
 			isPlayerTurn,
 			isHost,
 			activeCharacterIdForMovement,
+			activeTurnTokenId,
 			sharedMap,
 			movementBudget,
 			activeTurnForMovement,
@@ -1492,8 +1513,11 @@ const MultiplayerGameScreen: React.FC = () => {
 				return;
 			}
 
+			const activeEntityId = activeTurnTokenId ?? activeCharacterId;
 			const activeToken = sharedMap.tokens?.find(
-				t => t.entityId === activeCharacterId && (t.type === 'player' || t.type === 'npc'),
+				t =>
+					(t.entityId === activeEntityId || t.id === activeEntityId) &&
+					(t.type === 'player' || t.type === 'npc'),
 			);
 
 			if (!activeToken) {
@@ -1501,7 +1525,7 @@ const MultiplayerGameScreen: React.FC = () => {
 				return;
 			}
 
-			const activeTurnForEntity = gameState?.activeTurn?.entityId === activeCharacterId ? gameState.activeTurn : null;
+			const activeTurnForEntity = gameState?.activeTurn?.entityId === activeEntityId ? gameState.activeTurn : null;
 			const totalMovementSpeed = totalMovementSpeedForActive;
 			const movementUsed = activeTurnForEntity?.movementUsed ?? 0;
 			const remainingMovement = Math.max(0, totalMovementSpeed - movementUsed);
@@ -1731,6 +1755,7 @@ const MultiplayerGameScreen: React.FC = () => {
 			loadGameState,
 			updateTurnUsage,
 			totalMovementSpeedForActive,
+			activeTurnTokenId,
 		],
 	);
 
@@ -1760,7 +1785,7 @@ const MultiplayerGameScreen: React.FC = () => {
 						<View style={styles.turnResourceBadge}>
 							<ThemedText style={styles.turnResourceLabel}>Movement</ThemedText>
 							<ThemedText style={styles.turnResourceValue}>
-								{formatMovementValue(movementUsedAmount)} / {formatMovementValue(totalMovementSpeedForActive)}
+								{formatMovementValue(movementBudget)} / {formatMovementValue(totalMovementSpeedForActive)}
 							</ThemedText>
 						</View>
 						<View
@@ -1896,7 +1921,8 @@ const MultiplayerGameScreen: React.FC = () => {
 								Alert.alert('Error', 'Failed to move token');
 							}
 						} : undefined}
-						highlightTokenId={currentCharacterId || undefined}
+						// Highlight the token whose turn it is; fall back to the player's own token
+						highlightTokenId={activeTurnTokenId ?? playerToken?.id ?? currentCharacterId ?? undefined}
 						onTilePress={
 							npcPlacementMode && isHost
 								? async (x, y) => {

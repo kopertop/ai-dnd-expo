@@ -27,6 +27,7 @@ import {
 } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
+import { NpcDefinition } from '@/types/multiplayer-map';
 import { Quest } from '@/types/quest';
 
 export class MultiplayerClient {
@@ -582,4 +583,3 @@ export class MultiplayerClient {
 
 // Singleton instance
 export const multiplayerClient = new MultiplayerClient();
-
