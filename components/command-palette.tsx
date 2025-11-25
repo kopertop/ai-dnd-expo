@@ -108,7 +108,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 			cmd.label.toLowerCase().includes(query) ||
 			cmd.keywords.some(kw => kw.toLowerCase().includes(query)) ||
 			cmd.description?.toLowerCase().includes(query) ||
-			cmd.category?.toLowerCase().includes(query)
+			cmd.category?.toLowerCase().includes(query),
 		);
 	}, [commands, searchQuery]);
 

@@ -52,7 +52,7 @@ admin.delete('/games/:gameId', async (c) => {
 admin.get('/sql/tables', async (c) => {
 	try {
 		const result = await c.env.DATABASE.prepare(
-			"SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+			"SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
 		).all<{ name: string }>();
 
 		const tables = (result.results || []).map((row) => row.name);
@@ -61,7 +61,7 @@ admin.get('/sql/tables', async (c) => {
 		console.error('Error fetching tables:', error);
 		return c.json(
 			{ error: error instanceof Error ? error.message : 'Unknown error' },
-			500
+			500,
 		);
 	}
 });
@@ -122,7 +122,7 @@ admin.post('/sql/query', async (c) => {
 				rows: [],
 				rowCount: 0,
 			},
-			500
+			500,
 		);
 	}
 });

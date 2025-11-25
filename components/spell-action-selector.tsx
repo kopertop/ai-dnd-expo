@@ -89,7 +89,7 @@ export const SpellActionSelector: React.FC<SpellActionSelectorProps> = ({
 
 		// Add healing potion if available
 		const hasPotion = character.inventory?.some((item: any) => 
-			typeof item === 'object' && item?.name?.toLowerCase().includes('potion')
+			typeof item === 'object' && item?.name?.toLowerCase().includes('potion'),
 		) || false;
 		
 		if (hasPotion) {

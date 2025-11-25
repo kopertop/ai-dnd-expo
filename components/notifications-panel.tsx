@@ -157,7 +157,7 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
 												
 												if (Platform.OS === 'web') {
 													const confirmed = window.confirm(
-														'Are you sure you want to clear all activity logs? This cannot be undone.'
+														'Are you sure you want to clear all activity logs? This cannot be undone.',
 													);
 													if (confirmed) {
 														console.log('[Activity Log] Clear confirmed (web), calling handleClearLogs');
@@ -185,7 +185,7 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
 																handleClearLogs();
 															},
 														},
-													]
+													],
 												);
 											}}
 											disabled={clearingLogs}

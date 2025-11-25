@@ -2,12 +2,12 @@ import { useAuth } from 'expo-auth-template/frontend';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+	ActivityIndicator,
+	Alert,
+	ScrollView,
+	StyleSheet,
+	TouchableOpacity,
+	View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -22,8 +22,8 @@ import { ThemedView } from '@/components/themed-view';
 import { WorldChooser } from '@/components/world-chooser';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
 import {
-    GameSessionResponse,
-    PlacedNpc,
+	GameSessionResponse,
+	PlacedNpc,
 } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
 import { LocationOption } from '@/types/location-option';
