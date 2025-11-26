@@ -68,6 +68,7 @@ describe('games character routes', () => {
 				race: 'Human',
 				class: 'Fighter',
 				description: null,
+				trait: null,
 				stats: JSON.stringify({ STR: 14 }),
 				skills: JSON.stringify([]),
 				inventory: JSON.stringify([]),

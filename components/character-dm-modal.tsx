@@ -283,8 +283,8 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 										outputRange: effectType === 'damage' 
 											? ['#F5E6D3', '#FFE6E6'] 
 											: effectType === 'heal'
-											? ['#F5E6D3', '#E6FFE6']
-											: ['#F5E6D3', '#F5E6D3'],
+												? ['#F5E6D3', '#E6FFE6']
+												: ['#F5E6D3', '#F5E6D3'],
 									}),
 								},
 							]}

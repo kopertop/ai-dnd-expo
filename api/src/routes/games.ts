@@ -1458,7 +1458,7 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 			const gameStateService = new GameStateService(db);
 			let dex: number | undefined;
 			let entityId: string;
-			let entityType: 'player' | 'npc';
+			let entityType: 'player' | 'npc' | undefined;
 
 			if (body.tokenType === 'player' && body.characterId) {
 				// Player character
@@ -1471,6 +1471,7 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 				} else {
 					// Character not found, skip initiative
 					entityId = '';
+					entityType = undefined;
 				}
 			} else if (body.tokenType === 'npc' && body.npcId) {
 				// NPC token - use tokenId as entityId
@@ -1498,6 +1499,7 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 			} else {
 				// Unknown token type, skip
 				entityId = '';
+				entityType = undefined;
 			}
 
 			// Add to initiative order if we have a valid entity
@@ -2114,7 +2116,7 @@ games.post('/:inviteCode/characters/:characterId/actions', async (c) => {
 			});
 
 			if ('error' in outcome) {
-				return c.json({ error: outcome.error }, outcome.status ?? 400);
+				return c.json({ error: outcome.error }, (outcome.status ?? 400) as 400 | 404);
 			}
 
 			actionResult = outcome.result;
@@ -2131,7 +2133,7 @@ games.post('/:inviteCode/characters/:characterId/actions', async (c) => {
 			});
 
 			if ('error' in outcome) {
-				return c.json({ error: outcome.error }, outcome.status ?? 400);
+				return c.json({ error: outcome.error }, (outcome.status ?? 400) as 400 | 404);
 			}
 
 			actionResult = outcome.result;
@@ -2827,7 +2829,7 @@ games.post('/:inviteCode/dice/roll', async (c) => {
 		// Continue anyway
 	}
 
-	return jsonWithStatus(c, rollResult, response.status);
+	return jsonWithStatus(c, rollResult, 200);
 });
 
 games.get('/:inviteCode/ws', async (c) => {

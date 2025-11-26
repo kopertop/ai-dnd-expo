@@ -21,19 +21,19 @@ import { TokenDetailModal } from '@/components/token-detail-modal';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import { useCastSpell, useDealDamage, useHealCharacter, usePerformAction, useRollPerceptionCheck } from '@/hooks/api/use-character-queries';
 import {
-    useStopGame,
-    useSubmitDMAction,
+	useStopGame,
+	useSubmitDMAction,
 } from '@/hooks/api/use-game-queries';
 import {
-    useAllMaps,
-    useDeleteMapToken,
-    useMapState,
-    useMutateTerrain,
-    usePlaceNpc,
-    usePlacePlayerToken,
-    useSaveMapToken,
-    useSwitchMap,
-    useValidateMovement,
+	useAllMaps,
+	useDeleteMapToken,
+	useMapState,
+	useMutateTerrain,
+	usePlaceNpc,
+	usePlacePlayerToken,
+	useSaveMapToken,
+	useSwitchMap,
+	useValidateMovement,
 } from '@/hooks/api/use-map-queries';
 import { useEndTurn, useInterruptTurn, useNextTurn, useResumeTurn, useStartTurn, useUpdateTurnState } from '@/hooks/api/use-turn-queries';
 import { usePollingGameState } from '@/hooks/use-polling-game-state';
@@ -43,7 +43,7 @@ import { PlayerActionMessage } from '@/types/api/websocket-messages';
 import { Character } from '@/types/character';
 import type { CharacterActionResult } from '@/types/combat';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
-import { MapState, MapToken } from '@/types/multiplayer-map';
+import { MapState, MapToken, NpcDefinition } from '@/types/multiplayer-map';
 import { getCharacterSpeed } from '@/utils/character-utils';
 import { calculateMovementRange, isInMeleeRange, isInRangedRange } from '@/utils/movement-calculator';
 import { moveTokenWithBudget } from '@/utils/movement-helper';
@@ -1146,10 +1146,12 @@ const MultiplayerGameScreen: React.FC = () => {
 						// Use query hook for NPC definition - would need to be called with useNpcDefinition hook
 						// TODO: Use useNpcDefinition hook for proper NPC definition lookup
 						// For now, skip stats extraction since we don't have the NPC definition
-						const npcDef = null;
-						if (npcDef && 'stats' in npcDef && npcDef.stats) {
+						const npcDef: NpcDefinition | null = null;
+						// Type assertion needed because TypeScript knows npcDef is always null at compile time
+						const checkedNpcDef = npcDef as NpcDefinition | null;
+						if (checkedNpcDef !== null && 'stats' in checkedNpcDef && checkedNpcDef.stats) {
 							// Stats is a Record<string, unknown>, extract the stat values
-							const stats = npcDef.stats as Record<string, unknown>;
+							const stats = checkedNpcDef.stats as Record<string, unknown>;
 							setNpcStats({
 								STR: (typeof stats.STR === 'number' ? stats.STR : 10) as number,
 								DEX: (typeof stats.DEX === 'number' ? stats.DEX : 10) as number,
@@ -1417,7 +1419,7 @@ const MultiplayerGameScreen: React.FC = () => {
 				// Use effectiveGameState to get the latest movement data from query
 				const isActiveTurnEntity = effectiveGameState?.activeTurn?.entityId === selectedToken.entityId ||
 					effectiveGameState?.activeTurn?.entityId === selectedToken.id;
-				const activeTurnForToken = isActiveTurnEntity ? effectiveGameState.activeTurn : null;
+				const activeTurnForToken = isActiveTurnEntity && effectiveGameState ? effectiveGameState.activeTurn : null;
 
 				// Get movement budget info if this is the active turn entity
 				let currentMovementUsed = 0;
@@ -2088,7 +2090,7 @@ const MultiplayerGameScreen: React.FC = () => {
 													tokenType: 'object',
 													x,
 													y,
-													label: elementPlacementMode === 'fire' ? '🔥 Fire' : elementPlacementMode === 'trap' ? '⚠️ Trap' : '🪨 Obstacle',
+													label: elementPlacementMode === 'fire' ? '🔥 Fire' : '🪨 Obstacle',
 													metadata: { itemType: elementPlacementMode },
 													overrideValidation: true,
 												},
@@ -2234,7 +2236,7 @@ const MultiplayerGameScreen: React.FC = () => {
 											const response = await resumeTurnMutation.mutateAsync({
 												path: `/games/${inviteCode}/turn/resume`,
 											});
-											if (response) {
+											if (response && gameState) {
 												setGameState({ ...gameState, activeTurn: response.activeTurn, pausedTurn: undefined });
 											}
 										} catch (error) {
@@ -2254,7 +2256,7 @@ const MultiplayerGameScreen: React.FC = () => {
 											const response = await interruptTurnMutation.mutateAsync({
 												path: `/games/${inviteCode}/turn/interrupt`,
 											});
-											if (response) {
+											if (response && gameState) {
 												setGameState({ ...gameState, activeTurn: response.activeTurn, pausedTurn: response.pausedTurn });
 											}
 										} catch (error) {

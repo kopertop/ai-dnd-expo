@@ -24,6 +24,7 @@ import { ThemedView } from '@/components/themed-view';
 import { TokenDetailModal } from '@/components/token-detail-modal';
 import { useGameCharacters } from '@/hooks/api/use-character-queries';
 import {
+	useDeleteMapToken,
 	useGenerateMap,
 	useMapState,
 	useMutateTerrain,

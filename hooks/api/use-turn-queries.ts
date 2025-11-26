@@ -56,18 +56,8 @@ export function useInterruptTurn(inviteCode: string) {
 	const queryClient = useQueryClient();
 
 	return useMutationApi<{
-		activeTurn: {
-			type: string;
-			entityId: string;
-			turnNumber: number;
-			startedAt: number;
-		};
-		pausedTurn?: {
-			type: string;
-			entityId: string;
-			turnNumber: number;
-			startedAt: number;
-		};
+		activeTurn: NonNullable<MultiplayerGameState['activeTurn']>;
+		pausedTurn?: MultiplayerGameState['pausedTurn'];
 	}>({
 		method: 'POST',
 		onSuccess: () => {
@@ -84,12 +74,7 @@ export function useResumeTurn(inviteCode: string) {
 	const queryClient = useQueryClient();
 
 	return useMutationApi<{
-		activeTurn: {
-			type: string;
-			entityId: string;
-			turnNumber: number;
-			startedAt: number;
-		};
+		activeTurn: NonNullable<MultiplayerGameState['activeTurn']>;
 	}>({
 		method: 'POST',
 		onSuccess: () => {
