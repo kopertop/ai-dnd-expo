@@ -1,13 +1,33 @@
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 
-import { CharacterRow, Database, GameRow, MapRow, NpcInstanceRow } from '../../../shared/workers/db';
+import { CharacterRow, Database, GameRow, MapRow, NpcInstanceRow, NpcRow } from '../../../shared/workers/db';
 import { generateProceduralMap, MapGeneratorPreset } from '../../../shared/workers/map-generator';
 import { generateInviteCode, getSessionId, getSessionStub } from '../../../shared/workers/session-manager';
 import { Character, MultiplayerGameState, Quest } from '../../../shared/workers/types';
 import type { CloudflareBindings } from '../env';
 
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
+import { findSpellByName } from '@/constants/spells';
+import { parseDiceNotation, rollDiceLocal } from '@/services/dice-roller';
+import type {
+	BasicAttackResult,
+	CharacterActionResult,
+	CombatTargetSummary,
+	DiceRollSummary,
+	SpellCastResult,
+} from '@/types/combat';
+import type { SpellDefinition } from '@/types/spell';
+import {
+	calculateAC,
+	calculateAttackBonus,
+	calculatePassivePerception,
+	calculateProficiencyBonus,
+	getAbilityModifier,
+	getAbilityScore,
+	getSpellcastingAbilityModifier,
+	isSkillProficient,
+} from '@/utils/combat-utils';
 import { getTerrainCost } from '@/utils/movement-calculator';
 import { mapStateFromDb, npcFromDb } from '@/utils/schema-adapters';
 
@@ -61,6 +81,355 @@ const createId = (prefix: string) => {
 	}
 
 	return `${prefix}_${Math.random().toString(36).slice(2)}`;
+};
+
+type CharacterAttackTarget = {
+	type: 'character';
+	row: CharacterRow;
+	character: Character;
+	armorClass: number;
+};
+
+type NpcAttackTarget = {
+	type: 'npc';
+	instance: NpcInstanceRow;
+	npcDefinition?: NpcRow | null;
+	armorClass: number;
+};
+
+type AttackTarget = CharacterAttackTarget | NpcAttackTarget;
+
+const rollDie = (sides: number): number => Math.floor(Math.random() * sides) + 1;
+
+const formatModifierText = (modifier: number): string => {
+	if (modifier === 0) {
+		return '';
+	}
+	return modifier > 0 ? ` + ${modifier}` : ` - ${Math.abs(modifier)}`;
+};
+
+const rollDamageDice = (notation: string, abilityModifier: number, critical: boolean): DiceRollSummary => {
+	const parsed = parseDiceNotation(notation);
+	if (!parsed) {
+		throw new Error(`Invalid damage dice: ${notation}`);
+	}
+
+	const totalDice = critical ? parsed.numDice * 2 : parsed.numDice;
+	const rolls = Array.from({ length: totalDice }, () => rollDie(parsed.dieSize));
+	const modifier = parsed.modifier + abilityModifier;
+	const total = rolls.reduce((sum, roll) => sum + roll, 0) + modifier;
+
+	return {
+		notation,
+		rolls,
+		modifier,
+		total,
+		breakdown: `${rolls.join(' + ')}${formatModifierText(modifier)} = ${total}`,
+		critical,
+	};
+};
+
+const resolveAttackTarget = async (db: Database, targetId: string): Promise<AttackTarget | null> => {
+	const characterRow = await db.getCharacterById(targetId);
+	if (characterRow) {
+		const character = deserializeCharacter(characterRow);
+		return {
+			type: 'character',
+			row: characterRow,
+			character,
+			armorClass: calculateAC(character),
+		};
+	}
+
+	const npcInstance = await db.getNpcInstanceByToken(targetId);
+	if (npcInstance) {
+		const npcDefinition = await db.getNpcById(npcInstance.npc_id);
+		const armorClass = npcDefinition?.base_armor_class ?? 12;
+		return {
+			type: 'npc',
+			instance: npcInstance,
+			npcDefinition,
+			armorClass,
+		};
+	}
+
+	return null;
+};
+
+const applyDamageToTarget = async (db: Database, target: AttackTarget, damage: number): Promise<number> => {
+	if (damage <= 0) {
+		return target.type === 'character' ? target.row.health : target.instance.current_health;
+	}
+
+	if (target.type === 'character') {
+		const remainingHealth = Math.max(0, target.row.health - damage);
+		await db.updateCharacter(target.row.id, { health: remainingHealth });
+		return remainingHealth;
+	}
+
+	const remainingHealth = Math.max(0, target.instance.current_health - damage);
+	await db.saveNpcInstance({
+		...target.instance,
+		current_health: remainingHealth,
+		metadata: target.instance.metadata,
+		status_effects: target.instance.status_effects,
+	});
+	return remainingHealth;
+};
+
+type BasicAttackOptions = {
+	db: Database;
+	attacker: Character;
+	targetId?: string;
+	params?: Record<string, unknown>;
+};
+
+type SpellCastOptions = {
+	db: Database;
+	attacker: Character;
+	spellName?: string;
+	targetId?: string;
+	params?: Record<string, unknown>;
+};
+
+const getAttackStyle = (params?: Record<string, unknown>): 'melee' | 'ranged' => {
+	const requested = typeof params?.attackType === 'string' ? params.attackType.toLowerCase() : 'melee';
+	return requested === 'ranged' ? 'ranged' : 'melee';
+};
+
+const getDamageDice = (attackStyle: 'melee' | 'ranged', customDice?: unknown): string => {
+	if (typeof customDice === 'string' && customDice.trim().length > 0) {
+		return customDice.trim();
+	}
+	return attackStyle === 'ranged' ? '1d6' : '1d8';
+};
+
+const handleBasicAttack = async ({
+	db,
+	attacker,
+	targetId,
+	params,
+}: BasicAttackOptions): Promise<{ result: BasicAttackResult } | { error: string; status?: number }> => {
+	if (!targetId) {
+		return { error: 'Target is required', status: 400 };
+	}
+
+	const target = await resolveAttackTarget(db, targetId);
+	if (!target) {
+		return { error: 'Target not found', status: 404 };
+	}
+
+	const attackStyle = getAttackStyle(params);
+	const attackBonus = calculateAttackBonus(attacker, attackStyle);
+	const attackNotation = `1d20${attackBonus >= 0 ? `+${attackBonus}` : attackBonus}`;
+	const attackRoll = rollDiceLocal(attackNotation);
+	const naturalRoll = attackRoll.rolls[0] ?? 0;
+	const critical = naturalRoll === 20;
+	const fumble = naturalRoll === 1;
+	const hit =
+		critical || (!fumble && attackRoll.total >= target.armorClass);
+
+	let damageRoll: DiceRollSummary | undefined;
+	let damageDealt = 0;
+	let remainingHealth =
+		target.type === 'character' ? target.row.health : target.instance.current_health;
+
+	if (hit) {
+		const abilityKey = attackStyle === 'ranged' ? 'DEX' : 'STR';
+		const abilityModifier = getAbilityModifier(getAbilityScore(attacker, abilityKey));
+		const damageDice = getDamageDice(attackStyle, params?.damageDice);
+		damageRoll = rollDamageDice(damageDice, abilityModifier, critical);
+		damageDealt = Math.max(0, damageRoll.total);
+		remainingHealth = await applyDamageToTarget(db, target, damageDealt);
+	}
+
+	const result: BasicAttackResult = {
+		type: 'basic_attack',
+		attackStyle,
+		target: {
+			type: target.type,
+			id: target.type === 'character' ? target.row.id : target.instance.token_id,
+			name: target.type === 'character' ? target.character.name : target.instance.name,
+			armorClass: target.armorClass,
+			remainingHealth,
+			maxHealth: target.type === 'character' ? target.row.max_health : target.instance.max_health,
+		},
+		attackRoll: {
+			notation: attackNotation,
+			rolls: attackRoll.rolls,
+			modifier: attackRoll.modifier,
+			total: attackRoll.total,
+			breakdown: attackRoll.breakdown,
+			targetAC: target.armorClass,
+			natural: naturalRoll,
+			critical,
+			fumble,
+		},
+		hit,
+		damageRoll,
+		damageDealt,
+	};
+
+	return { result };
+};
+
+const getSpellAttackBonus = (attacker: Character, spell: SpellDefinition): number => {
+	if (spell.attackAbilityOverride) {
+		const abilityScore = getAbilityScore(attacker, spell.attackAbilityOverride);
+		return getAbilityModifier(abilityScore) + calculateProficiencyBonus(attacker.level);
+	}
+	return calculateAttackBonus(attacker, 'spell');
+};
+
+const getSpellDamageModifier = (attacker: Character, spell: SpellDefinition): number => {
+	if (!spell.damageAbility) {
+		return 0;
+	}
+	if (spell.damageAbility === 'spellcasting') {
+		return getSpellcastingAbilityModifier(attacker);
+	}
+	return getAbilityModifier(getAbilityScore(attacker, spell.damageAbility));
+};
+
+const buildTargetSummary = (target?: AttackTarget | null): CombatTargetSummary | undefined => {
+	if (!target) {
+		return undefined;
+	}
+	return {
+		type: target.type,
+		id: target.type === 'character' ? target.row.id : target.instance.token_id,
+		name: target.type === 'character' ? target.character.name : target.instance.name,
+		armorClass: target.armorClass,
+		remainingHealth: target.type === 'character' ? target.row.health : target.instance.current_health,
+		maxHealth: target.type === 'character' ? target.row.max_health : target.instance.max_health,
+	};
+};
+
+const handleSpellCast = async ({
+	db,
+	attacker,
+	spellName,
+	targetId,
+	params,
+}: SpellCastOptions): Promise<{ result: SpellCastResult } | { error: string; status?: number }> => {
+	if (!spellName) {
+		return { error: 'spellName is required', status: 400 };
+	}
+
+	const spell = findSpellByName(spellName);
+	if (!spell) {
+		return { error: 'Spell not found', status: 404 };
+	}
+
+	if ((spell.attackType === 'attack' || spell.attackType === 'auto-hit') && !spell.damageDice) {
+		return { error: 'Spell has no damage dice configured', status: 400 };
+	}
+
+	let target: AttackTarget | null = null;
+	const needsTarget = spell.attackType === 'attack' || spell.attackType === 'auto-hit';
+	if (needsTarget) {
+		if (!targetId) {
+			return { error: 'Target is required', status: 400 };
+		}
+		target = await resolveAttackTarget(db, targetId);
+		if (!target) {
+			return { error: 'Target not found', status: 404 };
+		}
+	}
+
+	const result: SpellCastResult = {
+		type: 'spell',
+		spellId: spell.id,
+		spellName: spell.name,
+		attackType: spell.attackType,
+		target: buildTargetSummary(target),
+	};
+
+	switch (spell.attackType) {
+		case 'attack': {
+			if (!spell.damageDice || !target) {
+				return { error: 'Spell configuration incomplete', status: 400 };
+			}
+
+			const attackBonus = getSpellAttackBonus(attacker, spell);
+			const attackNotation = `1d20${attackBonus >= 0 ? `+${attackBonus}` : attackBonus}`;
+			const attackRoll = rollDiceLocal(attackNotation);
+			const naturalRoll = attackRoll.rolls[0] ?? 0;
+			const critical = naturalRoll === 20;
+			const fumble = naturalRoll === 1;
+			const hit = critical || (!fumble && attackRoll.total >= target.armorClass);
+
+			result.attackRoll = {
+				notation: attackNotation,
+				rolls: attackRoll.rolls,
+				modifier: attackRoll.modifier,
+				total: attackRoll.total,
+				breakdown: attackRoll.breakdown,
+				targetAC: target.armorClass,
+				natural: naturalRoll,
+				critical,
+				fumble,
+			};
+			result.hit = hit;
+
+			if (hit) {
+				const damageModifier = getSpellDamageModifier(attacker, spell);
+				const damageDice =
+					typeof params?.damageDice === 'string' && params.damageDice.trim().length
+						? params.damageDice.trim()
+						: spell.damageDice;
+				if (!damageDice) {
+					return { error: 'Spell damage dice missing', status: 400 };
+				}
+
+				const damageRoll = rollDamageDice(damageDice, damageModifier, critical);
+				const damageDealt = Math.max(0, damageRoll.total);
+				const remainingHealth = await applyDamageToTarget(db, target, damageDealt);
+
+				result.damageRoll = damageRoll;
+				result.damageDealt = damageDealt;
+				result.target = {
+					...result.target,
+					remainingHealth,
+				};
+			}
+			break;
+		}
+
+		case 'auto-hit': {
+			if (!spell.damageDice || !target) {
+				return { error: 'Spell configuration incomplete', status: 400 };
+			}
+			const damageModifier = getSpellDamageModifier(attacker, spell);
+			const damageDice =
+				typeof params?.damageDice === 'string' && params.damageDice.trim().length
+					? params.damageDice.trim()
+					: spell.damageDice;
+			const damageRoll = rollDamageDice(damageDice, damageModifier, false);
+			const damageDealt = Math.max(0, damageRoll.total);
+			const remainingHealth = await applyDamageToTarget(db, target, damageDealt);
+
+			result.hit = true;
+			result.damageRoll = damageRoll;
+			result.damageDealt = damageDealt;
+			result.target = {
+				...result.target,
+				remainingHealth,
+			};
+			break;
+		}
+
+		case 'save':
+			return { error: 'Saving throw spells are not supported yet', status: 400 };
+
+		case 'support':
+			return { error: 'Support spells are not supported yet', status: 400 };
+
+		default:
+			return { error: 'Unsupported spell type', status: 400 };
+	}
+
+	return { result };
 };
 
 const isHostUser = (game: GameRow, user: Variables['user']) => {
@@ -185,6 +554,7 @@ const serializeCharacter = (
 	race: character.race,
 	class: character.class,
 	description: character.description || null,
+	trait: character.trait || null,
 	stats: JSON.stringify(character.stats),
 	skills: JSON.stringify(character.skills || []),
 	inventory: JSON.stringify(character.inventory || []),
@@ -202,6 +572,7 @@ const deserializeCharacter = (row: CharacterRow): Character => ({
 	name: row.name,
 	class: row.class,
 	description: row.description || undefined,
+	trait: row.trait || undefined,
 	stats: JSON.parse(row.stats),
 	skills: JSON.parse(row.skills || '[]'),
 	inventory: JSON.parse(row.inventory || '[]'),
@@ -1484,19 +1855,72 @@ games.post('/:inviteCode/characters/:characterId/actions', async (c) => {
 		return c.json({ error: 'Not enough action points' }, 400);
 	}
 
-	// Update character action points
+	let actionResult: CharacterActionResult | null = null;
+
+	switch (body.actionType) {
+		case 'basic_attack': {
+			const outcome = await handleBasicAttack({
+				db,
+				attacker: character,
+				targetId: body.targetId,
+				params: body.params,
+			});
+
+			if ('error' in outcome) {
+				return c.json({ error: outcome.error }, outcome.status ?? 400);
+			}
+
+			actionResult = outcome.result;
+			break;
+		}
+
+		case 'cast_spell': {
+			const outcome = await handleSpellCast({
+				db,
+				attacker: character,
+				spellName: body.spellName,
+				targetId: body.targetId,
+				params: body.params,
+			});
+
+			if ('error' in outcome) {
+				return c.json({ error: outcome.error }, outcome.status ?? 400);
+			}
+
+			actionResult = outcome.result;
+			break;
+		}
+
+		default:
+			break;
+	}
+
 	const updatedActionPoints = character.actionPoints - actionPointCost;
 	await db.updateCharacter(characterId, { action_points: updatedActionPoints });
 
-	// Log the action to database
 	try {
+		let description: string;
+		if (actionResult?.type === 'basic_attack') {
+			description = `${character.name} ${actionResult.hit ? 'hits' : 'misses'} ${actionResult.target.name}`;
+		} else if (actionResult?.type === 'spell') {
+			const spellOutcome =
+				typeof actionResult.hit === 'boolean'
+					? actionResult.hit
+						? 'succeeds'
+						: 'fails'
+					: 'casts';
+			description = `${character.name} casts ${actionResult.spellName} (${spellOutcome})`;
+		} else {
+			description = `${character.name} performed ${body.actionType}${body.spellName ? `: ${body.spellName}` : ''}`;
+		}
+
 		await db.saveActivityLog({
 			id: createId('log'),
 			game_id: game.id,
 			invite_code: inviteCode,
 			type: 'action',
 			timestamp: Date.now(),
-			description: `${character.name} performed ${body.actionType}${body.spellName ? `: ${body.spellName}` : ''}`,
+			description,
 			actor_id: user.id,
 			actor_name: user.name || user.email || null,
 			data: JSON.stringify({
@@ -1506,18 +1930,109 @@ games.post('/:inviteCode/characters/:characterId/actions', async (c) => {
 				targetId: body.targetId,
 				itemId: body.itemId,
 				params: body.params,
+				result: actionResult,
 			}),
 		});
 	} catch (error) {
 		console.error('Failed to log action:', error);
-		// Continue anyway - action was successful
 	}
 
 	const updated = await db.getCharacterById(characterId);
 	return c.json({
 		character: updated ? deserializeCharacter(updated) : null,
 		actionPerformed: body.actionType,
+		actionResult,
 	});
+});
+
+games.post('/:inviteCode/characters/:characterId/perception-check', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const characterId = c.req.param('characterId');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	const body = (await c.req.json().catch(() => ({}))) as { dc?: number; passive?: boolean };
+	const dc = typeof body.dc === 'number' && Number.isFinite(body.dc) ? body.dc : undefined;
+
+	const characterRow = await db.getCharacterById(characterId);
+	if (!characterRow) {
+		return c.json({ error: 'Character not found' }, 404);
+	}
+
+	const isHost = isHostUser(game, user);
+	if (!isHost && characterRow.player_id !== user.id) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const character = deserializeCharacter(characterRow);
+	const mode: 'passive' | 'active' = body.passive ? 'passive' : 'active';
+
+	if (mode === 'passive') {
+		const total = calculatePassivePerception(character);
+		const responsePayload = {
+			characterId,
+			mode,
+			total,
+			dc,
+			success: typeof dc === 'number' ? total >= dc : undefined,
+		};
+		return c.json(responsePayload);
+	}
+
+	const wisScore = getAbilityScore(character, 'WIS');
+	const wisModifier = getAbilityModifier(wisScore);
+	const proficiencyBonus = isSkillProficient(character, 'perception')
+		? calculateProficiencyBonus(character.level)
+		: 0;
+	const modifier = wisModifier + proficiencyBonus;
+	const roll = Math.floor(Math.random() * 20) + 1;
+	const total = roll + modifier;
+	const breakdownParts = [`${roll}`];
+	if (modifier !== 0) {
+		breakdownParts.push(modifier > 0 ? `+ ${modifier}` : `- ${Math.abs(modifier)}`);
+	}
+	const breakdown = `${breakdownParts.join(' ')} = ${total}`;
+
+	const payload = {
+		characterId,
+		mode,
+		roll,
+		modifier,
+		total,
+		breakdown,
+		dc,
+		success: typeof dc === 'number' ? total >= dc : undefined,
+	};
+
+	try {
+		await db.saveActivityLog({
+			id: createId('log'),
+			game_id: game.id,
+			invite_code: inviteCode,
+			type: 'dice_roll',
+			timestamp: Date.now(),
+			description: `${character.name} rolled a Perception check (${total})${dc ? ` vs DC ${dc}` : ''}`,
+			actor_id: user.id,
+			actor_name: user.name || user.email || null,
+			data: JSON.stringify({
+				...payload,
+				purpose: 'perception',
+			}),
+		});
+	} catch (error) {
+		console.error('Failed to log perception check:', error);
+	}
+
+	return c.json(payload);
 });
 
 const forwardJsonRequest = async (c: Context<GamesContext>, path: string) => {
@@ -1862,7 +2377,8 @@ games.post('/:inviteCode/turn/update', async (c) => {
 		movementUsed: body.movementUsed,
 		majorActionUsed: body.majorActionUsed,
 		minorActionUsed: body.minorActionUsed,
-		actorEntityId: isHost ? body.actorEntityId : membership?.character_id,
+		// Don't restrict actor for host - trust the host's intent to update the active turn
+		actorEntityId: isHost ? undefined : membership?.character_id,
 	};
 
 	const sessionStub = getSessionStub(c.env, inviteCode);
@@ -1897,6 +2413,21 @@ games.post('/:inviteCode/turn/end', async (c) => {
 	}
 
 	const sessionStub = getSessionStub(c.env, inviteCode);
+
+	// Get current game state BEFORE ending the turn to capture the turn that's ending
+	const stateResponse = await sessionStub.fetch(
+		buildDurableRequest(c.req.raw, '/state'),
+	);
+
+	let previousTurn: MultiplayerGameState['activeTurn'] = null;
+	let previousCharacters: Character[] = [];
+
+	if (stateResponse.ok) {
+		const previousGameState = await stateResponse.json() as MultiplayerGameState;
+		previousTurn = previousGameState.activeTurn ?? null;
+		previousCharacters = previousGameState.characters ?? [];
+	}
+
 	const response = await sessionStub.fetch(
 		buildDurableRequest(c.req.raw, '/turn/end', {
 			method: 'POST',
@@ -1910,10 +2441,11 @@ games.post('/:inviteCode/turn/end', async (c) => {
 
 	const gameState = await response.json() as MultiplayerGameState;
 
-	// Log turn end to database
+	// Log turn end to database using the PREVIOUS turn (the one that just ended)
 	try {
-		const currentTurn = gameState.activeTurn;
-		const characterName = gameState.characters.find(c => c.id === currentTurn?.entityId)?.name || 'Unknown';
+		// Use previousTurn (the turn that ended) instead of gameState.activeTurn (the new turn)
+		const endedTurn = previousTurn;
+		const characterName = previousCharacters.find(c => c.id === endedTurn?.entityId)?.name || 'Unknown';
 		await db.saveActivityLog({
 			id: createId('log'),
 			game_id: game.id,
@@ -1924,9 +2456,9 @@ games.post('/:inviteCode/turn/end', async (c) => {
 			actor_id: user.id,
 			actor_name: user.name || user.email || null,
 			data: JSON.stringify({
-				entityId: currentTurn?.entityId,
-				entityType: currentTurn?.type,
-				turnNumber: currentTurn?.turnNumber,
+				entityId: endedTurn?.entityId,
+				entityType: endedTurn?.type,
+				turnNumber: endedTurn?.turnNumber,
 			}),
 		});
 	} catch (error) {

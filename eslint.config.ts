@@ -43,6 +43,8 @@ export default defineConfig([
 			'**/*.mjs',
 			'**/*.cjs',
 			'**/*.js',
+			'tests/**/*',
+			'ai-training/llama.cpp/**/*',
 		],
 	},
 	{
@@ -52,6 +54,7 @@ export default defineConfig([
 				'plugin:react/recommended',
 				'plugin:react-hooks/recommended',
 				'plugin:@typescript-eslint/recommended',
+				'eslint-config-expo',
 			),
 		)[0],
 
@@ -150,12 +153,6 @@ export default defineConfig([
 			'@typescript-eslint/explicit-function-return-type': 'off',
 			'@typescript-eslint/no-non-null-assertion': 'warn',
 			'@typescript-eslint/strict-boolean-expressions': 'off',
-			'react-native/no-raw-text': [
-				'error',
-				{
-					skip: ['ThemedText'],
-				},
-			],
 			'react-native/no-inline-styles': 'off',
 
 			'react/function-component-definition': [
@@ -190,6 +187,8 @@ export default defineConfig([
 
 			'comma-dangle': ['error', 'always-multiline'],
 			semi: ['error', 'always'],
+			'react/display-name': 'off',
+			'react-native/no-raw-text': 'off',
 		},
 	},
 	{

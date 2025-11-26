@@ -26,6 +26,7 @@ export interface CharacterRow {
 	race: string;
 	class: string;
 	description: string | null;
+	trait: string | null;
 	stats: string; // JSON
 	skills: string; // JSON array
 	inventory: string; // JSON array
@@ -758,10 +759,10 @@ export class Database {
 	 */
 	async removeDuplicateTokens(gameId: string, mapId: string): Promise<number> {
 		const tokens = await this.listMapTokensForMap(mapId);
-		
+
 		// Group tokens by character_id or npc_id
 		const tokenGroups = new Map<string, MapTokenRow[]>();
-		
+
 		for (const token of tokens) {
 			// Create a unique key for character or NPC tokens
 			let key: string | null = null;
@@ -770,34 +771,34 @@ export class Database {
 			} else if (token.npc_id) {
 				key = `npc:${token.npc_id}`;
 			}
-			
+
 			// Only process tokens that have a character_id or npc_id (skip object tokens)
 			if (!key) continue;
-			
+
 			if (!tokenGroups.has(key)) {
 				tokenGroups.set(key, []);
 			}
 			tokenGroups.get(key)!.push(token);
 		}
-		
+
 		let duplicatesRemoved = 0;
-		
+
 		// For each group, keep the most recent token and delete the rest
 		for (const [key, group] of tokenGroups.entries()) {
 			if (group.length <= 1) continue; // No duplicates
-			
+
 			// Sort by updated_at descending (most recent first)
 			group.sort((a, b) => b.updated_at - a.updated_at);
-			
+
 			// Keep the first (most recent) token, delete the rest
 			const tokensToDelete = group.slice(1);
-			
+
 			for (const tokenToDelete of tokensToDelete) {
 				await this.deleteMapToken(tokenToDelete.id);
 				duplicatesRemoved++;
 			}
 		}
-		
+
 		return duplicatesRemoved;
 	}
 

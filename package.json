@@ -154,18 +154,5 @@
 		"vitest-react-native": "^0.1.5",
 		"wrangler": "^4.49.1"
 	},
-	"eslintConfig": {
-		"extends": [
-			"expo"
-		],
-		"rules": {
-			"react/display-name": "off",
-			"react-native/no-raw-text": "off"
-		},
-		"ignorePatterns": [
-			"tests/**/*",
-			"ai-training/llama.cpp/**/*"
-		]
-	},
 	"private": true
 }

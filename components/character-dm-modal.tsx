@@ -7,6 +7,7 @@ import { ThemedView } from './themed-view';
 import { Character } from '@/types/character';
 import { MapToken } from '@/types/multiplayer-map';
 import { STAT_KEYS } from '@/types/stats';
+import { calculateAC } from '@/utils/combat-utils';
 
 interface CharacterDMModalProps {
 	visible: boolean;
@@ -44,6 +45,8 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 	
 	// Get stats - from character or NPC
 	const stats = character?.stats || npcStats || { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 };
+	const npcMetadata = npcToken?.metadata as { armorClass?: number } | undefined;
+	const armorClass = character ? calculateAC(character) : npcMetadata?.armorClass;
 
 	if (!visible || (!character && !npcToken)) {
 		return null;
@@ -128,6 +131,12 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 								<View style={styles.infoRow}>
 									<ThemedText style={styles.infoLabel}>Initiative:</ThemedText>
 									<ThemedText style={styles.infoValue}>{initiativeValue}</ThemedText>
+								</View>
+							)}
+							{armorClass !== undefined && (
+								<View style={styles.infoRow}>
+									<ThemedText style={styles.infoLabel}>Armor Class:</ThemedText>
+									<ThemedText style={styles.infoValue}>{armorClass}</ThemedText>
 								</View>
 							)}
 						</View>

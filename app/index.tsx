@@ -7,15 +7,14 @@ import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { AppFooter } from '@/components/app-footer';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { multiplayerClient } from '@/services/api/multiplayer-client';
-import { Character } from '@/types/character';
+import { useMyCharacters } from '@/hooks/api/use-character-queries';
 
 const IndexScreen: React.FC = () => {
 	const [hasSavedGame, setHasSavedGame] = useState(false);
 	const [loading, setLoading] = useState(true);
-	const [characters, setCharacters] = useState<Character[]>([]);
-	const [charactersLoading, setCharactersLoading] = useState(false);
 	const { user } = useAuth();
+	const { data: charactersData, isLoading: charactersLoading } = useMyCharacters();
+	const characters = Array.isArray(charactersData) ? charactersData : (charactersData?.characters || []);
 
 	useEffect(() => {
 		const checkSavedGame = async () => {
@@ -29,27 +28,6 @@ const IndexScreen: React.FC = () => {
 		};
 		checkSavedGame();
 	}, []);
-
-	useEffect(() => {
-		const fetchCharacters = async () => {
-			if (!user) {
-				setCharacters([]);
-				return;
-			}
-
-			setCharactersLoading(true);
-			try {
-				const data = await multiplayerClient.getMyCharacters();
-				setCharacters(data);
-			} catch {
-				setCharacters([]);
-			} finally {
-				setCharactersLoading(false);
-			}
-		};
-
-		fetchCharacters().catch(() => undefined);
-	}, [user]);
 
 	return (
 		<ThemedView style={styles.container}>

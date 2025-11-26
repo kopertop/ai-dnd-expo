@@ -7,6 +7,7 @@ import { ThemedView } from './themed-view';
 import { Character } from '@/types/character';
 import { MapToken } from '@/types/multiplayer-map';
 import { STAT_KEYS } from '@/types/stats';
+import { calculateAC } from '@/utils/combat-utils';
 
 interface CharacterViewModalProps {
 	visible: boolean;
@@ -38,6 +39,8 @@ export const CharacterViewModal: React.FC<CharacterViewModalProps> = ({
 	
 	// Get stats - only show if showFullStats is true
 	const stats = showFullStats && character?.stats ? character.stats : undefined;
+	const npcMetadata = npcToken?.metadata as { armorClass?: number } | undefined;
+	const armorClass = character ? calculateAC(character) : npcMetadata?.armorClass;
 
 	return (
 		<Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -102,6 +105,12 @@ export const CharacterViewModal: React.FC<CharacterViewModalProps> = ({
 								<View style={styles.infoRow}>
 									<ThemedText style={styles.infoLabel}>Initiative:</ThemedText>
 									<ThemedText style={styles.infoValue}>{initiativeValue}</ThemedText>
+								</View>
+							)}
+							{armorClass !== undefined && (
+								<View style={styles.infoRow}>
+									<ThemedText style={styles.infoLabel}>Armor Class:</ThemedText>
+									<ThemedText style={styles.infoValue}>{armorClass}</ThemedText>
 								</View>
 							)}
 						</View>

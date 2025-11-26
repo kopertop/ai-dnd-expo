@@ -22,9 +22,19 @@ import { TileActionMenu, type TileAction } from '@/components/map/tile-action-me
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TokenDetailModal } from '@/components/token-detail-modal';
-import { multiplayerClient } from '@/services/api/multiplayer-client';
+import { useGameCharacters } from '@/hooks/api/use-character-queries';
+import {
+	useGenerateMap,
+	useMapState,
+	useMutateTerrain,
+	useNpcDefinitions,
+	usePlaceNpc,
+	usePlacePlayerToken,
+	useSaveMapToken,
+	useUpdateMapState,
+} from '@/hooks/api/use-map-queries';
 import { Character } from '@/types/character';
-import { MapState, MapToken, NpcDefinition } from '@/types/multiplayer-map';
+import { MapToken, NpcDefinition } from '@/types/multiplayer-map';
 
 type MapEditorMode = 'npc' | 'player' | 'road' | 'tree' | 'water' | 'mountain' | 'erase';
 type MapPresetOption = 'forest' | 'road' | 'dungeon' | 'town';
@@ -319,14 +329,8 @@ const HostGameMapEditorScreen: React.FC = () => {
 	const params = useLocalSearchParams<{ id: string; mapId: string }>();
 	const inviteCode = params.id;
 	const mapId = params.mapId;
-	const [mapState, setMapState] = useState<MapState | null>(null);
-	const [mapLoading, setMapLoading] = useState(false);
-	const [mapError, setMapError] = useState<string | null>(null);
-	const [npcPalette, setNpcPalette] = useState<NpcDefinition[]>([]);
 	const [selectedNpc, setSelectedNpc] = useState<NpcDefinition | null>(null);
 	const [selectedPlayer, setSelectedPlayer] = useState<Character | null>(null);
-	const [lobbyCharacters, setLobbyCharacters] = useState<Character[]>([]);
-	const [charactersLoading, setCharactersLoading] = useState(false);
 	const [showAddNpcModal, setShowAddNpcModal] = useState(false);
 	const [newNpcForm, setNewNpcForm] = useState({
 		name: '',
@@ -351,88 +355,24 @@ const HostGameMapEditorScreen: React.FC = () => {
 	const insets = useSafeAreaInsets();
 	const { user } = useAuth();
 
-	const refreshMapState = useCallback(async () => {
-		if (!inviteCode) {
-			setMapState(null);
-			return;
-		}
+	// Use query hooks
+	const shouldFetchMap = inviteCode && mapId !== 'new-map';
+	const { data: mapState, isLoading: mapLoading, error: mapError } = useMapState(
+		shouldFetchMap ? inviteCode : null,
+	);
+	const { data: npcDefinitionsData } = useNpcDefinitions(inviteCode);
+	const npcPalette = npcDefinitionsData?.npcs || [];
+	const { data: charactersData, isLoading: charactersLoading } = useGameCharacters(inviteCode);
+	const lobbyCharacters = charactersData?.characters || [];
 
-		setMapError(null);
-		setMapLoading(true);
-		try {
-			const state = await multiplayerClient.getMapState(inviteCode);
-			setMapState(state);
-		} catch (error) {
-			console.error('Failed to load map state:', error);
-			setMapError(error instanceof Error ? error.message : 'Failed to load map');
-		} finally {
-			setMapLoading(false);
-		}
-	}, [inviteCode]);
-
-	useEffect(() => {
-		if (inviteCode) {
-			if (mapId === 'new-map') {
-				// Don't auto-generate - let user click Generate button
-				setMapState(null);
-				setMapLoading(false);
-				setMapError(null);
-			} else {
-				refreshMapState();
-			}
-		}
-	}, [inviteCode, mapId, refreshMapState]);
-
-	const loadNpcPalette = useCallback(async () => {
-		if (!inviteCode) {
-			setNpcPalette([]);
-			return;
-		}
-
-		try {
-			const response = await multiplayerClient.getNpcDefinitions(inviteCode);
-			// Force state update by creating a new array
-			setNpcPalette([...response.npcs]);
-			console.log('NPC palette loaded:', response.npcs.length, 'NPCs');
-		} catch (error) {
-			console.error('Failed to load NPC palette:', error);
-		}
-	}, [inviteCode]);
-
-	useEffect(() => {
-		loadNpcPalette();
-	}, [loadNpcPalette]);
-
-	useEffect(() => {
-		if (!inviteCode) {
-			setLobbyCharacters([]);
-			return;
-		}
-
-		let cancelled = false;
-		setCharactersLoading(true);
-		multiplayerClient
-			.getGameCharacters(inviteCode)
-			.then(response => {
-				if (!cancelled) {
-					setLobbyCharacters(response.characters);
-				}
-			})
-			.catch(error => {
-				if (!cancelled) {
-					console.error('Failed to load lobby characters:', error);
-				}
-			})
-			.finally(() => {
-				if (!cancelled) {
-					setCharactersLoading(false);
-				}
-			});
-
-		return () => {
-			cancelled = true;
-		};
-	}, [inviteCode]);
+	// Mutation hooks
+	const generateMapMutation = useGenerateMap(inviteCode || '');
+	const mutateTerrainMutation = useMutateTerrain(inviteCode || '');
+	const updateMapStateMutation = useUpdateMapState(inviteCode || '');
+	const placeNpcMutation = usePlaceNpc(inviteCode || '');
+	const placePlayerTokenMutation = usePlacePlayerToken(inviteCode || '');
+	const saveMapTokenMutation = useSaveMapToken(inviteCode || '');
+	const deleteMapTokenMutation = useDeleteMapToken(inviteCode || '');
 
 	const applyTerrainEdit = useCallback(
 		async (x: number, y: number) => {
@@ -475,19 +415,21 @@ const HostGameMapEditorScreen: React.FC = () => {
 			terrainMutationsInFlight.current += 1;
 			setMutatingTerrain(true);
 			try {
-				await multiplayerClient.mutateTerrain(inviteCode, {
-					tiles: [
-						{
-							x,
-							y,
-							terrainType,
-							featureType,
-							isBlocked,
-							metadata,
-						},
-					],
+				await mutateTerrainMutation.mutateAsync({
+					path: `/games/${inviteCode}/map/terrain`,
+					body: {
+						tiles: [
+							{
+								x,
+								y,
+								terrainType,
+								featureType,
+								isBlocked,
+								metadata,
+							},
+						],
+					},
 				});
-				await refreshMapState();
 			} catch (error) {
 				Alert.alert('Edit Failed', error instanceof Error ? error.message : 'Unable to edit terrain');
 			} finally {
@@ -497,7 +439,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 				}
 			}
 		},
-		[editorMode, mapState, refreshMapState, inviteCode],
+		[editorMode, mapState, inviteCode, mutateTerrainMutation],
 	);
 
 	const handleTilePress = useCallback(
@@ -513,14 +455,16 @@ const HostGameMapEditorScreen: React.FC = () => {
 				}
 
 				try {
-					await multiplayerClient.placeNpc(inviteCode, {
-						npcId: selectedNpc.slug,
-						mapId: mapState?.id || (mapId !== 'new-map' ? mapId : undefined),
-						x,
-						y,
-						label: selectedNpc.name,
+					await placeNpcMutation.mutateAsync({
+						path: `/games/${inviteCode}/npcs`,
+						body: {
+							npcId: selectedNpc.slug,
+							mapId: mapState?.id || (mapId !== 'new-map' ? mapId : undefined),
+							x,
+							y,
+							label: selectedNpc.name,
+						},
 					});
-					await refreshMapState();
 				} catch (error) {
 					Alert.alert('Placement Failed', error instanceof Error ? error.message : 'Unable to place NPC');
 				}
@@ -534,16 +478,17 @@ const HostGameMapEditorScreen: React.FC = () => {
 				}
 
 				try {
-					// PlayerPlacementRequest doesn't have mapId, but the API endpoint might need it
-					// Check the API implementation - for now, try without mapId
-					await multiplayerClient.placePlayerToken(inviteCode, {
-						characterId: selectedPlayer.id,
-						x,
-						y,
-						label: selectedPlayer.name,
-						icon: selectedPlayer.icon,
+					await placePlayerTokenMutation.mutateAsync({
+						path: `/games/${inviteCode}/map/tokens`,
+						body: {
+							characterId: selectedPlayer.id,
+							x,
+							y,
+							label: selectedPlayer.name,
+							icon: selectedPlayer.icon,
+							tokenType: 'player',
+						},
 					});
-					await refreshMapState();
 				} catch (error) {
 					Alert.alert('Placement Failed', error instanceof Error ? error.message : 'Unable to place player');
 				}
@@ -559,8 +504,9 @@ const HostGameMapEditorScreen: React.FC = () => {
 			selectedNpc,
 			selectedPlayer,
 			mapState,
-			refreshMapState,
 			mapId,
+			placeNpcMutation,
+			placePlayerTokenMutation,
 		],
 	);
 
@@ -620,15 +566,17 @@ const HostGameMapEditorScreen: React.FC = () => {
 						console.log('mapState.id:', mapState.id);
 						console.log('mapId from route:', mapId);
 
-						const result = await multiplayerClient.placeNpc(inviteCode, {
-							npcId: npc.slug,
-							mapId: mapState.id || (mapId !== 'new-map' ? mapId : undefined),
-							x,
-							y,
-							label: npc.name,
+						const result = await placeNpcMutation.mutateAsync({
+							path: `/games/${inviteCode}/npcs`,
+							body: {
+								npcId: npc.slug,
+								mapId: mapState.id || (mapId !== 'new-map' ? mapId : undefined),
+								x,
+								y,
+								label: npc.name,
+							},
 						});
 						console.log('Place NPC API response:', result);
-						await refreshMapState();
 						console.log('NPC placed successfully, map refreshed');
 						Alert.alert('Success', `${npc.name} placed at (${x}, ${y})`);
 					} catch (error) {
@@ -653,16 +601,18 @@ const HostGameMapEditorScreen: React.FC = () => {
 						console.log('mapState.id:', mapState.id);
 						console.log('mapId from route:', mapId);
 
-						// PlayerPlacementRequest doesn't include mapId in schema
-						const result = await multiplayerClient.placePlayerToken(inviteCode, {
-							characterId: character.id,
-							x,
-							y,
-							label: character.name,
-							icon: character.icon,
+						const result = await placePlayerTokenMutation.mutateAsync({
+							path: `/games/${inviteCode}/map/tokens`,
+							body: {
+								characterId: character.id,
+								x,
+								y,
+								label: character.name,
+								icon: character.icon,
+								tokenType: 'player',
+							},
 						});
 						console.log('Place Player API response:', result);
-						await refreshMapState();
 						console.log('Player placed successfully, map refreshed');
 						Alert.alert('Success', `${character.name} placed at (${x}, ${y})`);
 					} catch (error) {
@@ -678,7 +628,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 				}
 			}
 		},
-		[inviteCode, mapState, npcPalette, lobbyCharacters, refreshMapState, handleTilePress],
+		[inviteCode, mapState, npcPalette, lobbyCharacters, handleTilePress, placeNpcMutation, placePlayerTokenMutation],
 	);
 
 	const handleGenerateMap = useCallback(async () => {
@@ -686,8 +636,6 @@ const HostGameMapEditorScreen: React.FC = () => {
 			return;
 		}
 
-		setMapError(null);
-		setMapLoading(true);
 		try {
 			// Delete all NPC tokens before generating new map
 			if (mapState?.tokens) {
@@ -696,28 +644,29 @@ const HostGameMapEditorScreen: React.FC = () => {
 
 				// Delete all NPC tokens in parallel
 				await Promise.all(
-					npcTokens.map(token =>
-						multiplayerClient.deleteMapToken(inviteCode, token.id).catch(err => {
+					npcTokens.map((token: any) =>
+						deleteMapTokenMutation.mutateAsync({
+							path: `/games/${inviteCode}/map/tokens/${token.id}`,
+						}).catch((err: any) => {
 							console.warn(`Failed to delete token ${token.id}:`, err);
 						}),
 					),
 				);
 			}
 
-			const generated = await multiplayerClient.generateMap(inviteCode, {
-				preset: mapPreset,
+			const generated = await generateMapMutation.mutateAsync({
+				path: `/games/${inviteCode}/map/generate`,
+				body: {
+					preset: mapPreset,
+				},
 			});
 			console.log('Map generated:', generated.id, 'for game:', inviteCode);
-			setMapState(generated);
 			// The generateMap endpoint already sets the map as current_map_id
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Unable to generate map';
-			setMapError(errorMessage);
 			Alert.alert('Generation Failed', errorMessage);
-		} finally {
-			setMapLoading(false);
 		}
-	}, [inviteCode, mapPreset, mapState]);
+	}, [inviteCode, mapPreset, mapState, generateMapMutation, deleteMapTokenMutation]);
 
 	const handleTileLongPress = useCallback((x: number, y: number) => {
 		setSelectedTile({ x, y });
@@ -739,8 +688,9 @@ const HostGameMapEditorScreen: React.FC = () => {
 		if (!inviteCode || !selectedToken) return;
 		const deleteToken = async () => {
 			try {
-				await multiplayerClient.deleteMapToken(inviteCode, selectedToken.id);
-				await refreshMapState();
+				await deleteMapTokenMutation.mutateAsync({
+					path: `/games/${inviteCode}/map/tokens/${selectedToken.id}`,
+				});
 				setTokenDetailVisible(false);
 				setSelectedToken(null);
 			} catch (error) {
@@ -748,7 +698,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 			}
 		};
 		void deleteToken();
-	}, [inviteCode, selectedToken, refreshMapState]);
+	}, [inviteCode, selectedToken, deleteMapTokenMutation]);
 
 	const getAvailableTileActions = useCallback((): TileAction[] => {
 		return ['placeNpc', 'placePlayer', 'changeTerrain'];
@@ -798,7 +748,9 @@ const HostGameMapEditorScreen: React.FC = () => {
 							<View style={styles.toolbarActions}>
 								<TouchableOpacity
 									style={styles.mapRefreshButton}
-									onPress={() => refreshMapState().catch(() => undefined)}
+									onPress={() => {
+										// Map state will refetch automatically via useMapState
+									}}
 								>
 									<ThemedText style={styles.mapRefreshButtonText}>Refresh</ThemedText>
 								</TouchableOpacity>
@@ -851,7 +803,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 					</View>
 				</View>
 				<View style={styles.dmWorkspace}>
-					{mapError && <ThemedText style={styles.errorText}>{mapError}</ThemedText>}
+					{mapError && <ThemedText style={styles.errorText}>{mapError.message || 'Failed to load map'}</ThemedText>}
 					{mapLoading ? (
 						<View style={styles.loadingContainer}>
 							<ActivityIndicator size="small" color="#8B6914" />
@@ -872,8 +824,9 @@ const HostGameMapEditorScreen: React.FC = () => {
 									// If dragged outside map bounds (x === -1, y === -1), delete the token
 									if (x === -1 && y === -1 && token.type === 'npc') {
 										try {
-											await multiplayerClient.deleteMapToken(inviteCode, token.id);
-											await refreshMapState();
+											await deleteMapTokenMutation.mutateAsync({
+												path: `/games/${inviteCode}/map/tokens/${token.id}`,
+											});
 											Alert.alert('Success', `${token.label || 'NPC'} removed from map`);
 										} catch (error) {
 											Alert.alert('Error', error instanceof Error ? error.message : 'Failed to remove NPC');
@@ -1024,7 +977,6 @@ const HostGameMapEditorScreen: React.FC = () => {
 									return;
 								}
 
-								setMapLoading(true);
 								try {
 									console.log('=== SAVING MAP ===');
 									console.log('Map ID:', mapState.id);
@@ -1034,16 +986,15 @@ const HostGameMapEditorScreen: React.FC = () => {
 									// Ensure the map is set as the current map for this game
 									// This saves the map association and ensures it persists
 									console.log('Calling updateMapState...');
-									const updatedState = await multiplayerClient.updateMapState(inviteCode, {
-										id: mapState.id,
+									const updatedState = await updateMapStateMutation.mutateAsync({
+										path: `/games/${inviteCode}/map`,
+										body: {
+											id: mapState.id,
+										},
 									});
 
 									console.log('Map state updated successfully:', updatedState.id);
 									console.log('Updated map has', updatedState.tokens?.length || 0, 'tokens');
-
-									// Refresh to ensure everything is synced
-									console.log('Refreshing map state...');
-									await refreshMapState();
 
 									console.log('Map saved successfully, navigating to lobby');
 
@@ -1055,14 +1006,12 @@ const HostGameMapEditorScreen: React.FC = () => {
 									console.error('Error details:', error instanceof Error ? error.stack : 'Unknown error');
 									const errorMessage = error instanceof Error ? error.message : 'Failed to save map';
 									Alert.alert('Error', errorMessage);
-								} finally {
-									setMapLoading(false);
 								}
 							}}
-							disabled={mapLoading || !mapState}
+							disabled={mapLoading || updateMapStateMutation.isPending || !mapState}
 						>
 							<ThemedText style={styles.doneButtonText}>
-								{mapLoading ? 'Saving...' : 'Done Editing'}
+								{updateMapStateMutation.isPending ? 'Saving...' : 'Done Editing'}
 							</ThemedText>
 						</TouchableOpacity>
 					</View>
@@ -1248,22 +1197,25 @@ const HostGameMapEditorScreen: React.FC = () => {
 									try {
 										// Create NPC by placing it off-map, then delete the token
 										// This adds it to the NPC definitions/palette
-										const result = await multiplayerClient.placeNpc(inviteCode, {
-											npcId: 'custom',
-											mapId: mapState?.id || (mapId !== 'new-map' ? mapId : undefined),
-											x: -1, // Off-map
-											y: -1, // Off-map
-											label: newNpcForm.name,
-											customNpc: {
-												name: newNpcForm.name,
-												role: newNpcForm.role,
-												alignment: newNpcForm.alignment,
-												disposition: newNpcForm.disposition,
-												description: newNpcForm.description || undefined,
-												maxHealth: newNpcForm.maxHealth,
-												armorClass: newNpcForm.armorClass,
-												color: newNpcForm.color,
-												icon: newNpcForm.icon || undefined,
+										const result = await placeNpcMutation.mutateAsync({
+											path: `/games/${inviteCode}/npcs`,
+											body: {
+												npcId: 'custom',
+												mapId: mapState?.id || (mapId !== 'new-map' ? mapId : undefined),
+												x: -1, // Off-map
+												y: -1, // Off-map
+												label: newNpcForm.name,
+												customNpc: {
+													name: newNpcForm.name,
+													role: newNpcForm.role,
+													alignment: newNpcForm.alignment,
+													disposition: newNpcForm.disposition,
+													description: newNpcForm.description || undefined,
+													maxHealth: newNpcForm.maxHealth,
+													armorClass: newNpcForm.armorClass,
+													color: newNpcForm.color,
+													icon: newNpcForm.icon || undefined,
+												},
 											},
 										});
 
@@ -1271,7 +1223,9 @@ const HostGameMapEditorScreen: React.FC = () => {
 										if (result.tokens && result.tokens.length > 0) {
 											const tokenId = result.tokens[result.tokens.length - 1].id;
 											try {
-												await multiplayerClient.deleteMapToken(inviteCode, tokenId);
+												await deleteMapTokenMutation.mutateAsync({
+													path: `/games/${inviteCode}/map/tokens/${tokenId}`,
+												});
 											} catch (err) {
 												console.warn('Failed to delete off-map token:', err);
 											}
@@ -1280,36 +1234,8 @@ const HostGameMapEditorScreen: React.FC = () => {
 										// Small delay to ensure backend has fully committed the NPC definition
 										await new Promise(resolve => setTimeout(resolve, 100));
 
-										// Refresh NPC palette - retry a few times if needed
-										let npcResponse;
-										let retries = 3;
-										while (retries > 0) {
-											try {
-												npcResponse = await multiplayerClient.getNpcDefinitions(inviteCode);
-												// Check if the new NPC is in the response
-												const newNpcFound = npcResponse.npcs.some(n =>
-													n.name === newNpcForm.name && n.role === newNpcForm.role,
-												);
-												if (newNpcFound || retries === 1) {
-													break;
-												}
-											} catch (err) {
-												console.warn('Failed to fetch NPC definitions, retrying...', err);
-											}
-											retries--;
-											if (retries > 0) {
-												await new Promise(resolve => setTimeout(resolve, 200));
-											}
-										}
-
-										if (npcResponse) {
-											// Force state update by creating a new array
-											setNpcPalette([...npcResponse.npcs]);
-											console.log('NPC palette refreshed:', npcResponse.npcs.length, 'NPCs');
-										} else {
-											// Fallback: reload the entire palette
-											await loadNpcPalette();
-										}
+										// NPC palette will refresh automatically via query invalidation
+										// The placeNpc mutation will invalidate the NPC definitions query
 
 										// Reset form and close modal
 										setNewNpcForm({

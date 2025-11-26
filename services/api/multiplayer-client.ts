@@ -26,6 +26,7 @@ import {
 	PlayerPlacementRequest,
 } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
+import type { CharacterActionResult } from '@/types/combat';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { NpcDefinition } from '@/types/multiplayer-map';
 import { Quest } from '@/types/quest';
@@ -446,7 +447,7 @@ export class MultiplayerClient {
 		characterId: string,
 		spellName: string,
 		targetId?: string,
-	): Promise<{ character: Character | null; actionPerformed: string }> {
+	): Promise<{ character: Character | null; actionPerformed: string; actionResult?: CharacterActionResult }> {
 		return apiService.fetchApi(`/games/${inviteCode}/characters/${characterId}/actions`, {
 			method: 'POST',
 			body: JSON.stringify({
@@ -464,13 +465,13 @@ export class MultiplayerClient {
 		inviteCode: string,
 		characterId: string,
 		actionType: 'cast_spell' | 'basic_attack' | 'use_item' | 'heal_potion',
-		params?: { spellName?: string; targetId?: string; itemId?: string; [key: string]: unknown },
-	): Promise<{ character: Character | null; actionPerformed: string }> {
+		params?: { spellName?: string; targetId?: string; itemId?: string;[key: string]: unknown },
+	): Promise<{ character: Character | null; actionPerformed: string; actionResult?: CharacterActionResult }> {
 		return apiService.fetchApi(`/games/${inviteCode}/characters/${characterId}/actions`, {
 			method: 'POST',
 			body: JSON.stringify({
 				actionType,
-				...params,
+				...(params || {}),
 			}),
 		});
 	}
@@ -501,21 +502,23 @@ export class MultiplayerClient {
 	/**
 	 * Roll a perception check for a character
 	 */
-	async rollPerceptionCheck(inviteCode: string, characterId: string): Promise<{
+	async rollPerceptionCheck(
+		inviteCode: string,
+		characterId: string,
+		options?: { dc?: number; passive?: boolean },
+	): Promise<{
+		characterId: string;
+		mode: 'active' | 'passive';
 		total: number;
-		rolls: number[];
-		modifier: number;
-		breakdown: string;
-		purpose?: string;
+		roll?: number;
+		modifier?: number;
+		breakdown?: string;
+		dc?: number;
+		success?: boolean;
 	}> {
-		// Get character to calculate WIS modifier
-		const characters = await this.getGameCharacters(inviteCode);
-		const character = characters.characters.find(c => c.id === characterId);
-		const wisModifier = character ? Math.floor((character.stats.WIS - 10) / 2) : 0;
-		const notation = `1d20${wisModifier >= 0 ? '+' : ''}${wisModifier}`;
-
-		return this.rollDice(inviteCode, notation, {
-			purpose: 'Perception Check',
+		return apiService.fetchApi(`/games/${inviteCode}/characters/${characterId}/perception-check`, {
+			method: 'POST',
+			body: JSON.stringify(options ?? {}),
 		});
 	}
 

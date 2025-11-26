@@ -145,12 +145,12 @@ app.get('*', async (c) => {
 			if (asset.status === 200) {
 				// Create a new response with the asset body and proper headers
 				const contentType = asset.headers.get('Content-Type') || getContentType(path);
-				
+
 				// Preserve all headers from the asset response
 				const headers = new Headers(asset.headers);
 				// Ensure Content-Type is set correctly
 				headers.set('Content-Type', contentType);
-				
+
 				const response = new Response(asset.body, {
 					status: asset.status,
 					statusText: asset.statusText,

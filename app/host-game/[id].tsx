@@ -20,14 +20,10 @@ import { QuestSelector } from '@/components/quest-selector';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WorldChooser } from '@/components/world-chooser';
-import { multiplayerClient } from '@/services/api/multiplayer-client';
-import {
-	GameSessionResponse,
-	PlacedNpc,
-} from '@/types/api/multiplayer-api';
-import { Character } from '@/types/character';
+import { useGameCharacters } from '@/hooks/api/use-character-queries';
+import { useCreateGame, useGameSession, useStartGame } from '@/hooks/api/use-game-queries';
+import { useCloneMap, useNpcDefinitions, useNpcInstances, useSwitchMap, useUpdateNpcInstance } from '@/hooks/api/use-map-queries';
 import { LocationOption } from '@/types/location-option';
-import { NpcDefinition } from '@/types/multiplayer-map';
 import { Quest } from '@/types/quest';
 import { WorldOption } from '@/types/world-option';
 
@@ -54,18 +50,35 @@ const HostGameLobbyScreen: React.FC = () => {
 	const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
 	const [selectedWorld, setSelectedWorld] = useState<WorldOption | null>(null);
 	const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
-	const [session, setSession] = useState<GameSessionResponse | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [lobbyCharacters, setLobbyCharacters] = useState<Character[]>([]);
-	const [charactersLoading, setCharactersLoading] = useState(false);
-	const [npcInstances, setNpcInstances] = useState<PlacedNpc[]>([]);
-	const [npcInstancesLoading, setNpcInstancesLoading] = useState(false);
-	const [npcPalette, setNpcPalette] = useState<NpcDefinition[]>([]);
 	const [currentMapId, setCurrentMapId] = useState<string | null>(null);
 	const insets = useSafeAreaInsets();
 	const { user } = useAuth();
 	const hostId = user?.id ?? null;
 	const hostEmail = user?.email ?? null;
+
+	// Use query hooks
+	const shouldFetchSession = inviteCode && inviteCode !== 'new';
+	const { data: session, isLoading: sessionLoading, refetch: refetchSession } = useGameSession(
+		shouldFetchSession ? inviteCode : null,
+	);
+	const { data: charactersData, isLoading: charactersLoading } = useGameCharacters(
+		shouldFetchSession ? inviteCode : null,
+	);
+	const lobbyCharacters = charactersData?.characters || [];
+	const { data: npcDefinitionsData, isLoading: npcPaletteLoading } = useNpcDefinitions(
+		shouldFetchSession ? inviteCode : null,
+	);
+	const npcPalette = npcDefinitionsData?.npcs || [];
+	const { data: npcInstancesData, isLoading: npcInstancesLoading } = useNpcInstances(
+		shouldFetchSession ? inviteCode : null,
+	);
+	const npcInstances = npcInstancesData?.instances || [];
+	const startGameMutation = useStartGame(inviteCode || '');
+	const createGameMutation = useCreateGame();
+	const updateNpcInstanceMutation = useUpdateNpcInstance(inviteCode || '');
+	const switchMapMutation = useSwitchMap(inviteCode || '');
+	const cloneMapMutation = useCloneMap();
 
 	const playerRosterKey = useMemo(() => {
 		if (!session?.players?.length) {
@@ -79,7 +92,8 @@ const HostGameLobbyScreen: React.FC = () => {
 		[lobbyCharacters],
 	);
 
-	const loadSession = useCallback(async () => {
+	// Initialize session state when data loads
+	useEffect(() => {
 		if (!inviteCode) return;
 
 		// Handle 'new' route - start from quest selection
@@ -89,117 +103,21 @@ const HostGameLobbyScreen: React.FC = () => {
 			return;
 		}
 
-		setLoading(true);
-		try {
-			const existingSession = await multiplayerClient.getGameSession(inviteCode);
-			setSession(existingSession);
+		if (session) {
 			// Get current map ID from session response
-			if (existingSession.currentMapId) {
-				setCurrentMapId(existingSession.currentMapId);
+			if (session.currentMapId) {
+				setCurrentMapId(session.currentMapId);
 			}
-			if (existingSession.status === 'waiting') {
-				setSelectedQuest(existingSession.quest);
+			if (session.status === 'waiting') {
+				setSelectedQuest(session.quest);
 				setCurrentStep('waiting');
-			} else if (existingSession.status === 'active') {
+			} else if (session.status === 'active') {
 				// If game is active, allow host to manage it from the lobby
-				// They can see the current state and make changes
-				setSelectedQuest(existingSession.quest);
+				setSelectedQuest(session.quest);
 				setCurrentStep('waiting');
-				// Optionally, you could show a banner that the game is active
 			}
-		} catch (error) {
-			console.error('Failed to load session:', error);
-			Alert.alert('Error', error instanceof Error ? error.message : 'Failed to load game');
-			router.replace('/host-game');
-		} finally {
-			setLoading(false);
 		}
-	}, [inviteCode, hostId]);
-
-	const loadNpcInstances = useCallback(async () => {
-		if (!inviteCode || inviteCode === 'new') {
-			setNpcInstances([]);
-			return;
-		}
-
-		setNpcInstancesLoading(true);
-		try {
-			const instances = await multiplayerClient.getNpcInstances(inviteCode);
-			setNpcInstances(instances.instances);
-		} catch (error) {
-			console.error('Failed to load NPC instances:', error);
-		} finally {
-			setNpcInstancesLoading(false);
-		}
-	}, [inviteCode]);
-
-	useEffect(() => {
-		if (inviteCode) {
-			loadSession();
-		}
-	}, [inviteCode, loadSession]);
-
-	useEffect(() => {
-		if (!inviteCode || inviteCode === 'new') {
-			setLobbyCharacters([]);
-			return;
-		}
-
-		let cancelled = false;
-		setCharactersLoading(true);
-		multiplayerClient
-			.getGameCharacters(inviteCode)
-			.then(response => {
-				if (!cancelled) {
-					setLobbyCharacters(response.characters);
-				}
-			})
-			.catch(error => {
-				if (!cancelled) {
-					console.error('Failed to load lobby characters:', error);
-				}
-			})
-			.finally(() => {
-				if (!cancelled) {
-					setCharactersLoading(false);
-				}
-			});
-
-		return () => {
-			cancelled = true;
-		};
-	}, [inviteCode, playerRosterKey]);
-
-	useEffect(() => {
-		if (!inviteCode || inviteCode === 'new') {
-			setNpcPalette([]);
-			setNpcInstances([]);
-			return;
-		}
-
-		multiplayerClient
-			.getNpcDefinitions(inviteCode)
-			.then(response => setNpcPalette(response.npcs))
-			.catch(error => {
-				console.error('Failed to load NPC palette:', error);
-			});
-		loadNpcInstances().catch(() => undefined);
-	}, [inviteCode, loadNpcInstances]);
-
-	useEffect(() => {
-		if (currentStep === 'waiting' && inviteCode && inviteCode !== 'new') {
-			const interval = setInterval(async () => {
-				try {
-					const updatedSession = await multiplayerClient.getGameSession(inviteCode);
-					setSession(updatedSession);
-				} catch (error) {
-					console.error('Failed to poll session:', error);
-				}
-			}, 2000);
-
-			return () => clearInterval(interval);
-		}
-	}, [currentStep, inviteCode]);
+	}, [inviteCode, session]);
 
 	const handleQuestSelect = (quest: Quest) => {
 		setSelectedQuest(quest);
@@ -224,16 +142,18 @@ const HostGameLobbyScreen: React.FC = () => {
 
 		setLoading(true);
 		try {
-			const newSession = await multiplayerClient.createGame({
-				questId: selectedQuest.id,
-				quest: selectedQuest,
-				world: selectedWorld.name,
-				startingArea: selectedLocation.name,
-				hostId,
-				hostEmail: hostEmail ?? undefined,
+			const newSession = await createGameMutation.mutateAsync({
+				path: '/games',
+				body: {
+					questId: selectedQuest.id,
+					quest: selectedQuest,
+					world: selectedWorld.name,
+					startingArea: selectedLocation.name,
+					hostId,
+					hostEmail: hostEmail ?? undefined,
+				},
 			});
 
-			setSession(newSession);
 			setCurrentStep('waiting');
 			router.replace(`/host-game/${newSession.inviteCode}`);
 		} catch (error) {
@@ -322,7 +242,13 @@ const HostGameLobbyScreen: React.FC = () => {
 				activityLog: [],
 			};
 
-			await multiplayerClient.startGame(session.inviteCode, hostId, initialGameState);
+			await startGameMutation.mutateAsync({
+				path: `/games/${session.inviteCode}/start`,
+				body: {
+					hostId,
+					gameState: initialGameState,
+				},
+			});
 			router.replace(`/multiplayer-game?inviteCode=${session.inviteCode}&hostId=${hostId}`);
 		} catch (error) {
 			console.error('Failed to start game:', error);
@@ -339,15 +265,17 @@ const HostGameLobbyScreen: React.FC = () => {
 			}
 
 			try {
-				await multiplayerClient.updateNpcInstance(inviteCode, tokenId, {
-					currentHealth: currentHealth + delta,
+				await updateNpcInstanceMutation.mutateAsync({
+					path: `/games/${inviteCode}/npcs/${tokenId}`,
+					body: {
+						currentHealth: currentHealth + delta,
+					},
 				});
-				await loadNpcInstances();
 			} catch (error) {
 				Alert.alert('Update Failed', error instanceof Error ? error.message : 'Unable to update NPC');
 			}
 		},
-		[inviteCode, loadNpcInstances],
+		[inviteCode, updateNpcInstanceMutation],
 	);
 
 	const handleNpcFriendlyToggle = useCallback(
@@ -357,15 +285,17 @@ const HostGameLobbyScreen: React.FC = () => {
 			}
 
 			try {
-				await multiplayerClient.updateNpcInstance(inviteCode, tokenId, {
-					isFriendly: nextValue,
+				await updateNpcInstanceMutation.mutateAsync({
+					path: `/games/${inviteCode}/npcs/${tokenId}`,
+					body: {
+						isFriendly: nextValue,
+					},
 				});
-				await loadNpcInstances();
 			} catch (error) {
 				Alert.alert('Update Failed', error instanceof Error ? error.message : 'Unable to update NPC');
 			}
 		},
-		[inviteCode, loadNpcInstances],
+		[inviteCode, updateNpcInstanceMutation],
 	);
 
 	const renderNpcInstances = useCallback(() => {
@@ -375,7 +305,9 @@ const HostGameLobbyScreen: React.FC = () => {
 					<ThemedText type="subtitle">Battlefield NPCs</ThemedText>
 					<TouchableOpacity
 						style={styles.mapRefreshButton}
-						onPress={() => loadNpcInstances().catch(() => undefined)}
+						onPress={() => {
+							// NPC instances will refetch automatically via useNpcInstances
+						}}
 					>
 						<ThemedText style={styles.mapRefreshButtonText}>Reload</ThemedText>
 					</TouchableOpacity>
@@ -432,7 +364,7 @@ const HostGameLobbyScreen: React.FC = () => {
 				)}
 			</View>
 		);
-	}, [npcInstances, npcInstancesLoading, loadNpcInstances, handleNpcFriendlyToggle, handleNpcHealthAdjust]);
+	}, [npcInstances, npcInstancesLoading, handleNpcFriendlyToggle, handleNpcHealthAdjust]);
 
 	const renderStepContent = () => {
 		switch (currentStep) {
@@ -507,18 +439,22 @@ const HostGameLobbyScreen: React.FC = () => {
 											currentMapId={currentMapId}
 											onMapSelected={async (mapId) => {
 												try {
-													await multiplayerClient.switchMap(inviteCode, mapId);
+													await switchMapMutation.mutateAsync({
+														path: `/games/${inviteCode}/map`,
+														body: { mapId },
+													});
 													setCurrentMapId(mapId);
-													await loadSession();
 												} catch (error) {
 													console.error('Failed to switch map:', error);
 												}
 											}}
 											onMapCloned={async (mapId) => {
 												try {
-													await multiplayerClient.switchMap(inviteCode, mapId);
+													await switchMapMutation.mutateAsync({
+														path: `/games/${inviteCode}/map`,
+														body: { mapId },
+													});
 													setCurrentMapId(mapId);
-													await loadSession();
 												} catch (error) {
 													console.error('Failed to switch to cloned map:', error);
 												}

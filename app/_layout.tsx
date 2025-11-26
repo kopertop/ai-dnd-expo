@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { authService, SessionProvider, useAuth } from 'expo-auth-template/frontend';
+import { authService, QueryProvider, SessionProvider, useAuth } from 'expo-auth-template/frontend';
 import { useFonts } from 'expo-font';
 import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -243,41 +243,54 @@ const RootLayout: React.FC = () => {
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
 			<SessionProvider>
-				<InputModeProvider>
-					<AudioProvider>
-						<ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-							<AuthGuard>
-								<Stack
-									initialRouteName="index"
-									screenOptions={{
-										headerBackVisible: false,
-										headerLeft: () => null,
-										headerTitleAlign: 'center',
-									}}
-								>
-									<Stack.Screen name="index" options={{ headerShown: false }} />
-									<Stack.Screen name="login" options={{ headerShown: false }} />
-									<Stack.Screen name="auth" options={{ headerShown: false }} />
-									<Stack.Screen name="auth/callback" options={{ headerShown: false }} />
-									<Stack.Screen name="auth/error" options={{ headerShown: false }} />
-									<Stack.Screen name="new-game" options={{ headerShown: false }} />
-									<Stack.Screen name="game" options={{ headerShown: false }} />
-									<Stack.Screen name="sql" options={{ headerShown: false }} />
-									<Stack.Screen name="+not-found" />
-								</Stack>
-								<StatusBar style="auto" />
-								<GlobalHomeButton />
-								<UserMenu />
-								{/* Only show sound button on web */}
-								{Platform.OS === 'web' && (
-									<View style={[styles.soundButtonContainer, { pointerEvents: 'box-none' }]}>
-										<AudioButton />
-									</View>
-								)}
-							</AuthGuard>
-						</ThemeProvider>
-					</AudioProvider>
-				</InputModeProvider>
+				<QueryProvider
+					config={{
+						defaultOptions: {
+							queries: {
+								staleTime: 30 * 1000, // 30 seconds
+								gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
+								refetchOnWindowFocus: false,
+								retry: 2,
+							},
+						},
+					}}
+				>
+					<InputModeProvider>
+						<AudioProvider>
+							<ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+								<AuthGuard>
+									<Stack
+										initialRouteName="index"
+										screenOptions={{
+											headerBackVisible: false,
+											headerLeft: () => null,
+											headerTitleAlign: 'center',
+										}}
+									>
+										<Stack.Screen name="index" options={{ headerShown: false }} />
+										<Stack.Screen name="login" options={{ headerShown: false }} />
+										<Stack.Screen name="auth" options={{ headerShown: false }} />
+										<Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+										<Stack.Screen name="auth/error" options={{ headerShown: false }} />
+										<Stack.Screen name="new-game" options={{ headerShown: false }} />
+										<Stack.Screen name="game" options={{ headerShown: false }} />
+										<Stack.Screen name="sql" options={{ headerShown: false }} />
+										<Stack.Screen name="+not-found" />
+									</Stack>
+									<StatusBar style="auto" />
+									<GlobalHomeButton />
+									<UserMenu />
+									{/* Only show sound button on web */}
+									{Platform.OS === 'web' && (
+										<View style={[styles.soundButtonContainer, { pointerEvents: 'box-none' }]}>
+											<AudioButton />
+										</View>
+									)}
+								</AuthGuard>
+							</ThemeProvider>
+						</AudioProvider>
+					</InputModeProvider>
+				</QueryProvider>
 			</SessionProvider>
 		</GestureHandlerRootView>
 	);

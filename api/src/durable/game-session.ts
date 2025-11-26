@@ -458,10 +458,17 @@ export class GameSession {
 			return json({ error: 'No paused turn to resume' }, 400);
 		}
 
-		const activeTurn = {
-			...pausedTurn,
-			startedAt: Date.now(),
-		};
+		// Get characters to properly initialize turn usage fields
+		const characters = session.gameState.characters ?? [];
+
+		// Restore the paused turn with proper turn usage initialization
+		const activeTurn = this.resetTurnUsage(
+			{
+				...pausedTurn,
+				startedAt: Date.now(),
+			},
+			characters,
+		);
 
 		const updatedGameState: MultiplayerGameState = {
 			...session.gameState,
@@ -521,7 +528,7 @@ export class GameSession {
 		const updatedGameState: MultiplayerGameState = {
 			...session.gameState,
 			characters: updatedCharacters,
-			activeTurn: this.resetTurnUsage(activeTurn, characters),
+			activeTurn: this.resetTurnUsage(activeTurn, updatedCharacters),
 			lastUpdated: Date.now(),
 		};
 
@@ -565,7 +572,7 @@ export class GameSession {
 		const updatedGameState: MultiplayerGameState = {
 			...session.gameState,
 			characters: updatedCharacters,
-			activeTurn: this.resetTurnUsage(activeTurn, characters),
+			activeTurn: this.resetTurnUsage(activeTurn, updatedCharacters),
 			lastUpdated: Date.now(),
 		};
 

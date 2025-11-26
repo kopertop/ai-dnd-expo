@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharacterDMModal } from '@/components/character-dm-modal';
 import { CharacterViewModal } from '@/components/character-view-modal';
+import { CombatResultModal } from '@/components/combat-result-modal';
 import { CommandPalette, type Command } from '@/components/command-palette';
 import { MapElementPicker, type MapElementType } from '@/components/map-element-picker';
 import { InteractiveMap } from '@/components/map/interactive-map';
@@ -18,16 +19,35 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TokenDetailModal } from '@/components/token-detail-modal';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
+import { useCastSpell, useDealDamage, useHealCharacter, usePerformAction, useRollPerceptionCheck } from '@/hooks/api/use-character-queries';
+import {
+	useRollInitiative,
+	useStopGame,
+	useSubmitDMAction,
+} from '@/hooks/api/use-game-queries';
+import {
+	useAllMaps,
+	useDeleteMapToken,
+	useMapState,
+	useMutateTerrain,
+	usePlaceNpc,
+	usePlacePlayerToken,
+	useSaveMapToken,
+	useSwitchMap,
+	useValidateMovement,
+} from '@/hooks/api/use-map-queries';
+import { useEndTurn, useInterruptTurn, useNextTurn, useResumeTurn, useStartTurn, useUpdateTurnState } from '@/hooks/api/use-turn-queries';
 import { usePollingGameState } from '@/hooks/use-polling-game-state';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { useWebSocket } from '@/hooks/use-websocket';
-import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { PlayerActionMessage } from '@/types/api/websocket-messages';
 import { Character } from '@/types/character';
+import type { CharacterActionResult } from '@/types/combat';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { MapState, MapToken } from '@/types/multiplayer-map';
 import { getCharacterSpeed } from '@/utils/character-utils';
-import { calculateMovementRange, findPathWithCosts, isInMeleeRange, isInRangedRange } from '@/utils/movement-calculator';
+import { calculateMovementRange, isInMeleeRange, isInRangedRange } from '@/utils/movement-calculator';
+import { moveTokenWithBudget } from '@/utils/movement-helper';
 
 const MultiplayerGameScreen: React.FC = () => {
 	const params = useLocalSearchParams<{ inviteCode: string; hostId?: string; playerId?: string }>();
@@ -39,7 +59,6 @@ const MultiplayerGameScreen: React.FC = () => {
 		null,
 	);
 	const [movementInFlight, setMovementInFlight] = useState(false);
-	const [isHost, setIsHost] = useState(false);
 	const [playerActionMenu, setPlayerActionMenu] = useState<{ x: number; y: number; actions: PlayerAction[]; targetLabel?: string } | null>(null);
 	const [wsConnected, setWsConnected] = useState(false);
 	const [showMapSwitcher, setShowMapSwitcher] = useState(false);
@@ -64,6 +83,9 @@ const MultiplayerGameScreen: React.FC = () => {
 	const [showMapElementPicker, setShowMapElementPicker] = useState(false);
 	const [showSpellActionSelector, setShowSpellActionSelector] = useState(false);
 	const [selectedCharacterForAction, setSelectedCharacterForAction] = useState<string | null>(null);
+	const [pendingActionTarget, setPendingActionTarget] = useState<{ targetId: string; label: string } | null>(null);
+	const [combatResult, setCombatResult] = useState<CharacterActionResult | null>(null);
+	const [showCombatResult, setShowCombatResult] = useState(false);
 	const [elementPlacementMode, setElementPlacementMode] = useState<MapElementType | null>(null);
 	const [showCharacterTurnSelector, setShowCharacterTurnSelector] = useState(false);
 	const [showNpcSelector, setShowNpcSelector] = useState(false);
@@ -84,15 +106,68 @@ const MultiplayerGameScreen: React.FC = () => {
 		() => gameState?.players.find(p => p.playerId === playerId)?.characterId,
 		[gameState?.players, playerId],
 	);
+	
+	// Stable callback for game state updates
+	const handleGameStateUpdate = useCallback((newState: MultiplayerGameState) => {
+		setGameState(newState);
+		setWsConnected(true);
+	}, []);
+
+	// WebSocket connection - only connect when we have characterId
+	const { isConnected: wsIsConnected } = useWebSocket({
+		inviteCode: inviteCode || '',
+		playerId: playerId || '',
+		characterId: characterId,
+		onGameStateUpdate: handleGameStateUpdate,
+		onPlayerAction: (message: PlayerActionMessage) => {
+			// Handle player action updates
+			console.log('Player action:', message);
+		},
+		autoConnect: !!inviteCode && !!playerId && !!characterId,
+	});
+
+	// Stable callback for polling updates
+	const handlePollingUpdate = useCallback((newState: MultiplayerGameState) => {
+		setGameState(newState);
+		setWsConnected(false);
+	}, []);
+
+	// Polling fallback when WebSocket is not connected OR when we need initial state
+	const { gameState: polledState, refresh: refreshGameState } = usePollingGameState({
+		inviteCode: inviteCode || '',
+		enabled: (!wsIsConnected && !!inviteCode) || !gameState, // Poll if WS not connected OR no gameState yet
+		pollInterval: 15000,
+		onGameStateUpdate: handlePollingUpdate,
+	});
+
+	// Prefer query data over local state for movement calculations to ensure real-time updates
+	// Memoize to prevent infinite re-renders when used in dependency arrays
+	// Define early so it can be used in other useMemo hooks
+	const effectiveGameState = useMemo(() => polledState || gameState, [polledState, gameState]);
+
+	// Determine if this is the host - computed from query data
+	const isHost = useMemo(() => {
+		if (!hostId || !effectiveGameState) {
+			return false;
+		}
+		return effectiveGameState.hostId === hostId;
+	}, [hostId, effectiveGameState?.hostId]);
+
+	// Update gameState from polling if we don't have it yet
+	useEffect(() => {
+		if (!gameState && polledState) {
+			setGameState(polledState);
+		}
+	}, [gameState, polledState]);
 
 	// Get the active character ID - for DM, use the active turn's entity, for players use their own
 	const activeCharacterIdForMovement = useMemo(() => {
-		if (isHost && gameState?.activeTurn && !gameState.pausedTurn) {
+		if (isHost && effectiveGameState?.activeTurn && !effectiveGameState.pausedTurn) {
 			// DM acting as the active character
-			return gameState.activeTurn.entityId;
+			return effectiveGameState.activeTurn.entityId;
 		}
 		return currentCharacterId;
-	}, [isHost, gameState?.activeTurn, gameState?.pausedTurn, currentCharacterId]);
+	}, [isHost, effectiveGameState?.activeTurn, effectiveGameState?.pausedTurn, currentCharacterId]);
 
 	const activeCharacter = useMemo(() => {
 		if (!activeCharacterIdForMovement) {
@@ -144,11 +219,11 @@ const MultiplayerGameScreen: React.FC = () => {
 	}, [gameState?.activeTurn, gameState?.pausedTurn, sharedMap?.tokens]);
 
 	const activeTurnForMovement = useMemo(() => {
-		if (!gameState?.activeTurn) {
+		if (!effectiveGameState?.activeTurn) {
 			return null;
 		}
-		return gameState.activeTurn.entityId === activeCharacterIdForMovement ? gameState.activeTurn : null;
-	}, [gameState, activeCharacterIdForMovement]);
+		return effectiveGameState.activeTurn.entityId === activeCharacterIdForMovement ? effectiveGameState.activeTurn : null;
+	}, [effectiveGameState, activeCharacterIdForMovement]);
 
 	const totalMovementSpeedForActive = useMemo(() => {
 		if (typeof activeTurnForMovement?.speed === 'number') {
@@ -218,27 +293,44 @@ const MultiplayerGameScreen: React.FC = () => {
 		);
 	}, [isHost, gameState?.pausedTurn, gameState?.activeTurn?.entityId]);
 
-	const refreshSharedMap = useCallback(async () => {
-		if (!inviteCode) {
-			return;
-		}
+	// Use query hooks
+	const { data: mapStateData } = useMapState(inviteCode || null);
+	const { data: availableMapsData } = useAllMaps();
+	const switchMapMutation = useSwitchMap(inviteCode || '');
+	const placePlayerTokenMutation = usePlacePlayerToken(inviteCode || '');
+	const rollInitiativeMutation = useRollInitiative(inviteCode || '');
+	const submitDMActionMutation = useSubmitDMAction(inviteCode || '');
+	const nextTurnMutation = useNextTurn(inviteCode || '');
+	const stopGameMutation = useStopGame(inviteCode || '');
+	const performActionMutation = usePerformAction(inviteCode || '');
+	const endTurnMutation = useEndTurn(inviteCode || '');
+	const rollPerceptionCheckMutation = useRollPerceptionCheck(inviteCode || '');
+	const validateMovementMutation = useValidateMovement(inviteCode || '');
+	const saveMapTokenMutation = useSaveMapToken(inviteCode || '');
+	const dealDamageMutation = useDealDamage(inviteCode || '');
+	const healCharacterMutation = useHealCharacter(inviteCode || '');
+	const mutateTerrainMutation = useMutateTerrain(inviteCode || '');
+	const updateTurnStateMutation = useUpdateTurnState(inviteCode || '');
+	const placeNpcMutation = usePlaceNpc(inviteCode || '');
+	const resumeTurnMutation = useResumeTurn(inviteCode || '');
+	const interruptTurnMutation = useInterruptTurn(inviteCode || '');
+	const deleteMapTokenMutation = useDeleteMapToken(inviteCode || '');
+	const startTurnMutation = useStartTurn(inviteCode || '');
+	const castSpellMutation = useCastSpell(inviteCode || '');
 
-		try {
-			const state = await multiplayerClient.getMapState(inviteCode);
-			setSharedMap(state);
-		} catch (error) {
-			console.error('Failed to refresh shared map:', error);
+	// Update shared map from query
+	useEffect(() => {
+		if (mapStateData) {
+			setSharedMap(mapStateData);
 		}
-	}, [inviteCode]);
+	}, [mapStateData]);
 
-	const loadAvailableMaps = useCallback(async () => {
-		try {
-			const response = await multiplayerClient.getAllMaps();
-			setAvailableMaps(response.maps || []);
-		} catch (error) {
-			console.error('Failed to load maps:', error);
+	// Update available maps from query
+	useEffect(() => {
+		if (availableMapsData?.maps) {
+			setAvailableMaps(availableMapsData.maps);
 		}
-	}, []);
+	}, [availableMapsData]);
 
 	const handleSwitchMap = useCallback(
 		async (mapId: string) => {
@@ -246,8 +338,10 @@ const MultiplayerGameScreen: React.FC = () => {
 
 			setSwitchingMap(true);
 			try {
-				await multiplayerClient.switchMap(inviteCode, mapId);
-				await refreshSharedMap();
+				await switchMapMutation.mutateAsync({
+					path: `/games/${inviteCode}/map`,
+					body: { mapId },
+				});
 				setShowMapSwitcher(false);
 				Alert.alert('Success', 'Map switched successfully');
 			} catch (error) {
@@ -257,61 +351,8 @@ const MultiplayerGameScreen: React.FC = () => {
 				setSwitchingMap(false);
 			}
 		},
-		[inviteCode, refreshSharedMap],
+		[inviteCode, switchMapMutation],
 	);
-
-	useEffect(() => {
-		if (isHost && showMapSwitcher) {
-			loadAvailableMaps();
-		}
-	}, [isHost, showMapSwitcher, loadAvailableMaps]);
-
-	// Determine if this is the host
-	useEffect(() => {
-		if (hostId && gameState) {
-			setIsHost(gameState.hostId === hostId);
-		}
-	}, [hostId, gameState]);
-
-	// Stable callback for game state updates
-	const handleGameStateUpdate = useCallback((newState: MultiplayerGameState) => {
-		setGameState(newState);
-		setWsConnected(true);
-	}, []);
-
-	// WebSocket connection - only connect when we have characterId
-	const { isConnected: wsIsConnected } = useWebSocket({
-		inviteCode: inviteCode || '',
-		playerId: playerId || '',
-		characterId: characterId,
-		onGameStateUpdate: handleGameStateUpdate,
-		onPlayerAction: (message: PlayerActionMessage) => {
-			// Handle player action updates
-			console.log('Player action:', message);
-		},
-		autoConnect: !!inviteCode && !!playerId && !!characterId,
-	});
-
-	// Stable callback for polling updates
-	const handlePollingUpdate = useCallback((newState: MultiplayerGameState) => {
-		setGameState(newState);
-		setWsConnected(false);
-	}, []);
-
-	// Polling fallback when WebSocket is not connected OR when we need initial state
-	const { gameState: polledState } = usePollingGameState({
-		inviteCode: inviteCode || '',
-		enabled: (!wsIsConnected && !!inviteCode) || !gameState, // Poll if WS not connected OR no gameState yet
-		pollInterval: 15000,
-		onGameStateUpdate: handlePollingUpdate,
-	});
-
-	// Update gameState from polling if we don't have it yet
-	useEffect(() => {
-		if (!gameState && polledState) {
-			setGameState(polledState);
-		}
-	}, [gameState, polledState]);
 
 	useEffect(() => {
 		if (gameState?.mapState) {
@@ -319,18 +360,7 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	}, [gameState?.mapState]);
 
-	const loadGameState = useCallback(async () => {
-		if (!inviteCode) return;
-		try {
-			const session = await multiplayerClient.getGameSession(inviteCode);
-			if (session.gameState) {
-				setGameState(session.gameState);
-			}
-		} catch (error) {
-			Alert.alert('Error', 'Failed to load game state');
-			console.error(error);
-		}
-	}, [inviteCode]);
+	// loadGameState is no longer needed - usePollingGameState handles it
 
 	// Check for characters without tokens on the map
 	const charactersWithoutTokens = useMemo(() => {
@@ -416,12 +446,16 @@ const MultiplayerGameScreen: React.FC = () => {
 						placingCharactersRef.current.add(character.id);
 
 						try {
-							await multiplayerClient.placePlayerToken(inviteCode, {
+							await placePlayerTokenMutation.mutateAsync({
+								path: `/games/${inviteCode}/map/tokens`,
+								body: {
 								characterId: character.id,
 								x: tile.x,
 								y: tile.y,
 								label: character.name || 'Unknown',
 								icon: character.icon,
+									tokenType: 'player',
+								},
 							});
 							// Remove from placing set after successful placement
 							placingCharactersRef.current.delete(character.id);
@@ -431,9 +465,6 @@ const MultiplayerGameScreen: React.FC = () => {
 							placingCharactersRef.current.delete(character.id);
 						}
 					}
-
-					// Refresh map after placing
-					await refreshSharedMap();
 				} catch (error) {
 					console.error('Failed to auto-place characters:', error);
 				} finally {
@@ -443,7 +474,7 @@ const MultiplayerGameScreen: React.FC = () => {
 
 			autoPlaceCharacters();
 		}
-	}, [isHost, sharedMap, charactersWithoutTokens, inviteCode, gameState?.status, refreshSharedMap]);
+	}, [isHost, sharedMap, charactersWithoutTokens, inviteCode, gameState?.status, placePlayerTokenMutation]);
 
 	// Auto-roll initiative when encounter starts (map is set, game is active, and all characters are placed)
 	useEffect(() => {
@@ -459,7 +490,9 @@ const MultiplayerGameScreen: React.FC = () => {
 			const rollInitiative = async () => {
 				try {
 					setHasRolledInitiative(true);
-					const response = await multiplayerClient.rollInitiative(inviteCode);
+					const response = await rollInitiativeMutation.mutateAsync({
+						path: `/games/${inviteCode}/initiative/roll`,
+					});
 					setGameState(response); // Directly update game state with response
 				} catch (error) {
 					console.error('Failed to roll initiative:', error);
@@ -469,7 +502,7 @@ const MultiplayerGameScreen: React.FC = () => {
 
 			rollInitiative();
 		}
-	}, [isHost, gameState?.mapState, gameState?.status, charactersWithoutTokens.length, hasRolledInitiative, gameState?.initiativeOrder, inviteCode, loadGameState]);
+	}, [isHost, gameState?.mapState, gameState?.status, charactersWithoutTokens.length, hasRolledInitiative, gameState?.initiativeOrder, inviteCode, rollInitiativeMutation]);
 
 	// Track unread messages
 	useEffect(() => {
@@ -499,19 +532,8 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 	}, [sharedMap, playerToken, movementBudget, isPlayerTurn, isHost]);
 
-	// Load initial game state - only once
-	const loadGameStateRef = useRef(false);
-	useEffect(() => {
-		if (inviteCode && !loadGameStateRef.current && !gameState) {
-			loadGameStateRef.current = true;
-			loadGameState();
-		}
-		refreshSharedMap().catch(() => undefined);
-		const interval = setInterval(() => {
-			refreshSharedMap().catch(() => undefined);
-		}, 5000);
-		return () => clearInterval(interval);
-	}, [inviteCode, refreshSharedMap, loadGameState, gameState]);
+	// Initial game state is loaded via usePollingGameState hook
+	// Map state is loaded via useMapState hook
 
 	// Handle CMD+K / CTRL+K keyboard shortcut for command palette
 	useEffect(() => {
@@ -534,22 +556,20 @@ const MultiplayerGameScreen: React.FC = () => {
 			if (!inviteCode || !hostId || !gameState) return;
 
 			try {
-				await multiplayerClient.submitDMAction(inviteCode, {
+				await submitDMActionMutation.mutateAsync({
+					path: `/games/${inviteCode}/dm-action`,
+					body: {
 					type: type as 'narrate' | 'update_character' | 'update_npc' | 'advance_story' | 'roll_dice',
 					data,
 					hostId,
+					},
 				});
-
-				// Refresh state
-				if (!wsIsConnected) {
-					setTimeout(loadGameState, 500);
-				}
 			} catch (error) {
 				Alert.alert('Error', 'Failed to perform DM action');
 				console.error(error);
 			}
 		},
-		[inviteCode, hostId, gameState, wsIsConnected, loadGameState],
+		[inviteCode, hostId, gameState, submitDMActionMutation],
 	);
 
 	const handleAIRequest = useCallback(async (prompt: string): Promise<string> => {
@@ -576,11 +596,10 @@ const MultiplayerGameScreen: React.FC = () => {
 					category: 'Encounter',
 					action: async () => {
 						try {
-							await multiplayerClient.rollInitiative(inviteCode);
+							await rollInitiativeMutation.mutateAsync({
+								path: `/games/${inviteCode}/initiative/roll`,
+							});
 							setHasRolledInitiative(true);
-							setTimeout(() => {
-								loadGameState();
-							}, 500);
 							Alert.alert('Success', 'Initiative rolled!');
 						} catch (error) {
 							console.error('Failed to roll initiative:', error);
@@ -608,13 +627,11 @@ const MultiplayerGameScreen: React.FC = () => {
 					action: async () => {
 						if (inviteCode) {
 							try {
-								const response = await multiplayerClient.nextTurn(inviteCode);
+								const response = await nextTurnMutation.mutateAsync({
+									path: `/games/${inviteCode}/turn/next`,
+								});
 								if (response) {
 									setGameState(response);
-								} else {
-									setTimeout(() => {
-										loadGameState();
-									}, 500);
 								}
 								setShowCommandPalette(false);
 							} catch (error) {
@@ -677,7 +694,9 @@ const MultiplayerGameScreen: React.FC = () => {
 					action: async () => {
 						if (inviteCode) {
 							try {
-								await multiplayerClient.stopGame(inviteCode);
+								await stopGameMutation.mutateAsync({
+									path: `/games/${inviteCode}/stop`,
+								});
 								router.push(`/host-game/${inviteCode}`);
 							} catch (error) {
 								console.error('Failed to stop game:', error);
@@ -713,10 +732,12 @@ const MultiplayerGameScreen: React.FC = () => {
 					action: async () => {
 						if (inviteCode && currentCharacterId) {
 							try {
-								await multiplayerClient.performAction(inviteCode, currentCharacterId, 'basic_attack');
-								setTimeout(() => {
-									loadGameState();
-								}, 500);
+								await performActionMutation.mutateAsync({
+									path: `/games/${inviteCode}/characters/${currentCharacterId}/actions`,
+									body: {
+										actionType: 'basic_attack',
+									},
+								});
 								setShowCommandPalette(false);
 								Alert.alert('Attack', 'Basic attack performed!');
 							} catch (error) {
@@ -746,10 +767,12 @@ const MultiplayerGameScreen: React.FC = () => {
 					action: async () => {
 						if (inviteCode && currentCharacterId) {
 							try {
-								await multiplayerClient.performAction(inviteCode, currentCharacterId, 'heal_potion');
-								setTimeout(() => {
-									loadGameState();
-								}, 500);
+								await performActionMutation.mutateAsync({
+									path: `/games/${inviteCode}/characters/${currentCharacterId}/actions`,
+									body: {
+										actionType: 'heal_potion',
+									},
+								});
 								setShowCommandPalette(false);
 								Alert.alert('Heal', 'Healing potion used!');
 							} catch (error) {
@@ -779,13 +802,11 @@ const MultiplayerGameScreen: React.FC = () => {
 					action: async () => {
 						if (inviteCode) {
 							try {
-								const response = await multiplayerClient.endTurn(inviteCode);
+								const response = await endTurnMutation.mutateAsync({
+									path: `/games/${inviteCode}/turn/end`,
+								});
 								if (response) {
 									setGameState(response);
-								} else {
-									setTimeout(() => {
-										loadGameState();
-									}, 500);
 								}
 								setShowCommandPalette(false);
 							} catch (error) {
@@ -804,12 +825,11 @@ const MultiplayerGameScreen: React.FC = () => {
 					action: async () => {
 						if (inviteCode && currentCharacterId) {
 							try {
-								const result = await multiplayerClient.rollPerceptionCheck(inviteCode, currentCharacterId);
-								setTimeout(() => {
-									loadGameState();
-								}, 500);
+								const result = await rollPerceptionCheckMutation.mutateAsync({
+									path: `/games/${inviteCode}/characters/${currentCharacterId}/perception-check`,
+								});
 								setShowCommandPalette(false);
-								Alert.alert('Perception Check', `Rolled: ${result.total}\n${result.breakdown}`);
+								Alert.alert('Perception Check', `Rolled: ${result.total}\n${result.breakdown || ''}`);
 							} catch (error) {
 								console.error('Failed to roll perception:', error);
 								Alert.alert('Error', error instanceof Error ? error.message : 'Failed to roll perception');
@@ -846,7 +866,7 @@ const MultiplayerGameScreen: React.FC = () => {
 		);
 
 		return commands;
-	}, [isHost, inviteCode, loadGameState, isPlayerTurn, currentCharacterId]);
+	}, [isHost, inviteCode, isPlayerTurn, currentCharacterId, performActionMutation, endTurnMutation, rollPerceptionCheckMutation, nextTurnMutation, rollInitiativeMutation, stopGameMutation]);
 
 	// Determine available actions for a tile
 	const getAvailableActions = useCallback(
@@ -1059,212 +1079,69 @@ const MultiplayerGameScreen: React.FC = () => {
 		[isHost],
 	);
 
-	const handleMovementRangeTilePress = useCallback(
-		async (x: number, y: number) => {
-			// Handle clicking on a movement range tile to move the selected token
-			if (!selectedTokenId || !sharedMap || !inviteCode) {
-				console.log('Movement blocked: missing requirements', { selectedTokenId, sharedMap: !!sharedMap, inviteCode });
-				return;
-			}
-
-			const selectedToken = sharedMap.tokens?.find(t => t.id === selectedTokenId);
-			if (!selectedToken) {
-				console.log('Movement blocked: token not found', selectedTokenId);
-				return;
-			}
-
-			// Check if clicked tile is in movement range
-			const isInRange = selectedTokenMovementRange.some(tile => tile.x === x && tile.y === y);
-			if (!isInRange) {
-				// Clear selection if clicking outside range
-				console.log('Movement blocked: tile not in range', { x, y, range: selectedTokenMovementRange.length });
-				setSelectedTokenId(null);
-				setSelectedTokenMovementRange([]);
-				return;
-			}
-
-			// Don't move if clicking the same tile
-			if (selectedToken.x === x && selectedToken.y === y) {
-				console.log('Movement blocked: same tile');
-				return;
-			}
-
-			// Move the token
-			try {
-				// If it's a player token and not host, validate movement
-				if (selectedToken.type === 'player' && !isHost) {
-					// Player movement - validate
-					if (selectedToken.entityId !== currentCharacterId || !isPlayerTurn) {
-						Alert.alert('Not your turn', 'You can only move your character during your turn.');
-						return;
-					}
-
-					const validation = await multiplayerClient.validateMovement(inviteCode, {
-						characterId: selectedToken.entityId || '',
-						fromX: selectedToken.x,
-						fromY: selectedToken.y,
-						toX: x,
-						toY: y,
-					});
-
-					if (!validation?.valid) {
-						Alert.alert('Move blocked', 'That move is not allowed.');
-						return;
-					}
-
-					// Optimistic update: update local state immediately
-					if (sharedMap) {
-						const updatedTokens = (sharedMap.tokens || []).map(t =>
-							t.id === selectedToken.id ? { ...t, x, y, metadata: { ...t.metadata, path: validation.path } } : t,
-						);
-						setSharedMap({ ...sharedMap, tokens: updatedTokens });
-					}
-
-					// Save to backend asynchronously
-					multiplayerClient.saveMapToken(inviteCode, {
-						id: selectedToken.id,
-						tokenType: 'player',
-						x,
-						y,
-						characterId: selectedToken.entityId,
-						label: selectedToken.label,
-						color: selectedToken.color,
-						metadata: { ...selectedToken.metadata, path: validation.path },
-					}).catch(error => {
-						console.error('Failed to save token movement:', error);
-						// Revert optimistic update on error
-						if (sharedMap) {
-							const revertedTokens = (sharedMap.tokens || []).map(t =>
-								t.id === selectedToken.id ? { ...t, x: selectedToken.x, y: selectedToken.y } : t,
-							);
-							setSharedMap({ ...sharedMap, tokens: revertedTokens });
-							Alert.alert('Error', 'Failed to save movement. Changes reverted.');
-						}
-					});
-
-					// Refresh map state in background (non-blocking)
-					refreshSharedMap().catch(console.error);
-				} else {
-					// Host can move any token with override
-					const tokenData: {
-						id: string;
-						tokenType: 'player' | 'npc' | 'object';
-						x: number;
-						y: number;
-						characterId?: string;
-						npcId?: string;
-						label: string;
-						color?: string;
-						overrideValidation: boolean;
-					} = {
-						id: selectedToken.id,
-						tokenType: selectedToken.type,
-						x,
-						y,
-						label: selectedToken.label,
-						color: selectedToken.color,
-						overrideValidation: true,
-					};
-
-					// Set the appropriate ID field based on token type
-					if (selectedToken.type === 'npc' && selectedToken.entityId) {
-						tokenData.npcId = selectedToken.entityId;
-					} else if (selectedToken.type === 'player' && selectedToken.entityId) {
-						tokenData.characterId = selectedToken.entityId;
-					}
-
-					// Optimistic update: update local state immediately
-					if (sharedMap) {
-						const updatedTokens = (sharedMap.tokens || []).map(t =>
-							t.id === selectedToken.id ? { ...t, x, y } : t,
-						);
-						setSharedMap({ ...sharedMap, tokens: updatedTokens });
-					}
-
-					// Save to backend asynchronously
-					multiplayerClient.saveMapToken(inviteCode, tokenData).catch(error => {
-						console.error('Failed to save token movement:', error);
-						// Revert optimistic update on error
-						if (sharedMap) {
-							const revertedTokens = (sharedMap.tokens || []).map(t =>
-								t.id === selectedToken.id ? { ...t, x: selectedToken.x, y: selectedToken.y } : t,
-							);
-							setSharedMap({ ...sharedMap, tokens: revertedTokens });
-							Alert.alert('Error', 'Failed to save movement. Changes reverted.');
-						}
-					});
-
-					// Refresh map state in background (non-blocking)
-					refreshSharedMap().catch(console.error);
-				}
-
-				// Clear selection after move (immediate UI feedback)
-				setSelectedTokenId(null);
-				setSelectedTokenMovementRange([]);
-			} catch (error) {
-				console.error('Failed to move token:', error);
-				Alert.alert('Error', 'Failed to move token');
-			}
-		},
-		[selectedTokenId, sharedMap, inviteCode, selectedTokenMovementRange, isHost, currentCharacterId, isPlayerTurn, refreshSharedMap],
-	);
 
 	const handleTokenDamage = useCallback(
 		async (amount: number) => {
 			if (!selectedToken?.entityId || !inviteCode) return;
 			try {
-				await multiplayerClient.dealDamage(inviteCode, selectedToken.entityId, amount);
-				await loadGameState();
-				await refreshSharedMap();
+				await dealDamageMutation.mutateAsync({
+					path: `/games/${inviteCode}/characters/${selectedToken.entityId}/damage`,
+					body: { amount },
+				});
 			} catch (error) {
 				console.error('Failed to deal damage:', error);
 				Alert.alert('Error', 'Failed to deal damage');
 			}
 		},
-		[selectedToken, inviteCode, loadGameState, refreshSharedMap],
+		[selectedToken, inviteCode, dealDamageMutation],
 	);
 
 	const handleTokenHeal = useCallback(
 		async (amount: number) => {
 			if (!selectedToken?.entityId || !inviteCode) return;
 			try {
-				await multiplayerClient.healCharacter(inviteCode, selectedToken.entityId, amount);
-				await loadGameState();
-				await refreshSharedMap();
+				await healCharacterMutation.mutateAsync({
+					path: `/games/${inviteCode}/characters/${selectedToken.entityId}/heal`,
+					body: { amount },
+				});
 			} catch (error) {
 				console.error('Failed to heal:', error);
 				Alert.alert('Error', 'Failed to heal character');
 			}
 		},
-		[selectedToken, inviteCode, loadGameState, refreshSharedMap],
+		[selectedToken, inviteCode, healCharacterMutation],
 	);
 
 	const handleCharacterDamage = useCallback(
 		async (characterId: string, amount: number) => {
 			if (!inviteCode) return;
 			try {
-				await multiplayerClient.dealDamage(inviteCode, characterId, amount);
-				await loadGameState();
+				await dealDamageMutation.mutateAsync({
+					path: `/games/${inviteCode}/characters/${characterId}/damage`,
+					body: { amount },
+				});
 			} catch (error) {
 				console.error('Failed to deal damage:', error);
 				Alert.alert('Error', 'Failed to deal damage');
 			}
 		},
-		[inviteCode, loadGameState],
+		[inviteCode, dealDamageMutation],
 	);
 
 	const handleCharacterHeal = useCallback(
 		async (characterId: string, amount: number) => {
 			if (!inviteCode) return;
 			try {
-				await multiplayerClient.healCharacter(inviteCode, characterId, amount);
-				await loadGameState();
+				await healCharacterMutation.mutateAsync({
+					path: `/games/${inviteCode}/characters/${characterId}/heal`,
+					body: { amount },
+				});
 			} catch (error) {
 				console.error('Failed to heal:', error);
 				Alert.alert('Error', 'Failed to heal character');
 			}
 		},
-		[inviteCode, loadGameState],
+		[inviteCode, healCharacterMutation],
 	);
 
 	const handleCharacterSelect = useCallback(
@@ -1279,8 +1156,11 @@ const MultiplayerGameScreen: React.FC = () => {
 					if (token?.entityId) {
 						// For NPCs, entityId should be the npc_id (from convertTokens: token.npc_id)
 						const npcId = token.entityId;
-						const npcDef = await multiplayerClient.getNpcDefinition(inviteCode, npcId).catch(() => null);
-						if (npcDef && npcDef.stats) {
+						// Use query hook for NPC definition - would need to be called with useNpcDefinition hook
+						// TODO: Use useNpcDefinition hook for proper NPC definition lookup
+						// For now, skip stats extraction since we don't have the NPC definition
+						const npcDef = null;
+						if (npcDef && 'stats' in npcDef && npcDef.stats) {
 							// Stats is a Record<string, unknown>, extract the stat values
 							const stats = npcDef.stats as Record<string, unknown>;
 							setNpcStats({
@@ -1319,13 +1199,13 @@ const MultiplayerGameScreen: React.FC = () => {
 					characterId,
 					updates,
 				});
-				await loadGameState();
+				// Game state will refresh automatically via query invalidation
 			} catch (error) {
 				console.error('Failed to update character:', error);
 				Alert.alert('Error', 'Failed to update character');
 			}
 		},
-		[inviteCode, handleDMAction, loadGameState],
+		[inviteCode, handleDMAction, submitDMActionMutation],
 	);
 
 	const handleTileLongPress = useCallback(
@@ -1348,7 +1228,9 @@ const MultiplayerGameScreen: React.FC = () => {
 					case 'placeRoad':
 					case 'clearTile': {
 						const terrainType = action === 'placeWater' ? 'water' : action === 'placeRoad' ? 'road' : action === 'clearTile' ? 'grass' : 'stone';
-						await multiplayerClient.mutateTerrain(inviteCode, {
+						await mutateTerrainMutation.mutateAsync({
+							path: `/games/${inviteCode}/map/terrain`,
+							body: {
 							tiles: [
 								{
 									x,
@@ -1356,8 +1238,8 @@ const MultiplayerGameScreen: React.FC = () => {
 									terrainType,
 								},
 							],
+							},
 						});
-						await refreshSharedMap();
 						break;
 					}
 					case 'placeNpc':
@@ -1370,7 +1252,7 @@ const MultiplayerGameScreen: React.FC = () => {
 				Alert.alert('Error', 'Failed to modify terrain');
 			}
 		},
-		[inviteCode, sharedMap, refreshSharedMap],
+		[inviteCode, sharedMap, mutateTerrainMutation],
 	);
 
 	const handlePlaceItemToken = useCallback(
@@ -1385,15 +1267,17 @@ const MultiplayerGameScreen: React.FC = () => {
 						obstacle: '🪨 Obstacle',
 					};
 
-					await multiplayerClient.saveMapToken(inviteCode, {
+					await saveMapTokenMutation.mutateAsync({
+						path: `/games/${inviteCode}/map/tokens`,
+						body: {
 						tokenType: 'object',
 						x,
 						y,
 						label: itemLabels[selectedItemType] || 'Item',
 						metadata: { itemType: selectedItemType },
 						overrideValidation: true,
+						},
 					});
-					await refreshSharedMap();
 					setSelectedItemType(null);
 				} catch (error) {
 					console.error('Failed to place item token:', error);
@@ -1403,7 +1287,7 @@ const MultiplayerGameScreen: React.FC = () => {
 
 			placeItem();
 		},
-		[inviteCode, selectedItemType, refreshSharedMap],
+		[inviteCode, selectedItemType, saveMapTokenMutation],
 	);
 
 	// Handle tile press - show action menu
@@ -1467,25 +1351,283 @@ const MultiplayerGameScreen: React.FC = () => {
 			if (!inviteCode) {
 				return;
 			}
-			const entityId = actorEntityId ?? gameState?.activeTurn?.entityId;
+			const entityId = actorEntityId ?? effectiveGameState?.activeTurn?.entityId;
 			if (!entityId) {
 				return;
 			}
 
 			try {
-				await multiplayerClient.updateTurnState(inviteCode, {
+				// Optimistic update: update local state immediately
+				if (effectiveGameState?.activeTurn && effectiveGameState.activeTurn.entityId === entityId) {
+					setGameState({
+						...effectiveGameState,
+						activeTurn: {
+							...effectiveGameState.activeTurn,
+							movementUsed: update.movementUsed ?? effectiveGameState.activeTurn.movementUsed ?? 0,
+							majorActionUsed: update.majorActionUsed ?? effectiveGameState.activeTurn.majorActionUsed ?? false,
+							minorActionUsed: update.minorActionUsed ?? effectiveGameState.activeTurn.minorActionUsed ?? false,
+						},
+					});
+				}
+
+				await updateTurnStateMutation.mutateAsync({
+					path: `/games/${inviteCode}/turn/update`,
+					body: {
 					...update,
 					actorEntityId: entityId,
+					},
 				});
+
+				// Immediately refetch game state to ensure consistency
+				if (refreshGameState) {
+					await refreshGameState();
+				}
 			} catch (error) {
 				console.error('Failed to update turn state usage:', error);
+				// Revert optimistic update on error
+				if (polledState) {
+					setGameState(polledState);
+				}
 			}
 		},
-		[inviteCode, gameState?.activeTurn?.entityId],
+		[inviteCode, effectiveGameState, updateTurnStateMutation, refreshGameState, polledState],
+	);
+
+	const handleMovementRangeTilePress = useCallback(
+		async (x: number, y: number) => {
+			// Handle clicking on a movement range tile to move the selected token
+			if (!selectedTokenId || !sharedMap || !inviteCode) {
+				console.log('Movement blocked: missing requirements', { selectedTokenId, sharedMap: !!sharedMap, inviteCode });
+				return;
+			}
+
+			const selectedToken = sharedMap.tokens?.find(t => t.id === selectedTokenId);
+			if (!selectedToken) {
+				console.log('Movement blocked: token not found', selectedTokenId);
+				return;
+			}
+
+			// Check if clicked tile is in movement range
+			const isInRange = selectedTokenMovementRange.some(tile => tile.x === x && tile.y === y);
+			if (!isInRange) {
+				// Clear selection if clicking outside range
+				console.log('Movement blocked: tile not in range', { x, y, range: selectedTokenMovementRange.length });
+				setSelectedTokenId(null);
+				setSelectedTokenMovementRange([]);
+				return;
+			}
+
+			// Don't move if clicking the same tile
+			if (selectedToken.x === x && selectedToken.y === y) {
+				console.log('Movement blocked: same tile');
+				return;
+			}
+
+			// Move the token
+			try {
+				// Check if this token is the active turn entity (for movement budget tracking)
+				// For NPCs, activeTurn.entityId is the token.id; for players, it's the characterId
+				// Use effectiveGameState to get the latest movement data from query
+				const isActiveTurnEntity = effectiveGameState?.activeTurn?.entityId === selectedToken.entityId || 
+					effectiveGameState?.activeTurn?.entityId === selectedToken.id;
+				const activeTurnForToken = isActiveTurnEntity ? effectiveGameState.activeTurn : null;
+
+				// Get movement budget info if this is the active turn entity
+				let currentMovementUsed = 0;
+				let totalMovementSpeed = DEFAULT_RACE_SPEED;
+
+				if (activeTurnForToken) {
+					currentMovementUsed = activeTurnForToken.movementUsed ?? 0;
+					totalMovementSpeed = activeTurnForToken.speed ?? DEFAULT_RACE_SPEED;
+				} else if (selectedToken.type === 'player' && selectedToken.entityId) {
+					// For players not on their turn, use character speed
+					const character = effectiveGameState?.characters.find(c => c.id === selectedToken.entityId);
+					if (character) {
+						totalMovementSpeed = getCharacterSpeed(character);
+					}
+				}
+
+				// If it's a player token and not host, validate movement
+				if (selectedToken.type === 'player' && !isHost) {
+					// Player movement - validate
+					if (selectedToken.entityId !== currentCharacterId || !isPlayerTurn) {
+						Alert.alert('Not your turn', 'You can only move your character during your turn.');
+						return;
+					}
+
+					const validation = await validateMovementMutation.mutateAsync({
+						path: `/games/${inviteCode}/map/movement/validate`,
+						body: {
+							characterId: selectedToken.entityId || '',
+							fromX: selectedToken.x,
+							fromY: selectedToken.y,
+							toX: x,
+							toY: y,
+						},
+					});
+
+					if (!validation?.valid) {
+						Alert.alert('Move blocked', 'That move is not allowed.');
+						return;
+					}
+
+					// Use moveTokenWithBudget for player movement
+					const result = await moveTokenWithBudget({
+						map: sharedMap,
+						from: { x: selectedToken.x, y: selectedToken.y },
+						to: { x, y },
+						token: {
+							id: selectedToken.id,
+							type: selectedToken.type,
+							label: selectedToken.label,
+							color: selectedToken.color,
+							entityId: selectedToken.entityId,
+							metadata: { ...selectedToken.metadata, path: validation.path },
+						},
+						currentMovementUsed,
+						totalMovementSpeed,
+						isHost: false,
+						turnEntityId: activeTurnForToken?.entityId, // Use activeTurn.entityId for turn updates
+						saveToken: async (data) => {
+							return await saveMapTokenMutation.mutateAsync({
+								path: `/games/${inviteCode}/map/tokens`,
+								body: data,
+							});
+						},
+						updateTurnUsage: async (update, entityId) => {
+							return await updateTurnUsage(update, entityId || selectedToken.entityId);
+						},
+						onOptimisticUpdate: (updatedTokens) => {
+							if (sharedMap) {
+								const updated = (sharedMap.tokens || []).map(t => {
+									const update = updatedTokens.find(u => u.id === t.id);
+									if (update) {
+										return { ...t, x: update.x, y: update.y };
+									}
+									return t;
+								});
+								setSharedMap({ ...sharedMap, tokens: updated });
+							}
+						},
+						onError: (error) => {
+							console.error('[Movement] Failed to move token:', error);
+							Alert.alert('Movement failed', error.message);
+						},
+					});
+
+					if (!result.success && result.error) {
+						Alert.alert('Movement failed', result.error);
+						return;
+					}
+				} else {
+					// Host can move any token with override, or player on their turn
+					// Use moveTokenWithBudget to handle movement budget updates
+					const result = await moveTokenWithBudget({
+						map: sharedMap,
+						from: { x: selectedToken.x, y: selectedToken.y },
+						to: { x, y },
+						token: {
+							id: selectedToken.id,
+							type: selectedToken.type,
+							label: selectedToken.label,
+							color: selectedToken.color,
+							entityId: selectedToken.entityId,
+							metadata: selectedToken.metadata,
+						},
+						currentMovementUsed,
+						totalMovementSpeed,
+						isHost,
+						turnEntityId: isActiveTurnEntity ? effectiveGameState?.activeTurn?.entityId : undefined, // Use activeTurn.entityId for turn updates
+						saveToken: async (data) => {
+							return await saveMapTokenMutation.mutateAsync({
+								path: `/games/${inviteCode}/map/tokens`,
+								body: data,
+							});
+						},
+						updateTurnUsage: async (update, entityId) => {
+							// Only update if this is the active turn entity
+							// The helper will use turnEntityId if provided
+							if (isActiveTurnEntity && entityId) {
+								return await updateTurnUsage(update, entityId);
+							}
+						},
+						onOptimisticUpdate: (updatedTokens) => {
+							if (sharedMap) {
+								const updated = (sharedMap.tokens || []).map(t => {
+									const update = updatedTokens.find(u => u.id === t.id);
+									if (update) {
+										return { ...t, x: update.x, y: update.y };
+									}
+									return t;
+								});
+								setSharedMap({ ...sharedMap, tokens: updated });
+							}
+						},
+						onError: (error) => {
+							console.error('[Movement] Failed to move token:', error);
+							Alert.alert('Movement failed', error.message);
+						},
+					});
+
+					if (!result.success && result.error) {
+						Alert.alert('Movement failed', result.error);
+						return;
+					}
+				}
+
+				// Clear selection after move (immediate UI feedback)
+				setSelectedTokenId(null);
+				setSelectedTokenMovementRange([]);
+			} catch (error) {
+				console.error('Failed to move token:', error);
+				Alert.alert('Error', 'Failed to move token');
+			}
+		},
+		[selectedTokenId, sharedMap, inviteCode, selectedTokenMovementRange, isHost, currentCharacterId, isPlayerTurn, saveMapTokenMutation, validateMovementMutation, effectiveGameState, updateTurnUsage],
 	);
 
 	const formatMovementValue = useCallback((value: number) => {
 		return Math.abs(value - Math.round(value)) < 0.01 ? Math.round(value).toString() : value.toFixed(1);
+	}, []);
+
+	const getActionTargetAt = useCallback(
+		(xCoord: number, yCoord: number) => {
+			const targetToken = sharedMap?.tokens?.find(
+				token =>
+					token.x === xCoord &&
+					token.y === yCoord &&
+					(token.type === 'player' || token.type === 'npc'),
+			);
+
+			if (!targetToken) {
+				return null;
+			}
+
+			if (targetToken.type === 'player') {
+				const characterId = typeof targetToken.entityId === 'string' ? targetToken.entityId : null;
+				if (!characterId) {
+					return null;
+				}
+				return {
+					targetId: characterId,
+					label: targetToken.label || 'Target',
+				};
+			}
+
+			return {
+				targetId: targetToken.id,
+				label: targetToken.label || 'Target',
+			};
+		},
+		[sharedMap?.tokens],
+	);
+
+	const presentCombatResult = useCallback((result?: CharacterActionResult | null) => {
+		if (!result) {
+			return;
+		}
+		setCombatResult(result);
+		setShowCombatResult(true);
 	}, []);
 
 	const handlePlayerAction = useCallback(
@@ -1494,18 +1636,19 @@ const MultiplayerGameScreen: React.FC = () => {
 
 			// For DM: can act on any turn (player, NPC, or DM turn) unless paused
 			// For players: can only act on their own turn
+			// Use effectiveGameState to get the latest turn data from query
 			const activeCharacterId = isPlayerTurn
-				? (isHost && gameState?.activeTurn?.entityId ? gameState.activeTurn.entityId : currentCharacterId)
-				: (isHost && !gameState?.pausedTurn && gameState?.activeTurn?.entityId ? gameState.activeTurn.entityId : null);
+				? (isHost && effectiveGameState?.activeTurn?.entityId ? effectiveGameState.activeTurn.entityId : currentCharacterId)
+				: (isHost && !effectiveGameState?.pausedTurn && effectiveGameState?.activeTurn?.entityId ? effectiveGameState.activeTurn.entityId : null);
 
 			console.log('[Movement] Active character check:', {
 				isPlayerTurn,
 				isHost,
 				currentCharacterId,
-				activeTurnEntityId: gameState?.activeTurn?.entityId,
+				activeTurnEntityId: effectiveGameState?.activeTurn?.entityId,
 				activeCharacterId,
-				activeTurnType: gameState?.activeTurn?.type,
-				pausedTurn: gameState?.pausedTurn,
+				activeTurnType: effectiveGameState?.activeTurn?.type,
+				pausedTurn: effectiveGameState?.pausedTurn,
 			});
 
 			if (!activeCharacterId) {
@@ -1525,7 +1668,8 @@ const MultiplayerGameScreen: React.FC = () => {
 				return;
 			}
 
-			const activeTurnForEntity = gameState?.activeTurn?.entityId === activeEntityId ? gameState.activeTurn : null;
+			// Use effectiveGameState to get the latest movement data from query
+			const activeTurnForEntity = effectiveGameState?.activeTurn?.entityId === activeEntityId ? effectiveGameState.activeTurn : null;
 			const totalMovementSpeed = totalMovementSpeedForActive;
 			const movementUsed = activeTurnForEntity?.movementUsed ?? 0;
 			const remainingMovement = Math.max(0, totalMovementSpeed - movementUsed);
@@ -1543,110 +1687,67 @@ const MultiplayerGameScreen: React.FC = () => {
 							tokenId: activeToken.id,
 						});
 
-						// Use existing movement logic
-						const pathResult = findPathWithCosts(sharedMap, { x: activeToken.x, y: activeToken.y }, { x, y });
-						console.log('[Movement] Path result:', pathResult);
-
-						if (!pathResult || !pathResult.path.length) {
-							console.error('[Movement] No path found');
-							Alert.alert('No path', 'Unable to find a valid path to that tile.');
-							return;
-						}
-
-						console.log('[Movement] Budget check:', {
-							cost: pathResult.cost,
-							remainingMovement,
-							totalMovementSpeed,
-							movementUsed,
-						});
-
-						if (pathResult.cost > remainingMovement) {
-							console.error('[Movement] Not enough movement points');
-							Alert.alert('Not enough movement', 'You need more movement points for that path.');
-							return;
-						}
-
 						setMovementInFlight(true);
 						try {
-							// Use path result for validation - frontend pathfinding is sufficient
-							// The backend validation endpoint doesn't exist, so we trust our pathfinding
-							const validation: { valid: boolean; cost: number; path: Array<{ x: number; y: number }> } = {
-								valid: true,
-								cost: pathResult.cost,
-								path: pathResult.path,
-							};
-
-							console.log('[Movement] Using path result for movement validation:', validation);
-
-							// Optimistic update: update local state immediately
-							if (sharedMap) {
-								const updatedTokens = (sharedMap.tokens || []).map(t =>
-									t.id === activeToken.id ? { ...t, x, y, metadata: { ...t.metadata, path: validation.path } } : t,
-								);
-								setSharedMap({ ...sharedMap, tokens: updatedTokens });
-							}
-
-							// Save to backend - use npcId for NPCs, characterId for players
-							const tokenData: {
-								id: string;
-								tokenType: 'player' | 'npc' | 'object';
-								x: number;
-								y: number;
-								characterId?: string;
-								npcId?: string;
-								label: string;
-								color?: string;
-								metadata?: Record<string, unknown>;
-								overrideValidation?: boolean;
-							} = {
+							const result = await moveTokenWithBudget({
+								map: sharedMap,
+								from: { x: activeToken.x, y: activeToken.y },
+								to: { x, y },
+								token: {
 								id: activeToken.id,
-								tokenType: activeToken.type,
-								x,
-								y,
+									type: activeToken.type,
 								label: activeToken.label,
 								color: activeToken.color,
-								metadata: { ...activeToken.metadata, path: validation.path },
-							};
+									entityId: activeToken.entityId,
+									metadata: activeToken.metadata,
+								},
+								currentMovementUsed: movementUsed,
+								totalMovementSpeed,
+								isHost,
+								saveToken: async (data) => {
+									return await saveMapTokenMutation.mutateAsync({
+										path: `/games/${inviteCode}/map/tokens`,
+										body: data,
+									});
+								},
+								updateTurnUsage: async (update, entityId) => {
+									return await updateTurnUsage(update, entityId || activeCharacterId);
+								},
+								onOptimisticUpdate: (updatedTokens) => {
+									if (sharedMap) {
+										const updated = (sharedMap.tokens || []).map(t => {
+											const update = updatedTokens.find(u => u.id === t.id);
+											if (update) {
+												return { ...t, x: update.x, y: update.y };
+											}
+											return t;
+										});
+										setSharedMap({ ...sharedMap, tokens: updated });
+									}
+								},
+								onError: (error) => {
+									console.error('[Movement] Failed to move token:', error);
+									Alert.alert('Movement failed', error.message);
+								},
+							});
 
-							// Set the appropriate ID field based on token type
-							if (activeToken.type === 'npc' && activeToken.entityId) {
-								tokenData.npcId = activeToken.entityId;
-								tokenData.overrideValidation = isHost; // DM can override validation for NPCs
-								console.log('[Movement] Saving NPC token:', { npcId: activeToken.entityId, overrideValidation: isHost });
-							} else if (activeToken.type === 'player' && activeToken.entityId) {
-								tokenData.characterId = activeToken.entityId;
-								console.log('[Movement] Saving player token:', { characterId: activeToken.entityId });
+							if (!result.success) {
+								if (result.error) {
+									Alert.alert('Movement failed', result.error);
+								}
+								return;
 							}
 
-							console.log('[Movement] Saving token data:', tokenData);
-							await multiplayerClient.saveMapToken(inviteCode, tokenData);
-							console.log('[Movement] Token saved successfully');
+							console.log('[Movement] Movement successful:', {
+								cost: result.cost,
+								updatedMovementUsed: result.updatedMovementUsed,
+							});
 
-							const updatedMovementUsed = Math.min(totalMovementSpeed, movementUsed + pathResult.cost);
-
-							// Refresh map and game state to update action points
-							await refreshSharedMap();
-							await updateTurnUsage({ movementUsed: updatedMovementUsed }, activeCharacterId);
-							setTimeout(() => {
-								loadGameState();
-							}, 300);
 							setPathPreview(null);
 							setSelectedTokenId(null);
 							setSelectedTokenMovementRange([]);
 						} catch (error) {
-							console.error('[Movement] Failed to move player:', error);
-							console.error('[Movement] Error details:', {
-								message: error instanceof Error ? error.message : String(error),
-								stack: error instanceof Error ? error.stack : undefined,
-							});
-							// Revert optimistic update on error
-							if (sharedMap) {
-								const revertedTokens = (sharedMap.tokens || []).map(t =>
-									t.id === activeToken.id ? { ...t, x: activeToken.x, y: activeToken.y } : t,
-								);
-								setSharedMap({ ...sharedMap, tokens: revertedTokens });
-								console.log('[Movement] Reverted optimistic update');
-							}
+							console.error('[Movement] Unexpected error:', error);
 							Alert.alert('Movement failed', error instanceof Error ? error.message : 'Could not move token');
 						} finally {
 							setMovementInFlight(false);
@@ -1665,11 +1766,18 @@ const MultiplayerGameScreen: React.FC = () => {
 						// Trigger perception check
 						if (activeCharacterId) {
 							try {
-								const result = await multiplayerClient.rollPerceptionCheck(inviteCode, activeCharacterId);
-								setTimeout(() => {
-									loadGameState();
-								}, 500);
-								Alert.alert('Perception Check', `Rolled: ${result.total}\n${result.breakdown}`);
+								const result = await rollPerceptionCheckMutation.mutateAsync({
+									path: `/games/${inviteCode}/characters/${activeCharacterId}/perception-check`,
+								});
+								const breakdown = result.breakdown ? `\n${result.breakdown}` : '';
+								const dcSummary =
+									typeof result.dc === 'number'
+										? `\nDC ${result.dc} • ${result.success ? 'Success' : 'Failed'}`
+										: '';
+								Alert.alert(
+									'Perception Check',
+									`${result.mode === 'passive' ? 'Passive' : 'Active'}: ${result.total}${breakdown}${dcSummary}`,
+								);
 							} catch (error) {
 								console.error('Failed to roll perception:', error);
 								Alert.alert('Error', error instanceof Error ? error.message : 'Failed to roll perception');
@@ -1682,7 +1790,12 @@ const MultiplayerGameScreen: React.FC = () => {
 							Alert.alert('Major Action Used', 'You have already used your major action this turn.');
 							break;
 						}
-						// Open spell selector
+						const targetInfo = getActionTargetAt(x, y);
+						if (!targetInfo) {
+							Alert.alert('No Target', 'Select a target tile before casting a spell.');
+							break;
+						}
+						setPendingActionTarget(targetInfo);
 						setSelectedCharacterForAction(activeCharacterId);
 						setShowSpellActionSelector(true);
 						break;
@@ -1692,15 +1805,24 @@ const MultiplayerGameScreen: React.FC = () => {
 							Alert.alert('Major Action Used', 'You have already used your major action this turn.');
 							break;
 						}
-						// Perform basic attack
+						const targetInfo = getActionTargetAt(x, y);
+						if (!targetInfo) {
+							Alert.alert('No Target', 'Select a target to attack.');
+							break;
+						}
 						if (activeCharacterId) {
 							try {
-								await multiplayerClient.performAction(inviteCode, activeCharacterId, 'basic_attack');
+								const response = await performActionMutation.mutateAsync({
+									path: `/games/${inviteCode}/characters/${activeCharacterId}/actions`,
+									body: {
+										actionType: 'basic_attack',
+									targetId: targetInfo.targetId,
+									},
+								});
+								if (response.actionResult) {
+								presentCombatResult(response.actionResult);
+								}
 								await updateTurnUsage({ majorActionUsed: true }, activeCharacterId);
-								setTimeout(() => {
-									loadGameState();
-								}, 500);
-								Alert.alert('Attack', 'Basic attack performed!');
 							} catch (error) {
 								console.error('Failed to perform attack:', error);
 								Alert.alert('Error', error instanceof Error ? error.message : 'Failed to perform attack');
@@ -1751,11 +1873,16 @@ const MultiplayerGameScreen: React.FC = () => {
 			isHost,
 			currentCharacterId,
 			gameState,
-			refreshSharedMap,
-			loadGameState,
 			updateTurnUsage,
 			totalMovementSpeedForActive,
 			activeTurnTokenId,
+			getActionTargetAt,
+			presentCombatResult,
+			performActionMutation,
+			saveMapTokenMutation,
+			placeNpcMutation,
+			effectiveGameState,
+			updateTurnUsage,
 		],
 	);
 
@@ -1902,7 +2029,10 @@ const MultiplayerGameScreen: React.FC = () => {
 								}
 
 								// Save to backend asynchronously
-								multiplayerClient.saveMapToken(inviteCode || '', tokenData).catch(error => {
+								saveMapTokenMutation.mutateAsync({
+									path: `/games/${inviteCode}/map/tokens`,
+									body: tokenData,
+								}).catch((error: any) => {
 									console.error('Failed to save token movement:', error);
 									// Revert optimistic update on error
 									if (sharedMap) {
@@ -1915,7 +2045,7 @@ const MultiplayerGameScreen: React.FC = () => {
 								});
 
 								// Refresh map state in background (non-blocking)
-								refreshSharedMap().catch(console.error);
+								// Map state will refresh automatically via query invalidation
 							} catch (error) {
 								console.error('Failed to move token:', error);
 								Alert.alert('Error', 'Failed to move token');
@@ -1928,17 +2058,15 @@ const MultiplayerGameScreen: React.FC = () => {
 								? async (x, y) => {
 									if (!inviteCode || !sharedMap || !npcPlacementMode) return;
 									try {
-										await multiplayerClient.placeNpc(inviteCode, {
+										await placeNpcMutation.mutateAsync({
+											path: `/games/${inviteCode}/npcs`,
+											body: {
 											npcId: npcPlacementMode.npcId,
 											x,
 											y,
 											label: npcPlacementMode.npcName,
+											},
 										});
-										// Refresh both map and game state to ensure NPC appears in character list
-										await refreshSharedMap();
-										setTimeout(() => {
-											loadGameState();
-										}, 300);
 										setNpcPlacementMode(null);
 										Alert.alert('Success', `${npcPlacementMode.npcName} placed on map and added to character list`);
 									} catch (error) {
@@ -1950,8 +2078,17 @@ const MultiplayerGameScreen: React.FC = () => {
 									? async (x, y) => {
 										if (!inviteCode || !sharedMap) return;
 										try {
-											await multiplayerClient.placeMapElement(inviteCode, elementPlacementMode, x, y);
-											await refreshSharedMap();
+											await saveMapTokenMutation.mutateAsync({
+												path: `/games/${inviteCode}/map/tokens`,
+												body: {
+													tokenType: 'object',
+													x,
+													y,
+													label: elementPlacementMode === 'fire' ? '🔥 Fire' : elementPlacementMode === 'trap' ? '⚠️ Trap' : '🪨 Obstacle',
+													metadata: { itemType: elementPlacementMode },
+													overrideValidation: true,
+												},
+											});
 											setElementPlacementMode(null);
 											Alert.alert('Success', `${elementPlacementMode} placed on map`);
 										} catch (error) {
@@ -2017,6 +2154,15 @@ const MultiplayerGameScreen: React.FC = () => {
 					headerShown: true,
 				}}
 			/>
+
+			<CombatResultModal
+				visible={showCombatResult && !!combatResult}
+				result={combatResult}
+				onClose={() => {
+					setShowCombatResult(false);
+					setCombatResult(null);
+				}}
+			/>
 			<View style={styles.statusBar}>
 				<ThemedText style={styles.statusText}>{wsConnected ? '🟢 Connected' : '🟡 Polling'}</ThemedText>
 				<View style={styles.statusRight}>
@@ -2057,13 +2203,11 @@ const MultiplayerGameScreen: React.FC = () => {
 							onPress={async () => {
 								if (inviteCode) {
 									try {
-										const response = await multiplayerClient.endTurn(inviteCode);
+										const response = await endTurnMutation.mutateAsync({
+											path: `/games/${inviteCode}/turn/end`,
+										});
 										if (response) {
 											setGameState(response);
-										} else {
-											setTimeout(() => {
-												loadGameState();
-											}, 500);
 										}
 									} catch (error) {
 										console.error('Failed to end turn:', error);
@@ -2082,10 +2226,12 @@ const MultiplayerGameScreen: React.FC = () => {
 									style={[styles.lobbyButton, styles.resumeButton]}
 									onPress={async () => {
 										try {
-											await multiplayerClient.resumeTurn(inviteCode || '');
-											setTimeout(() => {
-												loadGameState();
-											}, 500);
+											const response = await resumeTurnMutation.mutateAsync({
+												path: `/games/${inviteCode}/turn/resume`,
+											});
+											if (response) {
+												setGameState({ ...gameState, activeTurn: response.activeTurn, pausedTurn: undefined });
+											}
 										} catch (error) {
 											console.error('Failed to resume turn:', error);
 											Alert.alert('Error', 'Failed to resume turn');
@@ -2100,10 +2246,12 @@ const MultiplayerGameScreen: React.FC = () => {
 									style={[styles.lobbyButton, styles.interruptButton]}
 									onPress={async () => {
 										try {
-											await multiplayerClient.interruptTurn(inviteCode || '');
-											setTimeout(() => {
-												loadGameState();
-											}, 500);
+											const response = await interruptTurnMutation.mutateAsync({
+												path: `/games/${inviteCode}/turn/interrupt`,
+											});
+											if (response) {
+												setGameState({ ...gameState, activeTurn: response.activeTurn, pausedTurn: response.pausedTurn });
+											}
 										} catch (error) {
 											console.error('Failed to interrupt turn:', error);
 											Alert.alert('Error', 'Failed to interrupt turn');
@@ -2126,7 +2274,9 @@ const MultiplayerGameScreen: React.FC = () => {
 								onPress={async () => {
 									if (inviteCode) {
 										try {
-											await multiplayerClient.stopGame(inviteCode);
+											await stopGameMutation.mutateAsync({
+												path: `/games/${inviteCode}/stop`,
+											});
 											router.push(`/host-game/${inviteCode}`);
 										} catch (error) {
 											console.error('Failed to stop game:', error);
@@ -2288,8 +2438,9 @@ const MultiplayerGameScreen: React.FC = () => {
 				onDelete={isHost ? async () => {
 					if (selectedToken?.id && inviteCode) {
 						try {
-							await multiplayerClient.deleteMapToken(inviteCode, selectedToken.id);
-							await refreshSharedMap();
+							await deleteMapTokenMutation.mutateAsync({
+								path: `/games/${inviteCode}/map/tokens/${selectedToken.id}`,
+							});
 							setShowTokenModal(false);
 							setSelectedToken(null);
 						} catch (error) {
@@ -2398,6 +2549,7 @@ const MultiplayerGameScreen: React.FC = () => {
 				onClose={() => {
 					setShowSpellActionSelector(false);
 					setSelectedCharacterForAction(null);
+					setPendingActionTarget(null);
 				}}
 				character={
 					selectedCharacterForAction
@@ -2431,22 +2583,61 @@ const MultiplayerGameScreen: React.FC = () => {
 
 					try {
 						if (action.type === 'cast_spell') {
-							await multiplayerClient.castSpell(inviteCode, characterId, action.name);
+							if (!pendingActionTarget) {
+								Alert.alert('No Target', 'Select a target before casting a spell.');
+								return;
+							}
+							const response = await castSpellMutation.mutateAsync({
+								path: `/games/${inviteCode}/characters/${characterId}/cast-spell`,
+								body: {
+									spellName: action.name,
+									targetId: pendingActionTarget.targetId,
+								},
+							});
+							if (response.actionResult) {
+							presentCombatResult(response.actionResult);
+							}
 						} else {
-							await multiplayerClient.performAction(inviteCode, characterId, action.type);
+							if (action.type === 'basic_attack') {
+								if (!pendingActionTarget) {
+									Alert.alert('No Target', 'Select a target to attack.');
+									return;
+								}
+								const response = await performActionMutation.mutateAsync({
+									path: `/games/${inviteCode}/characters/${characterId}/actions`,
+									body: {
+										actionType: 'basic_attack',
+										targetId: pendingActionTarget.targetId,
+									},
+								});
+								if (response.actionResult) {
+								presentCombatResult(response.actionResult);
+								}
+							} else {
+								await performActionMutation.mutateAsync({
+									path: `/games/${inviteCode}/characters/${characterId}/actions`,
+									body: {
+										actionType: action.type,
+									},
+								});
+							}
 						}
 						if (action.type === 'cast_spell' || action.type === 'basic_attack') {
 							await updateTurnUsage({ majorActionUsed: true }, characterId);
 						} else if (action.type === 'heal_potion' || action.type === 'use_item') {
 							await updateTurnUsage({ minorActionUsed: true }, characterId);
 						}
-						setTimeout(() => {
-							loadGameState();
-						}, 500);
-						Alert.alert('Success', `${action.name} performed!`);
+						// Game state will refresh automatically via query invalidation
+						if (action.type !== 'cast_spell' && action.type !== 'basic_attack') {
+							Alert.alert('Success', `${action.name} performed!`);
+						}
 					} catch (error) {
 						console.error('Failed to perform action:', error);
 						Alert.alert('Error', error instanceof Error ? error.message : 'Failed to perform action');
+					} finally {
+						setPendingActionTarget(null);
+						setShowSpellActionSelector(false);
+						setSelectedCharacterForAction(null);
 					}
 				}}
 			/>
@@ -2473,7 +2664,9 @@ const MultiplayerGameScreen: React.FC = () => {
 						const centerX = Math.floor((sharedMap.width || 20) / 2);
 						const centerY = Math.floor((sharedMap.height || 20) / 2);
 						try {
-							await multiplayerClient.placeNpc(inviteCode, {
+							await placeNpcMutation.mutateAsync({
+								path: `/games/${inviteCode}/npcs`,
+								body: {
 								customNpc: {
 									name: customNpc.name,
 									role: customNpc.role,
@@ -2487,11 +2680,8 @@ const MultiplayerGameScreen: React.FC = () => {
 								x: centerX,
 								y: centerY,
 								label: customNpc.name,
+								},
 							});
-							await refreshSharedMap();
-							setTimeout(() => {
-								loadGameState();
-							}, 300);
 							Alert.alert('Success', `${customNpc.name} created and placed on map`);
 						} catch (error) {
 							console.error('Failed to create NPC:', error);
@@ -2525,13 +2715,15 @@ const MultiplayerGameScreen: React.FC = () => {
 												onPress={async () => {
 													if (!inviteCode) return;
 													try {
-														const response = await multiplayerClient.startCharacterTurn(inviteCode, character.id, 'player');
+														const response = await startTurnMutation.mutateAsync({
+															path: `/games/${inviteCode}/turn/start`,
+															body: {
+																turnType: 'player',
+																entityId: character.id,
+															},
+														});
 														if (response) {
 															setGameState(response);
-														} else {
-															setTimeout(() => {
-																loadGameState();
-															}, 500);
 														}
 														setShowCharacterTurnSelector(false);
 														Alert.alert('Success', `Started ${character.name}'s turn`);
@@ -2561,13 +2753,15 @@ const MultiplayerGameScreen: React.FC = () => {
 														if (!inviteCode) return;
 														try {
 															// Use token.id (not token.entityId) to match initiative order entityId
-															const response = await multiplayerClient.startCharacterTurn(inviteCode, token.id, 'npc');
+															const response = await startTurnMutation.mutateAsync({
+																path: `/games/${inviteCode}/turn/start`,
+																body: {
+																	turnType: 'npc',
+																	entityId: token.id,
+																},
+															});
 															if (response) {
 																setGameState(response);
-															} else {
-																setTimeout(() => {
-																	loadGameState();
-																}, 500);
 															}
 															setShowCharacterTurnSelector(false);
 															Alert.alert('Success', `Started ${token.label || 'NPC'}'s turn`);

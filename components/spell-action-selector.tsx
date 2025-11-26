@@ -5,13 +5,7 @@ import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 import { Character } from '@/types/character';
-
-interface Spell {
-	name: string;
-	level: number;
-	actionPoints: number;
-	description?: string;
-}
+import { getSpellsForClass } from '@/constants/spells';
 
 interface Action {
 	name: string;
@@ -27,35 +21,6 @@ interface SpellActionSelectorProps {
 	onSelect: (action: Action) => void;
 	isDM?: boolean;
 }
-
-// Default spells based on character class (simplified)
-const getDefaultSpells = (characterClass: string, level: number): Spell[] => {
-	const spells: Spell[] = [];
-	
-	if (characterClass.toLowerCase().includes('wizard') || characterClass.toLowerCase().includes('sorcerer')) {
-		spells.push(
-			{ name: 'Magic Missile', level: 1, actionPoints: 2, description: 'Deal 1d4+1 force damage' },
-			{ name: 'Firebolt', level: 0, actionPoints: 1, description: 'Deal 1d10 fire damage' },
-			{ name: 'Shield', level: 1, actionPoints: 2, description: 'Gain +5 AC until next turn' },
-		);
-		if (level >= 3) {
-			spells.push({ name: 'Fireball', level: 3, actionPoints: 3, description: 'Deal 8d6 fire damage in area' });
-		}
-	} else if (characterClass.toLowerCase().includes('cleric')) {
-		spells.push(
-			{ name: 'Cure Wounds', level: 1, actionPoints: 2, description: 'Heal 1d8+3 HP' },
-			{ name: 'Sacred Flame', level: 0, actionPoints: 1, description: 'Deal 1d8 radiant damage' },
-			{ name: 'Bless', level: 1, actionPoints: 2, description: 'Grant +1d4 to attack rolls' },
-		);
-	} else {
-		// Default spells for other classes
-		spells.push(
-			{ name: 'Minor Heal', level: 0, actionPoints: 1, description: 'Heal 1d4 HP' },
-		);
-	}
-	
-	return spells;
-};
 
 export const SpellActionSelector: React.FC<SpellActionSelectorProps> = ({
 	visible,
@@ -77,8 +42,8 @@ export const SpellActionSelector: React.FC<SpellActionSelectorProps> = ({
 		];
 
 		// Add spells
-		const spells = getDefaultSpells(character.class, character.level);
-		spells.forEach((spell) => {
+		const spells = getSpellsForClass(character.class, character.level);
+		spells.forEach(spell => {
 			actions.push({
 				name: spell.name,
 				type: 'cast_spell',

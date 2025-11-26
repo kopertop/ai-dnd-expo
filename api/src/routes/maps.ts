@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 
-import type { CloudflareBindings } from '../env';
 import { Database } from '../../../shared/workers/db';
+import type { CloudflareBindings } from '../env';
 
 type Variables = {
 	user: { id: string; email: string; name?: string | null } | null;

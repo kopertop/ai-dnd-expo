@@ -1,5 +1,5 @@
 import { Stack, router } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
 	ActivityIndicator,
 	Alert,
@@ -16,8 +16,8 @@ import { AppFooter } from '@/components/app-footer';
 import { InviteCodeInput } from '@/components/invite-code-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { multiplayerClient } from '@/services/api/multiplayer-client';
-import { GameSessionResponse } from '@/types/api/multiplayer-api';
+import { useGameSession, useJoinGame } from '@/hooks/api/use-game-queries';
+import { useMyCharacters } from '@/hooks/api/use-character-queries';
 import { Character } from '@/types/character';
 import { StatBlock } from '@/types/stats';
 
@@ -95,11 +95,7 @@ const createCharacterFromTemplate = (template: CharacterTemplate, name: string):
 const JoinGameScreen: React.FC = () => {
 	const [step, setStep] = useState<'code' | 'character' | 'waiting'>('code');
 	const [inviteCode, setInviteCode] = useState<string | null>(null);
-	const [session, setSession] = useState<GameSessionResponse | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [characters, setCharacters] = useState<Character[]>([]);
-	const [charactersLoading, setCharactersLoading] = useState(true);
-	const [charactersError, setCharactersError] = useState<string | null>(null);
 	const [newCharacterName, setNewCharacterName] = useState('');
 	const [selectedTemplateId, setSelectedTemplateId] = useState<string>(CHARACTER_TEMPLATES[0].id);
 	const insets = useSafeAreaInsets();
@@ -111,61 +107,34 @@ const JoinGameScreen: React.FC = () => {
 		[selectedTemplateId],
 	);
 
-	const loadCharacters = useCallback(async () => {
-		if (!user?.id && !user?.email) {
-			setCharacters([]);
-			setCharactersLoading(false);
-			return;
-		}
+	// Use query hooks
+	const { data: charactersData, isLoading: charactersLoading, error: charactersError } = useMyCharacters();
+	const characters = Array.isArray(charactersData) ? charactersData : (charactersData?.characters || []);
+	const { data: session, refetch: refetchSession } = useGameSession(inviteCode);
+	const joinGameMutation = useJoinGame();
 
-		setCharactersError(null);
-		setCharactersLoading(true);
-		try {
-			const result = await multiplayerClient.getMyCharacters();
-			setCharacters(result);
-		} catch (error) {
-			console.error('Failed to load characters:', error);
-			setCharactersError(error instanceof Error ? error.message : 'Failed to load characters');
-		} finally {
-			setCharactersLoading(false);
-		}
-	}, [user?.id, user?.email]);
+	// Poll for game start when waiting - use same query with refetchInterval
+	const shouldPoll = step === 'waiting' && !!inviteCode;
+	const { data: waitingSession } = useGameSession(inviteCode);
 
+	// Check if waiting session became active
 	useEffect(() => {
-		if (user) {
-			loadCharacters();
+		if (shouldPoll && waitingSession?.status === 'active' && inviteCode && playerId) {
+			router.replace(`/multiplayer-game?inviteCode=${inviteCode}&playerId=${playerId}`);
 		}
-	}, [user, loadCharacters]);
-
-	// Poll for game start when waiting
-	useEffect(() => {
-		if (step === 'waiting' && inviteCode && playerId) {
-			const interval = setInterval(async () => {
-				try {
-					const updatedSession = await multiplayerClient.getGameSession(inviteCode);
-					setSession(updatedSession);
-
-					// Check if game started
-					if (updatedSession.status === 'active') {
-						router.replace(
-							`/multiplayer-game?inviteCode=${inviteCode}&playerId=${playerId}`,
-						);
-					}
-				} catch (error) {
-					console.error('Failed to poll session:', error);
-				}
-			}, 2000); // Poll every 2 seconds
-
-			return () => clearInterval(interval);
-		}
-	}, [step, inviteCode, playerId]);
+	}, [shouldPoll, waitingSession?.status, inviteCode, playerId]);
 
 	const handleInviteCodeSubmit = async (code: string) => {
 		setLoading(true);
+		setInviteCode(code);
 		try {
-			const sessionData = await multiplayerClient.getGameSession(code);
-			setInviteCode(code);
-			setSession(sessionData);
+			// Fetch session data using refetch
+			const result = await refetchSession();
+			const sessionData = result.data;
+
+			if (!sessionData) {
+				throw new Error('Failed to fetch game session');
+			}
 
 			if (sessionData.status === 'waiting') {
 				setStep('character');
@@ -201,18 +170,20 @@ const JoinGameScreen: React.FC = () => {
 
 		setLoading(true);
 		try {
-			await multiplayerClient.joinGame({
-				inviteCode,
-				character,
-				playerId,
-				playerEmail: playerEmail ?? undefined,
+			await joinGameMutation.mutateAsync({
+				path: `/games/${inviteCode}/join`,
+				body: {
+					inviteCode,
+					character,
+					playerId,
+					playerEmail: playerEmail ?? undefined,
+				},
 			});
 
-			loadCharacters().catch(() => undefined);
-
-			const updatedSession = await multiplayerClient.getGameSession(inviteCode);
-			setSession(updatedSession);
-			if (updatedSession.status === 'active') {
+			// Refetch session after joining
+			const result = await refetchSession();
+			const updatedSession = result.data;
+			if (updatedSession?.status === 'active') {
 				router.replace(`/multiplayer-game?inviteCode=${inviteCode}&playerId=${playerId}`);
 			} else {
 				setStep('waiting');
@@ -246,10 +217,13 @@ const JoinGameScreen: React.FC = () => {
 		if (charactersError) {
 			return (
 				<View style={styles.errorBox}>
-					<ThemedText style={styles.errorText}>{charactersError}</ThemedText>
+					<ThemedText style={styles.errorText}>{charactersError.message || 'Failed to load characters'}</ThemedText>
 					<TouchableOpacity
 						style={[styles.button, styles.refreshButton]}
-						onPress={() => loadCharacters().catch(() => undefined)}
+						onPress={() => {
+							// Characters will refetch automatically via useMyCharacters
+							window.location.reload();
+						}}
 					>
 						<ThemedText style={styles.buttonText}>Retry</ThemedText>
 					</TouchableOpacity>
