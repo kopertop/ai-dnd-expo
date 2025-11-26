@@ -1003,11 +1003,6 @@ games.get('/:inviteCode/map', async (c) => {
 	try {
 		// Clean up duplicate tokens before building map state
 		const mapRow = await resolveMapRow(db, game);
-		const duplicatesRemoved = await db.removeDuplicateTokens(game.id, mapRow.id);
-		if (duplicatesRemoved > 0) {
-			console.log(`Removed ${duplicatesRemoved} duplicate token(s) when loading map for game ${game.id}`);
-		}
-
 		const mapState = await buildMapState(db, game);
 		return c.json(mapState);
 	} catch (error) {
@@ -1446,12 +1441,6 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 		metadata: JSON.stringify(metadata),
 	});
 
-	// Clean up any duplicate tokens that may exist
-	const duplicatesRemoved = await db.removeDuplicateTokens(game.id, body.mapId || mapRow.id);
-	if (duplicatesRemoved > 0) {
-		console.log(`Removed ${duplicatesRemoved} duplicate token(s) for game ${game.id}`);
-	}
-
 	// Auto-roll initiative for player and NPC tokens (not elements)
 	if (body.tokenType !== 'element' && game.status === 'active') {
 		try {
@@ -1624,6 +1613,17 @@ games.get('/:inviteCode/npcs/:npcId', async (c) => {
 	return c.json(npcFromDb(npc));
 });
 
+/**
+ * Add an NPC to the game
+ * POST /api/games/:inviteCode/npcs
+ * @param inviteCode - The invite code for the game
+ * @param payload - The payload for the NPC
+ * @returns The tokens on the map
+ * @throws 401 if the user is not authorized
+ * @throws 404 if the game is not found
+ * @throws 403 if the user is not the host
+ * @throws 500 if the NPC is not found
+ */
 games.post('/:inviteCode/npcs', async (c) => {
 	const user = c.get('user');
 	if (!user) {
@@ -1727,12 +1727,6 @@ games.post('/:inviteCode/npcs', async (c) => {
 		max_hit_points: maxHealth,
 		metadata: JSON.stringify(tokenMetadata),
 	});
-
-	// Clean up any duplicate tokens that may exist
-	const duplicatesRemoved = await db.removeDuplicateTokens(game.id, mapRow.id);
-	if (duplicatesRemoved > 0) {
-		console.log(`Removed ${duplicatesRemoved} duplicate token(s) after placing NPC for game ${game.id}`);
-	}
 
 	await db.saveNpcInstance({
 		id: createId('npci'),
