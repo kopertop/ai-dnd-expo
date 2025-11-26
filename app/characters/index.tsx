@@ -25,6 +25,7 @@ const createDefaultCharacter = (overrides?: Partial<Character>): Character => ({
 	maxHealth: overrides?.maxHealth ?? 10,
 	actionPoints: overrides?.actionPoints ?? 3,
 	maxActionPoints: overrides?.maxActionPoints ?? 3,
+	statusEffects: overrides?.statusEffects ?? [],
 	trait: overrides?.trait,
 });
 

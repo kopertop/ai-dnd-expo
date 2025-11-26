@@ -142,6 +142,10 @@ export function useDeleteMapToken(inviteCode: string) {
 			// Invalidate map tokens and state
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			// Also invalidate game state and NPC instances to ensure UI refreshes
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/npc-instances`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}`] });
 		},
 	});
 }

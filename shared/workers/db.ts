@@ -35,6 +35,7 @@ export interface CharacterRow {
 	max_health: number;
 	action_points: number;
 	max_action_points: number;
+	status_effects: string; // JSON array
 	created_at: number;
 	updated_at: number;
 }

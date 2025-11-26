@@ -557,6 +557,7 @@ const serializeCharacter = (
 	max_health: character.maxHealth,
 	action_points: character.actionPoints,
 	max_action_points: character.maxActionPoints,
+	status_effects: JSON.stringify(character.statusEffects || []),
 });
 
 const deserializeCharacter = (row: CharacterRow): Character => ({
@@ -575,6 +576,7 @@ const deserializeCharacter = (row: CharacterRow): Character => ({
 	maxHealth: row.max_health,
 	actionPoints: row.action_points,
 	maxActionPoints: row.max_action_points,
+	statusEffects: JSON.parse(row.status_effects || '[]'),
 });
 
 const parseQuestData = (questJson: string): Quest => {
@@ -2294,7 +2296,68 @@ games.post('/:inviteCode/dm-action', async (c) => {
 	if (!user) {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
-	// DM action endpoint - placeholder for future implementation
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const payload = (await c.req.json().catch(() => ({}))) as {
+		actionType: string;
+		characterId?: string;
+		updates?: Partial<Character>;
+		[key: string]: unknown;
+	};
+
+	if (payload.actionType === 'update_character' && payload.characterId && payload.updates) {
+		const characterId = payload.characterId;
+		const updates = payload.updates;
+
+		// Get existing character
+		const characterRow = await db.getCharacterById(characterId);
+		if (!characterRow) {
+			return c.json({ error: 'Character not found' }, 404);
+		}
+
+		// Serialize updates for database
+		const serializedUpdates: Partial<CharacterRow> = {};
+		if (updates.health !== undefined) serializedUpdates.health = updates.health;
+		if (updates.maxHealth !== undefined) serializedUpdates.max_health = updates.maxHealth;
+		if (updates.actionPoints !== undefined) serializedUpdates.action_points = updates.actionPoints;
+		if (updates.maxActionPoints !== undefined) serializedUpdates.max_action_points = updates.maxActionPoints;
+		if (updates.statusEffects !== undefined) {
+			serializedUpdates.status_effects = JSON.stringify(updates.statusEffects);
+		}
+
+		// Update character in database
+		await db.updateCharacter(characterId, serializedUpdates);
+
+		// Update character in game state if game is active
+		if (game.status === 'active') {
+			try {
+				const gameStateService = new GameStateService(db);
+				await gameStateService.updateCharacter(game, characterId, updates);
+			} catch (error) {
+				console.error('Failed to update character in game state:', error);
+				// Don't fail the request if game state update fails
+			}
+		}
+
+		// Return updated character
+		const updated = await db.getCharacterById(characterId);
+		return c.json({
+			character: updated ? deserializeCharacter(updated) : null,
+		});
+	}
+
+	// Placeholder for other DM actions
 	return c.json({ ok: true });
 });
 

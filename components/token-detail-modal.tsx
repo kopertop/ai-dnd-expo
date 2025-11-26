@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { MapToken } from '@/types/multiplayer-map';
@@ -51,6 +51,27 @@ export const TokenDetailModal: React.FC<TokenDetailModalProps> = ({
 			onHeal(amount);
 			setHealAmount('');
 		}
+	};
+
+	const handleDelete = () => {
+		if (!onDelete) return;
+		
+		const tokenName = token.label || token.type || 'this token';
+		Alert.alert(
+			'Remove Token',
+			`Are you sure you want to remove ${tokenName} from the map?`,
+			[
+				{
+					text: 'Cancel',
+					style: 'cancel',
+				},
+				{
+					text: 'Remove',
+					style: 'destructive',
+					onPress: onDelete,
+				},
+			],
+		);
 	};
 
 	return (
@@ -152,7 +173,7 @@ export const TokenDetailModal: React.FC<TokenDetailModalProps> = ({
 								{onDelete && (
 									<TouchableOpacity
 										style={[styles.actionButton, styles.deleteButton]}
-										onPress={onDelete}
+										onPress={handleDelete}
 									>
 										<ThemedText style={[styles.actionButtonText, styles.deleteButtonText]}>
 											Delete

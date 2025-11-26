@@ -116,6 +116,7 @@ export class GameStateService {
 			maxHealth: row.max_health,
 			actionPoints: row.action_points,
 			maxActionPoints: row.max_action_points,
+			statusEffects: JSON.parse(row.status_effects || '[]'),
 		};
 	}
 

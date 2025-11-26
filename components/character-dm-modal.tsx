@@ -4,6 +4,7 @@ import { Animated, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, V
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
+import { STATUS_EFFECT_LIST, type StatusEffect } from '@/constants/status-effects';
 import { Character } from '@/types/character';
 import { MapToken } from '@/types/multiplayer-map';
 import { STAT_KEYS } from '@/types/stats';
@@ -17,8 +18,10 @@ interface CharacterDMModalProps {
 	onDamage?: (entityId: string, amount: number) => void;
 	onHeal?: (entityId: string, amount: number) => void;
 	onUpdateCharacter?: (characterId: string, updates: Partial<Character>) => void;
+	onUpdateNpc?: (tokenId: string, updates: { statusEffects?: string[] }) => void;
 	initiativeOrder?: Array<{ entityId: string; initiative: number; type: 'player' | 'npc' }>;
 	npcStats?: { STR: number; DEX: number; CON: number; INT: number; WIS: number; CHA: number };
+	npcStatusEffects?: string[]; // Status effects from NPC instance
 }
 
 export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
@@ -29,12 +32,17 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 	onDamage,
 	onHeal,
 	onUpdateCharacter,
+	onUpdateNpc,
 	initiativeOrder,
 	npcStats,
+	npcStatusEffects,
 }) => {
 	const [actionAmount, setActionAmount] = useState('');
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [effectType, setEffectType] = useState<'damage' | 'heal' | null>(null);
+	
+	// Get current status effects from character or NPC
+	const currentStatusEffects = character?.statusEffects || npcStatusEffects || [];
 	
 	// Animation values for visual effects
 	const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -182,6 +190,19 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 		}
 	};
 
+	const handleToggleStatusEffect = (effectId: StatusEffect) => {
+		const hasEffect = currentStatusEffects.includes(effectId);
+		const newEffects = hasEffect
+			? currentStatusEffects.filter(e => e !== effectId)
+			: [...currentStatusEffects, effectId];
+		
+		if (character && onUpdateCharacter) {
+			onUpdateCharacter(character.id, { statusEffects: newEffects });
+		} else if (npcToken && onUpdateNpc) {
+			onUpdateNpc(npcToken.id, { statusEffects: newEffects });
+		}
+	};
+
 	return (
 		<Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
 			<View style={styles.overlay}>
@@ -194,14 +215,30 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 					</View>
 
 					<ScrollView style={styles.content} showsVerticalScrollIndicator={true}>
-						{/* Basic Information */}
-						<View style={styles.section}>
-							<ThemedText style={styles.sectionTitle}>Basic Information</ThemedText>
+						{/* Top Row: 2 Columns */}
+						<View style={styles.topRow}>
+							{/* Column 1: General Info + Health & Resources */}
+							<Animated.View 
+								style={[
+									styles.topColumn,
+									{
+										transform: [{ scale: pulseAnim }],
+										backgroundColor: colorAnim.interpolate({
+											inputRange: [0, 1],
+											outputRange: effectType === 'damage' 
+												? ['#F5E6D3', '#FFE6E6'] 
+												: effectType === 'heal'
+													? ['#F5E6D3', '#E6FFE6']
+													: ['#F5E6D3', '#F5E6D3'],
+										}),
+									},
+								]}
+							>
 							{character && (
 								<>
-									<View style={styles.infoRow}>
-										<ThemedText style={styles.infoLabel}>Name:</ThemedText>
-										<ThemedText style={styles.infoValue}>{character.name}</ThemedText>
+									<View style={styles.statRow}>
+										<ThemedText style={styles.statLabel}>Name:</ThemedText>
+										<ThemedText style={styles.statValue}>{character.name}</ThemedText>
 									</View>
 									<View style={styles.infoRow}>
 										<ThemedText style={styles.infoLabel}>Level:</ThemedText>
@@ -221,183 +258,199 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 											<ThemedText style={styles.infoValue}>{character.trait}</ThemedText>
 										</View>
 									)}
-									{character.description && (
-										<View style={styles.infoRow}>
-											<ThemedText style={styles.infoLabel}>Description:</ThemedText>
-											<ThemedText style={styles.infoValue}>{character.description}</ThemedText>
+									{initiativeValue !== undefined && (
+										<View style={styles.statRow}>
+											<ThemedText style={styles.statLabel}>Initiative:</ThemedText>
+											<ThemedText style={styles.statValue}>{initiativeValue}</ThemedText>
 										</View>
 									)}
-								</>
-							)}
-							{npcToken && (
-								<>
-									<View style={styles.infoRow}>
-										<ThemedText style={styles.infoLabel}>Name:</ThemedText>
-										<ThemedText style={styles.infoValue}>{npcToken.label}</ThemedText>
-									</View>
-									<View style={styles.infoRow}>
-										<ThemedText style={styles.infoLabel}>Type:</ThemedText>
-										<ThemedText style={styles.infoValue}>NPC</ThemedText>
-									</View>
-								</>
-							)}
-							{initiativeValue !== undefined && (
-								<View style={styles.infoRow}>
-									<ThemedText style={styles.infoLabel}>Initiative:</ThemedText>
-									<ThemedText style={styles.infoValue}>{initiativeValue}</ThemedText>
-								</View>
-							)}
-							{armorClass !== undefined && (
-								<View style={styles.infoRow}>
-									<ThemedText style={styles.infoLabel}>Armor Class:</ThemedText>
-									<ThemedText style={styles.infoValue}>{armorClass}</ThemedText>
-								</View>
-							)}
-						</View>
-
-						{/* Ability Scores */}
-						<View style={styles.section}>
-							<ThemedText style={styles.sectionTitle}>Ability Scores</ThemedText>
-							<View style={styles.statsGrid}>
-								{STAT_KEYS.map(statKey => (
-									<View key={statKey} style={styles.statBox}>
-										<ThemedText style={styles.statBoxLabel}>{statKey}</ThemedText>
-										<ThemedText style={styles.statBoxValue}>{stats[statKey]}</ThemedText>
-										<ThemedText style={styles.statBoxModifier}>
-											({Math.floor((stats[statKey] - 10) / 2) >= 0 ? '+' : ''}
-											{Math.floor((stats[statKey] - 10) / 2)})
-										</ThemedText>
-									</View>
-								))}
-							</View>
-						</View>
-
-						{/* Health & Action Points */}
-						<Animated.View 
-							style={[
-								styles.section,
-								{
-									transform: [{ scale: pulseAnim }],
-									backgroundColor: colorAnim.interpolate({
-										inputRange: [0, 1],
-										outputRange: effectType === 'damage' 
-											? ['#F5E6D3', '#FFE6E6'] 
-											: effectType === 'heal'
-												? ['#F5E6D3', '#E6FFE6']
-												: ['#F5E6D3', '#F5E6D3'],
-									}),
-								},
-							]}
-						>
-							<ThemedText style={styles.sectionTitle}>Health & Resources</ThemedText>
-							{character && (
-								<>
-									<View style={styles.statRow}>
-										<ThemedText style={styles.statLabel}>Health:</ThemedText>
-										<Animated.View
-											style={[
-												{ position: 'relative' },
-												effectType && {
-													opacity: shimmerAnim.interpolate({
-														inputRange: [0, 0.5, 1],
-														outputRange: [1, 0.3, 1],
-													}),
-												},
-											]}
-										>
+									{armorClass !== undefined && (
+										<View style={styles.infoRow}>
+											<ThemedText style={styles.infoLabel}>AC:</ThemedText>
+											<ThemedText style={styles.infoValue}>{armorClass}</ThemedText>
+										</View>
+									)}
+										<View style={styles.statRow}>
+											<ThemedText style={styles.statLabel}>Health:</ThemedText>
+											<Animated.View
+												style={[
+													{ position: 'relative' },
+													effectType && {
+														opacity: shimmerAnim.interpolate({
+															inputRange: [0, 0.5, 1],
+															outputRange: [1, 0.3, 1],
+														}),
+													},
+												]}
+											>
+												<TextInput
+													style={styles.statInput}
+													value={(character.health ?? character.maxHealth ?? 10).toString()}
+													onChangeText={(text) => {
+														const value = parseInt(text, 10);
+														if (!isNaN(value) && onUpdateCharacter) {
+															onUpdateCharacter(character.id, { health: value });
+														}
+													}}
+													keyboardType="numeric"
+												/>
+											</Animated.View>
+											<ThemedText style={styles.statLabel}>/</ThemedText>
 											<TextInput
 												style={styles.statInput}
-												value={(character.health ?? character.maxHealth ?? 10).toString()}
+												value={(character.maxHealth ?? 10).toString()}
 												onChangeText={(text) => {
 													const value = parseInt(text, 10);
 													if (!isNaN(value) && onUpdateCharacter) {
-														onUpdateCharacter(character.id, { health: value });
+														onUpdateCharacter(character.id, { maxHealth: value });
 													}
 												}}
 												keyboardType="numeric"
 											/>
-										</Animated.View>
-										<ThemedText style={styles.statLabel}>/</ThemedText>
-										<TextInput
-											style={styles.statInput}
-											value={(character.maxHealth ?? 10).toString()}
-											onChangeText={(text) => {
-												const value = parseInt(text, 10);
-												if (!isNaN(value) && onUpdateCharacter) {
-													onUpdateCharacter(character.id, { maxHealth: value });
-												}
-											}}
-											keyboardType="numeric"
-										/>
-									</View>
-									<View style={styles.statRow}>
-										<ThemedText style={styles.statLabel}>Action Points:</ThemedText>
-										<TextInput
-											style={styles.statInput}
-											value={character.actionPoints.toString()}
-											onChangeText={(text) => {
-												const value = parseInt(text, 10);
-												if (!isNaN(value) && onUpdateCharacter) {
-													onUpdateCharacter(character.id, { actionPoints: value });
-												}
-											}}
-											keyboardType="numeric"
-										/>
-										<ThemedText style={styles.statLabel}>/</ThemedText>
-										<TextInput
-											style={styles.statInput}
-											value={character.maxActionPoints.toString()}
-											onChangeText={(text) => {
-												const value = parseInt(text, 10);
-												if (!isNaN(value) && onUpdateCharacter) {
-													onUpdateCharacter(character.id, { maxActionPoints: value });
-												}
-											}}
-											keyboardType="numeric"
-										/>
-									</View>
-								</>
-							)}
-							{npcToken && (
-								<>
-									<View style={styles.statRow}>
-										<ThemedText style={styles.statLabel}>Health:</ThemedText>
-										<Animated.View
-											style={[
-												effectType && {
-													opacity: shimmerAnim.interpolate({
-														inputRange: [0, 0.5, 1],
-														outputRange: [1, 0.3, 1],
-													}),
-												},
-											]}
-										>
+										</View>
+										<View style={styles.statRow}>
+											<ThemedText style={styles.statLabel}>Action Points:</ThemedText>
+											<TextInput
+												style={styles.statInput}
+												value={character.actionPoints.toString()}
+												onChangeText={(text) => {
+													const value = parseInt(text, 10);
+													if (!isNaN(value) && onUpdateCharacter) {
+														onUpdateCharacter(character.id, { actionPoints: value });
+													}
+												}}
+												keyboardType="numeric"
+											/>
+											<ThemedText style={styles.statLabel}>/</ThemedText>
+											<TextInput
+												style={styles.statInput}
+												value={character.maxActionPoints.toString()}
+												onChangeText={(text) => {
+													const value = parseInt(text, 10);
+													if (!isNaN(value) && onUpdateCharacter) {
+														onUpdateCharacter(character.id, { maxActionPoints: value });
+													}
+												}}
+												keyboardType="numeric"
+											/>
+										</View>
+									</>
+								)}
+								{npcToken && (
+									<>
+										<View style={styles.statRow}>
+											<ThemedText style={styles.statLabel}>Name:</ThemedText>
+											<ThemedText style={styles.statValue}>{npcToken.label}</ThemedText>
+										</View>
+										<View style={styles.statRow}>
+											<ThemedText style={styles.statLabel}>Type:</ThemedText>
+											<ThemedText style={styles.statValue}>NPC</ThemedText>
+										</View>
+										{initiativeValue !== undefined && (
+											<View style={styles.statRow}>
+												<ThemedText style={styles.statLabel}>Initiative:</ThemedText>
+												<ThemedText style={styles.statValue}>{initiativeValue}</ThemedText>
+											</View>
+										)}
+										{armorClass !== undefined && (
+											<View style={styles.infoRow}>
+												<ThemedText style={styles.infoLabel}>AC:</ThemedText>
+												<ThemedText style={styles.infoValue}>{armorClass}</ThemedText>
+											</View>
+										)}
+										<View style={styles.statRow}>
+											<ThemedText style={styles.statLabel}>Health:</ThemedText>
+											<Animated.View
+												style={[
+													effectType && {
+														opacity: shimmerAnim.interpolate({
+															inputRange: [0, 0.5, 1],
+															outputRange: [1, 0.3, 1],
+														}),
+													},
+												]}
+											>
+												<ThemedText style={styles.statValue}>
+													{npcToken.hitPoints ?? 10} / {npcToken.maxHitPoints ?? 10}
+												</ThemedText>
+											</Animated.View>
+										</View>
+										<View style={styles.statRow}>
+											<ThemedText style={styles.statLabel}>Action Points:</ThemedText>
 											<ThemedText style={styles.statValue}>
-												{npcToken.hitPoints ?? 10} / {npcToken.maxHitPoints ?? 10}
+												{(npcToken.metadata?.actionPoints as number) ?? 3} / {(npcToken.metadata?.maxActionPoints as number) ?? 3}
 											</ThemedText>
-										</Animated.View>
-									</View>
-									<View style={styles.statRow}>
-										<ThemedText style={styles.statLabel}>Action Points:</ThemedText>
-										<ThemedText style={styles.statValue}>
-											{(npcToken.metadata?.actionPoints as number) ?? 3} / {(npcToken.metadata?.maxActionPoints as number) ?? 3}
-										</ThemedText>
-									</View>
-								</>
-							)}
-						</Animated.View>
+										</View>
+									</>
+								)}
+							</Animated.View>
 
-						{/* Skills */}
-						{character && character.skills && character.skills.length > 0 && (
-							<View style={styles.section}>
-								<ThemedText style={styles.sectionTitle}>Skills</ThemedText>
-								<View style={styles.skillsContainer}>
-									{character.skills.map((skill, index) => (
-										<View key={index} style={styles.skillTag}>
-											<ThemedText style={styles.skillText}>{skill}</ThemedText>
+							{/* Column 2: Ability Scores */}
+							<View style={styles.topColumn}>
+								<ThemedText style={styles.sectionTitle}>Ability Scores</ThemedText>
+								<View style={styles.statsGrid}>
+									{STAT_KEYS.map(statKey => (
+										<View key={statKey} style={styles.statBox}>
+											<ThemedText style={styles.statBoxLabel}>{statKey}</ThemedText>
+											<ThemedText style={styles.statBoxValue}>{stats[statKey]}</ThemedText>
+											<ThemedText style={styles.statBoxModifier}>
+												({Math.floor((stats[statKey] - 10) / 2) >= 0 ? '+' : ''}
+												{Math.floor((stats[statKey] - 10) / 2)})
+											</ThemedText>
 										</View>
 									))}
 								</View>
+							</View>
+						</View>
+
+						{/* Status Effects */}
+						{(character || npcToken) && (onUpdateCharacter || onUpdateNpc) && (
+							<View style={styles.section}>
+								<ThemedText style={styles.sectionTitle}>Status Effects</ThemedText>
+								<View style={styles.statusEffectsContainer}>
+									{STATUS_EFFECT_LIST.map(effect => {
+										const isActive = currentStatusEffects.includes(effect.id);
+										return (
+											<TouchableOpacity
+												key={effect.id}
+												style={[
+													styles.statusEffectChip,
+													isActive && styles.statusEffectChipActive,
+													{ backgroundColor: isActive ? effect.color : '#E2D3B3' },
+												]}
+												onPress={() => handleToggleStatusEffect(effect.id)}
+											>
+												<ThemedText style={styles.statusEffectIcon}>{effect.icon}</ThemedText>
+												<ThemedText
+													style={[
+														styles.statusEffectText,
+														isActive && styles.statusEffectTextActive,
+													]}
+												>
+													{effect.name}
+												</ThemedText>
+											</TouchableOpacity>
+										);
+									})}
+								</View>
+								{currentStatusEffects.length > 0 && (
+									<View style={styles.activeEffectsContainer}>
+										<ThemedText style={styles.activeEffectsLabel}>Active:</ThemedText>
+										<View style={styles.activeEffectsList}>
+											{currentStatusEffects.map(effectId => {
+												const effect = STATUS_EFFECT_LIST.find(e => e.id === effectId);
+												if (!effect) return null;
+												return (
+													<View key={effectId} style={[styles.activeEffectBadge, { backgroundColor: effect.color }]}>
+														<ThemedText style={styles.activeEffectText}>
+															{effect.icon} {effect.name}
+														</ThemedText>
+													</View>
+												);
+											})}
+										</View>
+									</View>
+								)}
 							</View>
 						)}
 
@@ -465,9 +518,9 @@ const styles = StyleSheet.create({
 		backgroundColor: '#FFF9EF',
 		borderRadius: 12,
 		padding: 20,
-		minWidth: 400,
-		maxWidth: 500,
-		maxHeight: '80%',
+		width: '95%',
+		maxWidth: 1200,
+		maxHeight: '90%',
 		borderWidth: 1,
 		borderColor: '#C9B037',
 	},
@@ -494,22 +547,23 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	section: {
-		marginBottom: 24,
-		padding: 16,
+		marginBottom: 16,
+		padding: 14,
 		backgroundColor: '#F5E6D3',
-		borderRadius: 12,
+		borderRadius: 10,
 	},
 	sectionTitle: {
-		fontSize: 16,
+		fontSize: 15,
 		fontWeight: 'bold',
 		color: '#3B2F1B',
-		marginBottom: 12,
+		marginBottom: 10,
 	},
 	statRow: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		marginBottom: 12,
-		gap: 8,
+		marginBottom: 8,
+		gap: 6,
+		flexWrap: 'wrap',
 	},
 	statLabel: {
 		fontSize: 14,
@@ -518,12 +572,12 @@ const styles = StyleSheet.create({
 	},
 	statInput: {
 		backgroundColor: '#E2D3B3',
-		borderRadius: 8,
-		padding: 8,
-		width: 60,
+		borderRadius: 6,
+		padding: 6,
+		width: 55,
 		textAlign: 'center',
 		color: '#3B2F1B',
-		fontSize: 14,
+		fontSize: 13,
 		borderWidth: 1,
 		borderColor: '#C9B037',
 	},
@@ -562,12 +616,23 @@ const styles = StyleSheet.create({
 	buttonDisabled: {
 		opacity: 0.5,
 	},
+	topRow: {
+		flexDirection: 'row',
+		gap: 12,
+		marginBottom: 16,
+	},
+	topColumn: {
+		flex: 1,
+		padding: 14,
+		backgroundColor: '#F5E6D3',
+		borderRadius: 10,
+	},
 	infoRow: {
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		alignItems: 'center',
-		marginBottom: 8,
-		paddingVertical: 4,
+		marginBottom: 6,
+		paddingVertical: 3,
 	},
 	infoLabel: {
 		fontSize: 14,
@@ -583,32 +648,39 @@ const styles = StyleSheet.create({
 	statsGrid: {
 		flexDirection: 'row',
 		flexWrap: 'wrap',
-		gap: 8,
+		gap: 6,
+		justifyContent: 'center',
 	},
 	statBox: {
-		width: '30%',
+		width: 65,
+		height: 65,
 		backgroundColor: '#E2D3B3',
-		borderRadius: 8,
-		padding: 8,
+		borderRadius: 6,
+		padding: 3,
 		alignItems: 'center',
+		justifyContent: 'center',
 		borderWidth: 1,
 		borderColor: '#C9B037',
 	},
 	statBoxLabel: {
-		fontSize: 12,
+		fontSize: 10,
 		color: '#6B5B3D',
 		fontWeight: '600',
-		marginBottom: 4,
+		marginBottom: 2,
+		lineHeight: 12,
 	},
 	statBoxValue: {
-		fontSize: 18,
+		fontSize: 20,
 		color: '#3B2F1B',
 		fontWeight: 'bold',
+		marginVertical: 1,
+		lineHeight: 22,
 	},
 	statBoxModifier: {
-		fontSize: 11,
+		fontSize: 9,
 		color: '#6B5B3D',
-		marginTop: 2,
+		marginTop: 1,
+		lineHeight: 11,
 	},
 	statValue: {
 		fontSize: 14,
@@ -631,6 +703,69 @@ const styles = StyleSheet.create({
 	skillText: {
 		fontSize: 12,
 		color: '#3B2F1B',
+	},
+	statusEffectsContainer: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 8,
+		marginBottom: 10,
+	},
+	statusEffectChip: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		borderRadius: 6,
+		borderWidth: 1,
+		borderColor: '#C9B037',
+		gap: 5,
+		minWidth: 110,
+	},
+	statusEffectChipActive: {
+		borderWidth: 2,
+		borderColor: '#3B2F1B',
+	},
+	statusEffectIcon: {
+		fontSize: 16,
+	},
+	statusEffectText: {
+		fontSize: 12,
+		color: '#3B2F1B',
+		fontWeight: '600',
+	},
+	statusEffectTextActive: {
+		color: '#FFFFFF',
+		fontWeight: 'bold',
+	},
+	activeEffectsContainer: {
+		marginTop: 12,
+		paddingTop: 12,
+		borderTopWidth: 1,
+		borderTopColor: '#C9B037',
+	},
+	activeEffectsLabel: {
+		fontSize: 14,
+		color: '#6B5B3D',
+		fontWeight: '600',
+		marginBottom: 8,
+	},
+	activeEffectsList: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 6,
+	},
+	activeEffectBadge: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		borderRadius: 6,
+		gap: 4,
+	},
+	activeEffectText: {
+		fontSize: 11,
+		color: '#FFFFFF',
+		fontWeight: '600',
 	},
 });
 

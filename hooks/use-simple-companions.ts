@@ -74,6 +74,7 @@ const templateToCompanion = (template: CompanionTemplate): Companion => {
 		maxHealth: 20 + template.level * 5,
 		actionPoints: 2,
 		maxActionPoints: 2,
+		statusEffects: [],
 
 		// Companion-specific properties
 		type: 'companion',

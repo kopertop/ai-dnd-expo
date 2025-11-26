@@ -90,6 +90,7 @@ const createCharacterFromTemplate = (template: CharacterTemplate, name: string):
 	maxHealth: 10,
 	actionPoints: 3,
 	maxActionPoints: 3,
+	statusEffects: [],
 });
 
 const JoinGameScreen: React.FC = () => {

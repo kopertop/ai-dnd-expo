@@ -173,6 +173,7 @@ const NewGameScreen: React.FC = () => {
 		maxHealth: 10,
 		actionPoints: 3,
 		maxActionPoints: 3,
+		statusEffects: [],
 	});
 
 	const handleFinalizeCharacter = async () => {

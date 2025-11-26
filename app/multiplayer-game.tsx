@@ -32,7 +32,9 @@ import {
 	usePlaceNpc,
 	usePlacePlayerToken,
 	useSaveMapToken,
+	useNpcInstances,
 	useSwitchMap,
+	useUpdateNpcInstance,
 	useValidateMovement,
 } from '@/hooks/api/use-map-queries';
 import { useEndTurn, useInterruptTurn, useNextTurn, useResumeTurn, useStartTurn, useUpdateTurnState } from '@/hooks/api/use-turn-queries';
@@ -1195,6 +1197,27 @@ const MultiplayerGameScreen: React.FC = () => {
 			}
 		},
 		[inviteCode, handleDMAction, submitDMActionMutation],
+	);
+
+	const updateNpcInstanceMutation = useUpdateNpcInstance(inviteCode || '');
+	const { data: npcInstancesData } = useNpcInstances(inviteCode);
+
+	const handleUpdateNpc = useCallback(
+		async (tokenId: string, updates: { statusEffects?: string[] }) => {
+			if (!inviteCode) return;
+			try {
+				await updateNpcInstanceMutation.mutateAsync({
+					path: `/games/${inviteCode}/npcs/${tokenId}`,
+					body: {
+						statusEffects: updates.statusEffects,
+					},
+				});
+			} catch (error) {
+				console.error('Failed to update NPC:', error);
+				Alert.alert('Error', 'Failed to update NPC');
+			}
+		},
+		[inviteCode, updateNpcInstanceMutation],
 	);
 
 	const handleTileLongPress = useCallback(
@@ -2506,8 +2529,14 @@ const MultiplayerGameScreen: React.FC = () => {
 					onDamage={handleCharacterDamage}
 					onHeal={handleCharacterHeal}
 					onUpdateCharacter={selectedCharacterForDM.type === 'player' ? handleUpdateCharacter : undefined}
+					onUpdateNpc={selectedCharacterForDM.type === 'npc' ? handleUpdateNpc : undefined}
 					initiativeOrder={effectiveGameState?.initiativeOrder}
 					npcStats={npcStats}
+					npcStatusEffects={
+						selectedCharacterForDM.type === 'npc'
+							? npcInstancesData?.instances.find(i => i.tokenId === selectedCharacterForDM.id)?.statusEffects || []
+							: undefined
+					}
 				/>
 			)}
 

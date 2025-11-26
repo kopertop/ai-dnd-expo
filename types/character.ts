@@ -20,5 +20,6 @@ export const CharacterSchema = z.object({
 	maxHealth: z.number().int(),
 	actionPoints: z.number().int(),
 	maxActionPoints: z.number().int(),
+	statusEffects: z.array(z.string()).default([]),
 });
 export type Character = z.infer<typeof CharacterSchema>;

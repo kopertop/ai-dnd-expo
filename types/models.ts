@@ -95,6 +95,7 @@ export const CharacterSchema = z.object({
 	max_health: z.number().int().min(1),
 	action_points: z.number().int().min(0),
 	max_action_points: z.number().int().min(0),
+	status_effects: z.array(z.string()).default([]),
 	created_at: z.number().optional(),
 	updated_at: z.number().optional(),
 });

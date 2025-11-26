@@ -77,6 +77,7 @@ describe('games character routes', () => {
 				max_health: 15,
 				action_points: 3,
 				max_action_points: 3,
+				status_effects: JSON.stringify([]),
 				created_at: Date.now(),
 				updated_at: Date.now(),
 			},

@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
+import { STATUS_EFFECTS, type StatusEffect } from '@/constants/status-effects';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { Character } from '@/types/character';
 import { MapToken } from '@/types/multiplayer-map';
@@ -177,6 +178,24 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 										</ThemedText>
 									</View>
 								</View>
+								{character.statusEffects && character.statusEffects.length > 0 && (
+									<View style={styles.statusEffectsRow}>
+										{character.statusEffects.map((effectId: string) => {
+											const effect = STATUS_EFFECTS[effectId as StatusEffect];
+											if (!effect) return null;
+											return (
+												<View
+													key={effectId}
+													style={[styles.statusEffectBadge, { backgroundColor: effect.color }]}
+												>
+													<ThemedText style={styles.statusEffectBadgeText}>
+														{effect.icon}
+													</ThemedText>
+												</View>
+											);
+										})}
+									</View>
+								)}
 							</CardComponent>
 						);
 					} else {
@@ -337,6 +356,24 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		color: '#3B2F1B',
 		fontWeight: 'bold',
+	},
+	statusEffectsRow: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 6,
+		marginTop: 8,
+	},
+	statusEffectBadge: {
+		width: 24,
+		height: 24,
+		borderRadius: 12,
+		justifyContent: 'center',
+		alignItems: 'center',
+		borderWidth: 1,
+		borderColor: '#3B2F1B',
+	},
+	statusEffectBadgeText: {
+		fontSize: 14,
 	},
 	characterCardSelectable: {
 		cursor: 'pointer',
