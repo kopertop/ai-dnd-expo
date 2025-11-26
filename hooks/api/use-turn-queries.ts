@@ -12,10 +12,8 @@ export function useStartTurn(inviteCode: string) {
 	return useMutationApi<GameStateResponse>({
 		method: 'POST',
 		onSuccess: () => {
-			// Invalidate turn and game state
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/turn`] });
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}`] });
+			// Invalidate all queries to ensure UI updates immediately
+			queryClient.invalidateQueries();
 		},
 	});
 }
@@ -29,10 +27,8 @@ export function useEndTurn(inviteCode: string) {
 	return useMutationApi<GameStateResponse>({
 		method: 'POST',
 		onSuccess: () => {
-			// Invalidate turn and game state
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/turn`] });
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}`] });
+			// Invalidate all queries to ensure UI updates immediately
+			queryClient.invalidateQueries();
 		},
 	});
 }
@@ -46,10 +42,8 @@ export function useUpdateTurnState(inviteCode: string) {
 	return useMutationApi<MultiplayerGameState>({
 		method: 'POST',
 		onSuccess: () => {
-			// Invalidate turn and game state
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/turn`] });
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}`] });
+			// Invalidate all queries to ensure UI updates immediately
+			queryClient.invalidateQueries();
 		},
 	});
 }
@@ -76,10 +70,8 @@ export function useInterruptTurn(inviteCode: string) {
 	}>({
 		method: 'POST',
 		onSuccess: () => {
-			// Invalidate turn and game state
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/turn`] });
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}`] });
+			// Invalidate all queries to ensure UI updates immediately
+			queryClient.invalidateQueries();
 		},
 	});
 }
@@ -100,10 +92,8 @@ export function useResumeTurn(inviteCode: string) {
 	}>({
 		method: 'POST',
 		onSuccess: () => {
-			// Invalidate turn and game state
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/turn`] });
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}`] });
+			// Invalidate all queries to ensure UI updates immediately
+			queryClient.invalidateQueries();
 		},
 	});
 }
@@ -117,10 +107,8 @@ export function useNextTurn(inviteCode: string) {
 	return useMutationApi<GameStateResponse>({
 		method: 'POST',
 		onSuccess: () => {
-			// Invalidate turn and game state
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/turn`] });
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}`] });
+			// Invalidate all queries to ensure UI updates immediately
+			queryClient.invalidateQueries();
 		},
 	});
 }

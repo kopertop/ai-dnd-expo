@@ -62,7 +62,6 @@ const MultiplayerGameScreen: React.FC = () => {
 	const [playerActionMenu, setPlayerActionMenu] = useState<{ x: number; y: number; actions: PlayerAction[]; targetLabel?: string } | null>(null);
 	const [wsConnected, setWsConnected] = useState(false);
 	const [showMapSwitcher, setShowMapSwitcher] = useState(false);
-	const [availableMaps, setAvailableMaps] = useState<Array<{ id: string; name: string }>>([]);
 	const [switchingMap, setSwitchingMap] = useState(false);
 	const [showNotifications, setShowNotifications] = useState(false);
 	const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -70,7 +69,6 @@ const MultiplayerGameScreen: React.FC = () => {
 	const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
 	const [selectedTokenMovementRange, setSelectedTokenMovementRange] = useState<Array<{ x: number; y: number; cost: number }>>([]);
 	const [isMapEditMode, setIsMapEditMode] = useState(false);
-	const [hasRolledInitiative, setHasRolledInitiative] = useState(false);
 	const [selectedToken, setSelectedToken] = useState<MapToken | null>(null);
 	const [showTokenModal, setShowTokenModal] = useState(false);
 	const [tileActionMenu, setTileActionMenu] = useState<{ x: number; y: number } | null>(null);
@@ -96,16 +94,12 @@ const MultiplayerGameScreen: React.FC = () => {
 	const insets = useSafeAreaInsets();
 
 	// Get character ID from gameState (memoized to prevent re-renders)
+	// Used for WebSocket connection - needs to be defined early
 	const characterId = useMemo(() => {
 		if (!gameState || !playerId) return '';
 		const player = gameState.players.find(p => p.playerId === playerId);
 		return player?.characterId || '';
 	}, [gameState, playerId]);
-
-	const currentCharacterId = useMemo(
-		() => gameState?.players.find(p => p.playerId === playerId)?.characterId,
-		[gameState?.players, playerId],
-	);
 	
 	// Stable callback for game state updates
 	const handleGameStateUpdate = useCallback((newState: MultiplayerGameState) => {
@@ -145,6 +139,12 @@ const MultiplayerGameScreen: React.FC = () => {
 	// Define early so it can be used in other useMemo hooks
 	const effectiveGameState = useMemo(() => polledState || gameState, [polledState, gameState]);
 
+	// Get current character ID from effectiveGameState (prefer query data)
+	const currentCharacterId = useMemo(
+		() => effectiveGameState?.players.find(p => p.playerId === playerId)?.characterId,
+		[effectiveGameState?.players, playerId],
+	);
+
 	// Determine if this is the host - computed from query data
 	const isHost = useMemo(() => {
 		if (!hostId || !effectiveGameState) {
@@ -173,8 +173,8 @@ const MultiplayerGameScreen: React.FC = () => {
 		if (!activeCharacterIdForMovement) {
 			return null;
 		}
-		return gameState?.characters.find(c => c.id === activeCharacterIdForMovement) ?? null;
-	}, [gameState?.characters, activeCharacterIdForMovement]);
+		return effectiveGameState?.characters.find(c => c.id === activeCharacterIdForMovement) ?? null;
+	}, [effectiveGameState?.characters, activeCharacterIdForMovement]);
 
 	const playerToken = useMemo(() => {
 		if (!sharedMap) {
@@ -198,8 +198,8 @@ const MultiplayerGameScreen: React.FC = () => {
 
 	// Token ID for the entity whose turn it is (players match by characterId, NPCs by token.id)
 	const activeTurnTokenId = useMemo(() => {
-		const turn = gameState?.activeTurn;
-		if (!turn || gameState?.pausedTurn) {
+		const turn = effectiveGameState?.activeTurn;
+		if (!turn || effectiveGameState?.pausedTurn) {
 			return null;
 		}
 		if (turn.type !== 'player' && turn.type !== 'npc') {
@@ -216,7 +216,7 @@ const MultiplayerGameScreen: React.FC = () => {
 			return token.id === turn.entityId || token.entityId === turn.entityId;
 		});
 		return tokenMatch?.id ?? null;
-	}, [gameState?.activeTurn, gameState?.pausedTurn, sharedMap?.tokens]);
+	}, [effectiveGameState?.activeTurn, effectiveGameState?.pausedTurn, sharedMap?.tokens]);
 
 	const activeTurnForMovement = useMemo(() => {
 		if (!effectiveGameState?.activeTurn) {
@@ -242,21 +242,21 @@ const MultiplayerGameScreen: React.FC = () => {
 
 	const isPlayerTurn = useMemo(() => {
 		// If no active turn, no one's turn
-		if (!gameState?.activeTurn) {
+		if (!effectiveGameState?.activeTurn) {
 			return false;
 		}
 
 		// If turn is paused, DM is in "DM Action" mode - no one can act
-		if (gameState.pausedTurn) {
+		if (effectiveGameState.pausedTurn) {
 			return false;
 		}
 
 		// For DM: if there's an active turn (player or NPC), DM acts as that character
 		// unless the turn is paused (DM Action mode)
-		if (isHost && gameState.activeTurn.entityId) {
+		if (isHost && effectiveGameState.activeTurn.entityId) {
 			return (
-				gameState.activeTurn.type === 'player' ||
-				gameState.activeTurn.type === 'npc'
+				effectiveGameState.activeTurn.type === 'player' ||
+				effectiveGameState.activeTurn.type === 'npc'
 			);
 		}
 
@@ -266,37 +266,45 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 
 		return (
-			gameState.activeTurn.type === 'player' &&
-			gameState.activeTurn.entityId === currentCharacterId
+			effectiveGameState.activeTurn.type === 'player' &&
+			effectiveGameState.activeTurn.entityId === currentCharacterId
 		);
-	}, [gameState, currentCharacterId, isHost]);
+	}, [effectiveGameState, currentCharacterId, isHost]);
 
 	const currentTurnName = useMemo(() => {
-		if (!gameState?.activeTurn) {
+		if (!effectiveGameState?.activeTurn) {
 			return null;
 		}
-		if (gameState.activeTurn.type === 'player') {
-			const character = gameState.characters.find(
-				c => c.id === gameState.activeTurn?.entityId,
+		if (effectiveGameState.activeTurn.type === 'player') {
+			const character = effectiveGameState.characters.find(
+				c => c.id === effectiveGameState.activeTurn?.entityId,
 			);
 			return character?.name || 'Player';
 		}
-		if (gameState.activeTurn.type === 'npc') {
+		if (effectiveGameState.activeTurn.type === 'npc') {
 			return 'NPC';
 		}
 		return 'DM';
-	}, [gameState?.activeTurn, gameState?.characters]);
+	}, [effectiveGameState?.activeTurn, effectiveGameState?.characters]);
 
 	const hostActingAsActiveCharacter = useMemo(() => {
 		return Boolean(
-			isHost && !gameState?.pausedTurn && gameState?.activeTurn?.entityId,
+			isHost && !effectiveGameState?.pausedTurn && effectiveGameState?.activeTurn?.entityId,
 		);
-	}, [isHost, gameState?.pausedTurn, gameState?.activeTurn?.entityId]);
+	}, [isHost, effectiveGameState?.pausedTurn, effectiveGameState?.activeTurn?.entityId]);
 
 	// Use query hooks
 	const { data: mapStateData } = useMapState(inviteCode || null);
 	const { data: availableMapsData } = useAllMaps();
 	const switchMapMutation = useSwitchMap(inviteCode || '');
+
+	// Derive availableMaps from query data
+	const availableMaps = useMemo(() => availableMapsData?.maps || [], [availableMapsData?.maps]);
+
+	// Derive hasRolledInitiative from query data
+	const hasRolledInitiative = useMemo(() => {
+		return Boolean(effectiveGameState?.initiativeOrder && effectiveGameState.initiativeOrder.length > 0);
+	}, [effectiveGameState?.initiativeOrder]);
 	const placePlayerTokenMutation = usePlacePlayerToken(inviteCode || '');
 	const rollInitiativeMutation = useRollInitiative(inviteCode || '');
 	const submitDMActionMutation = useSubmitDMAction(inviteCode || '');
@@ -318,19 +326,17 @@ const MultiplayerGameScreen: React.FC = () => {
 	const startTurnMutation = useStartTurn(inviteCode || '');
 	const castSpellMutation = useCastSpell(inviteCode || '');
 
-	// Update shared map from query
-	useEffect(() => {
-		if (mapStateData) {
-			setSharedMap(mapStateData);
-		}
-	}, [mapStateData]);
+	// Derive initial sharedMap from query data (but keep state for optimistic updates)
+	const initialSharedMap = useMemo(() => {
+		return mapStateData || effectiveGameState?.mapState || null;
+	}, [mapStateData, effectiveGameState?.mapState]);
 
-	// Update available maps from query
+	// Update sharedMap from query when it changes (but preserve optimistic updates)
 	useEffect(() => {
-		if (availableMapsData?.maps) {
-			setAvailableMaps(availableMapsData.maps);
+		if (initialSharedMap && initialSharedMap !== sharedMap) {
+			setSharedMap(initialSharedMap);
 		}
-	}, [availableMapsData]);
+	}, [initialSharedMap]);
 
 	const handleSwitchMap = useCallback(
 		async (mapId: string) => {
@@ -354,22 +360,17 @@ const MultiplayerGameScreen: React.FC = () => {
 		[inviteCode, switchMapMutation],
 	);
 
-	useEffect(() => {
-		if (gameState?.mapState) {
-			setSharedMap(gameState.mapState);
-		}
-	}, [gameState?.mapState]);
 
 	// loadGameState is no longer needed - usePollingGameState handles it
 
 	// Check for characters without tokens on the map
 	const charactersWithoutTokens = useMemo(() => {
-		if (!gameState?.characters || !sharedMap?.tokens) return [];
-		return gameState.characters.filter(char => {
+		if (!effectiveGameState?.characters || !sharedMap?.tokens) return [];
+		return effectiveGameState.characters.filter(char => {
 			const hasToken = sharedMap.tokens.some(token => token.type === 'player' && token.entityId === char.id);
 			return !hasToken;
 		});
-	}, [gameState?.characters, sharedMap?.tokens]);
+	}, [effectiveGameState?.characters, sharedMap?.tokens]);
 
 	// Auto-place missing characters on the map
 	useEffect(() => {
@@ -378,7 +379,7 @@ const MultiplayerGameScreen: React.FC = () => {
 			sharedMap &&
 			charactersWithoutTokens.length > 0 &&
 			inviteCode &&
-			gameState?.status === 'active' &&
+			effectiveGameState?.status === 'active' &&
 			!isPlacingRef.current // Prevent concurrent placement runs
 		) {
 			const autoPlaceCharacters = async () => {
@@ -474,7 +475,7 @@ const MultiplayerGameScreen: React.FC = () => {
 
 			autoPlaceCharacters();
 		}
-	}, [isHost, sharedMap, charactersWithoutTokens, inviteCode, gameState?.status, placePlayerTokenMutation]);
+	}, [isHost, sharedMap, charactersWithoutTokens, inviteCode, effectiveGameState?.status, placePlayerTokenMutation]);
 
 	// Auto-roll initiative when encounter starts (map is set, game is active, and all characters are placed)
 	useEffect(() => {
@@ -489,33 +490,31 @@ const MultiplayerGameScreen: React.FC = () => {
 		) {
 			const rollInitiative = async () => {
 				try {
-					setHasRolledInitiative(true);
 					const response = await rollInitiativeMutation.mutateAsync({
 						path: `/games/${inviteCode}/initiative/roll`,
 					});
 					setGameState(response); // Directly update game state with response
 				} catch (error) {
 					console.error('Failed to roll initiative:', error);
-					setHasRolledInitiative(false);
 				}
 			};
 
 			rollInitiative();
 		}
-	}, [isHost, gameState?.mapState, gameState?.status, charactersWithoutTokens.length, hasRolledInitiative, gameState?.initiativeOrder, inviteCode, rollInitiativeMutation]);
+	}, [isHost, effectiveGameState?.mapState, effectiveGameState?.status, charactersWithoutTokens.length, hasRolledInitiative, effectiveGameState?.initiativeOrder, inviteCode, rollInitiativeMutation]);
 
 	// Track unread messages
 	useEffect(() => {
-		if (gameState?.messages) {
+		if (effectiveGameState?.messages) {
 			// Count messages that are newer than when notifications were last opened
 			// For now, just show total count if panel is closed
-			if (!showNotifications && gameState.messages.length > 0) {
-				setUnreadMessageCount(gameState.messages.length);
+			if (!showNotifications && effectiveGameState.messages.length > 0) {
+				setUnreadMessageCount(effectiveGameState.messages.length);
 			} else {
 				setUnreadMessageCount(0);
 			}
 		}
-	}, [gameState?.messages, showNotifications]);
+	}, [effectiveGameState?.messages, showNotifications]);
 
 	// Calculate movement range when it's player's turn or DM's turn (for movement preview)
 	useEffect(() => {
@@ -599,7 +598,6 @@ const MultiplayerGameScreen: React.FC = () => {
 							await rollInitiativeMutation.mutateAsync({
 								path: `/games/${inviteCode}/initiative/roll`,
 							});
-							setHasRolledInitiative(true);
 							Alert.alert('Success', 'Initiative rolled!');
 						} catch (error) {
 							console.error('Failed to roll initiative:', error);
@@ -799,16 +797,17 @@ const MultiplayerGameScreen: React.FC = () => {
 					description: 'End your turn immediately',
 					keywords: ['skip', 'end', 'turn'],
 					category: 'Turn',
-					action: async () => {
-						if (inviteCode) {
-							try {
-								const response = await endTurnMutation.mutateAsync({
-									path: `/games/${inviteCode}/turn/end`,
-								});
-								if (response) {
-									setGameState(response);
-								}
-								setShowCommandPalette(false);
+							action: async () => {
+								if (inviteCode) {
+									try {
+										await endTurnMutation.mutateAsync({
+											path: `/games/${inviteCode}/turn/end`,
+										});
+										// Force immediate refetch of game state
+										if (refreshGameState) {
+											await refreshGameState();
+										}
+										setShowCommandPalette(false);
 							} catch (error) {
 								console.error('Failed to skip turn:', error);
 								Alert.alert('Error', error instanceof Error ? error.message : 'Failed to skip turn');
@@ -1012,7 +1011,7 @@ const MultiplayerGameScreen: React.FC = () => {
 						return;
 					}
 
-					const character = gameState?.characters.find(c => c.id === actingCharacterId);
+					const character = effectiveGameState?.characters.find(c => c.id === actingCharacterId);
 					const personalMovementBudget = character ? getCharacterSpeed(character) : DEFAULT_RACE_SPEED;
 					const reachable = calculateMovementRange(sharedMap, { x: token.x, y: token.y }, personalMovementBudget);
 					setSelectedTokenId(token.id);
@@ -1042,7 +1041,7 @@ const MultiplayerGameScreen: React.FC = () => {
 			const tokenPosition = { x: token.x, y: token.y };
 
 			if (token.type === 'player' && token.entityId) {
-				const character = gameState?.characters.find(c => c.id === token.entityId);
+				const character = effectiveGameState?.characters.find(c => c.id === token.entityId);
 				if (character) {
 					movementBudget = getCharacterSpeed(character);
 				}
@@ -1056,8 +1055,8 @@ const MultiplayerGameScreen: React.FC = () => {
 		},
 		[
 			sharedMap,
-			gameState?.characters,
-			gameState?.activeTurn?.entityId,
+			effectiveGameState?.characters,
+			effectiveGameState?.activeTurn?.entityId,
 			selectedTokenId,
 			selectedTokenMovementRange,
 			isHost,
@@ -2203,11 +2202,12 @@ const MultiplayerGameScreen: React.FC = () => {
 							onPress={async () => {
 								if (inviteCode) {
 									try {
-										const response = await endTurnMutation.mutateAsync({
+										await endTurnMutation.mutateAsync({
 											path: `/games/${inviteCode}/turn/end`,
 										});
-										if (response) {
-											setGameState(response);
+										// Force immediate refetch of game state
+										if (refreshGameState) {
+											await refreshGameState();
 										}
 									} catch (error) {
 										console.error('Failed to end turn:', error);
@@ -2302,10 +2302,10 @@ const MultiplayerGameScreen: React.FC = () => {
 						contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top }]}
 					>
 						<PlayerCharacterList
-							characters={gameState.characters}
+							characters={effectiveGameState?.characters || []}
 							currentPlayerId={currentCharacterId}
 							npcTokens={sharedMap?.tokens?.filter(t => t.type === 'npc') || []}
-							activeTurnEntityId={gameState?.activeTurn?.entityId}
+							activeTurnEntityId={effectiveGameState?.activeTurn?.entityId}
 							onCharacterSelect={
 								isHost
 									? handleCharacterSelect
@@ -2315,7 +2315,7 @@ const MultiplayerGameScreen: React.FC = () => {
 									}
 							}
 							canSelect={true}
-							initiativeOrder={gameState.initiativeOrder}
+							initiativeOrder={effectiveGameState?.initiativeOrder}
 						/>
 						{renderMapSection()}
 					</ScrollView>
@@ -2324,10 +2324,10 @@ const MultiplayerGameScreen: React.FC = () => {
 					<View style={styles.desktopLayout}>
 						<View style={styles.sidebar}>
 							<PlayerCharacterList
-								characters={gameState.characters}
+								characters={effectiveGameState?.characters || []}
 								currentPlayerId={currentCharacterId}
 								npcTokens={sharedMap?.tokens?.filter(t => t.type === 'npc') || []}
-								activeTurnEntityId={gameState?.activeTurn?.entityId}
+								activeTurnEntityId={effectiveGameState?.activeTurn?.entityId}
 								onCharacterSelect={
 									isHost
 										? handleCharacterSelect
@@ -2337,7 +2337,7 @@ const MultiplayerGameScreen: React.FC = () => {
 										}
 								}
 								canSelect={true}
-								initiativeOrder={gameState.initiativeOrder}
+								initiativeOrder={effectiveGameState?.initiativeOrder}
 							/>
 							{isHost && charactersWithoutTokens.length > 0 && (
 								<View style={styles.warningContainer}>
@@ -2409,7 +2409,7 @@ const MultiplayerGameScreen: React.FC = () => {
 
 			{/* Notifications Panel */}
 			<NotificationsPanel
-				messages={gameState?.messages || []}
+				messages={effectiveGameState?.messages || []}
 				visible={showNotifications}
 				onClose={() => setShowNotifications(false)}
 				unreadCount={unreadMessageCount}
@@ -2483,7 +2483,7 @@ const MultiplayerGameScreen: React.FC = () => {
 					visible={showCharacterDMModal}
 					character={
 						selectedCharacterForDM.type === 'player'
-							? gameState.characters.find(c => c.id === selectedCharacterForDM.id) || null
+							? effectiveGameState?.characters.find(c => c.id === selectedCharacterForDM.id) || null
 							: null
 					}
 					npcToken={
@@ -2499,7 +2499,7 @@ const MultiplayerGameScreen: React.FC = () => {
 					onDamage={handleCharacterDamage}
 					onHeal={handleCharacterHeal}
 					onUpdateCharacter={selectedCharacterForDM.type === 'player' ? handleUpdateCharacter : undefined}
-					initiativeOrder={gameState?.initiativeOrder}
+					initiativeOrder={effectiveGameState?.initiativeOrder}
 					npcStats={npcStats}
 				/>
 			)}
@@ -2510,7 +2510,7 @@ const MultiplayerGameScreen: React.FC = () => {
 					visible={showCharacterViewModal}
 					character={
 						selectedCharacterForView.type === 'player'
-							? gameState.characters.find(c => c.id === selectedCharacterForView.id) || null
+							? effectiveGameState?.characters.find(c => c.id === selectedCharacterForView.id) || null
 							: null
 					}
 					npcToken={
@@ -2524,7 +2524,7 @@ const MultiplayerGameScreen: React.FC = () => {
 					}}
 					isNPC={selectedCharacterForView.type === 'npc'}
 					showFullStats={selectedCharacterForView.type === 'player'} // Full stats for players, limited for NPCs
-					initiativeOrder={gameState?.initiativeOrder}
+					initiativeOrder={effectiveGameState?.initiativeOrder}
 				/>
 			)}
 
@@ -2553,9 +2553,9 @@ const MultiplayerGameScreen: React.FC = () => {
 				}}
 				character={
 					selectedCharacterForAction
-						? gameState?.characters.find(c => c.id === selectedCharacterForAction) || null
+						? effectiveGameState?.characters.find(c => c.id === selectedCharacterForAction) || null
 						: currentCharacterId
-							? gameState?.characters.find(c => c.id === currentCharacterId) || null
+							? effectiveGameState?.characters.find(c => c.id === currentCharacterId) || null
 							: null
 				}
 				isDM={isHost && !!selectedCharacterForAction}
@@ -2565,7 +2565,7 @@ const MultiplayerGameScreen: React.FC = () => {
 					const characterId = selectedCharacterForAction || currentCharacterId;
 					if (!characterId) return;
 
-					const isActiveEntity = gameState?.activeTurn?.entityId === characterId;
+					const isActiveEntity = effectiveGameState?.activeTurn?.entityId === characterId;
 					if (isActiveEntity) {
 						const majorActionAlreadyUsed = gameState?.activeTurn?.majorActionUsed ?? false;
 						const minorActionAlreadyUsed = gameState?.activeTurn?.minorActionUsed ?? false;
@@ -2705,10 +2705,10 @@ const MultiplayerGameScreen: React.FC = () => {
 							</ThemedText>
 							<ScrollView style={styles.characterTurnSelectorList}>
 								{/* Player Characters */}
-								{gameState?.characters && gameState.characters.length > 0 && (
+								{effectiveGameState?.characters && effectiveGameState.characters.length > 0 && (
 									<>
 										<ThemedText style={styles.characterTurnSelectorSectionTitle}>Player Characters</ThemedText>
-										{gameState.characters.map((character) => (
+										{effectiveGameState.characters.map((character) => (
 											<TouchableOpacity
 												key={character.id}
 												style={styles.characterTurnSelectorItem}
@@ -2777,7 +2777,7 @@ const MultiplayerGameScreen: React.FC = () => {
 											))}
 									</>
 								)}
-								{(!gameState?.characters || gameState.characters.length === 0) &&
+								{(!effectiveGameState?.characters || effectiveGameState.characters.length === 0) &&
 									(!sharedMap?.tokens?.filter(t => t.type === 'npc').length || (sharedMap?.tokens?.filter(t => t.type === 'npc').length ?? 0) === 0) && (
 									<ThemedText style={styles.characterTurnSelectorEmpty}>No characters or NPCs available</ThemedText>
 								)}

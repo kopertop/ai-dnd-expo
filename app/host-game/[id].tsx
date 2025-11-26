@@ -52,6 +52,10 @@ const HostGameLobbyScreen: React.FC = () => {
 	const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [currentMapId, setCurrentMapId] = useState<string | null>(null);
+
+	// Derive initial values from session query
+	const sessionCurrentMapId = useMemo(() => session?.currentMapId || null, [session?.currentMapId]);
+	const sessionQuest = useMemo(() => session?.quest || null, [session?.quest]);
 	const insets = useSafeAreaInsets();
 	const { user } = useAuth();
 	const hostId = user?.id ?? null;
@@ -92,7 +96,7 @@ const HostGameLobbyScreen: React.FC = () => {
 		[lobbyCharacters],
 	);
 
-	// Initialize session state when data loads
+	// Sync state from session query (but preserve user-driven changes)
 	useEffect(() => {
 		if (!inviteCode) return;
 
@@ -104,20 +108,20 @@ const HostGameLobbyScreen: React.FC = () => {
 		}
 
 		if (session) {
-			// Get current map ID from session response
-			if (session.currentMapId) {
-				setCurrentMapId(session.currentMapId);
+			// Sync currentMapId from session (but don't override if user is switching maps)
+			if (sessionCurrentMapId && sessionCurrentMapId !== currentMapId) {
+				setCurrentMapId(sessionCurrentMapId);
 			}
-			if (session.status === 'waiting') {
-				setSelectedQuest(session.quest);
-				setCurrentStep('waiting');
-			} else if (session.status === 'active') {
-				// If game is active, allow host to manage it from the lobby
-				setSelectedQuest(session.quest);
+			// Sync selectedQuest from session (but don't override if user is selecting)
+			if (sessionQuest && sessionQuest !== selectedQuest) {
+				setSelectedQuest(sessionQuest);
+			}
+			// Update step based on session status
+			if (session.status === 'waiting' || session.status === 'active') {
 				setCurrentStep('waiting');
 			}
 		}
-	}, [inviteCode, session]);
+	}, [inviteCode, session, sessionCurrentMapId, sessionQuest, currentMapId, selectedQuest]);
 
 	const handleQuestSelect = (quest: Quest) => {
 		setSelectedQuest(quest);

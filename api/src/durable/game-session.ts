@@ -422,12 +422,15 @@ export class GameSession {
 
 		// Store current turn as paused (only if it exists)
 		const pausedTurn = session.gameState.activeTurn ?? undefined;
-		const activeTurn = {
-			type: 'dm' as const,
-			entityId: session.hostId,
-			turnNumber: (session.gameState.activeTurn?.turnNumber ?? 0) + 1,
-			startedAt: Date.now(),
-		};
+
+		// Build new DM turn with proper initialization of usage fields and speed
+		const characters = session.gameState.characters ?? [];
+		const currentTurnNumber = session.gameState.activeTurn?.turnNumber ?? 0;
+		const activeTurn = this.buildActiveTurn(
+			{ entityId: session.hostId, type: 'dm' },
+			currentTurnNumber,
+			characters,
+		);
 
 		const updatedGameState: MultiplayerGameState = {
 			...session.gameState,
