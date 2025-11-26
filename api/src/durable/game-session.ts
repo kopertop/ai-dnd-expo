@@ -420,8 +420,16 @@ export class GameSession {
 			return json({ error: 'Game not started' }, 400);
 		}
 
-		// Store current turn as paused (only if it exists)
-		const pausedTurn = session.gameState.activeTurn ?? undefined;
+		// Store current turn as paused (only if it exists and has all required fields)
+		const currentActiveTurn = session.gameState.activeTurn;
+		const pausedTurn: MultiplayerGameState['pausedTurn'] = currentActiveTurn
+			? {
+				type: currentActiveTurn.type,
+				entityId: currentActiveTurn.entityId,
+				turnNumber: currentActiveTurn.turnNumber,
+				startedAt: currentActiveTurn.startedAt,
+			}
+			: undefined;
 
 		// Build new DM turn with proper initialization of usage fields and speed
 		const characters = session.gameState.characters ?? [];
@@ -457,7 +465,7 @@ export class GameSession {
 
 		// Restore paused turn
 		const pausedTurn = session.gameState.pausedTurn;
-		if (!pausedTurn) {
+		if (!pausedTurn || !pausedTurn.entityId || !pausedTurn.type) {
 			return json({ error: 'No paused turn to resume' }, 400);
 		}
 
@@ -465,9 +473,12 @@ export class GameSession {
 		const characters = session.gameState.characters ?? [];
 
 		// Restore the paused turn with proper turn usage initialization
+		// Ensure all required fields are present before passing to resetTurnUsage
 		const activeTurn = this.resetTurnUsage(
 			{
-				...pausedTurn,
+				type: pausedTurn.type,
+				entityId: pausedTurn.entityId,
+				turnNumber: pausedTurn.turnNumber,
 				startedAt: Date.now(),
 			},
 			characters,

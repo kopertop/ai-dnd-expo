@@ -38,11 +38,11 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 	const entityId = character?.id || npcToken?.id;
 	const entityName = character?.name || npcToken?.label || 'Unknown';
 	const isNPC = !!npcToken;
-	
+
 	// Get initiative value from initiative order
 	const initiativeEntry = entityId ? initiativeOrder?.find(entry => entry.entityId === entityId) : null;
 	const initiativeValue = initiativeEntry?.initiative;
-	
+
 	// Get stats - from character or NPC
 	const stats = character?.stats || npcStats || { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 };
 	const npcMetadata = npcToken?.metadata as { armorClass?: number } | undefined;

@@ -4,8 +4,8 @@ import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-nat
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
-import { Character } from '@/types/character';
 import { getSpellsForClass } from '@/constants/spells';
+import { Character } from '@/types/character';
 
 interface Action {
 	name: string;
@@ -53,10 +53,10 @@ export const SpellActionSelector: React.FC<SpellActionSelectorProps> = ({
 		});
 
 		// Add healing potion if available
-		const hasPotion = character.inventory?.some((item: any) => 
+		const hasPotion = character.inventory?.some((item: any) =>
 			typeof item === 'object' && item?.name?.toLowerCase().includes('potion'),
 		) || false;
-		
+
 		if (hasPotion) {
 			actions.push({
 				name: 'Heal with Potion',

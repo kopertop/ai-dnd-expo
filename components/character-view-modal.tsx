@@ -32,11 +32,11 @@ export const CharacterViewModal: React.FC<CharacterViewModalProps> = ({
 
 	const entityId = character?.id || npcToken?.id;
 	const entityName = character?.name || npcToken?.label || 'Unknown';
-	
+
 	// Get initiative value from initiative order
 	const initiativeEntry = entityId ? initiativeOrder?.find(entry => entry.entityId === entityId) : null;
 	const initiativeValue = initiativeEntry?.initiative;
-	
+
 	// Get stats - only show if showFullStats is true
 	const stats = showFullStats && character?.stats ? character.stats : undefined;
 	const npcMetadata = npcToken?.metadata as { armorClass?: number } | undefined;
@@ -138,7 +138,7 @@ export const CharacterViewModal: React.FC<CharacterViewModalProps> = ({
 								<View style={styles.statRow}>
 									<ThemedText style={styles.statLabel}>Health:</ThemedText>
 									<ThemedText style={styles.statValue}>
-										{showFullStats 
+										{showFullStats
 											? `${npcToken.hitPoints ?? '?'} / ${npcToken.maxHitPoints ?? '?'}`
 											: 'Unknown'
 										}
