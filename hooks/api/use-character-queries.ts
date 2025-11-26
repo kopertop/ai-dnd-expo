@@ -1,11 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 
-import type {
-	CharacterActionResult,
-	CharacterListResponse,
-} from '@/types/api/multiplayer-api';
+import type { CharacterListResponse } from '@/types/api/multiplayer-api';
 import type { Character } from '@/types/character';
+import type { CharacterActionResult } from '@/types/combat';
 
 /**
  * Get current user's characters

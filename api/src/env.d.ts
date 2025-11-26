@@ -1,7 +1,6 @@
 export interface CloudflareBindings {
 	DATABASE: D1Database;
 	// DB is aliased from DATABASE in code for expo-auth-template compatibility
-	GAME_SESSION: DurableObjectNamespace;
 	QUESTS: KVNamespace;
 	AUTH_SESSIONS?: KVNamespace;
 	ASSETS?: Fetcher; // Worker with Assets binding

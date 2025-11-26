@@ -102,21 +102,6 @@ export const CharacterSchema = z.object({
 export type Character = z.infer<typeof CharacterSchema>;
 
 // ============================================================================
-// Game State Models
-// ============================================================================
-
-export const GameStateSchema = z.object({
-	game_id: z.string(),
-	state_data: z.string(), // JSON string
-	map_state: z.string().default('{}'), // JSON string
-	log_entries: z.string().default('[]'), // JSON string
-	state_version: z.number().int().min(1).default(1),
-	updated_at: z.number(),
-});
-
-export type GameState = z.infer<typeof GameStateSchema>;
-
-// ============================================================================
 // Map Models
 // ============================================================================
 
@@ -156,29 +141,6 @@ export const MapTileSchema = z.object({
 });
 
 export type MapTile = z.infer<typeof MapTileSchema>;
-
-export const MapTokenSchema = z.object({
-	id: z.string(),
-	game_id: z.string().nullable(),
-	map_id: z.string(),
-	character_id: z.string().nullable(),
-	npc_id: z.string().nullable(),
-	token_type: z.enum(['player', 'npc', 'object']),
-	label: z.string().nullable(),
-	x: z.number().int(),
-	y: z.number().int(),
-	facing: z.number().int().default(0),
-	color: z.string().nullable(),
-	status: z.string().default('idle'),
-	is_visible: z.number().int().default(1),
-	hit_points: z.number().int().nullable(),
-	max_hit_points: z.number().int().nullable(),
-	metadata: z.string().default('{}'), // JSON string
-	created_at: z.number(),
-	updated_at: z.number(),
-});
-
-export type MapToken = z.infer<typeof MapTokenSchema>;
 
 // ============================================================================
 // NPC Models

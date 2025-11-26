@@ -110,10 +110,17 @@ const convertTokens = (tokens?: MapTokenRow[]): MapToken[] => {
                         		? metadata.image
                         		: undefined;
 
+		// For NPCs, entityId should be the token.id (unique per instance)
+		// For players, entityId should be the character_id
+		// This ensures each NPC instance has a unique entityId for initiative tracking
+		const entityId = token.token_type === 'npc' 
+			? token.id  // NPC: use token ID as entityId (unique per instance)
+			: token.character_id ?? undefined;  // Player: use character_id
+
 		return {
 			id: token.id,
 			type: toTokenType(token.token_type),
-			entityId: token.character_id ?? token.npc_id ?? undefined,
+			entityId,
 			label: token.label ?? 'Token',
 			x: token.x,
 			y: token.y,

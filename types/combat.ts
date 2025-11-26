@@ -1,7 +1,7 @@
 import type { SpellDefinition } from '@/types/spell';
 
 export type CombatTargetSummary = {
-	type: 'character' | 'npc';
+	type?: 'character' | 'npc';
 	id: string;
 	name: string;
 	armorClass?: number;

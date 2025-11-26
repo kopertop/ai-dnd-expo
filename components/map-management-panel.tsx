@@ -27,6 +27,7 @@ interface MapManagementPanelProps {
 	onMapSelected: (mapId: string) => void;
 	onMapCloned?: (mapId: string) => void;
 	onEditMap?: (mapId: string) => void;
+	onStartEncounter?: (mapId: string) => Promise<void>;
 }
 
 export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
@@ -35,11 +36,13 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 	onMapSelected,
 	onMapCloned,
 	onEditMap,
+	onStartEncounter,
 }) => {
 	const [maps, setMaps] = useState<Map[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [cloningMapId, setCloningMapId] = useState<string | null>(null);
+	const [startingEncounterMapId, setStartingEncounterMapId] = useState<string | null>(null);
 
 	const loadMaps = useCallback(async () => {
 		setLoading(true);
@@ -81,18 +84,30 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 		[loadMaps, onMapCloned],
 	);
 
-	const handleUseMap = useCallback(
+	const handleStartEncounter = useCallback(
 		async (mapId: string) => {
-			try {
-				await multiplayerClient.switchMap(inviteCode, mapId);
-				onMapSelected(mapId);
-				Alert.alert('Success', 'Map selected successfully');
-			} catch (error) {
-				console.error('Failed to switch map:', error);
-				Alert.alert('Error', error instanceof Error ? error.message : 'Failed to switch map');
+			if (onStartEncounter) {
+				setStartingEncounterMapId(mapId);
+				try {
+					await onStartEncounter(mapId);
+				} catch (error) {
+					console.error('Failed to start encounter:', error);
+					Alert.alert('Error', error instanceof Error ? error.message : 'Failed to start encounter');
+					setStartingEncounterMapId(null);
+				}
+			} else {
+				// Fallback to just switching map if onStartEncounter is not provided
+				try {
+					await multiplayerClient.switchMap(inviteCode, mapId);
+					onMapSelected(mapId);
+					Alert.alert('Success', 'Map selected successfully');
+				} catch (error) {
+					console.error('Failed to switch map:', error);
+					Alert.alert('Error', error instanceof Error ? error.message : 'Failed to switch map');
+				}
 			}
 		},
-		[inviteCode, onMapSelected],
+		[inviteCode, onMapSelected, onStartEncounter],
 	);
 
 	const filteredMaps = maps.filter(
@@ -109,45 +124,6 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 					<ThemedText style={styles.refreshButtonText}>Refresh</ThemedText>
 				</TouchableOpacity>
 			</View>
-
-			{currentMapId && (
-				<View style={styles.currentMapSection}>
-					<ThemedText style={styles.sectionTitle}>Current Map</ThemedText>
-					{maps.find(m => m.id === currentMapId) && (
-						<View style={styles.currentMapCard}>
-							<ThemedText style={styles.mapName}>
-								{maps.find(m => m.id === currentMapId)?.name}
-							</ThemedText>
-							<ThemedText style={styles.mapDetails}>
-								{maps.find(m => m.id === currentMapId)?.width} ×{' '}
-								{maps.find(m => m.id === currentMapId)?.height}
-							</ThemedText>
-							<View style={styles.currentMapActions}>
-								{onEditMap && (
-									<TouchableOpacity
-										style={[styles.actionButton, styles.editButton]}
-										onPress={() => onEditMap(currentMapId)}
-									>
-										<ThemedText style={styles.editButtonText}>Edit</ThemedText>
-									</TouchableOpacity>
-								)}
-								<TouchableOpacity
-									style={[styles.actionButton, styles.cloneButton]}
-									onPress={() => {
-										const map = maps.find(m => m.id === currentMapId);
-										if (map) handleCloneMap(map);
-									}}
-									disabled={cloningMapId === currentMapId}
-								>
-									<ThemedText style={styles.cloneButtonText}>
-										{cloningMapId === currentMapId ? 'Cloning...' : 'Clone'}
-									</ThemedText>
-								</TouchableOpacity>
-							</View>
-						</View>
-					)}
-				</View>
-			)}
 
 			<View style={styles.availableMapsSection}>
 				<ThemedText style={styles.sectionTitle}>Available Maps</ThemedText>
@@ -187,14 +163,15 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 									{map.width} × {map.height}
 								</ThemedText>
 								<View style={styles.mapCardActions}>
-									{map.id !== currentMapId && (
-										<TouchableOpacity
-											style={[styles.actionButton, styles.useButton]}
-											onPress={() => handleUseMap(map.id)}
-										>
-											<ThemedText style={styles.useButtonText}>Use This Map</ThemedText>
-										</TouchableOpacity>
-									)}
+									<TouchableOpacity
+										style={[styles.actionButton, styles.useButton, startingEncounterMapId === map.id && styles.disabledButton]}
+										onPress={() => handleStartEncounter(map.id)}
+										disabled={startingEncounterMapId === map.id}
+									>
+										<ThemedText style={styles.useButtonText}>
+											{startingEncounterMapId === map.id ? 'Starting...' : 'Start Encounter'}
+										</ThemedText>
+									</TouchableOpacity>
 									{onEditMap && (
 										<TouchableOpacity
 											style={[styles.actionButton, styles.editButton]}
@@ -378,6 +355,9 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		textAlign: 'center',
 		paddingVertical: 20,
+	},
+	disabledButton: {
+		opacity: 0.6,
 	},
 });
 

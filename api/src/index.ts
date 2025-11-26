@@ -183,4 +183,4 @@ app.get('*', async (c) => {
 
 export default app;
 
-export { GameSession } from './durable/game-session';
+// GameSession Durable Object removed - using D1 database directly

@@ -290,10 +290,8 @@ export type MapStateResponse = z.infer<typeof MapStateResponseSchema>;
 export type NpcDefinitionListResponse = z.infer<typeof NpcDefinitionListResponseSchema>;
 export type MapTokenMutationResponse = z.infer<typeof MapTokenMutationResponseSchema>;
 export type MapTokenListResponse = z.infer<typeof MapTokenListResponseSchema>;
-export type MapState = z.infer<typeof MapStateSchema>;
+// MapState, MapToken, and NpcDefinition are exported from @/types/multiplayer-map
 export type MapTile = z.infer<typeof MapTileSchema>;
-export type MapToken = z.infer<typeof MapTokenSchema>;
-export type NpcDefinition = z.infer<typeof NpcDefinitionSchema>;
 
 // Activity log types
 export const ActivityLogSchema = z.object({

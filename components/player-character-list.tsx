@@ -34,8 +34,8 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 	const { isMobile } = useScreenSize();
 
 	// Create entity map for quick lookup
-	// For players: use character.id as the key
-	// For NPCs: we need to match by token.id (which is what initiative order uses for entityId)
+	// For players: use character.id as the key (matches initiative order entityId)
+	// For NPCs: use token.id as the key (which equals token.entityId and matches initiative order entityId)
 	const entityMap = new Map<string, { type: 'player' | 'npc'; id: string; name: string; data: Character | MapToken }>();
 	
 	characters.forEach(char => {
@@ -43,46 +43,66 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 	});
 	
 	npcTokens.forEach(token => {
-		// For NPCs, initiative order uses token.id as entityId (see api/src/routes/games.ts line 1498)
-		// So we use token.id as the key for matching initiative order
-		entityMap.set(token.id, { type: 'npc', id: token.id, name: token.label || 'NPC', data: token });
-		// Also store by token.entityId if different (for active turn matching, which might use entityId)
-		if (token.entityId && token.entityId !== token.id) {
-			entityMap.set(token.entityId, { type: 'npc', id: token.id, name: token.label || 'NPC', data: token });
-		}
+		// For NPCs, token.id equals token.entityId (set in schema-adapters.ts)
+		// Initiative order uses token.id as entityId, so we use token.id as the key
+		const entityId = token.entityId || token.id;
+		entityMap.set(entityId, { type: 'npc', id: token.id, name: token.label || 'NPC', data: token });
 	});
 
-	// Sort by initiative order if available, otherwise keep original order
+	// Build list of all entities, prioritizing initiative order but including all entities
 	// Initiative order is already sorted highest to lowest from backend
 	let allEntities: Array<{ type: 'player' | 'npc'; id: string; name: string; data: Character | MapToken; initiative?: number; initiativeIndex?: number }>;
 	
 	if (initiativeOrder && initiativeOrder.length > 0) {
-		// Map initiative order entries to entities (already sorted highest to lowest)
-		// Only show entities that are in the initiative order - no duplicates
-		allEntities = initiativeOrder
-			.map((entry, index) => {
-				const entity = entityMap.get(entry.entityId);
-				if (!entity) return null;
-				return {
-					...entity,
-					initiative: entry.initiative,
-					initiativeIndex: index, // 0 = highest initiative, 1 = second highest, etc.
-				};
-			})
-			.filter((e): e is NonNullable<typeof e> => e !== null);
+		// Create a map of entities in initiative order with their initiative data
+		const initiativeMap = new Map<string, { initiative: number; initiativeIndex: number }>();
+		initiativeOrder.forEach((entry, index) => {
+			initiativeMap.set(entry.entityId, {
+				initiative: entry.initiative,
+				initiativeIndex: index,
+			});
+		});
 		
-		// Remove duplicates by entity id (in case an entity was stored with multiple keys)
-		const seenIds = new Set<string>();
-		allEntities = allEntities.filter(entity => {
-			if (seenIds.has(entity.id)) {
+		// Get all entities from entityMap, add initiative data if available
+		const seen = new Set<string>();
+		const entitiesWithInitiative: typeof allEntities = [];
+		const entitiesWithoutInitiative: typeof allEntities = [];
+		
+		entityMap.forEach((entity, entityId) => {
+			if (seen.has(entity.id)) {
+				return; // Skip duplicates
+			}
+			seen.add(entity.id);
+			
+			const initiativeData = initiativeMap.get(entityId);
+			const entityWithData = {
+				...entity,
+				initiative: initiativeData?.initiative,
+				initiativeIndex: initiativeData?.initiativeIndex,
+			};
+			
+			if (initiativeData) {
+				entitiesWithInitiative.push(entityWithData);
+			} else {
+				entitiesWithoutInitiative.push(entityWithData);
+			}
+		});
+		
+		// Sort entities with initiative by their initiative index (already sorted)
+		entitiesWithInitiative.sort((a, b) => (a.initiativeIndex ?? 0) - (b.initiativeIndex ?? 0));
+		
+		// Combine: entities with initiative first, then entities without
+		allEntities = [...entitiesWithInitiative, ...entitiesWithoutInitiative];
+	} else {
+		// No initiative order, use original order with deduplication
+		const seen = new Set<string>();
+		allEntities = Array.from(entityMap.values()).filter(entity => {
+			if (seen.has(entity.id)) {
 				return false;
 			}
-			seenIds.add(entity.id);
+			seen.add(entity.id);
 			return true;
 		});
-	} else {
-		// No initiative order, use original order
-		allEntities = Array.from(entityMap.values());
 	}
 
 	return (

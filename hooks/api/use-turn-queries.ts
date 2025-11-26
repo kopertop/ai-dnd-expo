@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useMutationApi } from 'expo-auth-template/frontend';
 
-import type { GameStateResponse, MultiplayerGameState } from '@/types/api/multiplayer-api';
+import type { GameStateResponse } from '@/types/api/multiplayer-api';
+import type { MultiplayerGameState } from '@/types/multiplayer-game';
 
 /**
  * Start a turn

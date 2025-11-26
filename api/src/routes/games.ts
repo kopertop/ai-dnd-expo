@@ -1,15 +1,16 @@
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 
-import { CharacterRow, Database, GameRow, MapRow, NpcInstanceRow, NpcRow } from '../../../shared/workers/db';
+import { CharacterRow, Database, GameRow, MapRow, MapTokenRow, NpcInstanceRow, NpcRow } from '../../../shared/workers/db';
 import { generateProceduralMap, MapGeneratorPreset } from '../../../shared/workers/map-generator';
-import { generateInviteCode, getSessionId, getSessionStub } from '../../../shared/workers/session-manager';
-import { Character, MultiplayerGameState, Quest } from '../../../shared/workers/types';
+import { generateInviteCode } from '../../../shared/workers/session-manager';
 import type { CloudflareBindings } from '../env';
 
+import { GameStateService } from '@/api/src/services/game-state';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import { findSpellByName } from '@/constants/spells';
 import { parseDiceNotation, rollDiceLocal } from '@/services/dice-roller';
+import { Character } from '@/types/character';
 import type {
 	BasicAttackResult,
 	CharacterActionResult,
@@ -17,6 +18,8 @@ import type {
 	DiceRollSummary,
 	SpellCastResult,
 } from '@/types/combat';
+import { MultiplayerGameState } from '@/types/multiplayer-game';
+import { Quest } from '@/types/quest';
 import type { SpellDefinition } from '@/types/spell';
 import {
 	calculateAC,
@@ -60,14 +63,7 @@ const games = new Hono<GamesContext>();
 
 const normalizePath = (path: string): string => (path.startsWith('/') ? path : `/${path}`);
 
-const buildDurableRequest = (
-	req: Request,
-	path: string,
-	init?: RequestInit,
-): Request => {
-	const origin = new URL(req.url).origin;
-	return new Request(`${origin}${normalizePath(path)}`, init);
-};
+// buildDurableRequest removed - no longer needed without Durable Object
 
 const jsonWithStatus = <T>(_: Context<GamesContext>, payload: T, status: number) =>
 	new Response(JSON.stringify(payload), {
@@ -388,9 +384,8 @@ const handleSpellCast = async ({
 
 				result.damageRoll = damageRoll;
 				result.damageDealt = damageDealt;
-				result.target = {
-					...result.target,
-					remainingHealth,
+				if (result.target) {
+					result.target.remainingHealth = remainingHealth;
 				};
 			}
 			break;
@@ -412,10 +407,9 @@ const handleSpellCast = async ({
 			result.hit = true;
 			result.damageRoll = damageRoll;
 			result.damageDealt = damageDealt;
-			result.target = {
-				...result.target,
-				remainingHealth,
-			};
+			if (result.target) {
+				result.target.remainingHealth = remainingHealth;
+			}
 			break;
 		}
 
@@ -646,29 +640,7 @@ games.post('/', async (c) => {
 	}
 
 	const inviteCode = generateInviteCode();
-	const sessionId = getSessionId(c.env, inviteCode);
-	const sessionStub = c.env.GAME_SESSION.get(sessionId);
-
-	const initResponse = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, '/initialize', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				inviteCode,
-				hostId: resolvedHostId,
-				quest: questData,
-				world,
-				startingArea,
-			}),
-		}),
-	);
-
-	if (!initResponse.ok) {
-		const details = await initResponse.text();
-		return c.json({ error: 'Failed to initialize game session', details }, 500);
-	}
-
-	const gameId = sessionId.toString();
+	const gameId = createId('game');
 	const persistedQuest = {
 		...questData,
 		objectives: questData.objectives ?? [],
@@ -712,33 +684,16 @@ games.post('/', async (c) => {
 			joined_at: Date.now(),
 		});
 
-		const joinResponse = await sessionStub.fetch(
-			buildDurableRequest(c.req.raw, '/join', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					character: hostCharacter,
-					playerId: resolvedHostId,
-				}),
-			}),
-		);
-
-		if (!joinResponse.ok) {
-			const details = await joinResponse.text();
-			return c.json({ error: 'Failed to register host in session', details }, 500);
-		}
 	}
 
-	const stateResponse = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, '/state'),
-	);
-
-	if (!stateResponse.ok) {
-		const details = await stateResponse.text();
-		return c.json({ error: 'Failed to load game state', details }, 500);
+	// Return the game state
+	const gameStateService = new GameStateService(db);
+	const game = await db.getGameByInviteCode(inviteCode);
+	if (!game) {
+		return c.json({ error: 'Failed to load game' }, 500);
 	}
-
-	return c.json(await stateResponse.json());
+	const state = await gameStateService.getState(game);
+	return c.json(state);
 });
 
 games.get('/me', async (c) => {
@@ -923,34 +878,33 @@ games.delete('/:inviteCode', async (c) => {
 
 games.get('/:inviteCode', async (c) => {
 	const inviteCode = c.req.param('inviteCode');
-	const sessionStub = getSessionStub(c.env, inviteCode);
-
-	const stateResponse = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, '/state'),
-	);
-
-	if (!stateResponse.ok) {
-		const details = await stateResponse.text();
-		return jsonWithStatus(c, { error: 'Failed to fetch session', details }, stateResponse.status);
-	}
-
-	const sessionData = await stateResponse.json();
-
-	// Add currentMapId, world, and startingArea from database (in case session doesn't have them)
 	const db = new Database(c.env.DATABASE);
 	const game = await db.getGameByInviteCode(inviteCode);
-	if (game) {
-		sessionData.currentMapId = game.current_map_id;
-		// Fallback to database if session doesn't have these
-		if (!sessionData.world) {
-			sessionData.world = game.world;
-		}
-		if (!sessionData.startingArea) {
-			sessionData.startingArea = game.starting_area;
-		}
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
 	}
 
-	return c.json(sessionData);
+	try {
+		const gameStateService = new GameStateService(db);
+		const sessionData = await gameStateService.getState(game);
+
+		// Add currentMapId, world, and startingArea from database (in case session doesn't have them)
+		// Create response object with additional properties
+		const response = {
+			...sessionData,
+			currentMapId: game.current_map_id,
+			// Use gameWorld from state, fallback to database world
+			gameWorld: sessionData.gameWorld || game.world,
+			// Ensure startingArea is set
+			startingArea: sessionData.startingArea || game.starting_area,
+		};
+
+		return c.json(response);
+	} catch (error) {
+		console.error('Failed to fetch game state:', error);
+		return c.json({ error: 'Failed to fetch game state', details: error instanceof Error ? error.message : String(error) }, 500);
+	}
 });
 
 games.post('/:inviteCode/join', async (c) => {
@@ -1004,38 +958,37 @@ games.post('/:inviteCode/join', async (c) => {
 		joined_at: Date.now(),
 	});
 
-	const sessionStub = getSessionStub(c.env, inviteCode);
-
-	const joinResponse = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, '/join', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ character, playerId }),
-		}),
-	);
-
-	if (!joinResponse.ok) {
-		const details = await joinResponse.text();
-		return jsonWithStatus(c, { error: 'Failed to join game', details }, joinResponse.status);
-	}
-
-	return c.json(await joinResponse.json());
+	// Return the game state
+	const gameStateService = new GameStateService(db);
+	const state = await gameStateService.getState(game);
+	return c.json(state);
 });
 
 games.get('/:inviteCode/state', async (c) => {
 	const inviteCode = c.req.param('inviteCode');
-	const sessionStub = getSessionStub(c.env, inviteCode);
+	console.log(`[State] Fetching game state for invite code: "${inviteCode}" (length: ${inviteCode.length})`);
 
-	const stateResponse = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, '/state'),
-	);
+	const db = new Database(c.env.DATABASE);
 
-	if (!stateResponse.ok) {
-		const details = await stateResponse.text();
-		return jsonWithStatus(c, { error: 'Failed to fetch game state', details }, stateResponse.status);
+	// getGameByInviteCode now handles case-insensitive fallback internally
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		console.log(`[State] Game not found for invite code: "${inviteCode}"`);
+		return c.json({ error: 'Game not found' }, 404);
 	}
 
-	return c.json(await stateResponse.json());
+	console.log(`[State] Found game ${game.id} for invite code ${inviteCode}, building state...`);
+
+	try {
+		const gameStateService = new GameStateService(db);
+		const state = await gameStateService.getState(game);
+		console.log(`[State] Successfully built game state for ${inviteCode}`);
+		return c.json(state);
+	} catch (error) {
+		console.error(`[State] Failed to fetch game state for ${inviteCode}:`, error);
+		return c.json({ error: 'Failed to fetch game state', details: error instanceof Error ? error.message : String(error) }, 500);
+	}
 });
 
 games.get('/:inviteCode/map', async (c) => {
@@ -1081,7 +1034,39 @@ games.patch('/:inviteCode/map', async (c) => {
 		return c.json({ error: 'Forbidden' }, 403);
 	}
 
-	const payload = (await c.req.json()) as { id?: string; mapId?: string };
+	let payload: { id?: string; mapId?: string };
+	try {
+		const rawBody = await c.req.text();
+		console.log(`[SwitchMap] Raw request body: ${rawBody}, type: ${typeof rawBody}`);
+
+		if (!rawBody || rawBody.trim() === '') {
+			return c.json({ error: 'Request body is required' }, 400);
+		}
+
+		// Check if body is already a string representation of an object
+		if (rawBody === '[object Object]') {
+			console.error('[SwitchMap] Received [object Object] - body was not properly stringified');
+			return c.json({ error: 'Invalid request body format. Expected JSON object.' }, 400);
+		}
+
+		// Try to parse as JSON
+		try {
+			payload = JSON.parse(rawBody) as { id?: string; mapId?: string };
+		} catch (parseError) {
+			// If parsing fails, try to extract mapId from the raw body if it's a simple string
+			console.warn('[SwitchMap] Failed to parse as JSON, trying alternative parsing:', parseError);
+			// If the body is just a mapId string, wrap it
+			if (rawBody && !rawBody.includes('{') && !rawBody.includes('[')) {
+				payload = { mapId: rawBody.trim() };
+			} else {
+				throw parseError;
+			}
+		}
+		console.log('[SwitchMap] Parsed payload:', payload);
+	} catch (error) {
+		console.error('[SwitchMap] Failed to parse request body:', error);
+		return c.json({ error: 'Invalid JSON in request body' }, 400);
+	}
 
 	// Support both 'id' and 'mapId' for backward compatibility
 	const mapId = payload?.mapId || payload?.id;
@@ -1281,7 +1266,7 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 		overrideValidation?: boolean;
 	};
 
-	const sessionStub = getSessionStub(c.env, inviteCode);
+	const gameStateService = new GameStateService(db);
 	let latestGameState: MultiplayerGameState | null = null;
 
 	// Permission check: Host can move any token, players can only move their own character during their turn
@@ -1295,51 +1280,41 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 			}
 
 			// Check if it's currently this character's turn
-			const stateResponse = await sessionStub.fetch(
-				buildDurableRequest(c.req.raw, '/state'),
+			const gameState = await gameStateService.getState(game);
+			latestGameState = gameState;
+			const isPlayerTurn = (
+				gameState.activeTurn?.type === 'player' &&
+				gameState.activeTurn.entityId === body.characterId &&
+				!gameState.pausedTurn
 			);
 
-			if (stateResponse.ok) {
-				const gameState = await stateResponse.json() as MultiplayerGameState;
-				latestGameState = gameState;
-				const isPlayerTurn = (
-					gameState.activeTurn?.type === 'player' &&
-					gameState.activeTurn.entityId === body.characterId &&
-					!gameState.pausedTurn
-				);
+			if (!isPlayerTurn) {
+				// Log the mismatch for debugging
+				console.log('[Token Save] Turn check failed:', {
+					activeTurnType: gameState.activeTurn?.type,
+					activeTurnEntityId: gameState.activeTurn?.entityId,
+					requestCharacterId: body.characterId,
+					pausedTurn: gameState.pausedTurn,
+					isPlayerTurn,
+					entityIdMatch: gameState.activeTurn?.entityId === body.characterId,
+				});
 
-				if (!isPlayerTurn) {
-					// Log the mismatch for debugging
-					console.log('[Token Save] Turn check failed:', {
-						activeTurnType: gameState.activeTurn?.type,
-						activeTurnEntityId: gameState.activeTurn?.entityId,
-						requestCharacterId: body.characterId,
-						pausedTurn: gameState.pausedTurn,
-						isPlayerTurn,
-						entityIdMatch: gameState.activeTurn?.entityId === body.characterId,
-					});
-
-					// If the turn type is player but entityId doesn't match, it might be a different player's turn
-					// If there's no active turn, allow the move (game might not have started turns yet)
-					if (!gameState.activeTurn) {
-						console.warn('[Token Save] No active turn in game state, allowing move');
-						// Allow the move if there's no active turn (game might not have started)
-					} else {
-						return c.json({
-							error: 'Forbidden: Not your turn',
-							details: {
-								activeTurnType: gameState.activeTurn?.type,
-								activeTurnEntityId: gameState.activeTurn?.entityId,
-								requestCharacterId: body.characterId,
-								pausedTurn: gameState.pausedTurn,
-							},
-						}, 403);
-					}
+				// If the turn type is player but entityId doesn't match, it might be a different player's turn
+				// If there's no active turn, allow the move (game might not have started turns yet)
+				if (!gameState.activeTurn) {
+					console.warn('[Token Save] No active turn in game state, allowing move');
+					// Allow the move if there's no active turn (game might not have started)
+				} else {
+					return c.json({
+						error: 'Forbidden: Not your turn',
+						details: {
+							activeTurnType: gameState.activeTurn?.type,
+							activeTurnEntityId: gameState.activeTurn?.entityId,
+							requestCharacterId: body.characterId,
+							pausedTurn: gameState.pausedTurn,
+						},
+					}, 403);
 				}
-			} else {
-				// If we can't fetch game state, allow the move (fail open for now)
-				// This prevents blocking movement if the durable object is unavailable
-				console.warn('[Token Save] Could not fetch game state, allowing move:', stateResponse.status);
 			}
 		} else if (body.tokenType === 'npc') {
 			// Players cannot move NPC tokens
@@ -1384,6 +1359,13 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 	// Use existing token ID if found, otherwise create new one
 	const tokenId = body.id || existingTokenId || createId('token');
 
+	// If token already exists, fetch it to preserve existing foreign key references
+	let existingToken: MapTokenRow | null = null;
+	if (tokenId) {
+		const allTokens = await db.listMapTokensForGame(game.id);
+		existingToken = allTokens.find(t => t.id === tokenId) || null;
+	}
+
 	// Build metadata for elements
 	const metadata = body.metadata || {};
 	if (body.tokenType === 'element' && body.elementType) {
@@ -1424,22 +1406,43 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 		}
 	}
 
+	// Preserve existing foreign key references when updating a token
+	// Only override if explicitly provided in the request
+	const characterId = body.tokenType === 'element'
+		? null
+		: (body.characterId !== undefined ? body.characterId : existingToken?.character_id || null);
+
+	const npcId = body.tokenType === 'element'
+		? null
+		: (body.npcId !== undefined ? body.npcId : existingToken?.npc_id || null);
+
+	// Preserve other existing values if not provided
+	const tokenType = body.tokenType || existingToken?.token_type || 'player';
+	const label = body.label !== undefined
+		? (body.label || (body.tokenType === 'element' ? body.elementType || null : null))
+		: existingToken?.label || null;
+	const color = body.color !== undefined ? body.color : existingToken?.color || null;
+	const hitPoints = existingToken?.hit_points ?? null;
+	const maxHitPoints = existingToken?.max_hit_points ?? null;
+	const status = existingToken?.status || 'idle';
+	const facing = existingToken?.facing ?? 0;
+
 	await db.saveMapToken({
 		id: tokenId,
 		game_id: game.id,
 		map_id: body.mapId || mapRow.id,
-		character_id: body.tokenType === 'element' ? null : body.characterId || null,
-		npc_id: body.tokenType === 'element' ? null : body.npcId || null,
-		token_type: body.tokenType || 'player',
-		label: body.label || (body.tokenType === 'element' ? body.elementType || null : null) || null,
+		character_id: characterId,
+		npc_id: npcId,
+		token_type: tokenType,
+		label,
 		x: body.x,
 		y: body.y,
-		facing: 0,
-		color: body.color || null,
-		status: 'idle',
+		facing,
+		color,
+		status,
 		is_visible: 1,
-		hit_points: null,
-		max_hit_points: null,
+		hit_points: hitPoints,
+		max_hit_points: maxHitPoints,
 		metadata: JSON.stringify(metadata),
 	});
 
@@ -1447,6 +1450,69 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 	const duplicatesRemoved = await db.removeDuplicateTokens(game.id, body.mapId || mapRow.id);
 	if (duplicatesRemoved > 0) {
 		console.log(`Removed ${duplicatesRemoved} duplicate token(s) for game ${game.id}`);
+	}
+
+	// Auto-roll initiative for player and NPC tokens (not elements)
+	if (body.tokenType !== 'element' && game.status === 'active') {
+		try {
+			const gameStateService = new GameStateService(db);
+			let dex: number | undefined;
+			let entityId: string;
+			let entityType: 'player' | 'npc';
+
+			if (body.tokenType === 'player' && body.characterId) {
+				// Player character
+				const characterRow = await db.getCharacterById(body.characterId);
+				if (characterRow) {
+					const character = deserializeCharacter(characterRow);
+					dex = character.stats?.DEX;
+					entityId = body.characterId;
+					entityType = 'player';
+				} else {
+					// Character not found, skip initiative
+					entityId = '';
+				}
+			} else if (body.tokenType === 'npc' && body.npcId) {
+				// NPC token - use tokenId as entityId
+				entityId = tokenId;
+				entityType = 'npc';
+				// Get NPC definition to find DEX
+				const npcDef = await db.getNpcById(body.npcId);
+				if (npcDef) {
+					const stats = JSON.parse(npcDef.stats || '{}');
+					dex = stats.DEX;
+				}
+			} else if (body.tokenType === 'npc' && !body.npcId) {
+				// NPC token without npcId - might be from token metadata, use tokenId
+				entityId = tokenId;
+				entityType = 'npc';
+				// Try to get NPC from token's npc_id if available
+				const savedToken = (await db.listMapTokensForGame(game.id)).find(t => t.id === tokenId);
+				if (savedToken?.npc_id) {
+					const npcDef = await db.getNpcById(savedToken.npc_id);
+					if (npcDef) {
+						const stats = JSON.parse(npcDef.stats || '{}');
+						dex = stats.DEX;
+					}
+				}
+			} else {
+				// Unknown token type, skip
+				entityId = '';
+			}
+
+			// Add to initiative order if we have a valid entity
+			if (entityId && entityType !== undefined) {
+				await gameStateService.addToInitiativeOrder(game, {
+					entityId,
+					type: entityType,
+					dex,
+				});
+				console.log(`[Auto-Initiative] Added ${entityType} ${entityId} to initiative order`);
+			}
+		} catch (error) {
+			console.error('Failed to auto-roll initiative for token:', error);
+			// Don't fail the token placement if initiative fails
+		}
 	}
 
 	if (
@@ -1460,16 +1526,11 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 		const used = latestGameState.activeTurn.movementUsed ?? 0;
 		const updatedMovement = Math.min(speed, used + playerMoveCost);
 		try {
-			await sessionStub.fetch(
-				buildDurableRequest(c.req.raw, '/turn/update', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						movementUsed: updatedMovement,
-						actorEntityId: body.characterId,
-					}),
-				}),
-			);
+			const gameStateService = new GameStateService(db);
+			await gameStateService.updateTurn(game, {
+				movementUsed: updatedMovement,
+				actorEntityId: body.characterId,
+			});
 		} catch (error) {
 			console.error('Failed to update movement usage after token save', error);
 		}
@@ -1496,6 +1557,34 @@ games.delete('/:inviteCode/map/tokens/:tokenId', async (c) => {
 
 	if (!isHostUser(game, user)) {
 		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	// Get token info before deleting to determine entityId for initiative removal
+	const tokens = await db.listMapTokensForGame(game.id);
+	const tokenToDelete = tokens.find(t => t.id === tokenId);
+
+	// Remove from initiative order if game is active
+	if (game.status === 'active' && tokenToDelete) {
+		try {
+			const gameStateService = new GameStateService(db);
+			let entityId: string | null = null;
+
+			if (tokenToDelete.token_type === 'player' && tokenToDelete.character_id) {
+				// Player token - use character_id as entityId
+				entityId = tokenToDelete.character_id;
+			} else if (tokenToDelete.token_type === 'npc') {
+				// NPC token - use tokenId as entityId
+				entityId = tokenId;
+			}
+
+			if (entityId) {
+				await gameStateService.removeFromInitiativeOrder(game, entityId);
+				console.log(`[Auto-Initiative] Removed ${tokenToDelete.token_type} ${entityId} from initiative order`);
+			}
+		} catch (error) {
+			console.error('Failed to remove entity from initiative order:', error);
+			// Don't fail the token deletion if initiative removal fails
+		}
 	}
 
 	await db.deleteMapToken(tokenId);
@@ -1592,6 +1681,19 @@ games.post('/:inviteCode/npcs', async (c) => {
 	const npcMetadata = JSON.parse(npc.metadata || '{}');
 	const tokenId = createId('npc');
 
+	// Generate unique label if not provided - count existing NPCs with same base name
+	let uniqueLabel = payload.label;
+	if (!uniqueLabel) {
+		const existingTokens = await db.listMapTokensForGame(game.id);
+		const baseName = npc.name;
+		const existingNpcsOfType = existingTokens.filter(
+			token => token.token_type === 'npc' &&
+			(token.label === baseName || token.label?.startsWith(`${baseName} `)),
+		);
+		const count = existingNpcsOfType.length;
+		uniqueLabel = count > 0 ? `${baseName} ${count + 1}` : baseName;
+	}
+
 	// Use DM override if provided, otherwise default to 10/10 for health, 3/3 for AP
 	const maxHealth = payload.maxHealth ?? npc.base_health ?? 10;
 	const currentHealth = maxHealth;
@@ -1612,7 +1714,7 @@ games.post('/:inviteCode/npcs', async (c) => {
 		character_id: null,
 		npc_id: npc.id,
 		token_type: 'npc',
-		label: payload.label || npc.name,
+		label: uniqueLabel,
 		x: payload.x,
 		y: payload.y,
 		facing: 0,
@@ -1635,7 +1737,7 @@ games.post('/:inviteCode/npcs', async (c) => {
 		game_id: game.id,
 		npc_id: npc.id,
 		token_id: tokenId,
-		name: payload.label || npc.name,
+		name: uniqueLabel,
 		disposition: npc.disposition,
 		current_health: currentHealth,
 		max_health: maxHealth,
@@ -1649,7 +1751,45 @@ games.post('/:inviteCode/npcs', async (c) => {
 		}),
 	});
 
+	// Auto-roll initiative for NPC if game is active
+	if (game.status === 'active') {
+		try {
+			const gameStateService = new GameStateService(db);
+			// Get DEX from NPC definition
+			const stats = JSON.parse(npc.stats || '{}');
+			const dex = stats.DEX;
+
+			// For NPCs, entityId is the tokenId
+			await gameStateService.addToInitiativeOrder(game, {
+				entityId: tokenId,
+				type: 'npc',
+				dex,
+			});
+			console.log(`[Auto-Initiative] Added NPC ${uniqueLabel} (token ${tokenId}) to initiative order`);
+		} catch (error) {
+			console.error('Failed to auto-roll initiative for NPC:', error);
+			// Don't fail the NPC placement if initiative fails
+		}
+	}
+
 	const mapState = await buildMapState(db, game);
+
+	// Update the game state's map state so /state returns fresh data
+	try {
+		const gameStateService = new GameStateService(db);
+		const currentState = await gameStateService.getState(game);
+		const updatedState: MultiplayerGameState = {
+			...currentState,
+			mapState,
+			lastUpdated: Date.now(),
+		};
+		await gameStateService['saveState'](game.id, updatedState);
+		console.log(`[NPC] Updated game state map state for game ${inviteCode}`);
+	} catch (error) {
+		// Don't fail the request if game state update fails - database is source of truth
+		console.error('[NPC] Failed to update game state map state:', error);
+	}
+
 	return c.json({ tokens: mapState.tokens });
 });
 
@@ -1782,26 +1922,133 @@ games.post('/:inviteCode/characters/:characterId/:action', async (c) => {
 	const body = (await c.req.json().catch(() => ({}))) as { amount?: number };
 	const amount = typeof body.amount === 'number' ? body.amount : 0;
 
-	const characterRow = await db.getCharacterById(characterId);
+	// Check if this is a player character or an NPC token
+	let characterRow = await db.getCharacterById(characterId);
+	let npcInstance = null;
+	let isNPC = false;
+
 	if (!characterRow) {
-		return c.json({ error: 'Character not found' }, 404);
+		// Try to find as NPC token
+		const npcTokens = await db.listMapTokensForGame(game.id);
+		const npcToken = npcTokens.find(t => t.id === characterId);
+		if (npcToken) {
+			npcInstance = await db.getNpcInstanceByToken(npcToken.id);
+			if (npcInstance) {
+				isNPC = true;
+				console.log(`[Damage/Heal] Found NPC instance for token ${characterId}`);
+			}
+		}
 	}
 
-	if (action === 'damage') {
-		const nextHealth = Math.max(0, characterRow.health - Math.max(0, amount));
-		await db.updateCharacter(characterId, { health: nextHealth });
-	} else if (action === 'heal') {
-		const nextHealth = Math.min(
-			characterRow.max_health,
-			characterRow.health + Math.max(0, amount),
-		);
-		await db.updateCharacter(characterId, { health: nextHealth });
+	if (!characterRow && !npcInstance) {
+		return c.json({ error: 'Character or NPC not found' }, 404);
+	}
+
+	let currentHealth: number;
+	let maxHealth: number;
+	let nextHealth: number;
+
+	if (isNPC && npcInstance) {
+		// Handle NPC instance
+		const instanceMetadata = JSON.parse(npcInstance.metadata || '{}');
+		currentHealth = typeof npcInstance.current_health === 'number' ? npcInstance.current_health : (npcInstance.max_health || 10);
+		maxHealth = typeof npcInstance.max_health === 'number' ? npcInstance.max_health : 10;
+
+		console.log(`[Damage/Heal] NPC ${characterId}: currentHealth=${currentHealth}, maxHealth=${maxHealth}, amount=${amount}, action=${action}`);
+
+		if (action === 'damage') {
+			const damageAmount = Math.max(0, amount);
+			nextHealth = Math.max(0, currentHealth - damageAmount);
+			console.log(`[Damage] NPC Calculation: ${currentHealth} - ${damageAmount} = ${currentHealth - damageAmount}, clamped to ${nextHealth}`);
+			await db.saveNpcInstance({
+				...npcInstance,
+				current_health: nextHealth,
+			});
+		} else if (action === 'heal') {
+			nextHealth = Math.min(maxHealth, currentHealth + Math.max(0, amount));
+			console.log(`[Heal] NPC Updating health: ${currentHealth} -> ${nextHealth}`);
+			await db.saveNpcInstance({
+				...npcInstance,
+				current_health: nextHealth,
+			});
+		} else {
+			return c.json({ error: 'Unsupported action' }, 400);
+		}
+	} else if (characterRow) {
+		// Handle player character
+		// Log raw database values for debugging
+		console.log(`[Damage/Heal] Raw DB values for ${characterId}:`, {
+			health: characterRow.health,
+			healthType: typeof characterRow.health,
+			max_health: characterRow.max_health,
+			max_healthType: typeof characterRow.max_health,
+		});
+
+		// Ensure health values are valid numbers
+		currentHealth =
+			characterRow.health !== null && characterRow.health !== undefined && typeof characterRow.health === 'number'
+				? characterRow.health
+				: (characterRow.max_health && typeof characterRow.max_health === 'number' ? characterRow.max_health : 10);
+		maxHealth = typeof characterRow.max_health === 'number' ? characterRow.max_health : 10;
+
+		console.log(`[Damage/Heal] Character ${characterId}: currentHealth=${currentHealth}, maxHealth=${maxHealth}, amount=${amount}, action=${action}`);
+
+		if (action === 'damage') {
+			const damageAmount = Math.max(0, amount);
+			nextHealth = Math.max(0, currentHealth - damageAmount);
+			console.log(`[Damage] Calculation: ${currentHealth} - ${damageAmount} = ${currentHealth - damageAmount}, clamped to ${nextHealth}`);
+			console.log(`[Damage] Updating health: ${currentHealth} -> ${nextHealth}`);
+			await db.updateCharacter(characterId, { health: nextHealth });
+		} else if (action === 'heal') {
+			nextHealth = Math.min(maxHealth, currentHealth + Math.max(0, amount));
+			console.log(`[Heal] Updating health: ${currentHealth} -> ${nextHealth}`);
+			await db.updateCharacter(characterId, { health: nextHealth });
+		} else {
+			return c.json({ error: 'Unsupported action' }, 400);
+		}
 	} else {
-		return c.json({ error: 'Unsupported action' }, 400);
+		return c.json({ error: 'Character or NPC not found' }, 404);
 	}
 
-	const updated = await db.getCharacterById(characterId);
-	return c.json({ character: updated ? deserializeCharacter(updated) : null });
+	// Also update the character in the game state
+	try {
+		const gameStateService = new GameStateService(db);
+		await gameStateService.updateCharacter(game, characterId, { health: nextHealth });
+		console.log(`[Damage/Heal] Updated ${isNPC ? 'NPC' : 'character'} ${characterId} in game state`);
+	} catch (error) {
+		console.error('[Damage/Heal] Failed to update game state:', error);
+		// Don't fail the request if game state update fails - database is source of truth
+	}
+
+	// Return updated character or NPC data
+	if (isNPC && npcInstance) {
+		const updated = await db.getNpcInstanceByToken(characterId);
+		if (updated) {
+			console.log(`[Damage/Heal] Verification - Updated NPC health: ${updated.current_health}/${updated.max_health}`);
+			console.log(`[Damage/Heal] Expected health: ${nextHealth}, Actual DB health: ${updated.current_health}`);
+			if (updated.current_health !== nextHealth) {
+				console.error(`[Damage/Heal] MISMATCH! Expected ${nextHealth} but got ${updated.current_health}`);
+			}
+		}
+		// Return NPC instance data in a format similar to character
+		return c.json({
+			character: updated ? {
+				id: updated.id,
+				health: updated.current_health,
+				maxHealth: updated.max_health,
+			} : null,
+		});
+	} else {
+		const updated = await db.getCharacterById(characterId);
+		if (updated) {
+			console.log(`[Damage/Heal] Verification - Updated character health: ${updated.health}/${updated.max_health}`);
+			console.log(`[Damage/Heal] Expected health: ${nextHealth}, Actual DB health: ${updated.health}`);
+			if (updated.health !== nextHealth) {
+				console.error(`[Damage/Heal] MISMATCH! Expected ${nextHealth} but got ${updated.health}`);
+			}
+		}
+		return c.json({ character: updated ? deserializeCharacter(updated) : null });
+	}
 });
 
 games.post('/:inviteCode/characters/:characterId/actions', async (c) => {
@@ -2035,42 +2282,15 @@ games.post('/:inviteCode/characters/:characterId/perception-check', async (c) =>
 	return c.json(payload);
 });
 
-const forwardJsonRequest = async (c: Context<GamesContext>, path: string) => {
-	const body = await c.req.text();
-	const sessionStub = getSessionStub(c.env, c.req.param('inviteCode'));
-
-	const response = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, path, {
-			method: c.req.method,
-			headers: {
-				'Content-Type': c.req.header('Content-Type') || 'application/json',
-			},
-			body,
-		}),
-	);
-
-	if (!response.ok) {
-		const details = await response.text();
-		return jsonWithStatus(c, { error: 'Durable Object request failed', details }, response.status);
-	}
-
-	if (response.headers.get('Content-Type')?.includes('application/json')) {
-		return jsonWithStatus(c, await response.json(), response.status);
-	}
-
-	return new Response(response.body, {
-		status: response.status,
-		statusText: response.statusText,
-		headers: response.headers,
-	});
-};
+// forwardJsonRequest removed - no longer needed without Durable Object
 
 games.post('/:inviteCode/action', async (c) => {
 	const user = c.get('user');
 	if (!user) {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
-	return forwardJsonRequest(c, '/action');
+	// Action endpoint - placeholder for future implementation
+	return c.json({ ok: true });
 });
 
 games.post('/:inviteCode/dm-action', async (c) => {
@@ -2078,7 +2298,8 @@ games.post('/:inviteCode/dm-action', async (c) => {
 	if (!user) {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
-	return forwardJsonRequest(c, '/dm-action');
+	// DM action endpoint - placeholder for future implementation
+	return c.json({ ok: true });
 });
 
 games.post('/:inviteCode/start', async (c) => {
@@ -2086,7 +2307,28 @@ games.post('/:inviteCode/start', async (c) => {
 	if (!user) {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
-	return forwardJsonRequest(c, '/start');
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	try {
+		const payload = (await c.req.json().catch(() => ({}))) as { gameState?: Partial<MultiplayerGameState> };
+		const gameStateService = new GameStateService(db);
+		const state = await gameStateService.startGame(game, payload);
+		return c.json(state);
+	} catch (error) {
+		console.error('Failed to start game:', error);
+		return c.json({ error: 'Failed to start game', details: error instanceof Error ? error.message : String(error) }, 500);
+	}
 });
 
 games.post('/:inviteCode/initiative/roll', async (c) => {
@@ -2116,6 +2358,15 @@ games.post('/:inviteCode/initiative/roll', async (c) => {
 		}),
 	);
 	const validCharacters = characters.filter((c): c is Character => Boolean(c));
+
+	// Restore all player characters to full health and action points when starting encounter
+	for (const character of validCharacters) {
+		await db.updateCharacter(character.id, {
+			health: character.maxHealth,
+			action_points: character.maxActionPoints,
+		});
+		console.log(`[Initiative] Restored character ${character.id} to full health (${character.maxHealth}) and AP (${character.maxActionPoints})`);
+	}
 
 	// Get all NPC instances on the map
 	const npcInstances = await db.listNpcInstances(game.id);
@@ -2151,24 +2402,30 @@ games.post('/:inviteCode/initiative/roll', async (c) => {
 
 	const validNpcs = npcs.filter((n): n is { id: string; entityId: string; stats: { DEX: number } } => Boolean(n));
 
-	const sessionStub = getSessionStub(c.env, inviteCode);
-	const response = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, '/initiative/roll', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				characters: validCharacters.map(c => ({ id: c.id, stats: c.stats })),
-				npcs: validNpcs,
-			}),
-		}),
-	);
+	// Restore all NPC instances to full health and action points when starting encounter
+	for (const npcInstance of npcInstances) {
+		const instanceMetadata = JSON.parse(npcInstance.metadata || '{}');
+		const maxHealth = npcInstance.max_health || 10;
+		const maxActionPoints = instanceMetadata.maxActionPoints || 3;
 
-	if (!response.ok) {
-		const details = await response.text();
-		return jsonWithStatus(c, { error: 'Failed to roll initiative', details }, response.status);
+		await db.saveNpcInstance({
+			...npcInstance,
+			current_health: maxHealth,
+			metadata: JSON.stringify({
+				...instanceMetadata,
+				actionPoints: maxActionPoints,
+				maxActionPoints,
+			}),
+		});
+		console.log(`[Initiative] Restored NPC instance ${npcInstance.id} to full health (${maxHealth}) and AP (${maxActionPoints})`);
 	}
 
-	const gameState = await response.json() as MultiplayerGameState;
+	const gameStateService = new GameStateService(db);
+	const gameState = await gameStateService.rollInitiative(
+		game,
+		validCharacters.map(c => ({ id: c.id, stats: c.stats })),
+		validNpcs,
+	);
 
 	// Log detailed initiative roll to database
 	try {
@@ -2275,7 +2532,7 @@ games.post('/:inviteCode/initiative/roll', async (c) => {
 		// Continue anyway
 	}
 
-	return jsonWithStatus(c, gameState, response.status);
+	return c.json(gameState);
 });
 
 games.post('/:inviteCode/turn/interrupt', async (c) => {
@@ -2296,19 +2553,9 @@ games.post('/:inviteCode/turn/interrupt', async (c) => {
 		return c.json({ error: 'Forbidden' }, 403);
 	}
 
-	const sessionStub = getSessionStub(c.env, inviteCode);
-	const response = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, '/turn/interrupt', {
-			method: 'POST',
-		}),
-	);
-
-	if (!response.ok) {
-		const details = await response.text();
-		return jsonWithStatus(c, { error: 'Failed to interrupt turn', details }, response.status);
-	}
-
-	return jsonWithStatus(c, await response.json(), response.status);
+	const gameStateService = new GameStateService(db);
+	const gameState = await gameStateService.interruptTurn(game, game.host_id);
+	return c.json(gameState);
 });
 
 games.post('/:inviteCode/turn/resume', async (c) => {
@@ -2329,19 +2576,9 @@ games.post('/:inviteCode/turn/resume', async (c) => {
 		return c.json({ error: 'Forbidden' }, 403);
 	}
 
-	const sessionStub = getSessionStub(c.env, inviteCode);
-	const response = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, '/turn/resume', {
-			method: 'POST',
-		}),
-	);
-
-	if (!response.ok) {
-		const details = await response.text();
-		return jsonWithStatus(c, { error: 'Failed to resume turn', details }, response.status);
-	}
-
-	return jsonWithStatus(c, await response.json(), response.status);
+	const gameStateService = new GameStateService(db);
+	const gameState = await gameStateService.resumeTurn(game);
+	return c.json(gameState);
 });
 
 games.post('/:inviteCode/turn/update', async (c) => {
@@ -2381,21 +2618,9 @@ games.post('/:inviteCode/turn/update', async (c) => {
 		actorEntityId: isHost ? undefined : membership?.character_id,
 	};
 
-	const sessionStub = getSessionStub(c.env, inviteCode);
-	const response = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, '/turn/update', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(payload),
-		}),
-	);
-
-	if (!response.ok) {
-		const details = await response.text();
-		return jsonWithStatus(c, { error: 'Failed to update turn state', details }, response.status);
-	}
-
-	return jsonWithStatus(c, await response.json(), response.status);
+	const gameStateService = new GameStateService(db);
+	const gameState = await gameStateService.updateTurn(game, payload);
+	return c.json(gameState);
 });
 
 games.post('/:inviteCode/turn/end', async (c) => {
@@ -2412,34 +2637,14 @@ games.post('/:inviteCode/turn/end', async (c) => {
 		return c.json({ error: 'Game not found' }, 404);
 	}
 
-	const sessionStub = getSessionStub(c.env, inviteCode);
+	const gameStateService = new GameStateService(db);
 
 	// Get current game state BEFORE ending the turn to capture the turn that's ending
-	const stateResponse = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, '/state'),
-	);
+	const previousGameState = await gameStateService.getState(game);
+	const previousTurn = previousGameState.activeTurn ?? null;
+	const previousCharacters = previousGameState.characters ?? [];
 
-	let previousTurn: MultiplayerGameState['activeTurn'] = null;
-	let previousCharacters: Character[] = [];
-
-	if (stateResponse.ok) {
-		const previousGameState = await stateResponse.json() as MultiplayerGameState;
-		previousTurn = previousGameState.activeTurn ?? null;
-		previousCharacters = previousGameState.characters ?? [];
-	}
-
-	const response = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, '/turn/end', {
-			method: 'POST',
-		}),
-	);
-
-	if (!response.ok) {
-		const details = await response.text();
-		return jsonWithStatus(c, { error: 'Failed to end turn', details }, response.status);
-	}
-
-	const gameState = await response.json() as MultiplayerGameState;
+	const gameState = await gameStateService.endTurn(game);
 
 	// Log turn end to database using the PREVIOUS turn (the one that just ended)
 	try {
@@ -2466,7 +2671,7 @@ games.post('/:inviteCode/turn/end', async (c) => {
 		// Continue anyway
 	}
 
-	return jsonWithStatus(c, gameState, response.status);
+	return c.json(gameState);
 });
 
 games.post('/:inviteCode/turn/start', async (c) => {
@@ -2492,21 +2697,8 @@ games.post('/:inviteCode/turn/start', async (c) => {
 		entityId: string;
 	};
 
-	const sessionStub = getSessionStub(c.env, inviteCode);
-	const response = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, '/turn/start', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(body),
-		}),
-	);
-
-	if (!response.ok) {
-		const details = await response.text();
-		return jsonWithStatus(c, { error: 'Failed to start turn', details }, response.status);
-	}
-
-	const gameState = await response.json() as MultiplayerGameState;
+	const gameStateService = new GameStateService(db);
+	const gameState = await gameStateService.startTurn(game, body.turnType, body.entityId);
 
 	// Log turn start to database
 	try {
@@ -2534,7 +2726,7 @@ games.post('/:inviteCode/turn/start', async (c) => {
 		// Continue anyway
 	}
 
-	return jsonWithStatus(c, gameState, response.status);
+	return c.json(gameState);
 });
 
 games.post('/:inviteCode/turn/next', async (c) => {
@@ -2555,19 +2747,8 @@ games.post('/:inviteCode/turn/next', async (c) => {
 		return c.json({ error: 'Forbidden' }, 403);
 	}
 
-	const sessionStub = getSessionStub(c.env, inviteCode);
-	const response = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, '/turn/next', {
-			method: 'POST',
-		}),
-	);
-
-	if (!response.ok) {
-		const details = await response.text();
-		return jsonWithStatus(c, { error: 'Failed to skip to next turn', details }, response.status);
-	}
-
-	const gameState = await response.json() as MultiplayerGameState;
+	const gameStateService = new GameStateService(db);
+	const gameState = await gameStateService.endTurn(game);
 
 	// Log turn skip to database
 	try {
@@ -2593,7 +2774,7 @@ games.post('/:inviteCode/turn/next', async (c) => {
 		// Continue anyway
 	}
 
-	return jsonWithStatus(c, gameState, response.status);
+	return c.json(gameState);
 });
 
 games.post('/:inviteCode/dice/roll', async (c) => {
@@ -2617,21 +2798,8 @@ games.post('/:inviteCode/dice/roll', async (c) => {
 		purpose?: string;
 	};
 
-	const sessionStub = getSessionStub(c.env, inviteCode);
-	const response = await sessionStub.fetch(
-		buildDurableRequest(c.req.raw, '/dice/roll', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(body),
-		}),
-	);
-
-	if (!response.ok) {
-		const details = await response.text();
-		return jsonWithStatus(c, { error: 'Failed to roll dice', details }, response.status);
-	}
-
-	const rollResult = await response.json() as { notation: string; total: number; rolls: number[]; breakdown: string };
+	const gameStateService = new GameStateService(db);
+	const rollResult = gameStateService.rollDice(body.notation, body.advantage, body.disadvantage);
 
 	// Log dice roll to database
 	try {
@@ -2663,8 +2831,8 @@ games.post('/:inviteCode/dice/roll', async (c) => {
 });
 
 games.get('/:inviteCode/ws', async (c) => {
-	const sessionStub = getSessionStub(c.env, c.req.param('inviteCode'));
-	return sessionStub.fetch(c.req.raw);
+	// WebSocket support not yet implemented
+	return c.json({ error: 'WebSocket support is not yet implemented' }, 501);
 });
 
 // Activity log routes

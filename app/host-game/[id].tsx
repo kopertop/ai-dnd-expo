@@ -53,9 +53,6 @@ const HostGameLobbyScreen: React.FC = () => {
 	const [loading, setLoading] = useState(false);
 	const [currentMapId, setCurrentMapId] = useState<string | null>(null);
 
-	// Derive initial values from session query
-	const sessionCurrentMapId = useMemo(() => session?.currentMapId || null, [session?.currentMapId]);
-	const sessionQuest = useMemo(() => session?.quest || null, [session?.quest]);
 	const insets = useSafeAreaInsets();
 	const { user } = useAuth();
 	const hostId = user?.id ?? null;
@@ -66,6 +63,10 @@ const HostGameLobbyScreen: React.FC = () => {
 	const { data: session, isLoading: sessionLoading, refetch: refetchSession } = useGameSession(
 		shouldFetchSession ? inviteCode : null,
 	);
+
+	// Derive initial values from session query (must be after session is defined)
+	const sessionCurrentMapId = useMemo(() => session?.currentMapId || null, [session?.currentMapId]);
+	const sessionQuest = useMemo(() => session?.quest || null, [session?.quest]);
 	const { data: charactersData, isLoading: charactersLoading } = useGameCharacters(
 		shouldFetchSession ? inviteCode : null,
 	);
@@ -167,6 +168,87 @@ const HostGameLobbyScreen: React.FC = () => {
 		}
 	};
 
+	const ensureGameStarted = useCallback(async () => {
+		if (!session || !hostId) {
+			throw new Error('Session or host ID missing');
+		}
+
+		// If game is already started, no need to do anything
+		if (session.status === 'active') {
+			return;
+		}
+
+		const characters = session.characters && session.characters.length > 0
+			? session.characters
+			: session.players.map(player => {
+				const rosterCharacter = rosterMap.get(player.characterId);
+				if (rosterCharacter) {
+					return rosterCharacter;
+				}
+				const sessionCharacter = session.characters?.find(c => c.id === player.characterId);
+				if (sessionCharacter) {
+					return sessionCharacter;
+				}
+				return {
+					id: player.characterId,
+					level: player.level ?? 1,
+					race: player.race ?? 'Unknown',
+					name: player.name || 'Unknown',
+					class: player.class ?? 'Unknown',
+					stats: {
+						STR: 10,
+						DEX: 10,
+						CON: 10,
+						INT: 10,
+						WIS: 10,
+						CHA: 10,
+					},
+					skills: [],
+					inventory: [],
+					equipped: {},
+					health: 10,
+					maxHealth: 10,
+					actionPoints: 3,
+					maxActionPoints: 3,
+				};
+			});
+
+		// Get world and location from session if not set (for existing games)
+		const gameWorld = selectedWorld?.name ?? session.world ?? session.gameState?.gameWorld ?? 'Unknown';
+		const startingArea = selectedLocation?.name ?? session.startingArea ?? session.gameState?.startingArea ?? 'Unknown';
+		const quest = selectedQuest || session.quest;
+
+		if (!quest) {
+			throw new Error('Quest information is missing');
+		}
+
+		const initialGameState = {
+			sessionId: session.sessionId,
+			inviteCode: session.inviteCode,
+			hostId,
+			quest,
+			players: session.players,
+			characters,
+			playerCharacterId: session.players[0]?.characterId || '',
+			gameWorld,
+			startingArea,
+			status: 'active' as const,
+			createdAt: Date.now(),
+			lastUpdated: Date.now(),
+			messages: [],
+			mapState: null,
+			activityLog: [],
+		};
+
+		await startGameMutation.mutateAsync({
+			path: `/games/${session.inviteCode}/start`,
+			body: {
+				hostId,
+				gameState: initialGameState,
+			},
+		});
+	}, [session, hostId, rosterMap, selectedWorld, selectedLocation, selectedQuest, startGameMutation]);
+
 	const handleStartGame = async () => {
 		if (!session || !hostId) {
 			Alert.alert('Error', 'Session or host ID missing');
@@ -180,79 +262,7 @@ const HostGameLobbyScreen: React.FC = () => {
 
 		setLoading(true);
 		try {
-			const characters = session.characters && session.characters.length > 0
-				? session.characters
-				: session.players.map(player => {
-					const rosterCharacter = rosterMap.get(player.characterId);
-					if (rosterCharacter) {
-						return rosterCharacter;
-					}
-					const sessionCharacter = session.characters?.find(c => c.id === player.characterId);
-					if (sessionCharacter) {
-						return sessionCharacter;
-					}
-					return {
-						id: player.characterId,
-						level: player.level ?? 1,
-						race: player.race ?? 'Unknown',
-						name: player.name || 'Unknown',
-						class: player.class ?? 'Unknown',
-						stats: {
-							STR: 10,
-							DEX: 10,
-							CON: 10,
-							INT: 10,
-							WIS: 10,
-							CHA: 10,
-						},
-						skills: [],
-						inventory: [],
-						equipped: {},
-						health: 10,
-						maxHealth: 10,
-						actionPoints: 3,
-						maxActionPoints: 3,
-					};
-				});
-
-			// Get world and location from session if not set (for existing games)
-			// selectedWorld and selectedLocation are only set during initial game creation
-			// For existing games, use session data
-			const gameWorld = selectedWorld?.name ?? session.world ?? session.gameState?.gameWorld ?? 'Unknown';
-			const startingArea = selectedLocation?.name ?? session.startingArea ?? session.gameState?.startingArea ?? 'Unknown';
-			const quest = selectedQuest || session.quest;
-
-			if (!quest) {
-				Alert.alert('Error', 'Quest information is missing');
-				setLoading(false);
-				return;
-			}
-
-			const initialGameState = {
-				sessionId: session.sessionId,
-				inviteCode: session.inviteCode,
-				hostId,
-				quest,
-				players: session.players,
-				characters,
-				playerCharacterId: session.players[0]?.characterId || '',
-				gameWorld,
-				startingArea,
-				status: 'active' as const,
-				createdAt: Date.now(),
-				lastUpdated: Date.now(),
-				messages: [],
-				mapState: null,
-				activityLog: [],
-			};
-
-			await startGameMutation.mutateAsync({
-				path: `/games/${session.inviteCode}/start`,
-				body: {
-					hostId,
-					gameState: initialGameState,
-				},
-			});
+			await ensureGameStarted();
 			router.replace(`/multiplayer-game?inviteCode=${session.inviteCode}&hostId=${hostId}`);
 		} catch (error) {
 			console.error('Failed to start game:', error);
@@ -435,7 +445,6 @@ const HostGameLobbyScreen: React.FC = () => {
 														: session.gameState?.characters
 											}
 										/>
-										{renderNpcInstances()}
 									</View>
 									<View style={styles.mapColumn}>
 										<MapManagementPanel
@@ -445,18 +454,47 @@ const HostGameLobbyScreen: React.FC = () => {
 												try {
 													await switchMapMutation.mutateAsync({
 														path: `/games/${inviteCode}/map`,
-														body: { mapId },
+														body: JSON.stringify({ mapId }),
 													});
 													setCurrentMapId(mapId);
 												} catch (error) {
 													console.error('Failed to switch map:', error);
 												}
 											}}
+											onStartEncounter={async (mapId) => {
+												if (!session || !hostId) {
+													Alert.alert('Error', 'Session or host ID missing');
+													return;
+												}
+
+												setLoading(true);
+												try {
+													// First switch the map (only if it's different)
+													if (mapId !== currentMapId) {
+														await switchMapMutation.mutateAsync({
+															path: `/games/${inviteCode}/map`,
+															body: JSON.stringify({ mapId }),
+														});
+														setCurrentMapId(mapId);
+													}
+													
+													// Ensure game is started
+													await ensureGameStarted();
+													
+													// Initiative will be automatically rolled when tokens are placed
+													// Navigate to the multiplayer game to show the encounter
+													router.replace(`/multiplayer-game?inviteCode=${inviteCode}&hostId=${hostId}`);
+												} catch (error) {
+													console.error('Failed to start encounter:', error);
+													Alert.alert('Error', error instanceof Error ? error.message : 'Failed to start encounter');
+													setLoading(false);
+												}
+											}}
 											onMapCloned={async (mapId) => {
 												try {
 													await switchMapMutation.mutateAsync({
 														path: `/games/${inviteCode}/map`,
-														body: { mapId },
+														body: JSON.stringify({ mapId }),
 													});
 													setCurrentMapId(mapId);
 												} catch (error) {
@@ -481,22 +519,6 @@ const HostGameLobbyScreen: React.FC = () => {
 										</TouchableOpacity>
 									</View>
 								</View>
-								<TouchableOpacity
-									style={[
-										styles.button,
-										styles.startButton,
-										(loading || session.players.length === 0 || !currentMapId) && styles.buttonDisabled,
-									]}
-									onPress={() => {
-										console.log('Start Encounter clicked', { loading, players: session.players.length, currentMapId });
-										handleStartGame();
-									}}
-									disabled={loading || session.players.length === 0 || !currentMapId}
-								>
-									<ThemedText style={styles.startButtonText}>
-										{loading ? 'Starting...' : !currentMapId ? 'Select a Map First' : 'Start Encounter'}
-									</ThemedText>
-								</TouchableOpacity>
 							</>
 						)}
 					</View>

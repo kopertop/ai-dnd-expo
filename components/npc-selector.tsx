@@ -6,7 +6,7 @@ import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 import { multiplayerClient } from '@/services/api/multiplayer-client';
-import { NpcDefinition } from '@/types/api/multiplayer-api';
+import { NpcDefinition } from '@/types/multiplayer-map';
 
 interface NpcSelectorProps {
 	visible: boolean;

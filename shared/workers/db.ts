@@ -188,10 +188,19 @@ export class Database {
 	}
 
 	async getGameByInviteCode(inviteCode: string): Promise<GameRow | null> {
+		// Try exact match first
 		const result = await this.db.prepare(
 			'SELECT * FROM games WHERE invite_code = ?',
 		).bind(inviteCode).first<GameRow>();
-		return result || null;
+		if (result) {
+			return result;
+		}
+
+		// Fallback: case-insensitive search
+		const allResults = await this.db.prepare(
+			'SELECT * FROM games WHERE UPPER(invite_code) = UPPER(?)',
+		).bind(inviteCode).first<GameRow>();
+		return allResults || null;
 	}
 
 	async getGameById(gameId: string): Promise<GameRow | null> {
@@ -402,6 +411,38 @@ export class Database {
 			'SELECT * FROM game_states WHERE game_id = ?',
 		).bind(gameId).first<GameStateRow>();
 		return result || null;
+	}
+
+	/**
+	 * Update game state with partial data (merges with existing state)
+	 */
+	async updateGameState(gameId: string, updates: Partial<{ state_data: string; map_state: string; log_entries: string }>): Promise<void> {
+		const existing = await this.getGameState(gameId);
+		const now = Date.now();
+
+		if (!existing) {
+			// Create new state if it doesn't exist
+			const stateData = updates.state_data || '{}';
+			const mapState = updates.map_state || '{}';
+			const logEntries = updates.log_entries || '[]';
+			await this.db.prepare(
+				`INSERT INTO game_states (game_id, state_data, map_state, log_entries, state_version, updated_at)
+				 VALUES (?, ?, ?, ?, 1, ?)`,
+			).bind(gameId, stateData, mapState, logEntries, now).run();
+			return;
+		}
+
+		// Merge with existing state
+		const stateData = updates.state_data !== undefined ? updates.state_data : existing.state_data;
+		const mapState = updates.map_state !== undefined ? updates.map_state : existing.map_state;
+		const logEntries = updates.log_entries !== undefined ? updates.log_entries : existing.log_entries;
+		const newVersion = existing.state_version + 1;
+
+		await this.db.prepare(
+			`UPDATE game_states
+			 SET state_data = ?, map_state = ?, log_entries = ?, state_version = ?, updated_at = ?
+			 WHERE game_id = ?`,
+		).bind(stateData, mapState, logEntries, newVersion, now, gameId).run();
 	}
 
 	// Map operations

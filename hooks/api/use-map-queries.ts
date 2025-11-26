@@ -6,10 +6,10 @@ import type {
 	MapTokenListResponse,
 	MapTokenMutationResponse,
 	MovementValidationResponse,
-	NpcDefinition,
 	NpcDefinitionListResponse,
 	NpcInstanceListResponse,
 } from '@/types/api/multiplayer-api';
+import type { NpcDefinition } from '@/types/multiplayer-map';
 
 /**
  * Get map state for a game
@@ -259,10 +259,12 @@ export function usePlaceNpc(inviteCode: string) {
 	return useMutationApi<MapTokenMutationResponse>({
 		method: 'POST',
 		onSuccess: () => {
-			// Invalidate NPC instances, tokens, and map state
+			// Invalidate NPC instances, tokens, map state, and character queries so NPCs show up immediately
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/npc-instances`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/characters`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
 		},
 	});
 }

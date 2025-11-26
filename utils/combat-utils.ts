@@ -1,6 +1,5 @@
-import type { Character as WorkerCharacter, StatBlock as WorkerStatBlock } from '@/shared/workers/types';
-import type { Character as AppCharacter } from '@/types/character';
-import type { StatBlock, StatKey } from '@/types/stats';
+import type { Character as AppCharacter, Character as WorkerCharacter } from '@/types/character';
+import type { StatBlock, StatKey, StatBlock as WorkerStatBlock } from '@/types/stats';
 
 type CharacterStats = Partial<Record<string, number>> | Partial<WorkerStatBlock> | Partial<StatBlock>;
 

@@ -21,20 +21,19 @@ import { TokenDetailModal } from '@/components/token-detail-modal';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import { useCastSpell, useDealDamage, useHealCharacter, usePerformAction, useRollPerceptionCheck } from '@/hooks/api/use-character-queries';
 import {
-	useRollInitiative,
-	useStopGame,
-	useSubmitDMAction,
+    useStopGame,
+    useSubmitDMAction,
 } from '@/hooks/api/use-game-queries';
 import {
-	useAllMaps,
-	useDeleteMapToken,
-	useMapState,
-	useMutateTerrain,
-	usePlaceNpc,
-	usePlacePlayerToken,
-	useSaveMapToken,
-	useSwitchMap,
-	useValidateMovement,
+    useAllMaps,
+    useDeleteMapToken,
+    useMapState,
+    useMutateTerrain,
+    usePlaceNpc,
+    usePlacePlayerToken,
+    useSaveMapToken,
+    useSwitchMap,
+    useValidateMovement,
 } from '@/hooks/api/use-map-queries';
 import { useEndTurn, useInterruptTurn, useNextTurn, useResumeTurn, useStartTurn, useUpdateTurnState } from '@/hooks/api/use-turn-queries';
 import { usePollingGameState } from '@/hooks/use-polling-game-state';
@@ -100,7 +99,7 @@ const MultiplayerGameScreen: React.FC = () => {
 		const player = gameState.players.find(p => p.playerId === playerId);
 		return player?.characterId || '';
 	}, [gameState, playerId]);
-	
+
 	// Stable callback for game state updates
 	const handleGameStateUpdate = useCallback((newState: MultiplayerGameState) => {
 		setGameState(newState);
@@ -301,12 +300,7 @@ const MultiplayerGameScreen: React.FC = () => {
 	// Derive availableMaps from query data
 	const availableMaps = useMemo(() => availableMapsData?.maps || [], [availableMapsData?.maps]);
 
-	// Derive hasRolledInitiative from query data
-	const hasRolledInitiative = useMemo(() => {
-		return Boolean(effectiveGameState?.initiativeOrder && effectiveGameState.initiativeOrder.length > 0);
-	}, [effectiveGameState?.initiativeOrder]);
 	const placePlayerTokenMutation = usePlacePlayerToken(inviteCode || '');
-	const rollInitiativeMutation = useRollInitiative(inviteCode || '');
 	const submitDMActionMutation = useSubmitDMAction(inviteCode || '');
 	const nextTurnMutation = useNextTurn(inviteCode || '');
 	const stopGameMutation = useStopGame(inviteCode || '');
@@ -346,7 +340,7 @@ const MultiplayerGameScreen: React.FC = () => {
 			try {
 				await switchMapMutation.mutateAsync({
 					path: `/games/${inviteCode}/map`,
-					body: { mapId },
+					body: JSON.stringify({ mapId }),
 				});
 				setShowMapSwitcher(false);
 				Alert.alert('Success', 'Map switched successfully');
@@ -450,11 +444,11 @@ const MultiplayerGameScreen: React.FC = () => {
 							await placePlayerTokenMutation.mutateAsync({
 								path: `/games/${inviteCode}/map/tokens`,
 								body: {
-								characterId: character.id,
-								x: tile.x,
-								y: tile.y,
-								label: character.name || 'Unknown',
-								icon: character.icon,
+									characterId: character.id,
+									x: tile.x,
+									y: tile.y,
+									label: character.name || 'Unknown',
+									icon: character.icon,
 									tokenType: 'player',
 								},
 							});
@@ -476,32 +470,6 @@ const MultiplayerGameScreen: React.FC = () => {
 			autoPlaceCharacters();
 		}
 	}, [isHost, sharedMap, charactersWithoutTokens, inviteCode, effectiveGameState?.status, placePlayerTokenMutation]);
-
-	// Auto-roll initiative when encounter starts (map is set, game is active, and all characters are placed)
-	useEffect(() => {
-		if (
-			isHost &&
-			gameState?.mapState &&
-			gameState.status === 'active' &&
-			charactersWithoutTokens.length === 0 && // All characters must be placed
-			!hasRolledInitiative &&
-			!gameState.initiativeOrder &&
-			inviteCode
-		) {
-			const rollInitiative = async () => {
-				try {
-					const response = await rollInitiativeMutation.mutateAsync({
-						path: `/games/${inviteCode}/initiative/roll`,
-					});
-					setGameState(response); // Directly update game state with response
-				} catch (error) {
-					console.error('Failed to roll initiative:', error);
-				}
-			};
-
-			rollInitiative();
-		}
-	}, [isHost, effectiveGameState?.mapState, effectiveGameState?.status, charactersWithoutTokens.length, hasRolledInitiative, effectiveGameState?.initiativeOrder, inviteCode, rollInitiativeMutation]);
 
 	// Track unread messages
 	useEffect(() => {
@@ -558,9 +526,9 @@ const MultiplayerGameScreen: React.FC = () => {
 				await submitDMActionMutation.mutateAsync({
 					path: `/games/${inviteCode}/dm-action`,
 					body: {
-					type: type as 'narrate' | 'update_character' | 'update_npc' | 'advance_story' | 'roll_dice',
-					data,
-					hostId,
+						type: type as 'narrate' | 'update_character' | 'update_npc' | 'advance_story' | 'roll_dice',
+						data,
+						hostId,
 					},
 				});
 			} catch (error) {
@@ -587,24 +555,6 @@ const MultiplayerGameScreen: React.FC = () => {
 
 		if (isHost) {
 			commands.push(
-				{
-					id: 'roll-initiative',
-					label: 'Roll Initiative',
-					description: 'Start encounter by rolling initiative for all characters and NPCs',
-					keywords: ['initiative', 'roll', 'encounter', 'combat', 'start'],
-					category: 'Encounter',
-					action: async () => {
-						try {
-							await rollInitiativeMutation.mutateAsync({
-								path: `/games/${inviteCode}/initiative/roll`,
-							});
-							Alert.alert('Success', 'Initiative rolled!');
-						} catch (error) {
-							console.error('Failed to roll initiative:', error);
-							Alert.alert('Error', error instanceof Error ? error.message : 'Failed to roll initiative');
-						}
-					},
-				},
 				{
 					id: 'add-character-npc',
 					label: 'Add Character/NPC',
@@ -797,17 +747,17 @@ const MultiplayerGameScreen: React.FC = () => {
 					description: 'End your turn immediately',
 					keywords: ['skip', 'end', 'turn'],
 					category: 'Turn',
-							action: async () => {
-								if (inviteCode) {
-									try {
-										await endTurnMutation.mutateAsync({
-											path: `/games/${inviteCode}/turn/end`,
-										});
-										// Force immediate refetch of game state
-										if (refreshGameState) {
-											await refreshGameState();
-										}
-										setShowCommandPalette(false);
+					action: async () => {
+						if (inviteCode) {
+							try {
+								await endTurnMutation.mutateAsync({
+									path: `/games/${inviteCode}/turn/end`,
+								});
+								// Force immediate refetch of game state
+								if (refreshGameState) {
+									await refreshGameState();
+								}
+								setShowCommandPalette(false);
 							} catch (error) {
 								console.error('Failed to skip turn:', error);
 								Alert.alert('Error', error instanceof Error ? error.message : 'Failed to skip turn');
@@ -865,7 +815,7 @@ const MultiplayerGameScreen: React.FC = () => {
 		);
 
 		return commands;
-	}, [isHost, inviteCode, isPlayerTurn, currentCharacterId, performActionMutation, endTurnMutation, rollPerceptionCheckMutation, nextTurnMutation, rollInitiativeMutation, stopGameMutation]);
+	}, [isHost, inviteCode, isPlayerTurn, currentCharacterId, performActionMutation, endTurnMutation, rollPerceptionCheckMutation, nextTurnMutation, stopGameMutation]);
 
 	// Determine available actions for a tile
 	const getAvailableActions = useCallback(
@@ -1115,32 +1065,70 @@ const MultiplayerGameScreen: React.FC = () => {
 		async (characterId: string, amount: number) => {
 			if (!inviteCode) return;
 			try {
-				await dealDamageMutation.mutateAsync({
+				console.log('[Damage] Dealing damage:', { characterId, amount, inviteCode });
+				const result = await dealDamageMutation.mutateAsync({
 					path: `/games/${inviteCode}/characters/${characterId}/damage`,
 					body: { amount },
 				});
+				console.log('[Damage] Mutation successful:', result);
+
+				// Optimistically update local game state if we have the updated character
+				if (result?.character && gameState) {
+					const updatedCharacters = gameState.characters.map(c =>
+						c.id === characterId ? result.character! : c,
+					);
+					setGameState({
+						...gameState,
+						characters: updatedCharacters,
+					});
+				}
+
+				// Force immediate refetch of game state to ensure consistency
+				if (refreshGameState) {
+					await refreshGameState();
+				}
 			} catch (error) {
-				console.error('Failed to deal damage:', error);
-				Alert.alert('Error', 'Failed to deal damage');
+				console.error('[Damage] Failed to deal damage:', error);
+				Alert.alert('Error', `Failed to deal damage: ${error instanceof Error ? error.message : 'Unknown error'}`);
+				throw error; // Re-throw so modal can handle it
 			}
 		},
-		[inviteCode, dealDamageMutation],
+		[inviteCode, dealDamageMutation, refreshGameState, gameState],
 	);
 
 	const handleCharacterHeal = useCallback(
 		async (characterId: string, amount: number) => {
 			if (!inviteCode) return;
 			try {
-				await healCharacterMutation.mutateAsync({
+				console.log('[Heal] Healing character:', { characterId, amount, inviteCode });
+				const result = await healCharacterMutation.mutateAsync({
 					path: `/games/${inviteCode}/characters/${characterId}/heal`,
 					body: { amount },
 				});
+				console.log('[Heal] Mutation successful:', result);
+
+				// Optimistically update local game state if we have the updated character
+				if (result?.character && gameState) {
+					const updatedCharacters = gameState.characters.map(c =>
+						c.id === characterId ? result.character! : c,
+					);
+					setGameState({
+						...gameState,
+						characters: updatedCharacters,
+					});
+				}
+
+				// Force immediate refetch of game state to ensure consistency
+				if (refreshGameState) {
+					await refreshGameState();
+				}
 			} catch (error) {
-				console.error('Failed to heal:', error);
-				Alert.alert('Error', 'Failed to heal character');
+				console.error('[Heal] Failed to heal:', error);
+				Alert.alert('Error', `Failed to heal character: ${error instanceof Error ? error.message : 'Unknown error'}`);
+				throw error; // Re-throw so modal can handle it
 			}
 		},
-		[inviteCode, healCharacterMutation],
+		[inviteCode, healCharacterMutation, refreshGameState, gameState],
 	);
 
 	const handleCharacterSelect = useCallback(
@@ -1230,13 +1218,13 @@ const MultiplayerGameScreen: React.FC = () => {
 						await mutateTerrainMutation.mutateAsync({
 							path: `/games/${inviteCode}/map/terrain`,
 							body: {
-							tiles: [
-								{
-									x,
-									y,
-									terrainType,
-								},
-							],
+								tiles: [
+									{
+										x,
+										y,
+										terrainType,
+									},
+								],
 							},
 						});
 						break;
@@ -1269,12 +1257,12 @@ const MultiplayerGameScreen: React.FC = () => {
 					await saveMapTokenMutation.mutateAsync({
 						path: `/games/${inviteCode}/map/tokens`,
 						body: {
-						tokenType: 'object',
-						x,
-						y,
-						label: itemLabels[selectedItemType] || 'Item',
-						metadata: { itemType: selectedItemType },
-						overrideValidation: true,
+							tokenType: 'object',
+							x,
+							y,
+							label: itemLabels[selectedItemType] || 'Item',
+							metadata: { itemType: selectedItemType },
+							overrideValidation: true,
 						},
 					});
 					setSelectedItemType(null);
@@ -1372,8 +1360,8 @@ const MultiplayerGameScreen: React.FC = () => {
 				await updateTurnStateMutation.mutateAsync({
 					path: `/games/${inviteCode}/turn/update`,
 					body: {
-					...update,
-					actorEntityId: entityId,
+						...update,
+						actorEntityId: entityId,
 					},
 				});
 
@@ -1427,7 +1415,7 @@ const MultiplayerGameScreen: React.FC = () => {
 				// Check if this token is the active turn entity (for movement budget tracking)
 				// For NPCs, activeTurn.entityId is the token.id; for players, it's the characterId
 				// Use effectiveGameState to get the latest movement data from query
-				const isActiveTurnEntity = effectiveGameState?.activeTurn?.entityId === selectedToken.entityId || 
+				const isActiveTurnEntity = effectiveGameState?.activeTurn?.entityId === selectedToken.entityId ||
 					effectiveGameState?.activeTurn?.entityId === selectedToken.id;
 				const activeTurnForToken = isActiveTurnEntity ? effectiveGameState.activeTurn : null;
 
@@ -1693,10 +1681,10 @@ const MultiplayerGameScreen: React.FC = () => {
 								from: { x: activeToken.x, y: activeToken.y },
 								to: { x, y },
 								token: {
-								id: activeToken.id,
+									id: activeToken.id,
 									type: activeToken.type,
-								label: activeToken.label,
-								color: activeToken.color,
+									label: activeToken.label,
+									color: activeToken.color,
 									entityId: activeToken.entityId,
 									metadata: activeToken.metadata,
 								},
@@ -1815,11 +1803,11 @@ const MultiplayerGameScreen: React.FC = () => {
 									path: `/games/${inviteCode}/characters/${activeCharacterId}/actions`,
 									body: {
 										actionType: 'basic_attack',
-									targetId: targetInfo.targetId,
+										targetId: targetInfo.targetId,
 									},
 								});
 								if (response.actionResult) {
-								presentCombatResult(response.actionResult);
+									presentCombatResult(response.actionResult);
 								}
 								await updateTurnUsage({ majorActionUsed: true }, activeCharacterId);
 							} catch (error) {
@@ -2057,17 +2045,34 @@ const MultiplayerGameScreen: React.FC = () => {
 								? async (x, y) => {
 									if (!inviteCode || !sharedMap || !npcPlacementMode) return;
 									try {
-										await placeNpcMutation.mutateAsync({
+										// Count how many NPCs of this type already exist to create unique label
+										const existingNpcsOfType = (sharedMap.tokens || []).filter(
+											token => token.type === 'npc' && token.label?.startsWith(npcPlacementMode.npcName),
+										);
+										const count = existingNpcsOfType.length;
+										const uniqueLabel = count > 0 ? `${npcPlacementMode.npcName} ${count + 1}` : npcPlacementMode.npcName;
+
+										const result = await placeNpcMutation.mutateAsync({
 											path: `/games/${inviteCode}/npcs`,
 											body: {
-											npcId: npcPlacementMode.npcId,
-											x,
-											y,
-											label: npcPlacementMode.npcName,
+												npcId: npcPlacementMode.npcId,
+												x,
+												y,
+												label: uniqueLabel,
 											},
 										});
+
+										// Optimistically update sharedMap with the new NPC token
+										if (result?.tokens && sharedMap) {
+											const newTokens = result.tokens;
+											setSharedMap({
+												...sharedMap,
+												tokens: newTokens,
+											});
+										}
+
 										setNpcPlacementMode(null);
-										Alert.alert('Success', `${npcPlacementMode.npcName} placed on map and added to character list`);
+										Alert.alert('Success', `${uniqueLabel} placed on map and added to character list`);
 									} catch (error) {
 										console.error('Failed to place NPC:', error);
 										Alert.alert('Error', error instanceof Error ? error.message : 'Failed to place NPC');
@@ -2595,7 +2600,7 @@ const MultiplayerGameScreen: React.FC = () => {
 								},
 							});
 							if (response.actionResult) {
-							presentCombatResult(response.actionResult);
+								presentCombatResult(response.actionResult);
 							}
 						} else {
 							if (action.type === 'basic_attack') {
@@ -2611,7 +2616,7 @@ const MultiplayerGameScreen: React.FC = () => {
 									},
 								});
 								if (response.actionResult) {
-								presentCombatResult(response.actionResult);
+									presentCombatResult(response.actionResult);
 								}
 							} else {
 								await performActionMutation.mutateAsync({
@@ -2664,25 +2669,42 @@ const MultiplayerGameScreen: React.FC = () => {
 						const centerX = Math.floor((sharedMap.width || 20) / 2);
 						const centerY = Math.floor((sharedMap.height || 20) / 2);
 						try {
-							await placeNpcMutation.mutateAsync({
+							// Count how many NPCs with this name already exist to create unique label
+							const existingNpcsOfType = (sharedMap.tokens || []).filter(
+								token => token.type === 'npc' && token.label?.startsWith(customNpc.name),
+							);
+							const count = existingNpcsOfType.length;
+							const uniqueLabel = count > 0 ? `${customNpc.name} ${count + 1}` : customNpc.name;
+
+							const result = await placeNpcMutation.mutateAsync({
 								path: `/games/${inviteCode}/npcs`,
 								body: {
-								customNpc: {
-									name: customNpc.name,
-									role: customNpc.role,
-									alignment: customNpc.alignment,
-									disposition: customNpc.disposition,
-									description: customNpc.description,
-									maxHealth: customNpc.maxHealth,
-									armorClass: customNpc.armorClass,
-									color: customNpc.color,
-								},
-								x: centerX,
-								y: centerY,
-								label: customNpc.name,
+									customNpc: {
+										name: customNpc.name,
+										role: customNpc.role,
+										alignment: customNpc.alignment,
+										disposition: customNpc.disposition,
+										description: customNpc.description,
+										maxHealth: customNpc.maxHealth,
+										armorClass: customNpc.armorClass,
+										color: customNpc.color,
+									},
+									x: centerX,
+									y: centerY,
+									label: uniqueLabel,
 								},
 							});
-							Alert.alert('Success', `${customNpc.name} created and placed on map`);
+
+							// Optimistically update sharedMap with the new NPC token
+							if (result?.tokens && sharedMap) {
+								const newTokens = result.tokens;
+								setSharedMap({
+									...sharedMap,
+									tokens: newTokens,
+								});
+							}
+
+							Alert.alert('Success', `${uniqueLabel} created and placed on map`);
 						} catch (error) {
 							console.error('Failed to create NPC:', error);
 							Alert.alert('Error', 'Failed to create NPC');

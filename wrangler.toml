@@ -24,14 +24,6 @@ database_id = "44d163b1-a7e0-43eb-8091-8d0093f100f7"
 migrations_dir = "api/migrations"
 # Note: DB binding is aliased from DATABASE in code (api/src/index.ts) for expo-auth-template compatibility
 
-[[durable_objects.bindings]]
-name = "GAME_SESSION"
-class_name = "GameSession"
-
-[[migrations]]
-tag = "v1"
-new_sqlite_classes = ["GameSession"]
-
 [[kv_namespaces]]
 binding = "QUESTS"
 id = "171ccff48f13430e9ebeeb7ce2646e03"

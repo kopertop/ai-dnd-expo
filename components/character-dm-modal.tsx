@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
@@ -32,10 +32,16 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 	initiativeOrder,
 	npcStats,
 }) => {
-	const [damageAmount, setDamageAmount] = useState('');
-	const [healAmount, setHealAmount] = useState('');
+	const [actionAmount, setActionAmount] = useState('');
+	const [isProcessing, setIsProcessing] = useState(false);
+	const [effectType, setEffectType] = useState<'damage' | 'heal' | null>(null);
+	
+	// Animation values for visual effects
+	const shimmerAnim = useRef(new Animated.Value(0)).current;
+	const pulseAnim = useRef(new Animated.Value(1)).current;
+	const colorAnim = useRef(new Animated.Value(0)).current;
 
-	const entityId = character?.id || npcToken?.id;
+	const entityId = character?.id || npcToken?.entityId || npcToken?.id;
 	const entityName = character?.name || npcToken?.label || 'Unknown';
 	const isNPC = !!npcToken;
 
@@ -48,30 +54,138 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 	const npcMetadata = npcToken?.metadata as { armorClass?: number } | undefined;
 	const armorClass = character ? calculateAC(character) : npcMetadata?.armorClass;
 
+	// Trigger visual effect animation
+	useEffect(() => {
+		if (effectType) {
+			// Reset animations
+			shimmerAnim.setValue(0);
+			pulseAnim.setValue(1);
+			colorAnim.setValue(0);
+
+			// Shimmer effect
+			Animated.sequence([
+				Animated.timing(shimmerAnim, {
+					toValue: 1,
+					duration: 600,
+					useNativeDriver: true,
+				}),
+				Animated.timing(shimmerAnim, {
+					toValue: 0,
+					duration: 300,
+					useNativeDriver: true,
+				}),
+			]).start();
+
+			// Pulse effect
+			Animated.sequence([
+				Animated.timing(pulseAnim, {
+					toValue: 1.15,
+					duration: 200,
+					useNativeDriver: true,
+				}),
+				Animated.timing(pulseAnim, {
+					toValue: 1,
+					duration: 400,
+					useNativeDriver: true,
+				}),
+			]).start();
+
+			// Color flash effect
+			Animated.sequence([
+				Animated.timing(colorAnim, {
+					toValue: 1,
+					duration: 200,
+					useNativeDriver: false,
+				}),
+				Animated.timing(colorAnim, {
+					toValue: 0,
+					duration: 400,
+					useNativeDriver: false,
+				}),
+			]).start(() => {
+				setEffectType(null);
+			});
+		}
+	}, [effectType, shimmerAnim, pulseAnim, colorAnim]);
+
+	// Reset state when modal closes
+	useEffect(() => {
+		if (!visible) {
+			setActionAmount('');
+			setIsProcessing(false);
+			setEffectType(null);
+		}
+	}, [visible]);
+
 	if (!visible || (!character && !npcToken)) {
 		return null;
 	}
 
-	const handleDamage = () => {
-		const amount = parseInt(damageAmount, 10);
+	// Debug: Log character health values
+	if (character) {
+		console.log('[Modal] Character health values:', {
+			characterId: character.id,
+			health: character.health,
+			maxHealth: character.maxHealth,
+			healthType: typeof character.health,
+			character: character,
+		});
+	}
+
+	const handleDamage = async () => {
+		const amount = parseInt(actionAmount, 10);
 		if (!isNaN(amount) && amount > 0 && entityId && onDamage) {
-			onDamage(entityId, amount);
-			setDamageAmount('');
+			console.log('[Modal] Handling damage:', { entityId, amount, characterId: character?.id, npcTokenId: npcToken?.id, npcEntityId: npcToken?.entityId });
+			setIsProcessing(true);
+			setEffectType('damage');
+			try {
+				await onDamage(entityId, amount);
+				setActionAmount('');
+				// Wait a bit longer to ensure the UI updates with the new health value
+				// The optimistic update should make the character prop update immediately
+				setTimeout(() => {
+					onClose();
+				}, 800);
+			} catch (error) {
+				console.error('[Modal] Failed to deal damage:', error);
+				setIsProcessing(false);
+				setEffectType(null);
+				// Don't close modal on error
+			}
+		} else {
+			console.warn('[Modal] Invalid damage request:', { amount, entityId, hasOnDamage: !!onDamage });
 		}
 	};
 
-	const handleHeal = () => {
-		const amount = parseInt(healAmount, 10);
+	const handleHeal = async () => {
+		const amount = parseInt(actionAmount, 10);
 		if (!isNaN(amount) && amount > 0 && entityId && onHeal) {
-			onHeal(entityId, amount);
-			setHealAmount('');
+			console.log('[Modal] Handling heal:', { entityId, amount, characterId: character?.id, npcTokenId: npcToken?.id, npcEntityId: npcToken?.entityId });
+			setIsProcessing(true);
+			setEffectType('heal');
+			try {
+				await onHeal(entityId, amount);
+				setActionAmount('');
+				// Wait a bit longer to ensure the UI updates with the new health value
+				// The optimistic update should make the character prop update immediately
+				setTimeout(() => {
+					onClose();
+				}, 800);
+			} catch (error) {
+				console.error('[Modal] Failed to heal:', error);
+				setIsProcessing(false);
+				setEffectType(null);
+				// Don't close modal on error
+			}
+		} else {
+			console.warn('[Modal] Invalid heal request:', { amount, entityId, hasOnHeal: !!onHeal });
 		}
 	};
 
 	return (
 		<Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-			<TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
-				<ThemedView style={styles.modalContainer} onStartShouldSetResponder={() => true}>
+			<View style={styles.overlay}>
+				<ThemedView style={styles.modalContainer}>
 					<View style={styles.header}>
 						<ThemedText type="subtitle">DM Controls: {entityName}</ThemedText>
 						<TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -159,27 +273,54 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 						</View>
 
 						{/* Health & Action Points */}
-						<View style={styles.section}>
+						<Animated.View 
+							style={[
+								styles.section,
+								{
+									transform: [{ scale: pulseAnim }],
+									backgroundColor: colorAnim.interpolate({
+										inputRange: [0, 1],
+										outputRange: effectType === 'damage' 
+											? ['#F5E6D3', '#FFE6E6'] 
+											: effectType === 'heal'
+											? ['#F5E6D3', '#E6FFE6']
+											: ['#F5E6D3', '#F5E6D3'],
+									}),
+								},
+							]}
+						>
 							<ThemedText style={styles.sectionTitle}>Health & Resources</ThemedText>
 							{character && (
 								<>
 									<View style={styles.statRow}>
 										<ThemedText style={styles.statLabel}>Health:</ThemedText>
-										<TextInput
-											style={styles.statInput}
-											value={character.health.toString()}
-											onChangeText={(text) => {
-												const value = parseInt(text, 10);
-												if (!isNaN(value) && onUpdateCharacter) {
-													onUpdateCharacter(character.id, { health: value });
-												}
-											}}
-											keyboardType="numeric"
-										/>
+										<Animated.View
+											style={[
+												{ position: 'relative' },
+												effectType && {
+													opacity: shimmerAnim.interpolate({
+														inputRange: [0, 0.5, 1],
+														outputRange: [1, 0.3, 1],
+													}),
+												},
+											]}
+										>
+											<TextInput
+												style={styles.statInput}
+												value={(character.health ?? character.maxHealth ?? 10).toString()}
+												onChangeText={(text) => {
+													const value = parseInt(text, 10);
+													if (!isNaN(value) && onUpdateCharacter) {
+														onUpdateCharacter(character.id, { health: value });
+													}
+												}}
+												keyboardType="numeric"
+											/>
+										</Animated.View>
 										<ThemedText style={styles.statLabel}>/</ThemedText>
 										<TextInput
 											style={styles.statInput}
-											value={character.maxHealth.toString()}
+											value={(character.maxHealth ?? 10).toString()}
 											onChangeText={(text) => {
 												const value = parseInt(text, 10);
 												if (!isNaN(value) && onUpdateCharacter) {
@@ -221,9 +362,20 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 								<>
 									<View style={styles.statRow}>
 										<ThemedText style={styles.statLabel}>Health:</ThemedText>
-										<ThemedText style={styles.statValue}>
-											{npcToken.hitPoints ?? 10} / {npcToken.maxHitPoints ?? 10}
-										</ThemedText>
+										<Animated.View
+											style={[
+												effectType && {
+													opacity: shimmerAnim.interpolate({
+														inputRange: [0, 0.5, 1],
+														outputRange: [1, 0.3, 1],
+													}),
+												},
+											]}
+										>
+											<ThemedText style={styles.statValue}>
+												{npcToken.hitPoints ?? 10} / {npcToken.maxHitPoints ?? 10}
+											</ThemedText>
+										</Animated.View>
 									</View>
 									<View style={styles.statRow}>
 										<ThemedText style={styles.statLabel}>Action Points:</ThemedText>
@@ -233,7 +385,7 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 									</View>
 								</>
 							)}
-						</View>
+						</Animated.View>
 
 						{/* Skills */}
 						{character && character.skills && character.skills.length > 0 && (
@@ -253,50 +405,51 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 							<View style={styles.section}>
 								<ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
 								<View style={styles.damageHealRow}>
+									<TextInput
+										style={styles.amountInput}
+										value={actionAmount}
+										onChangeText={setActionAmount}
+										placeholder="Amount"
+										placeholderTextColor="#9B8B7A"
+										keyboardType="numeric"
+										editable={!isProcessing}
+									/>
 									{onDamage && (
-										<View style={styles.damageHealInput}>
-											<TextInput
-												style={styles.amountInput}
-												value={damageAmount}
-												onChangeText={setDamageAmount}
-												placeholder="Damage"
-												placeholderTextColor="#9B8B7A"
-												keyboardType="numeric"
-											/>
-											<TouchableOpacity
-												style={[styles.damageHealButton, styles.damageButton]}
-												onPress={handleDamage}
-												disabled={!damageAmount || isNaN(parseInt(damageAmount, 10)) || !entityId}
-											>
-												<ThemedText style={styles.damageHealButtonText}>Deal Damage</ThemedText>
-											</TouchableOpacity>
-										</View>
+										<TouchableOpacity
+											style={[
+												styles.damageHealButton, 
+												styles.damageButton,
+												isProcessing && styles.buttonDisabled,
+											]}
+											onPress={handleDamage}
+											disabled={!actionAmount || isNaN(parseInt(actionAmount, 10)) || !entityId || isProcessing}
+										>
+											<ThemedText style={styles.damageHealButtonText}>
+												{isProcessing ? 'Processing...' : 'Damage'}
+											</ThemedText>
+										</TouchableOpacity>
 									)}
 									{onHeal && (
-										<View style={styles.damageHealInput}>
-											<TextInput
-												style={styles.amountInput}
-												value={healAmount}
-												onChangeText={setHealAmount}
-												placeholder="Heal"
-												placeholderTextColor="#9B8B7A"
-												keyboardType="numeric"
-											/>
-											<TouchableOpacity
-												style={[styles.damageHealButton, styles.healButton]}
-												onPress={handleHeal}
-												disabled={!healAmount || isNaN(parseInt(healAmount, 10)) || !entityId}
-											>
-												<ThemedText style={styles.damageHealButtonText}>Heal</ThemedText>
-											</TouchableOpacity>
-										</View>
+										<TouchableOpacity
+											style={[
+												styles.damageHealButton, 
+												styles.healButton,
+												isProcessing && styles.buttonDisabled,
+											]}
+											onPress={handleHeal}
+											disabled={!actionAmount || isNaN(parseInt(actionAmount, 10)) || !entityId || isProcessing}
+										>
+											<ThemedText style={styles.damageHealButtonText}>
+												{isProcessing ? 'Processing...' : 'Heal'}
+											</ThemedText>
+										</TouchableOpacity>
 									)}
 								</View>
 							</View>
 						)}
 					</ScrollView>
 				</ThemedView>
-			</TouchableOpacity>
+			</View>
 		</Modal>
 	);
 };
@@ -377,12 +530,10 @@ const styles = StyleSheet.create({
 	damageHealRow: {
 		flexDirection: 'row',
 		gap: 8,
-	},
-	damageHealInput: {
-		flex: 1,
-		gap: 4,
+		alignItems: 'center',
 	},
 	amountInput: {
+		flex: 1,
 		backgroundColor: '#F5E6D3',
 		borderRadius: 6,
 		padding: 8,
@@ -407,6 +558,9 @@ const styles = StyleSheet.create({
 		color: '#FFFFFF',
 		fontWeight: '600',
 		fontSize: 12,
+	},
+	buttonDisabled: {
+		opacity: 0.5,
 	},
 	infoRow: {
 		flexDirection: 'row',

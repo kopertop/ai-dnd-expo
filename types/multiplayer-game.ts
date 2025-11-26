@@ -81,3 +81,24 @@ export type PlayerInfo = z.infer<typeof PlayerInfoSchema>;
 export type GameSessionStatus = z.infer<typeof GameSessionStatusSchema>;
 export type GameMessage = z.infer<typeof GameMessageSchema>;
 
+// Game session interface (used for worker/server-side session management)
+export interface GameSession {
+	id: string;
+	inviteCode: string;
+	hostId: string;
+	questId: string;
+	quest: z.infer<typeof QuestSchema>;
+	players: PlayerInfo[];
+	gameState: MultiplayerGameState | null;
+	status: GameSessionStatus;
+	createdAt: number;
+	lastUpdated: number;
+}
+
+// WebSocket connection interface (used for managing WebSocket connections)
+export interface WebSocketConnection {
+	playerId: string;
+	characterId: string;
+	ws: WebSocket;
+}
+

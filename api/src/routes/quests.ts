@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 
-import { Quest } from '../../../shared/workers/types';
 import type { CloudflareBindings } from '../env';
+
+import { Quest } from '@/types/quest';
 
 const quests = new Hono<{ Bindings: CloudflareBindings }>();
 

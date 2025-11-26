@@ -1,6 +1,6 @@
 import { getRaceBaseSpeed } from '@/constants/race-speed';
-import type { Character as AppCharacter } from '@/types/character';
-import type { Character as WorkerCharacter, StatBlock } from '@/shared/workers/types';
+import type { Character as AppCharacter, Character as WorkerCharacter } from '@/types/character';
+import type { StatBlock } from '@/types/stats';
 
 type CharacterLike = {
 	race?: string;
