@@ -175,9 +175,10 @@ export function useSubmitDMAction(inviteCode: string) {
 	return useMutationApi<GameStateResponse>({
 		method: 'POST',
 		onSuccess: () => {
-			// Invalidate game state
+			// Invalidate game state and characters to ensure UI refreshes
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/characters`] });
 		},
 	});
 }

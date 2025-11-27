@@ -5,12 +5,14 @@ import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 import { STATUS_EFFECT_LIST, type StatusEffect } from '@/constants/status-effects';
+import { useUpdateNpcInstance } from '@/hooks/api/use-npc-queries';
 import { Character } from '@/types/character';
 import { MapToken } from '@/types/multiplayer-map';
 import { STAT_KEYS } from '@/types/stats';
 import { calculateAC } from '@/utils/combat-utils';
 
 interface CharacterDMModalProps {
+	gameId: string;
 	visible: boolean;
 	character: Character | null;
 	npcToken: MapToken | null;
@@ -18,13 +20,12 @@ interface CharacterDMModalProps {
 	onDamage?: (entityId: string, amount: number) => void;
 	onHeal?: (entityId: string, amount: number) => void;
 	onUpdateCharacter?: (characterId: string, updates: Partial<Character>) => void;
-	onUpdateNpc?: (tokenId: string, updates: { statusEffects?: string[] }) => void;
 	initiativeOrder?: Array<{ entityId: string; initiative: number; type: 'player' | 'npc' }>;
 	npcStats?: { STR: number; DEX: number; CON: number; INT: number; WIS: number; CHA: number };
-	npcStatusEffects?: string[]; // Status effects from NPC instance
 }
 
 export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
+	gameId,
 	visible,
 	character,
 	npcToken,
@@ -32,18 +33,17 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 	onDamage,
 	onHeal,
 	onUpdateCharacter,
-	onUpdateNpc,
 	initiativeOrder,
 	npcStats,
-	npcStatusEffects,
 }) => {
+	const updateNpcInstanceMutation = useUpdateNpcInstance(gameId);
 	const [actionAmount, setActionAmount] = useState('');
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [effectType, setEffectType] = useState<'damage' | 'heal' | null>(null);
-	
+
 	// Get current status effects from character or NPC
-	const currentStatusEffects = character?.statusEffects || npcStatusEffects || [];
-	
+	const currentStatusEffects = character?.statusEffects || npcToken?.statusEffects || [];
+
 	// Animation values for visual effects
 	const shimmerAnim = useRef(new Animated.Value(0)).current;
 	const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -51,7 +51,6 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 
 	const entityId = character?.id || npcToken?.entityId || npcToken?.id;
 	const entityName = character?.name || npcToken?.label || 'Unknown';
-	const isNPC = !!npcToken;
 
 	// Get initiative value from initiative order
 	const initiativeEntry = entityId ? initiativeOrder?.find(entry => entry.entityId === entityId) : null;
@@ -195,11 +194,35 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 		const newEffects = hasEffect
 			? currentStatusEffects.filter(e => e !== effectId)
 			: [...currentStatusEffects, effectId];
-		
+
+		console.log('[Status Effects] Toggling:', {
+			effectId,
+			hasEffect,
+			currentEffects: currentStatusEffects,
+			newEffects,
+			characterId: character?.id,
+			npcTokenId: npcToken?.id,
+			hasOnUpdateCharacter: !!onUpdateCharacter,
+		});
+
 		if (character && onUpdateCharacter) {
+			console.log('[Status Effects] Updating character:', character.id, { statusEffects: newEffects });
 			onUpdateCharacter(character.id, { statusEffects: newEffects });
-		} else if (npcToken && onUpdateNpc) {
-			onUpdateNpc(npcToken.id, { statusEffects: newEffects });
+		} else if (npcToken) {
+			console.log('[Status Effects] Updating NPC:', npcToken.id, { statusEffects: newEffects });
+			updateNpcInstanceMutation.mutateAsync({
+				path: `/games/${gameId}/npcs/${npcToken.id}`,
+				body: JSON.stringify({
+					statusEffects: newEffects,
+				}),
+			}).then(() => {
+				// Wait a bit longer to ensure the UI updates with the new health value
+				// The optimistic update should make the character prop update immediately
+				setTimeout(() => {
+					onClose();
+				}, 800);
+
+			});
 		}
 	};
 
@@ -218,15 +241,15 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 						{/* Top Row: 2 Columns */}
 						<View style={styles.topRow}>
 							{/* Column 1: General Info + Health & Resources */}
-							<Animated.View 
+							<Animated.View
 								style={[
 									styles.topColumn,
 									{
 										transform: [{ scale: pulseAnim }],
 										backgroundColor: colorAnim.interpolate({
 											inputRange: [0, 1],
-											outputRange: effectType === 'damage' 
-												? ['#F5E6D3', '#FFE6E6'] 
+											outputRange: effectType === 'damage'
+												? ['#F5E6D3', '#FFE6E6']
 												: effectType === 'heal'
 													? ['#F5E6D3', '#E6FFE6']
 													: ['#F5E6D3', '#F5E6D3'],
@@ -234,42 +257,42 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 									},
 								]}
 							>
-							{character && (
-								<>
-									<View style={styles.statRow}>
-										<ThemedText style={styles.statLabel}>Name:</ThemedText>
-										<ThemedText style={styles.statValue}>{character.name}</ThemedText>
-									</View>
-									<View style={styles.infoRow}>
-										<ThemedText style={styles.infoLabel}>Level:</ThemedText>
-										<ThemedText style={styles.infoValue}>{character.level}</ThemedText>
-									</View>
-									<View style={styles.infoRow}>
-										<ThemedText style={styles.infoLabel}>Race:</ThemedText>
-										<ThemedText style={styles.infoValue}>{character.race}</ThemedText>
-									</View>
-									<View style={styles.infoRow}>
-										<ThemedText style={styles.infoLabel}>Class:</ThemedText>
-										<ThemedText style={styles.infoValue}>{character.class}</ThemedText>
-									</View>
-									{character.trait && (
-										<View style={styles.infoRow}>
-											<ThemedText style={styles.infoLabel}>Trait:</ThemedText>
-											<ThemedText style={styles.infoValue}>{character.trait}</ThemedText>
-										</View>
-									)}
-									{initiativeValue !== undefined && (
+								{character && (
+									<>
 										<View style={styles.statRow}>
-											<ThemedText style={styles.statLabel}>Initiative:</ThemedText>
-											<ThemedText style={styles.statValue}>{initiativeValue}</ThemedText>
+											<ThemedText style={styles.statLabel}>Name:</ThemedText>
+											<ThemedText style={styles.statValue}>{character.name}</ThemedText>
 										</View>
-									)}
-									{armorClass !== undefined && (
 										<View style={styles.infoRow}>
-											<ThemedText style={styles.infoLabel}>AC:</ThemedText>
-											<ThemedText style={styles.infoValue}>{armorClass}</ThemedText>
+											<ThemedText style={styles.infoLabel}>Level:</ThemedText>
+											<ThemedText style={styles.infoValue}>{character.level}</ThemedText>
 										</View>
-									)}
+										<View style={styles.infoRow}>
+											<ThemedText style={styles.infoLabel}>Race:</ThemedText>
+											<ThemedText style={styles.infoValue}>{character.race}</ThemedText>
+										</View>
+										<View style={styles.infoRow}>
+											<ThemedText style={styles.infoLabel}>Class:</ThemedText>
+											<ThemedText style={styles.infoValue}>{character.class}</ThemedText>
+										</View>
+										{character.trait && (
+											<View style={styles.infoRow}>
+												<ThemedText style={styles.infoLabel}>Trait:</ThemedText>
+												<ThemedText style={styles.infoValue}>{character.trait}</ThemedText>
+											</View>
+										)}
+										{initiativeValue !== undefined && (
+											<View style={styles.statRow}>
+												<ThemedText style={styles.statLabel}>Initiative:</ThemedText>
+												<ThemedText style={styles.statValue}>{initiativeValue}</ThemedText>
+											</View>
+										)}
+										{armorClass !== undefined && (
+											<View style={styles.infoRow}>
+												<ThemedText style={styles.infoLabel}>AC:</ThemedText>
+												<ThemedText style={styles.infoValue}>{armorClass}</ThemedText>
+											</View>
+										)}
 										<View style={styles.statRow}>
 											<ThemedText style={styles.statLabel}>Health:</ThemedText>
 											<Animated.View
@@ -404,7 +427,7 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 						</View>
 
 						{/* Status Effects */}
-						{(character || npcToken) && (onUpdateCharacter || onUpdateNpc) && (
+						{(character || npcToken) && (
 							<View style={styles.section}>
 								<ThemedText style={styles.sectionTitle}>Status Effects</ThemedText>
 								<View style={styles.statusEffectsContainer}>
@@ -420,7 +443,9 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 												]}
 												onPress={() => handleToggleStatusEffect(effect.id)}
 											>
-												<ThemedText style={styles.statusEffectIcon}>{effect.icon}</ThemedText>
+												<ThemedText style={styles.statusEffectIcon}>
+													{effect.icon}
+												</ThemedText>
 												<ThemedText
 													style={[
 														styles.statusEffectText,
@@ -470,7 +495,7 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 									{onDamage && (
 										<TouchableOpacity
 											style={[
-												styles.damageHealButton, 
+												styles.damageHealButton,
 												styles.damageButton,
 												isProcessing && styles.buttonDisabled,
 											]}
@@ -485,7 +510,7 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 									{onHeal && (
 										<TouchableOpacity
 											style={[
-												styles.damageHealButton, 
+												styles.damageHealButton,
 												styles.healButton,
 												isProcessing && styles.buttonDisabled,
 											]}

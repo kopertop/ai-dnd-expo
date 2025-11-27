@@ -129,6 +129,7 @@ export interface MapTokenRow {
 	is_visible: number;
 	hit_points: number | null;
 	max_hit_points: number | null;
+	status_effects: string | null;
 	metadata: string;
 	created_at: number;
 	updated_at: number;
@@ -348,8 +349,10 @@ export class Database {
 	async addPlayerToGame(player: Omit<GamePlayerRow, 'id'>): Promise<string> {
 		const id = `gp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 		await this.db.prepare(
-			`INSERT INTO game_players (id, game_id, player_id, player_email, character_id, character_name, joined_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO game_players (
+				id, game_id, player_id, player_email, character_id, character_name, joined_at
+			)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		).bind(
 			id,
 			player.game_id,
@@ -747,26 +750,27 @@ export class Database {
 		const now = Date.now();
 		await this.db.prepare(
 			`INSERT INTO map_tokens (
-                                id, game_id, map_id, character_id, npc_id, token_type, label, x, y, facing, color,
-                                status, is_visible, hit_points, max_hit_points, metadata, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON CONFLICT(id) DO UPDATE SET
-                                game_id = excluded.game_id,
-                                map_id = excluded.map_id,
-                                character_id = excluded.character_id,
-                                npc_id = excluded.npc_id,
-                                token_type = excluded.token_type,
-                                label = excluded.label,
-                                x = excluded.x,
-                                y = excluded.y,
-                                facing = excluded.facing,
-                                color = excluded.color,
-                                status = excluded.status,
-                                is_visible = excluded.is_visible,
-                                hit_points = excluded.hit_points,
-                                max_hit_points = excluded.max_hit_points,
-                                metadata = excluded.metadata,
-                                updated_at = ?`,
+				id, game_id, map_id, character_id, npc_id, token_type, label, x, y, facing, color,
+				status, is_visible, hit_points, max_hit_points, status_effects, metadata, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				ON CONFLICT(id) DO UPDATE SET
+					game_id = excluded.game_id,
+					map_id = excluded.map_id,
+					character_id = excluded.character_id,
+					npc_id = excluded.npc_id,
+					token_type = excluded.token_type,
+					label = excluded.label,
+					x = excluded.x,
+					y = excluded.y,
+					facing = excluded.facing,
+					color = excluded.color,
+					status = excluded.status,
+					is_visible = excluded.is_visible,
+					hit_points = excluded.hit_points,
+					max_hit_points = excluded.max_hit_points,
+					status_effects = excluded.status_effects,
+					metadata = excluded.metadata,
+					updated_at = ?`,
 		).bind(
 			token.id,
 			token.game_id,
@@ -780,9 +784,10 @@ export class Database {
 			token.facing,
 			token.color,
 			token.status,
-			token.is_visible,
+			token.is_visible ?? null,
 			token.hit_points,
 			token.max_hit_points,
+			token.status_effects ?? null,
 			token.metadata,
 			now, // created_at
 			now, // updated_at for INSERT
@@ -814,6 +819,7 @@ export class Database {
 	}
 
 	async saveNpcInstance(instance: Omit<NpcInstanceRow, 'created_at' | 'updated_at'>): Promise<void> {
+		console.log('[Database] Saving NPC instance:', instance);
 		const now = Date.now();
 		await this.db.prepare(
 			`INSERT INTO npc_instances (

@@ -282,9 +282,8 @@ export function useUpdateNpcInstance(inviteCode: string) {
 	return useMutationApi<void>({
 		method: 'PATCH',
 		onSuccess: () => {
-			// Invalidate NPC instances and map state
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/npc-instances`] });
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			queryClient.invalidateQueries();
+			queryClient.refetchQueries();
 		},
 	});
 }

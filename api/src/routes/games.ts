@@ -61,10 +61,6 @@ interface JoinGameBody {
 
 const games = new Hono<GamesContext>();
 
-const normalizePath = (path: string): string => (path.startsWith('/') ? path : `/${path}`);
-
-// buildDurableRequest removed - no longer needed without Durable Object
-
 const jsonWithStatus = <T>(_: Context<GamesContext>, payload: T, status: number) =>
 	new Response(JSON.stringify(payload), {
 		status,
@@ -1423,6 +1419,7 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 	const maxHitPoints = existingToken?.max_hit_points ?? null;
 	const status = existingToken?.status || 'idle';
 	const facing = existingToken?.facing ?? 0;
+	const statusEffects = existingToken?.status_effects || null;
 
 	await db.saveMapToken({
 		id: tokenId,
@@ -1441,6 +1438,7 @@ games.post('/:inviteCode/map/tokens', async (c) => {
 		hit_points: hitPoints,
 		max_hit_points: maxHitPoints,
 		metadata: JSON.stringify(metadata),
+		status_effects: statusEffects,
 	});
 
 	// Auto-roll initiative for player and NPC tokens (not elements)
@@ -1651,6 +1649,7 @@ games.post('/:inviteCode/npcs', async (c) => {
 		label?: string;
 		maxHealth?: number; // DM override for health
 		actionPoints?: number; // DM override for action points
+		statusEffects?: string[];
 		customNpc?: {
 			name: string;
 			role: string;
@@ -1727,6 +1726,7 @@ games.post('/:inviteCode/npcs', async (c) => {
 		is_visible: 1,
 		hit_points: currentHealth,
 		max_hit_points: maxHealth,
+		status_effects: payload.statusEffects ? JSON.stringify(payload.statusEffects) : null,
 		metadata: JSON.stringify(tokenMetadata),
 	});
 
@@ -1876,7 +1876,7 @@ games.patch('/:inviteCode/npcs/:tokenId', async (c) => {
 		}),
 	});
 
-	// Also update the token's hit points and metadata
+	// Also update the token
 	const tokens = await db.listMapTokensForGame(game.id);
 	const token = tokens.find(t => t.id === tokenId);
 	if (token) {
@@ -1885,6 +1885,7 @@ games.patch('/:inviteCode/npcs/:tokenId', async (c) => {
 			...token,
 			hit_points: currentHealth,
 			max_hit_points: maxHealth,
+			status_effects: JSON.stringify(payload.statusEffects ?? JSON.parse(token.status_effects || '[]')),
 			metadata: JSON.stringify({
 				...tokenMetadata,
 				actionPoints,
@@ -2313,12 +2314,27 @@ games.post('/:inviteCode/dm-action', async (c) => {
 		actionType: string;
 		characterId?: string;
 		updates?: Partial<Character>;
+		statusEffects?: string[];
+		health?: number;
+		maxHealth?: number;
+		actionPoints?: number;
+		maxActionPoints?: number;
 		[key: string]: unknown;
 	};
 
-	if (payload.actionType === 'update_character' && payload.characterId && payload.updates) {
+	if (payload.actionType === 'update_character' && payload.characterId) {
 		const characterId = payload.characterId;
-		const updates = payload.updates;
+		// Handle both nested updates object and flattened structure
+		const updates: Partial<Character> = payload.updates || {};
+
+		// Merge flattened fields if they exist
+		if (payload.statusEffects !== undefined) updates.statusEffects = payload.statusEffects;
+		if (payload.health !== undefined) updates.health = payload.health;
+		if (payload.maxHealth !== undefined) updates.maxHealth = payload.maxHealth;
+		if (payload.actionPoints !== undefined) updates.actionPoints = payload.actionPoints;
+		if (payload.maxActionPoints !== undefined) updates.maxActionPoints = payload.maxActionPoints;
+
+		console.log('[DM Action] Updating character:', { characterId, updates, payload });
 
 		// Get existing character
 		const characterRow = await db.getCharacterById(characterId);
@@ -2333,17 +2349,20 @@ games.post('/:inviteCode/dm-action', async (c) => {
 		if (updates.actionPoints !== undefined) serializedUpdates.action_points = updates.actionPoints;
 		if (updates.maxActionPoints !== undefined) serializedUpdates.max_action_points = updates.maxActionPoints;
 		if (updates.statusEffects !== undefined) {
+			console.log('[DM Action] Setting status effects:', updates.statusEffects);
 			serializedUpdates.status_effects = JSON.stringify(updates.statusEffects);
 		}
 
 		// Update character in database
 		await db.updateCharacter(characterId, serializedUpdates);
+		console.log('[DM Action] Character updated in database');
 
 		// Update character in game state if game is active
 		if (game.status === 'active') {
 			try {
 				const gameStateService = new GameStateService(db);
 				await gameStateService.updateCharacter(game, characterId, updates);
+				console.log('[DM Action] Character updated in game state');
 			} catch (error) {
 				console.error('Failed to update character in game state:', error);
 				// Don't fail the request if game state update fails
@@ -2352,8 +2371,10 @@ games.post('/:inviteCode/dm-action', async (c) => {
 
 		// Return updated character
 		const updated = await db.getCharacterById(characterId);
+		const deserialized = updated ? deserializeCharacter(updated) : null;
+		console.log('[DM Action] Returning updated character:', deserialized?.statusEffects);
 		return c.json({
-			character: updated ? deserializeCharacter(updated) : null,
+			character: deserialized,
 		});
 	}
 

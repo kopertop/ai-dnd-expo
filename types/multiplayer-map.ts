@@ -20,6 +20,7 @@ export const MapTokenSchema = z.object({
 	hitPoints: z.number().optional(),
 	maxHitPoints: z.number().optional(),
 	metadata: z.record(z.unknown()).optional(),
+	statusEffects: z.array(z.string()).optional(),
 });
 
 export const TerrainCellSchema = z.object({

@@ -104,16 +104,16 @@ const convertTokens = (tokens?: MapTokenRow[]): MapToken[] => {
 	return tokens.map(token => {
 		const metadata = parseJson<Record<string, unknown>>(token.metadata, {});
 		const icon =
-                        typeof metadata.icon === 'string'
-                        	? metadata.icon
-                        	: typeof metadata.image === 'string'
-                        		? metadata.image
-                        		: undefined;
+			typeof metadata.icon === 'string'
+				? metadata.icon
+				: typeof metadata.image === 'string'
+					? metadata.image
+					: undefined;
 
 		// For NPCs, entityId should be the token.id (unique per instance)
 		// For players, entityId should be the character_id
 		// This ensures each NPC instance has a unique entityId for initiative tracking
-		const entityId = token.token_type === 'npc' 
+		const entityId = token.token_type === 'npc'
 			? token.id  // NPC: use token ID as entityId (unique per instance)
 			: token.character_id ?? undefined;  // Player: use character_id
 
@@ -128,6 +128,7 @@ const convertTokens = (tokens?: MapTokenRow[]): MapToken[] => {
 			color: token.color ?? undefined,
 			hitPoints: token.hit_points ?? undefined,
 			maxHitPoints: token.max_hit_points ?? undefined,
+			statusEffects: parseJson<string[]>(token.status_effects, []),
 			metadata,
 			icon,
 		};
