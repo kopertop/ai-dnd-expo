@@ -135,21 +135,6 @@ export interface MapTokenRow {
 	updated_at: number;
 }
 
-export interface NpcInstanceRow {
-	id: string;
-	game_id: string;
-	npc_id: string;
-	token_id: string;
-	name: string;
-	disposition: string;
-	current_health: number;
-	max_health: number;
-	status_effects: string;
-	is_friendly: number;
-	metadata: string;
-	created_at: number;
-	updated_at: number;
-}
 
 export interface ActivityLogRow {
 	id: string;
@@ -746,6 +731,13 @@ export class Database {
 		return result.results || [];
 	}
 
+	async getMapTokenById(tokenId: string): Promise<MapTokenRow | null> {
+		const result = await this.db.prepare(
+			'SELECT * FROM map_tokens WHERE id = ?',
+		).bind(tokenId).first<MapTokenRow>();
+		return result || null;
+	}
+
 	async saveMapToken(token: Omit<MapTokenRow, 'created_at' | 'updated_at'>): Promise<void> {
 		const now = Date.now();
 		await this.db.prepare(
@@ -795,6 +787,28 @@ export class Database {
 		).run();
 	}
 
+	async updateMapToken(tokenId: string, updates: Partial<MapTokenRow>): Promise<void> {
+		const fields: string[] = [];
+		const values: any[] = [];
+
+		Object.entries(updates).forEach(([key, value]) => {
+			if (key !== 'id' && value !== undefined) {
+				fields.push(`${key} = ?`);
+				values.push(value);
+			}
+		});
+
+		if (fields.length === 0) return;
+
+		fields.push('updated_at = ?');
+		values.push(Date.now());
+		values.push(tokenId);
+
+		await this.db.prepare(
+			`UPDATE map_tokens SET ${fields.join(', ')} WHERE id = ?`,
+		).bind(...values).run();
+	}
+
 	async deleteMapToken(tokenId: string): Promise<void> {
 		await this.db.prepare('DELETE FROM map_tokens WHERE id = ?').bind(tokenId).run();
 	}
@@ -803,73 +817,11 @@ export class Database {
 		await this.db.prepare('DELETE FROM map_tokens WHERE game_id = ?').bind(gameId).run();
 	}
 
-	// NPC instance operations
-	async listNpcInstances(gameId: string): Promise<NpcInstanceRow[]> {
-		const result = await this.db.prepare(
-			'SELECT * FROM npc_instances WHERE game_id = ? ORDER BY updated_at DESC',
-		).bind(gameId).all<NpcInstanceRow>();
-		return result.results || [];
-	}
-
-	async getNpcInstanceByToken(tokenId: string): Promise<NpcInstanceRow | null> {
-		const result = await this.db.prepare(
-			'SELECT * FROM npc_instances WHERE token_id = ?',
-		).bind(tokenId).first<NpcInstanceRow>();
-		return result || null;
-	}
-
-	async saveNpcInstance(instance: Omit<NpcInstanceRow, 'created_at' | 'updated_at'>): Promise<void> {
-		console.log('[Database] Saving NPC instance:', instance);
-		const now = Date.now();
-		await this.db.prepare(
-			`INSERT INTO npc_instances (
-				id, game_id, npc_id, token_id, name, disposition, current_health, max_health,
-				status_effects, is_friendly, metadata, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT(id) DO UPDATE SET
-				game_id = excluded.game_id,
-				npc_id = excluded.npc_id,
-				token_id = excluded.token_id,
-				name = excluded.name,
-				disposition = excluded.disposition,
-				current_health = excluded.current_health,
-				max_health = excluded.max_health,
-				status_effects = excluded.status_effects,
-				is_friendly = excluded.is_friendly,
-				metadata = excluded.metadata,
-				updated_at = ?`,
-		).bind(
-			instance.id,
-			instance.game_id,
-			instance.npc_id,
-			instance.token_id,
-			instance.name,
-			instance.disposition,
-			instance.current_health,
-			instance.max_health,
-			instance.status_effects,
-			instance.is_friendly,
-			instance.metadata,
-			now,
-			now,
-			now,
-		).run();
-	}
-
-	async deleteNpcInstance(instanceId: string): Promise<void> {
-		await this.db.prepare('DELETE FROM npc_instances WHERE id = ?').bind(instanceId).run();
-	}
-
-	async deleteNpcInstanceByToken(tokenId: string): Promise<void> {
-		await this.db.prepare('DELETE FROM npc_instances WHERE token_id = ?').bind(tokenId).run();
-	}
 
 	async deleteGame(gameId: string): Promise<void> {
 		// Delete related data first (foreign key constraints will handle game_players via CASCADE)
 		// Delete activity logs
 		await this.db.prepare('DELETE FROM activity_logs WHERE game_id = ?').bind(gameId).run();
-		// Delete NPC instances
-		await this.db.prepare('DELETE FROM npc_instances WHERE game_id = ?').bind(gameId).run();
 		// Delete map tokens
 		await this.db.prepare('DELETE FROM map_tokens WHERE game_id = ?').bind(gameId).run();
 		// Delete game states

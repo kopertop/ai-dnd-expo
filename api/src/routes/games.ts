@@ -1,7 +1,7 @@
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 
-import { CharacterRow, Database, GameRow, MapRow, MapTokenRow, NpcInstanceRow, NpcRow } from '../../../shared/workers/db';
+import { CharacterRow, Database, GameRow, MapRow, MapTokenRow, NpcRow } from '../../../shared/workers/db';
 import { generateProceduralMap, MapGeneratorPreset } from '../../../shared/workers/map-generator';
 import { generateInviteCode } from '../../../shared/workers/session-manager';
 import type { CloudflareBindings } from '../env';
@@ -84,7 +84,7 @@ type CharacterAttackTarget = {
 
 type NpcAttackTarget = {
 	type: 'npc';
-	instance: NpcInstanceRow;
+	token: MapTokenRow;
 	npcDefinition?: NpcRow | null;
 	armorClass: number;
 };
@@ -133,13 +133,14 @@ const resolveAttackTarget = async (db: Database, targetId: string): Promise<Atta
 		};
 	}
 
-	const npcInstance = await db.getNpcInstanceByToken(targetId);
-	if (npcInstance) {
-		const npcDefinition = await db.getNpcById(npcInstance.npc_id);
+	// Check if targetId is an NPC token
+	const npcToken = await db.getMapTokenById(targetId);
+	if (npcToken && npcToken.token_type === 'npc' && npcToken.npc_id) {
+		const npcDefinition = await db.getNpcById(npcToken.npc_id);
 		const armorClass = npcDefinition?.base_armor_class ?? 12;
 		return {
 			type: 'npc',
-			instance: npcInstance,
+			token: npcToken,
 			npcDefinition,
 			armorClass,
 		};
@@ -150,7 +151,7 @@ const resolveAttackTarget = async (db: Database, targetId: string): Promise<Atta
 
 const applyDamageToTarget = async (db: Database, target: AttackTarget, damage: number): Promise<number> => {
 	if (damage <= 0) {
-		return target.type === 'character' ? target.row.health : target.instance.current_health;
+		return target.type === 'character' ? target.row.health : (target.token.hit_points ?? target.token.max_hit_points ?? 0);
 	}
 
 	if (target.type === 'character') {
@@ -159,12 +160,10 @@ const applyDamageToTarget = async (db: Database, target: AttackTarget, damage: n
 		return remainingHealth;
 	}
 
-	const remainingHealth = Math.max(0, target.instance.current_health - damage);
-	await db.saveNpcInstance({
-		...target.instance,
-		current_health: remainingHealth,
-		metadata: target.instance.metadata,
-		status_effects: target.instance.status_effects,
+	const currentHealth = target.token.hit_points ?? target.token.max_hit_points ?? 0;
+	const remainingHealth = Math.max(0, currentHealth - damage);
+	await db.updateMapToken(target.token.id, {
+		hit_points: remainingHealth,
 	});
 	return remainingHealth;
 };
@@ -224,7 +223,7 @@ const handleBasicAttack = async ({
 	let damageRoll: DiceRollSummary | undefined;
 	let damageDealt = 0;
 	let remainingHealth =
-		target.type === 'character' ? target.row.health : target.instance.current_health;
+		target.type === 'character' ? target.row.health : (target.token.hit_points ?? target.token.max_hit_points ?? 0);
 
 	if (hit) {
 		const abilityKey = attackStyle === 'ranged' ? 'DEX' : 'STR';
@@ -240,11 +239,11 @@ const handleBasicAttack = async ({
 		attackStyle,
 		target: {
 			type: target.type,
-			id: target.type === 'character' ? target.row.id : target.instance.token_id,
-			name: target.type === 'character' ? target.character.name : target.instance.name,
+			id: target.type === 'character' ? target.row.id : target.token.id,
+			name: target.type === 'character' ? target.character.name : (target.token.label || 'Unknown'),
 			armorClass: target.armorClass,
 			remainingHealth,
-			maxHealth: target.type === 'character' ? target.row.max_health : target.instance.max_health,
+			maxHealth: target.type === 'character' ? target.row.max_health : (target.token.max_hit_points ?? 0),
 		},
 		attackRoll: {
 			notation: attackNotation,
@@ -289,11 +288,11 @@ const buildTargetSummary = (target?: AttackTarget | null): CombatTargetSummary |
 	}
 	return {
 		type: target.type,
-		id: target.type === 'character' ? target.row.id : target.instance.token_id,
-		name: target.type === 'character' ? target.character.name : target.instance.name,
+		id: target.type === 'character' ? target.row.id : target.token.id,
+		name: target.type === 'character' ? target.character.name : (target.token.label || 'Unknown'),
 		armorClass: target.armorClass,
-		remainingHealth: target.type === 'character' ? target.row.health : target.instance.current_health,
-		maxHealth: target.type === 'character' ? target.row.max_health : target.instance.max_health,
+		remainingHealth: target.type === 'character' ? target.row.health : (target.token.hit_points ?? target.token.max_hit_points ?? 0),
+		maxHealth: target.type === 'character' ? target.row.max_health : (target.token.max_hit_points ?? 0),
 	};
 };
 
@@ -471,18 +470,18 @@ const slugifyName = (value: string) =>
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-+|-+$/g, '') || 'npc';
 
-const npcInstanceToResponse = (instance: NpcInstanceRow) => ({
-	id: instance.id,
-	tokenId: instance.token_id,
-	npcId: instance.npc_id,
-	name: instance.name,
-	disposition: instance.disposition,
-	currentHealth: instance.current_health,
-	maxHealth: instance.max_health,
-	statusEffects: JSON.parse(instance.status_effects || '[]'),
-	isFriendly: Boolean(instance.is_friendly),
-	metadata: JSON.parse(instance.metadata || '{}'),
-	updatedAt: instance.updated_at,
+const npcTokenToResponse = (token: MapTokenRow) => ({
+	id: token.id,
+	tokenId: token.id,
+	npcId: token.npc_id,
+	name: token.label || 'Unknown',
+	disposition: token.status,
+	currentHealth: token.hit_points ?? token.max_hit_points ?? 0,
+	maxHealth: token.max_hit_points ?? 0,
+	statusEffects: token.status_effects ? JSON.parse(token.status_effects) : [],
+	isFriendly: token.status !== 'hostile',
+	metadata: JSON.parse(token.metadata || '{}'),
+	updatedAt: token.updated_at,
 });
 
 const createCustomNpcDefinition = async (
@@ -1579,7 +1578,6 @@ games.delete('/:inviteCode/map/tokens/:tokenId', async (c) => {
 	}
 
 	await db.deleteMapToken(tokenId);
-	await db.deleteNpcInstanceByToken(tokenId);
 	const mapState = await buildMapState(db, game);
 	return c.json({ tokens: mapState.tokens });
 });
@@ -1730,25 +1728,6 @@ games.post('/:inviteCode/npcs', async (c) => {
 		metadata: JSON.stringify(tokenMetadata),
 	});
 
-	await db.saveNpcInstance({
-		id: createId('npci'),
-		game_id: game.id,
-		npc_id: npc.id,
-		token_id: tokenId,
-		name: uniqueLabel,
-		disposition: npc.disposition,
-		current_health: currentHealth,
-		max_health: maxHealth,
-		status_effects: JSON.stringify([]),
-		is_friendly: npc.disposition === 'hostile' ? 0 : 1,
-		metadata: JSON.stringify({
-			color: npcMetadata.color || payload.customNpc?.color || '#3B2F1B',
-			role: npc.role,
-			actionPoints,
-			maxActionPoints,
-		}),
-	});
-
 	// Auto-roll initiative for NPC if game is active
 	if (game.status === 'active') {
 		try {
@@ -1809,8 +1788,9 @@ games.get('/:inviteCode/npc-instances', async (c) => {
 		return c.json({ error: 'Forbidden' }, 403);
 	}
 
-	const instances = await db.listNpcInstances(game.id);
-	return c.json({ instances: instances.map(npcInstanceToResponse) });
+	const tokens = await db.listMapTokensForGame(game.id);
+	const npcTokens = tokens.filter(t => t.token_type === 'npc');
+	return c.json({ instances: npcTokens.map(npcTokenToResponse) });
 });
 
 games.patch('/:inviteCode/npcs/:tokenId', async (c) => {
@@ -1843,59 +1823,41 @@ games.patch('/:inviteCode/npcs/:tokenId', async (c) => {
 		name?: string;
 	};
 
-	const instance = await db.getNpcInstanceByToken(tokenId);
-	if (!instance) {
-		return c.json({ error: 'NPC instance not found' }, 404);
+	const token = await db.getMapTokenById(tokenId);
+	if (!token || token.token_type !== 'npc') {
+		return c.json({ error: 'NPC token not found' }, 404);
 	}
 
-	const maxHealth = typeof payload.maxHealth === 'number' ? payload.maxHealth : instance.max_health;
+	const maxHealth = typeof payload.maxHealth === 'number' ? payload.maxHealth : (token.max_hit_points ?? 0);
 	const currentHealth =
 		typeof payload.currentHealth === 'number'
 			? Math.max(0, Math.min(maxHealth, payload.currentHealth))
-			: instance.current_health;
+			: (token.hit_points ?? maxHealth);
 
-	const instanceMetadata = JSON.parse(instance.metadata || '{}');
-	const actionPoints = typeof payload.actionPoints === 'number' ? payload.actionPoints : (instanceMetadata.actionPoints ?? 3);
-	const maxActionPoints = typeof payload.maxActionPoints === 'number' ? payload.maxActionPoints : (instanceMetadata.maxActionPoints ?? 3);
+	const tokenMetadata = JSON.parse(token.metadata || '{}');
+	const actionPoints = typeof payload.actionPoints === 'number' ? payload.actionPoints : (tokenMetadata.actionPoints ?? 3);
+	const maxActionPoints = typeof payload.maxActionPoints === 'number' ? payload.maxActionPoints : (tokenMetadata.maxActionPoints ?? 3);
 
-	await db.saveNpcInstance({
-		...instance,
-		name: payload.name ?? instance.name,
-		current_health: currentHealth,
-		max_health: maxHealth,
-		status_effects: JSON.stringify(payload.statusEffects ?? JSON.parse(instance.status_effects || '[]')),
-		is_friendly:
-			typeof payload.isFriendly === 'boolean'
-				? (payload.isFriendly ? 1 : 0)
-				: instance.is_friendly,
+	const newStatus = typeof payload.isFriendly === 'boolean'
+		? (payload.isFriendly ? 'friendly' : 'hostile')
+		: token.status;
+
+	await db.updateMapToken(tokenId, {
+		label: payload.name ?? token.label,
+		hit_points: currentHealth,
+		max_hit_points: maxHealth,
+		status_effects: payload.statusEffects ? JSON.stringify(payload.statusEffects) : token.status_effects,
+		status: newStatus,
 		metadata: JSON.stringify({
-			...instanceMetadata,
+			...tokenMetadata,
 			actionPoints,
 			maxActionPoints,
 			...(payload.metadata ?? {}),
 		}),
 	});
 
-	// Also update the token
-	const tokens = await db.listMapTokensForGame(game.id);
-	const token = tokens.find(t => t.id === tokenId);
-	if (token) {
-		const tokenMetadata = JSON.parse(token.metadata || '{}');
-		await db.saveMapToken({
-			...token,
-			hit_points: currentHealth,
-			max_hit_points: maxHealth,
-			status_effects: JSON.stringify(payload.statusEffects ?? JSON.parse(token.status_effects || '[]')),
-			metadata: JSON.stringify({
-				...tokenMetadata,
-				actionPoints,
-				maxActionPoints,
-			}),
-		});
-	}
-
-	const refreshed = await db.getNpcInstanceByToken(tokenId);
-	return c.json({ instance: refreshed ? npcInstanceToResponse(refreshed) : null });
+	const refreshed = await db.getMapTokenById(tokenId);
+	return c.json({ instance: refreshed ? npcTokenToResponse(refreshed) : null });
 });
 
 games.post('/:inviteCode/characters/:characterId/:action', async (c) => {
@@ -1923,23 +1885,19 @@ games.post('/:inviteCode/characters/:characterId/:action', async (c) => {
 
 	// Check if this is a player character or an NPC token
 	let characterRow = await db.getCharacterById(characterId);
-	let npcInstance = null;
+	let npcToken = null;
 	let isNPC = false;
 
 	if (!characterRow) {
 		// Try to find as NPC token
-		const npcTokens = await db.listMapTokensForGame(game.id);
-		const npcToken = npcTokens.find(t => t.id === characterId);
-		if (npcToken) {
-			npcInstance = await db.getNpcInstanceByToken(npcToken.id);
-			if (npcInstance) {
-				isNPC = true;
-				console.log(`[Damage/Heal] Found NPC instance for token ${characterId}`);
-			}
+		npcToken = await db.getMapTokenById(characterId);
+		if (npcToken && npcToken.token_type === 'npc') {
+			isNPC = true;
+			console.log(`[Damage/Heal] Found NPC token ${characterId}`);
 		}
 	}
 
-	if (!characterRow && !npcInstance) {
+	if (!characterRow && !npcToken) {
 		return c.json({ error: 'Character or NPC not found' }, 404);
 	}
 
@@ -1947,11 +1905,10 @@ games.post('/:inviteCode/characters/:characterId/:action', async (c) => {
 	let maxHealth: number;
 	let nextHealth: number;
 
-	if (isNPC && npcInstance) {
-		// Handle NPC instance
-		const instanceMetadata = JSON.parse(npcInstance.metadata || '{}');
-		currentHealth = typeof npcInstance.current_health === 'number' ? npcInstance.current_health : (npcInstance.max_health || 10);
-		maxHealth = typeof npcInstance.max_health === 'number' ? npcInstance.max_health : 10;
+	if (isNPC && npcToken) {
+		// Handle NPC token
+		currentHealth = npcToken.hit_points ?? npcToken.max_hit_points ?? 10;
+		maxHealth = npcToken.max_hit_points ?? 10;
 
 		console.log(`[Damage/Heal] NPC ${characterId}: currentHealth=${currentHealth}, maxHealth=${maxHealth}, amount=${amount}, action=${action}`);
 
@@ -1959,16 +1916,14 @@ games.post('/:inviteCode/characters/:characterId/:action', async (c) => {
 			const damageAmount = Math.max(0, amount);
 			nextHealth = Math.max(0, currentHealth - damageAmount);
 			console.log(`[Damage] NPC Calculation: ${currentHealth} - ${damageAmount} = ${currentHealth - damageAmount}, clamped to ${nextHealth}`);
-			await db.saveNpcInstance({
-				...npcInstance,
-				current_health: nextHealth,
+			await db.updateMapToken(characterId, {
+				hit_points: nextHealth,
 			});
 		} else if (action === 'heal') {
 			nextHealth = Math.min(maxHealth, currentHealth + Math.max(0, amount));
 			console.log(`[Heal] NPC Updating health: ${currentHealth} -> ${nextHealth}`);
-			await db.saveNpcInstance({
-				...npcInstance,
-				current_health: nextHealth,
+			await db.updateMapToken(characterId, {
+				hit_points: nextHealth,
 			});
 		} else {
 			return c.json({ error: 'Unsupported action' }, 400);
@@ -2020,21 +1975,23 @@ games.post('/:inviteCode/characters/:characterId/:action', async (c) => {
 	}
 
 	// Return updated character or NPC data
-	if (isNPC && npcInstance) {
-		const updated = await db.getNpcInstanceByToken(characterId);
+	if (isNPC && npcToken) {
+		const updated = await db.getMapTokenById(characterId);
 		if (updated) {
-			console.log(`[Damage/Heal] Verification - Updated NPC health: ${updated.current_health}/${updated.max_health}`);
-			console.log(`[Damage/Heal] Expected health: ${nextHealth}, Actual DB health: ${updated.current_health}`);
-			if (updated.current_health !== nextHealth) {
-				console.error(`[Damage/Heal] MISMATCH! Expected ${nextHealth} but got ${updated.current_health}`);
+			const updatedHealth = updated.hit_points ?? updated.max_hit_points ?? 0;
+			const updatedMaxHealth = updated.max_hit_points ?? 0;
+			console.log(`[Damage/Heal] Verification - Updated NPC health: ${updatedHealth}/${updatedMaxHealth}`);
+			console.log(`[Damage/Heal] Expected health: ${nextHealth}, Actual DB health: ${updatedHealth}`);
+			if (updatedHealth !== nextHealth) {
+				console.error(`[Damage/Heal] MISMATCH! Expected ${nextHealth} but got ${updatedHealth}`);
 			}
 		}
-		// Return NPC instance data in a format similar to character
+		// Return NPC token data in a format similar to character
 		return c.json({
 			character: updated ? {
 				id: updated.id,
-				health: updated.current_health,
-				maxHealth: updated.max_health,
+				health: updated.hit_points ?? updated.max_hit_points ?? 0,
+				maxHealth: updated.max_hit_points ?? 0,
 			} : null,
 		});
 	} else {
@@ -2448,22 +2405,17 @@ games.post('/:inviteCode/initiative/roll', async (c) => {
 		console.log(`[Initiative] Restored character ${character.id} to full health (${character.maxHealth}) and AP (${character.maxActionPoints})`);
 	}
 
-	// Get all NPC instances on the map
-	const npcInstances = await db.listNpcInstances(game.id);
-	const npcTokens = await db.listMapTokensForGame(game.id);
+	// Get all NPC tokens on the map
+	const allTokens = await db.listMapTokensForGame(game.id);
+	const npcTokens = allTokens.filter(t => t.token_type === 'npc');
 
 	// Fetch NPC definitions for all NPCs on the map
 	const npcs = await Promise.all(
-		npcInstances.map(async instance => {
-			const token = npcTokens.find(t => t.id === instance.token_id);
-			if (!token) return null;
-
-			// Get npc_id from either the token or the instance
-			const npcId = token.npc_id || instance.npc_id;
-			if (!npcId) return null;
+		npcTokens.map(async token => {
+			if (!token.npc_id) return null;
 
 			// Fetch the actual NPC definition from the database
-			const npcDef = await db.getNpcById(npcId);
+			const npcDef = await db.getNpcById(token.npc_id);
 			if (!npcDef) return null;
 
 			// Get stats from the NPC definition (stats field is JSON string)
@@ -2473,7 +2425,7 @@ games.post('/:inviteCode/initiative/roll', async (c) => {
 			}
 
 			return {
-				id: instance.id,
+				id: token.id,
 				entityId: token.id,
 				stats,
 			};
@@ -2482,22 +2434,21 @@ games.post('/:inviteCode/initiative/roll', async (c) => {
 
 	const validNpcs = npcs.filter((n): n is { id: string; entityId: string; stats: { DEX: number } } => Boolean(n));
 
-	// Restore all NPC instances to full health and action points when starting encounter
-	for (const npcInstance of npcInstances) {
-		const instanceMetadata = JSON.parse(npcInstance.metadata || '{}');
-		const maxHealth = npcInstance.max_health || 10;
-		const maxActionPoints = instanceMetadata.maxActionPoints || 3;
+	// Restore all NPC tokens to full health and action points when starting encounter
+	for (const npcToken of npcTokens) {
+		const tokenMetadata = JSON.parse(npcToken.metadata || '{}');
+		const maxHealth = npcToken.max_hit_points ?? 10;
+		const maxActionPoints = tokenMetadata.maxActionPoints ?? 3;
 
-		await db.saveNpcInstance({
-			...npcInstance,
-			current_health: maxHealth,
+		await db.updateMapToken(npcToken.id, {
+			hit_points: maxHealth,
 			metadata: JSON.stringify({
-				...instanceMetadata,
+				...tokenMetadata,
 				actionPoints: maxActionPoints,
 				maxActionPoints,
 			}),
 		});
-		console.log(`[Initiative] Restored NPC instance ${npcInstance.id} to full health (${maxHealth}) and AP (${maxActionPoints})`);
+		console.log(`[Initiative] Restored NPC token ${npcToken.id} to full health (${maxHealth}) and AP (${maxActionPoints})`);
 	}
 
 	const gameStateService = new GameStateService(db);
@@ -2510,8 +2461,7 @@ games.post('/:inviteCode/initiative/roll', async (c) => {
 	// Log detailed initiative roll to database
 	try {
 		if (gameState.initiativeOrder && gameState.initiativeOrder.length > 0) {
-			// Get NPC tokens for name lookup
-			const npcTokens = await db.listMapTokensForGame(game.id);
+			// Get NPC tokens for name lookup (already fetched above)
 
 			// Build detailed initiative roll descriptions
 			const rollDetails = gameState.initiativeOrder.map((entry, index) => {

@@ -1,3 +1,6 @@
+import { readdir, readFile } from 'fs/promises';
+import path from 'path';
+
 import { env } from 'cloudflare:test';
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -34,154 +37,11 @@ describe('Games API with Cloudflare Workers', () => {
 
 		// Run migrations on the D1 database
 		const db = (env as CloudflareBindings).DATABASE;
-		await db.exec(`
-			CREATE TABLE IF NOT EXISTS games (
-				id TEXT PRIMARY KEY,
-				invite_code TEXT UNIQUE NOT NULL,
-				host_id TEXT NOT NULL,
-				host_email TEXT,
-				quest_id TEXT NOT NULL,
-				quest_data TEXT NOT NULL,
-				world TEXT NOT NULL,
-				starting_area TEXT NOT NULL,
-				status TEXT NOT NULL,
-				current_map_id TEXT,
-				created_at INTEGER NOT NULL,
-				updated_at INTEGER NOT NULL
-			);
-
-			CREATE TABLE IF NOT EXISTS characters (
-				id TEXT PRIMARY KEY,
-				player_id TEXT NOT NULL,
-				player_email TEXT,
-				name TEXT NOT NULL,
-				level INTEGER NOT NULL,
-				race TEXT NOT NULL,
-				class TEXT NOT NULL,
-				description TEXT,
-				stats TEXT NOT NULL,
-				skills TEXT NOT NULL,
-				inventory TEXT NOT NULL,
-				equipped TEXT NOT NULL,
-				health INTEGER NOT NULL,
-				max_health INTEGER NOT NULL,
-				action_points INTEGER NOT NULL,
-				max_action_points INTEGER NOT NULL,
-				created_at INTEGER NOT NULL,
-				updated_at INTEGER NOT NULL
-			);
-
-			CREATE TABLE IF NOT EXISTS game_players (
-				id TEXT PRIMARY KEY,
-				game_id TEXT NOT NULL,
-				player_id TEXT NOT NULL,
-				player_email TEXT,
-				character_id TEXT NOT NULL,
-				character_name TEXT NOT NULL,
-				joined_at INTEGER NOT NULL
-			);
-
-			CREATE TABLE IF NOT EXISTS maps (
-				id TEXT PRIMARY KEY,
-				slug TEXT NOT NULL,
-				name TEXT NOT NULL,
-				description TEXT,
-				width INTEGER NOT NULL,
-				height INTEGER NOT NULL,
-				default_terrain TEXT NOT NULL,
-				fog_of_war TEXT NOT NULL,
-				terrain_layers TEXT NOT NULL,
-				metadata TEXT NOT NULL,
-				generator_preset TEXT,
-				seed TEXT,
-				theme TEXT,
-				biome TEXT,
-				is_generated INTEGER NOT NULL DEFAULT 0,
-				created_at INTEGER NOT NULL,
-				updated_at INTEGER NOT NULL
-			);
-
-			CREATE TABLE IF NOT EXISTS map_tiles (
-				id TEXT PRIMARY KEY,
-				map_id TEXT NOT NULL,
-				x INTEGER NOT NULL,
-				y INTEGER NOT NULL,
-				terrain_type TEXT NOT NULL,
-				elevation INTEGER NOT NULL DEFAULT 0,
-				is_blocked INTEGER NOT NULL DEFAULT 0,
-				has_fog INTEGER NOT NULL DEFAULT 0,
-				feature_type TEXT,
-				metadata TEXT NOT NULL DEFAULT '{}'
-			);
-
-			CREATE TABLE IF NOT EXISTS map_tokens (
-				id TEXT PRIMARY KEY,
-				game_id TEXT,
-				map_id TEXT NOT NULL,
-				character_id TEXT,
-				npc_id TEXT,
-				token_type TEXT NOT NULL,
-				label TEXT,
-				x INTEGER NOT NULL,
-				y INTEGER NOT NULL,
-				facing INTEGER NOT NULL DEFAULT 0,
-				color TEXT,
-				status TEXT NOT NULL,
-				is_visible INTEGER NOT NULL DEFAULT 1,
-				hit_points INTEGER,
-				max_hit_points INTEGER,
-				metadata TEXT NOT NULL DEFAULT '{}',
-				created_at INTEGER NOT NULL,
-				updated_at INTEGER NOT NULL
-			);
-
-			CREATE TABLE IF NOT EXISTS npcs (
-				id TEXT PRIMARY KEY,
-				slug TEXT UNIQUE NOT NULL,
-				name TEXT NOT NULL,
-				role TEXT NOT NULL,
-				alignment TEXT NOT NULL,
-				disposition TEXT NOT NULL,
-				description TEXT,
-				base_health INTEGER NOT NULL,
-				base_armor_class INTEGER NOT NULL,
-				challenge_rating INTEGER NOT NULL,
-				archetype TEXT NOT NULL,
-				default_actions TEXT NOT NULL,
-				stats TEXT NOT NULL,
-				abilities TEXT NOT NULL,
-				loot_table TEXT NOT NULL,
-				metadata TEXT NOT NULL,
-				created_at INTEGER NOT NULL,
-				updated_at INTEGER NOT NULL
-			);
-
-			CREATE TABLE IF NOT EXISTS npc_instances (
-				id TEXT PRIMARY KEY,
-				game_id TEXT NOT NULL,
-				npc_id TEXT NOT NULL,
-				token_id TEXT NOT NULL,
-				name TEXT NOT NULL,
-				disposition TEXT NOT NULL,
-				current_health INTEGER NOT NULL,
-				max_health INTEGER NOT NULL,
-				status_effects TEXT NOT NULL,
-				is_friendly INTEGER NOT NULL DEFAULT 0,
-				metadata TEXT NOT NULL,
-				created_at INTEGER NOT NULL,
-				updated_at INTEGER NOT NULL
-			);
-
-			CREATE TABLE IF NOT EXISTS game_states (
-				game_id TEXT PRIMARY KEY,
-				state_data TEXT,
-				map_state TEXT,
-				log_entries TEXT,
-				state_version INTEGER NOT NULL DEFAULT 0,
-				updated_at INTEGER NOT NULL
-			);
-		`);
-
+		// Execute all migration files in order
+		const migrationFiles = await readdir(path.join(__dirname, '..', 'migrations'));
+		for (const migrationFile of migrationFiles) {
+			await db.exec(await readFile(path.join(__dirname, '..', 'migrations', migrationFile), 'utf8'));
+		}
 		// Mock Database to use the real D1 database from Cloudflare Workers
 		vi.spyOn(dbModule, 'Database').mockImplementation(() => {
 			return new dbModule.Database((env as CloudflareBindings).DATABASE) as unknown as dbModule.Database;
@@ -875,16 +735,10 @@ describe('Games API with Cloudflare Workers', () => {
 	afterEach(async () => {
 		// Clean up database tables
 		const db = (env as CloudflareBindings).DATABASE;
-		await db.exec(`
-			DELETE FROM npc_instances;
-			DELETE FROM map_tokens;
-			DELETE FROM map_tiles;
-			DELETE FROM maps;
-			DELETE FROM game_players;
-			DELETE FROM characters;
-			DELETE FROM game_states;
-			DELETE FROM games;
-			DELETE FROM npcs;
-		`);
+		// Cleanup all tables
+		const tables = await db.prepare('SELECT name FROM sqlite_master WHERE type = "table"').all<{ name: string }>();
+		for (const table of tables.results) {
+			await db.exec(`DELETE FROM ${table.name}`);
+		}
 	});
 });

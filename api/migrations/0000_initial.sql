@@ -35,12 +35,14 @@ CREATE TABLE IF NOT EXISTS `characters` (
 	`description` text,
 	`stats` text NOT NULL,
 	`skills` text NOT NULL,
+	`trait` text NOT NULL,
 	`inventory` text NOT NULL,
 	`equipped` text NOT NULL,
 	`health` integer NOT NULL,
 	`max_health` integer NOT NULL,
 	`action_points` integer NOT NULL,
 	`max_action_points` integer NOT NULL,
+	`status_effects` text DEFAULT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL
 );
@@ -153,7 +155,8 @@ CREATE TABLE IF NOT EXISTS `map_tokens` (
 	`is_visible` integer DEFAULT true NOT NULL,
 	`hit_points` integer,
 	`max_hit_points` integer,
-	`metadata` text DEFAULT '{}' NOT NULL,
+	`metadata` text DEFAULT NULL,
+	'status_effects' text DEFAULT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
 	FOREIGN KEY (`game_id`) REFERENCES `games`(`id`) ON UPDATE no action ON DELETE cascade,
@@ -165,29 +168,6 @@ CREATE INDEX IF NOT EXISTS `map_tokens_game_id_idx` ON `map_tokens` (`game_id`);
 CREATE INDEX IF NOT EXISTS `map_tokens_map_id_idx` ON `map_tokens` (`map_id`);
 CREATE INDEX IF NOT EXISTS `map_tokens_character_id_idx` ON `map_tokens` (`character_id`);
 CREATE INDEX IF NOT EXISTS `map_tokens_npc_id_idx` ON `map_tokens` (`npc_id`);
-
--- NPC instances (runtime instances of NPCs in games)
-CREATE TABLE IF NOT EXISTS `npc_instances` (
-	`id` text PRIMARY KEY NOT NULL,
-	`game_id` text NOT NULL,
-	`npc_id` text NOT NULL,
-	`token_id` text NOT NULL,
-	`name` text NOT NULL,
-	`disposition` text NOT NULL,
-	`current_health` integer NOT NULL,
-	`max_health` integer NOT NULL,
-	`status_effects` text DEFAULT '[]' NOT NULL,
-	`is_friendly` integer DEFAULT false NOT NULL,
-	`metadata` text DEFAULT '{}' NOT NULL,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL,
-	FOREIGN KEY (`game_id`) REFERENCES `games`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`npc_id`) REFERENCES `npcs`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`token_id`) REFERENCES `map_tokens`(`id`) ON UPDATE no action ON DELETE cascade
-);
-CREATE INDEX IF NOT EXISTS `npc_instances_game_id_idx` ON `npc_instances` (`game_id`);
-CREATE INDEX IF NOT EXISTS `npc_instances_npc_id_idx` ON `npc_instances` (`npc_id`);
-CREATE UNIQUE INDEX IF NOT EXISTS `npc_instances_token_id_unique` ON `npc_instances` (`token_id`);
 
 -- Seed initial maps
 INSERT INTO `maps` (
