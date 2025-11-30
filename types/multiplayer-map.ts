@@ -28,6 +28,8 @@ export const TerrainCellSchema = z.object({
 	fogged: z.boolean().optional(),
 	elevation: z.number().optional(),
 	difficult: z.boolean().optional(),
+	featureType: z.string().nullable().optional(),
+	metadata: z.record(z.unknown()).optional(),
 });
 
 export const MapGridSchema = z.array(z.array(TerrainCellSchema));

@@ -18,11 +18,13 @@ const TILE_SIZE = 28;
 interface InteractiveMapProps {
 	map?: MapState | null;
 	isEditable?: boolean;
+	isHost?: boolean;
 	enableTokenDrag?: boolean;
 	onTilePress?: (x: number, y: number) => void;
 	onTileDrag?: (x: number, y: number) => void;
 	onTileDragEnd?: () => void;
 	onTileLongPress?: (x: number, y: number) => void;
+	onTileRightPress?: (x: number, y: number) => void;
 	onTokenPress?: (token: MapToken) => void;
 	onTokenLongPress?: (token: MapToken) => void;
 	onTokenDrop?: (token: { type: 'npc' | 'player'; id: string; label: string; icon?: string }, x: number, y: number) => void;
@@ -85,15 +87,53 @@ const MapTile: React.FC<{
 	isPathTile: boolean;
 	hoveredTile: { x: number; y: number } | null;
 	isEditable: boolean;
+	isHost?: boolean;
 	onTokenDrop?: (token: { type: 'npc' | 'player'; id: string; label: string; icon?: string }, x: number, y: number) => void;
 	onTilePress?: (x: number, y: number) => void;
 	onTileLongPress?: (x: number, y: number) => void;
+	onTileRightPress?: (x: number, y: number) => void;
 	canInteract: boolean;
 	isReachable: boolean;
 	setHoveredTile: (tile: { x: number; y: number } | null) => void;
 	tileSize: number;
-}> = ({ x, y, cell, isPathTile, hoveredTile, isEditable, onTokenDrop, onTilePress, onTileLongPress, canInteract, isReachable, setHoveredTile, tileSize }) => {
+}> = ({ x, y, cell, isPathTile, hoveredTile, isEditable, isHost, onTokenDrop, onTilePress, onTileLongPress, onTileRightPress, canInteract, isReachable, setHoveredTile, tileSize }) => {
 	const tileRef = useRef<View>(null);
+
+	// Attach right-click handler for web
+	useEffect(() => {
+		if (Platform.OS === 'web' && onTileRightPress && tileRef.current) {
+			const timeoutId = setTimeout(() => {
+				const element = tileRef.current as any;
+				if (!element) return;
+
+				let domNode: HTMLElement | null = null;
+				if (element._nativeNode) {
+					domNode = element._nativeNode;
+				} else if (element.nodeType === 1) {
+					domNode = element;
+				} else if (element.firstChild && element.firstChild.nodeType === 1) {
+					domNode = element.firstChild;
+				}
+
+				if (domNode && typeof domNode.addEventListener === 'function') {
+					const handleContextMenu = (e: MouseEvent) => {
+						e.preventDefault();
+						e.stopPropagation();
+						onTileRightPress(x, y);
+					};
+
+					domNode.addEventListener('contextmenu', handleContextMenu);
+					return () => {
+						domNode?.removeEventListener('contextmenu', handleContextMenu);
+					};
+				}
+			}, 0);
+
+			return () => {
+				clearTimeout(timeoutId);
+			};
+		}
+	}, [x, y, onTileRightPress]);
 
 	// Attach drag handlers directly to DOM node for web
 	useEffect(() => {
@@ -191,6 +231,81 @@ const MapTile: React.FC<{
 		}
 	}, [x, y, isEditable, onTokenDrop, setHoveredTile]);
 
+	// Check if this tile has a trap (only visible to host)
+	const hasTrap = isHost && cell?.featureType === 'trap';
+	let trapMetadata: Record<string, unknown> | null = null;
+	if (hasTrap && cell?.metadata) {
+		try {
+			trapMetadata = typeof cell.metadata === 'string' ? JSON.parse(cell.metadata) : cell.metadata;
+		} catch (e) {
+			console.warn('Failed to parse trap metadata:', e);
+		}
+	}
+	const isTrapTriggered = trapMetadata?.triggered === true;
+
+	// Check if tile has fog of war
+	const hasFog = cell?.fogged === true;
+	const fogOpacity = hasFog ? (isHost ? 0.1 : 0.9) : 0;
+
+	// Determine border color - prioritize path, then hover, then trap, then default
+	const getBorderColor = () => {
+		if (isPathTile) return '#FFD447';
+		if (hoveredTile?.x === x && hoveredTile?.y === y) return '#FFD700';
+		if (hasTrap) return isTrapTriggered ? '#8B0000' : '#DC143C'; // Dark red if triggered, crimson if active
+		return styles.tile.borderColor;
+	};
+
+	const getBorderWidth = () => {
+		if (isPathTile) return 2;
+		if (hoveredTile?.x === x && hoveredTile?.y === y) return 2;
+		if (hasTrap) return 2;
+		return styles.tile.borderWidth;
+	};
+
+	// Create fog wave pattern - horizontal wavy lines
+	const fogWavePattern = [];
+	if (hasFog && tileSize > 0) {
+		const waveSpacing = Math.max(4, Math.floor(tileSize / 5));
+		const numWaves = Math.ceil(tileSize / waveSpacing) + 1;
+		const waveAmplitude = Math.max(1.5, Math.floor(tileSize / 12));
+		const pointsPerWave = Math.max(12, Math.floor(tileSize / 2));
+		
+		for (let wave = 0; wave < numWaves; wave++) {
+			const baseY = wave * waveSpacing;
+			const wavePoints = [];
+			
+			for (let i = 0; i <= pointsPerWave; i++) {
+				const x = (i / pointsPerWave) * tileSize;
+				const y = baseY + Math.sin((i / pointsPerWave) * Math.PI * 4) * waveAmplitude;
+				wavePoints.push({ x, y });
+			}
+			
+			// Create segments between wave points
+			for (let i = 0; i < wavePoints.length - 1; i++) {
+				const p1 = wavePoints[i];
+				const p2 = wavePoints[i + 1];
+				const width = p2.x - p1.x;
+				const height = Math.abs(p2.y - p1.y) + 1;
+				const top = Math.min(p1.y, p2.y);
+				
+				fogWavePattern.push(
+					<View
+						key={`fog-wave-${wave}-${i}`}
+						style={[
+							styles.fogWaveSegment,
+							{
+								left: p1.x,
+								top: top,
+								width: Math.max(1, width),
+								height: Math.max(1, height),
+							},
+						]}
+					/>
+				);
+			}
+		}
+	}
+
 	return (
 		<View
 			ref={tileRef}
@@ -201,24 +316,28 @@ const MapTile: React.FC<{
 					width: tileSize,
 					height: tileSize,
 					backgroundColor: terrainColor(cell?.terrain),
-					borderColor: isPathTile
-						? '#FFD447'
-						: hoveredTile?.x === x && hoveredTile?.y === y
-							? '#FFD700'
-							: styles.tile.borderColor,
-					borderWidth: isPathTile
-						? 2
-						: hoveredTile?.x === x && hoveredTile?.y === y
-							? 2
-							: styles.tile.borderWidth,
+					borderColor: getBorderColor(),
+					borderWidth: getBorderWidth(),
 					opacity: hoveredTile?.x === x && hoveredTile?.y === y ? 0.6 : 1,
 				},
 			]}
 		>
+			{hasTrap && (
+				<View style={styles.trapIndicator}>
+					<Text style={styles.trapIcon}>⚠</Text>
+				</View>
+			)}
+			{hasFog && (
+				<View style={[styles.fogOverlay, { opacity: fogOpacity }]} pointerEvents="none">
+					<View style={styles.fogPatternContainer}>
+						{fogWavePattern}
+					</View>
+				</View>
+			)}
 			<TouchableOpacity
 				style={StyleSheet.absoluteFill}
 				activeOpacity={canInteract ? 0.7 : 1}
-				disabled={!canInteract && !isEditable}
+				disabled={!canInteract && !isEditable && !onTileRightPress}
 				onPress={() => {
 					console.log('[MapTile] Tile pressed:', { x, y, canInteract, hasOnTilePress: !!onTilePress });
 					onTilePress?.(x, y);
@@ -236,11 +355,13 @@ const MapTile: React.FC<{
 const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 	map,
 	isEditable = false,
+	isHost = false,
 	enableTokenDrag = false,
 	onTilePress,
 	onTileDrag,
 	onTileDragEnd,
 	onTileLongPress,
+	onTileRightPress,
 	onTokenPress,
 	onTokenLongPress,
 	onTokenDrop,
@@ -764,9 +885,11 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 										isPathTile={isPathTile}
 										hoveredTile={hoveredTile}
 										isEditable={isEditable}
+										isHost={isHost}
 										onTokenDrop={onTokenDrop}
 										onTilePress={onTilePress}
 										onTileLongPress={onTileLongPress}
+										onTileRightPress={onTileRightPress}
 										canInteract={canInteract}
 										isReachable={isReachable}
 										setHoveredTile={setHoveredTile}
@@ -888,6 +1011,41 @@ const styles = StyleSheet.create({
 		padding: 24,
 		borderRadius: 8,
 		backgroundColor: 'rgba(0, 0, 0, 0.05)',
+	},
+	trapIndicator: {
+		position: 'absolute',
+		top: 2,
+		right: 2,
+		width: 12,
+		height: 12,
+		justifyContent: 'center',
+		alignItems: 'center',
+		zIndex: 10,
+	},
+	trapIcon: {
+		fontSize: 10,
+		color: '#DC143C',
+		fontWeight: 'bold',
+	},
+	fogOverlay: {
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		right: 0,
+		bottom: 0,
+		backgroundColor: '#808080',
+		overflow: 'hidden',
+	},
+	fogPatternContainer: {
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		right: 0,
+		bottom: 0,
+	},
+	fogWaveSegment: {
+		position: 'absolute',
+		backgroundColor: 'rgba(255, 255, 255, 0.2)',
 	},
 	emptyTitle: {
 		fontSize: 16,

@@ -7,6 +7,7 @@ type TerrainCell = {
 	fogged: boolean;
 	difficult?: boolean;
 	featureType?: string | null;
+	metadata?: Record<string, unknown>;
 };
 
 const parseJson = <T>(raw: string | null | undefined, fallback: T): T => {
@@ -69,6 +70,7 @@ const applyTileOverrides = (grid: TerrainCell[][], tiles?: MapTileRow[]) => {
 			fogged: Boolean(tile.has_fog),
 			difficult: Boolean(tile.is_blocked),
 			featureType: tile.feature_type,
+			metadata: parseJson<Record<string, unknown>>(tile.metadata, {}),
 		};
 	});
 

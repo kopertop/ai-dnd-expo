@@ -10,6 +10,7 @@ import { CommandPalette, type Command } from '@/components/command-palette';
 import { MapElementPicker, type MapElementType } from '@/components/map-element-picker';
 import { InteractiveMap } from '@/components/map/interactive-map';
 import { TileActionMenu, type TileAction } from '@/components/map/tile-action-menu';
+import { TileDetailsModal } from '@/components/map/tile-details-modal';
 import { NotificationsPanel } from '@/components/notifications-panel';
 import { NpcSelector } from '@/components/npc-selector';
 import { PlayerActionMenu, type PlayerAction } from '@/components/player-action-menu';
@@ -77,6 +78,7 @@ const MultiplayerGameScreen: React.FC = () => {
 	const [npcStats, setNpcStats] = useState<{ STR: number; DEX: number; CON: number; INT: number; WIS: number; CHA: number } | undefined>(undefined);
 	const [selectedCharacterForView, setSelectedCharacterForView] = useState<{ id: string; type: 'player' | 'npc' } | null>(null);
 	const [showCharacterViewModal, setShowCharacterViewModal] = useState(false);
+	const [tileDetails, setTileDetails] = useState<{ x: number; y: number } | null>(null);
 	const [showMapElementPicker, setShowMapElementPicker] = useState(false);
 	const [showSpellActionSelector, setShowSpellActionSelector] = useState(false);
 	const [selectedCharacterForAction, setSelectedCharacterForAction] = useState<string | null>(null);
@@ -1218,6 +1220,15 @@ const MultiplayerGameScreen: React.FC = () => {
 		[isHost, isMapEditMode],
 	);
 
+	const handleTileRightPress = useCallback(
+		(x: number, y: number) => {
+			if (isHost) {
+				setTileDetails({ x, y });
+			}
+		},
+		[isHost],
+	);
+
 	const handleTileAction = useCallback(
 		async (action: TileAction, x: number, y: number) => {
 			if (!inviteCode || !sharedMap) return;
@@ -1947,6 +1958,7 @@ const MultiplayerGameScreen: React.FC = () => {
 					<InteractiveMap
 						map={sharedMap}
 						isEditable={isHost && isMapEditMode}
+						isHost={isHost}
 						// Allow token dragging for hosts during gameplay (not just edit mode)
 						onTokenDragEnd={isHost ? async (token, x, y) => {
 							try {
@@ -2083,6 +2095,7 @@ const MultiplayerGameScreen: React.FC = () => {
 											: handlePlayerTilePress
 						}
 						onTileLongPress={isHost && isMapEditMode ? handleTileLongPress : undefined}
+						onTileRightPress={isHost ? handleTileRightPress : undefined}
 						onTokenPress={handleTokenPress}
 						onTokenLongPress={handleTokenLongPress}
 						reachableTiles={selectedTokenId ? selectedTokenMovementRange : movementRange}
@@ -2400,6 +2413,23 @@ const MultiplayerGameScreen: React.FC = () => {
 					availableActions={['changeTerrain', 'placeWater', 'placeRoad', 'clearTile']}
 					onAction={handleTileAction}
 					onClose={() => setTileActionMenu(null)}
+				/>
+			)}
+
+			{/* Tile Details Modal */}
+			{tileDetails && sharedMap && (
+				<TileDetailsModal
+					visible={!!tileDetails}
+					x={tileDetails.x}
+					y={tileDetails.y}
+					terrain={sharedMap.terrain?.[tileDetails.y]?.[tileDetails.x]?.terrain || sharedMap.defaultTerrain || 'stone'}
+					elevation={sharedMap.terrain?.[tileDetails.y]?.[tileDetails.x]?.elevation || 0}
+					isBlocked={sharedMap.terrain?.[tileDetails.y]?.[tileDetails.x]?.difficult || false}
+					hasFog={sharedMap.terrain?.[tileDetails.y]?.[tileDetails.x]?.fogged || false}
+					featureType={sharedMap.terrain?.[tileDetails.y]?.[tileDetails.x]?.featureType || null}
+					metadata={sharedMap.terrain?.[tileDetails.y]?.[tileDetails.x]?.metadata || {}}
+					isHost={isHost}
+					onClose={() => setTileDetails(null)}
 				/>
 			)}
 
