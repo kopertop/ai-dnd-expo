@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
+import { SearchableList, type SearchableListItem } from './searchable-list';
 
 import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { NpcDefinition } from '@/types/multiplayer-map';
@@ -69,6 +70,28 @@ export const NpcSelector: React.FC<NpcSelectorProps> = ({
 	const handleSelectNpc = (npc: NpcDefinition) => {
 		onSelectNpc(npc.slug || npc.id, npc.name);
 		// Don't call onClose here - let the parent handle closing after setting placement mode
+	};
+
+	// Convert NPCs to SearchableListItem format
+	const searchableItems = useMemo<SearchableListItem<NpcDefinition>[]>(() => {
+		return npcs.map(npc => ({
+			id: npc.id,
+			data: npc,
+			searchText: `${npc.name} ${npc.role} ${npc.alignment} ${npc.disposition} ${npc.description || ''}`.trim(),
+		}));
+	}, [npcs]);
+
+	const renderNpcItem = (item: SearchableListItem<NpcDefinition>, isSelected: boolean) => {
+		const npc = item.data;
+		return (
+			<View style={[styles.npcItem, isSelected && styles.npcItemSelected]}>
+				<ThemedText style={styles.npcName}>{npc.name}</ThemedText>
+				<ThemedText style={styles.npcDetails}>
+					{npc.role} • {npc.alignment} • {npc.disposition}
+				</ThemedText>
+				{npc.description && <ThemedText style={styles.npcDescription}>{npc.description}</ThemedText>}
+			</View>
+		);
 	};
 
 	const handleCreateCustom = () => {
@@ -240,21 +263,14 @@ export const NpcSelector: React.FC<NpcSelectorProps> = ({
 					{isLoading ? (
 						<ThemedText style={styles.loadingText}>Loading NPCs...</ThemedText>
 					) : (
-						<ScrollView style={styles.npcList}>
-							{npcs.length > 0 ? (
-								npcs.map((npc) => (
-									<TouchableOpacity key={npc.id} style={styles.npcItem} onPress={() => handleSelectNpc(npc)}>
-										<ThemedText style={styles.npcName}>{npc.name}</ThemedText>
-										<ThemedText style={styles.npcDetails}>
-											{npc.role} • {npc.alignment} • {npc.disposition}
-										</ThemedText>
-										{npc.description && <ThemedText style={styles.npcDescription}>{npc.description}</ThemedText>}
-									</TouchableOpacity>
-								))
-							) : (
-								<ThemedText style={styles.emptyText}>No NPCs available. Create a custom one!</ThemedText>
-							)}
-						</ScrollView>
+						<SearchableList
+							items={searchableItems}
+							onSelect={(item) => handleSelectNpc(item.data)}
+							renderItem={renderNpcItem}
+							placeholder="Search NPCs by name, role, alignment..."
+							emptyText="No NPCs found. Create a custom one!"
+							itemHeight={80}
+						/>
 					)}
 					<View style={styles.buttonRow}>
 						<TouchableOpacity style={[styles.button, styles.createButton]} onPress={() => setShowCreateForm(true)}>
@@ -295,9 +311,6 @@ const styles = StyleSheet.create({
 		marginBottom: 20,
 		textAlign: 'center',
 	},
-	npcList: {
-		maxHeight: 400,
-	},
 	npcItem: {
 		backgroundColor: '#FFFFFF',
 		borderRadius: 8,
@@ -305,6 +318,11 @@ const styles = StyleSheet.create({
 		marginBottom: 8,
 		borderWidth: 1,
 		borderColor: '#E2D3B3',
+	},
+	npcItemSelected: {
+		backgroundColor: '#E9D8A6',
+		borderColor: '#C9B037',
+		borderWidth: 2,
 	},
 	npcName: {
 		fontSize: 16,

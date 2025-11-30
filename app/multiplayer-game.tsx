@@ -503,6 +503,9 @@ const MultiplayerGameScreen: React.FC = () => {
 	// Map state is loaded via useMapState hook
 
 	// Handle CMD+K / CTRL+K keyboard shortcut for command palette
+	// Use a ref to prevent double-firing in React StrictMode (development)
+	const lastKeyPressTimeRef = useRef<number>(0);
+	
 	useEffect(() => {
 		if (Platform.OS !== 'web') return;
 
@@ -510,6 +513,15 @@ const MultiplayerGameScreen: React.FC = () => {
 			// CMD+K on Mac, CTRL+K on Windows/Linux
 			if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
 				e.preventDefault();
+				e.stopPropagation();
+				
+				// Prevent double-firing: ignore if the same keypress happened within 100ms
+				const now = Date.now();
+				if (now - lastKeyPressTimeRef.current < 100) {
+					return;
+				}
+				lastKeyPressTimeRef.current = now;
+				
 				setShowCommandPalette(prev => !prev);
 			}
 		};

@@ -45,6 +45,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 	const insets = useSafeAreaInsets();
 	const fadeAnim = React.useRef(new Animated.Value(0)).current;
 	const inputRef = React.useRef<TextInput>(null);
+	const scrollViewRef = React.useRef<ScrollView>(null);
 
 	useEffect(() => {
 		if (visible) {
@@ -72,32 +73,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 		}
 	}, [visible, fadeAnim]);
 
-	// Handle keyboard shortcuts
-	useEffect(() => {
-		if (!visible) return;
-
-		const handleKeyDown = (e: globalThis.KeyboardEvent) => {
-			if (e.key === 'Escape') {
-				onClose();
-			} else if (e.key === 'ArrowDown') {
-				e.preventDefault();
-				setSelectedIndex(prev => Math.min(prev + 1, filteredCommands.length - 1));
-			} else if (e.key === 'ArrowUp') {
-				e.preventDefault();
-				setSelectedIndex(prev => Math.max(prev - 1, 0));
-			} else if (e.key === 'Enter' && filteredCommands[selectedIndex]) {
-				e.preventDefault();
-				filteredCommands[selectedIndex].action();
-				onClose();
-			}
-		};
-
-		if (Platform.OS === 'web') {
-			window.addEventListener('keydown', handleKeyDown);
-			return () => window.removeEventListener('keydown', handleKeyDown);
-		}
-	}, [visible, selectedIndex, onClose]);
-
 	const filteredCommands = useMemo(() => {
 		if (!searchQuery.trim()) {
 			return commands;
@@ -111,6 +86,57 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 			cmd.category?.toLowerCase().includes(query),
 		);
 	}, [commands, searchQuery]);
+
+	// Handle keyboard shortcuts
+	useEffect(() => {
+		if (!visible) return;
+
+		const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				e.preventDefault();
+				onClose();
+			} else if (e.key === 'ArrowDown') {
+				e.preventDefault();
+				setSelectedIndex(prev => {
+					const newIndex = Math.min(prev + 1, filteredCommands.length - 1);
+					// Scroll to selected item
+					setTimeout(() => {
+						scrollViewRef.current?.scrollTo({
+							y: newIndex * 60, // Approximate item height
+							animated: true,
+						});
+					}, 0);
+					return newIndex;
+				});
+			} else if (e.key === 'ArrowUp') {
+				e.preventDefault();
+				setSelectedIndex(prev => {
+					const newIndex = Math.max(prev - 1, 0);
+					// Scroll to selected item
+					setTimeout(() => {
+						scrollViewRef.current?.scrollTo({
+							y: newIndex * 60, // Approximate item height
+							animated: true,
+						});
+					}, 0);
+					return newIndex;
+				});
+			} else if (e.key === 'Enter' && filteredCommands.length > 0 && filteredCommands[selectedIndex]) {
+				e.preventDefault();
+				e.stopPropagation();
+				const selectedCommand = filteredCommands[selectedIndex];
+				if (selectedCommand) {
+					selectedCommand.action();
+					onClose();
+				}
+			}
+		};
+
+		if (Platform.OS === 'web') {
+			window.addEventListener('keydown', handleKeyDown, true);
+			return () => window.removeEventListener('keydown', handleKeyDown, true);
+		}
+	}, [visible, selectedIndex, filteredCommands, onClose]);
 
 	// Reset selected index when filtered results change
 	useEffect(() => {
@@ -183,42 +209,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 								returnKeyType="search"
 							/>
 
-							{/* AI Assistant Section */}
-							{onAIRequest && (
-								<View style={styles.aiSection}>
-									<ThemedText style={styles.sectionTitle}>AI Assistant</ThemedText>
-									<TextInput
-										style={styles.aiInput}
-										placeholder="Ask the AI for help..."
-										value={aiPrompt}
-										onChangeText={setAiPrompt}
-										placeholderTextColor="#6B5B3D"
-										multiline
-										numberOfLines={3}
-									/>
-									<TouchableOpacity
-										style={[styles.aiButton, aiLoading && styles.aiButtonDisabled]}
-										onPress={handleAIRequest}
-										disabled={aiLoading || !aiPrompt.trim()}
-									>
-										<ThemedText style={styles.aiButtonText}>
-											{aiLoading ? 'Processing...' : 'Ask AI'}
-										</ThemedText>
-									</TouchableOpacity>
-									{aiResponse && (
-										<View style={styles.aiResponse}>
-											<ThemedText style={styles.aiResponseText}>{aiResponse}</ThemedText>
-										</View>
-									)}
-								</View>
-							)}
-
 							{/* Commands List */}
 							<View style={styles.commandsSection}>
 								<ThemedText style={styles.sectionTitle}>
 									Commands ({filteredCommands.length})
 								</ThemedText>
-								<ScrollView style={styles.commandsList} nestedScrollEnabled>
+								<ScrollView ref={scrollViewRef} style={styles.commandsList} nestedScrollEnabled>
 									{filteredCommands.length === 0 ? (
 										<View style={styles.emptyState}>
 											<ThemedText style={styles.emptyText}>No commands found</ThemedText>
