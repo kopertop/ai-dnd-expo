@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Image, PanResponder, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, PanResponder, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { ExpoIcon } from '@/components/expo-icon';
 import { MapState, MapToken } from '@/types/multiplayer-map';
@@ -532,6 +532,27 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 	const renderTokenContent = (token: MapToken) => {
 		const icon = token.icon || token.metadata?.icon || token.metadata?.image;
 
+		let color = token.color;
+		if (!color) {
+			try {
+				if (token.metadata) {
+					const metadata = typeof token.metadata === 'string' ? JSON.parse(token.metadata) : token.metadata;
+					if (metadata.tags?.includes('friendly')) {
+						color = '#4CAF50';
+					} else if (metadata.tags?.includes('hostile')) {
+						color = '#F44336';
+					} else if (metadata.tags?.includes('neutral')) {
+						color = '#2196F3';
+					} else {
+						color = '#1F130A';
+					}
+				}
+			} catch (error) {
+				console.error('Failed to parse token metadata:', error, token.metadata);
+			}
+		}
+		console.log('[MapTokenComponent] icon', token, icon, color);
+
 		// If icon exists, render it using ExpoIcon
 		if (typeof icon === 'string' && icon.trim().length > 0) {
 			return (
@@ -539,6 +560,7 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 					icon={icon.trim()}
 					size={20}
 					color="#1F130A"
+					style={{ color }}
 				/>
 			);
 		}

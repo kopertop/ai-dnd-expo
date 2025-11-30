@@ -171,7 +171,7 @@ npcs.post('/:inviteCode/npcs', async (c) => {
 		x: payload.x,
 		y: payload.y,
 		facing: 0,
-		color: npcMetadata.color || '#3B2F1B',
+		color: npcMetadata.color ?? '',
 		status: npc.disposition,
 		is_visible: 1,
 		hit_points: currentHealth,

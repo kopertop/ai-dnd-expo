@@ -18,7 +18,12 @@ interface ExpoIconProps {
  * Format for vector icons: "IconFamily:icon-name" (e.g., "MaterialIcons:shield")
  * Format for images: URL string (e.g., "https://..." or "data:image/...")
  */
-export const ExpoIcon: React.FC<ExpoIconProps> = ({ icon, size = 24, color = '#3B2F1B', style }) => {
+export const ExpoIcon: React.FC<ExpoIconProps> = ({
+	icon,
+	size = 24,
+	color = '#3B2F1B',
+	style,
+}) => {
 	if (!icon) {
 		return null;
 	}
@@ -51,6 +56,7 @@ export const ExpoIcon: React.FC<ExpoIconProps> = ({ icon, size = 24, color = '#3
 
 	const [iconFamily, iconName] = parts;
 
+	console.log('[ExpoIcon] iconFamily', iconFamily, iconName, color);
 	// Render appropriate icon family
 	switch (iconFamily) {
 		case 'MaterialIcons':

@@ -121,7 +121,7 @@ const getDefaultTokenIcon = (
 			return 'MaterialIcons:healing';
 		}
 		if (role.includes('goblin') || role.includes('hostile') || role.includes('monster')) {
-			return 'MaterialIcons:dangerous';
+			return 'MaterialCommunityIcons:sword';
 		}
 		// Default NPC icon
 		return 'MaterialIcons:person';
@@ -302,7 +302,7 @@ export const createCustomNpcDefinition = async (
 		stats: JSON.stringify({}),
 		abilities: JSON.stringify([]),
 		loot_table: JSON.stringify([]),
-		metadata: JSON.stringify({ color: custom.color ?? '#3B2F1B', createdBy: hostId }),
+		metadata: JSON.stringify({ color: custom.color ?? '', createdBy: hostId }),
 		created_at: now,
 		updated_at: now,
 	});

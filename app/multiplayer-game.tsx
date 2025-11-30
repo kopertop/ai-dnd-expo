@@ -2377,50 +2377,6 @@ const MultiplayerGameScreen: React.FC = () => {
 						</View>
 						<View style={styles.mainContent}>
 							{renderMapSection()}
-							{isHost && (
-								<View style={styles.mapSwitcherContainer}>
-									<TouchableOpacity
-										style={styles.mapSwitchButton}
-										onPress={() => setShowMapSwitcher(!showMapSwitcher)}
-									>
-										<ThemedText style={styles.mapSwitchButtonText}>
-											{showMapSwitcher ? 'Hide Map Switcher' : 'Switch Map'}
-										</ThemedText>
-									</TouchableOpacity>
-									{showMapSwitcher && (
-										<View style={styles.mapSwitcherPanel}>
-											<ThemedText style={styles.mapSwitcherTitle}>Available Maps</ThemedText>
-											{availableMaps.length === 0 ? (
-												<ThemedText style={styles.mapSwitcherEmpty}>Loading maps...</ThemedText>
-											) : (
-												<ScrollView style={styles.mapSwitcherList}>
-													{availableMaps.map(map => (
-														<TouchableOpacity
-															key={map.id}
-															style={[
-																styles.mapSwitcherItem,
-																sharedMap?.id === map.id && styles.mapSwitcherItemActive,
-															]}
-															onPress={() => handleSwitchMap(map.id)}
-															disabled={switchingMap || sharedMap?.id === map.id}
-														>
-															<ThemedText
-																style={[
-																	styles.mapSwitcherItemText,
-																	sharedMap?.id === map.id && styles.mapSwitcherItemTextActive,
-																]}
-															>
-																{map.name}
-																{sharedMap?.id === map.id && ' (Current)'}
-															</ThemedText>
-														</TouchableOpacity>
-													))}
-												</ScrollView>
-											)}
-										</View>
-									)}
-								</View>
-							)}
 						</View>
 					</View>
 				)}
