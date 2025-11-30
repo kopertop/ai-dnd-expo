@@ -1,3 +1,4 @@
+import MaterialCommunityIcons from '@expo/vector-icons/build/MaterialCommunityIcons';
 import Feather from '@expo/vector-icons/Feather';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -62,6 +63,15 @@ export const ExpoIcon: React.FC<ExpoIconProps> = ({
 		case 'MaterialIcons':
 			return (
 				<MaterialIcons
+					name={iconName as any}
+					size={size}
+					color={color}
+					style={style as StyleProp<TextStyle>}
+				/>
+			);
+		case 'MaterialCommunityIcons':
+			return (
+				<MaterialCommunityIcons
 					name={iconName as any}
 					size={size}
 					color={color}

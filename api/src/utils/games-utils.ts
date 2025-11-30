@@ -120,8 +120,11 @@ const getDefaultTokenIcon = (
 		if (role.includes('healer') || role.includes('cleric')) {
 			return 'MaterialIcons:healing';
 		}
-		if (role.includes('goblin') || role.includes('hostile') || role.includes('monster')) {
+		if (role.includes('melee') || role.includes('hostile') || role.includes('monster')) {
 			return 'MaterialCommunityIcons:sword';
+		}
+		if (role.includes('ranged') || role.includes('ranger') || role.includes('archer')) {
+			return 'MaterialCommunityIcons:bow-arrow';
 		}
 		// Default NPC icon
 		return 'MaterialIcons:person';
