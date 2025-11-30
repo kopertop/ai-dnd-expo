@@ -1918,9 +1918,6 @@ const MultiplayerGameScreen: React.FC = () => {
 				{!isPlayerTurn && !isHost && currentTurnName && !gameState?.pausedTurn && (
 					<ThemedText style={styles.mapHint}>Waiting for your turn... (Current: {currentTurnName})</ThemedText>
 				)}
-				{(isPlayerTurn || isHost) && (
-					<ThemedText style={styles.mapHint}>Click on a tile to see available actions.</ThemedText>
-				)}
 				{selectedTokenId && (
 					<ThemedText style={styles.mapHint}>
 						Showing movement range for selected token. Click another token to see its range.
@@ -2849,10 +2846,10 @@ const styles = StyleSheet.create({
 		borderWidth: 1,
 		borderColor: '#C9B037',
 		borderRadius: 12,
-		padding: 12,
-		marginBottom: 16,
+		padding: 0,
+		marginBottom: 0,
 		backgroundColor: '#FFF9EF',
-		gap: 8,
+		gap: 0,
 	},
 	mapHeader: {
 		flexDirection: 'row',

@@ -1,7 +1,16 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, PanResponder, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+	PanResponder,
+	Platform,
+	StyleSheet,
+	Text,
+	TouchableOpacity,
+	View,
+	useWindowDimensions,
+} from 'react-native';
 
 import { ExpoIcon } from '@/components/expo-icon';
+import { useScreenSize } from '@/hooks/use-screen-size';
 import { MapState, MapToken } from '@/types/multiplayer-map';
 
 const TILE_SIZE = 28;
@@ -82,7 +91,8 @@ const MapTile: React.FC<{
 	canInteract: boolean;
 	isReachable: boolean;
 	setHoveredTile: (tile: { x: number; y: number } | null) => void;
-}> = ({ x, y, cell, isPathTile, hoveredTile, isEditable, onTokenDrop, onTilePress, onTileLongPress, canInteract, isReachable, setHoveredTile }) => {
+	tileSize: number;
+}> = ({ x, y, cell, isPathTile, hoveredTile, isEditable, onTokenDrop, onTilePress, onTileLongPress, canInteract, isReachable, setHoveredTile, tileSize }) => {
 	const tileRef = useRef<View>(null);
 
 	// Attach drag handlers directly to DOM node for web
@@ -188,8 +198,8 @@ const MapTile: React.FC<{
 			style={[
 				styles.tile,
 				{
-					width: TILE_SIZE,
-					height: TILE_SIZE,
+					width: tileSize,
+					height: tileSize,
 					backgroundColor: terrainColor(cell?.terrain),
 					borderColor: isPathTile
 						? '#FFD447'
@@ -239,6 +249,19 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 	reachableTiles,
 	pathTiles,
 }) => {
+	const { height: screenHeight } = useWindowDimensions();
+	const { isDesktop, isTablet } = useScreenSize();
+	// Subtract header height: 200px on desktop/large screens, 120px on mobile
+	const headerHeight = (isDesktop || isTablet) ? 140 : 120;
+	const availableHeight = screenHeight - headerHeight;
+
+	// Calculate minimum container size based on map dimensions and TILE_SIZE
+	// This ensures the map never gets smaller than its original size
+	const minContainerSize = useMemo(() => {
+		if (!map) return 0;
+		const mapMaxDimension = Math.max(map.width, map.height);
+		return mapMaxDimension * TILE_SIZE;
+	}, [map]);
 	const normalizedTerrain = useMemo(() => {
 		if (!map) {
 			return [];
@@ -255,9 +278,10 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 
 	const [isDragging, setIsDragging] = useState(false);
 	const lastDragKey = useRef<string | null>(null);
+	// Initialize containerSize to match availableHeight for square container
 	const [containerSize, setContainerSize] = useState<{ width: number; height: number }>(() => ({
-		width: Dimensions.get('window').width,
-		height: Dimensions.get('window').height / 2,
+		width: availableHeight,
+		height: availableHeight,
 	}));
 	const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 	const panStartRef = useRef({ x: 0, y: 0 });
@@ -317,7 +341,8 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 		onTokenDragEnd?: (token: MapToken, x: number, y: number) => void;
 		map: MapState;
 		enableTokenDrag: boolean;
-	}> = ({ token, highlightTokenId, onTokenPress, onTokenLongPress, onTokenDragEnd, map, enableTokenDrag }) => {
+		tileSize: number;
+	}> = ({ token, highlightTokenId, onTokenPress, onTokenLongPress, onTokenDragEnd, map, enableTokenDrag, tileSize }) => {
 		const tokenRef = useRef<View>(null);
 		const isDraggingRef = useRef(false);
 
@@ -449,8 +474,8 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 							}
 
 							// Calculate tile coordinates
-							const tileX = Math.max(0, Math.min(map.width - 1, Math.floor(relativeX / TILE_SIZE)));
-							const tileY = Math.max(0, Math.min(map.height - 1, Math.floor(relativeY / TILE_SIZE)));
+							const tileX = Math.max(0, Math.min(map.width - 1, Math.floor(relativeX / tileSize)));
+							const tileY = Math.max(0, Math.min(map.height - 1, Math.floor(relativeY / tileSize)));
 
 							console.log('Moving token to tile:', tileX, tileY, 'from drop position:', dropX, dropY, 'relative:', relativeX, relativeY);
 							onTokenDragEnd(token, tileX, tileY);
@@ -471,8 +496,8 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 						} else {
 							// Try to calculate tile from center position as fallback
 							// This is a rough estimate - ideally we'd find the map container
-							const estimatedTileX = Math.floor((dropX - windowCenterX + 200) / TILE_SIZE);
-							const estimatedTileY = Math.floor((dropY - windowCenterY + 200) / TILE_SIZE);
+							const estimatedTileX = Math.floor((dropX - windowCenterX + 200) / tileSize);
+							const estimatedTileY = Math.floor((dropY - windowCenterY + 200) / tileSize);
 							console.log('Moving token to estimated tile (fallback):', estimatedTileX, estimatedTileY);
 							onTokenDragEnd(token, estimatedTileX, estimatedTileY);
 						}
@@ -492,7 +517,7 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 			}, 0);
 
 			return () => clearTimeout(timeoutId);
-		}, [token, onTokenDragEnd, map, enableTokenDrag]);
+		}, [token, onTokenDragEnd, map, enableTokenDrag, tileSize]);
 
 		// Prevent long press when dragging
 		const handleLongPress = () => {
@@ -507,10 +532,10 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 				style={[
 					styles.token,
 					{
-						left: token.x * TILE_SIZE,
-						top: token.y * TILE_SIZE,
-						width: TILE_SIZE,
-						height: TILE_SIZE,
+						left: token.x * tileSize,
+						top: token.y * tileSize,
+						width: tileSize,
+						height: tileSize,
 						borderColor:
 							token.id === highlightTokenId
 								? '#FFD447'
@@ -662,6 +687,26 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 		}
 	}, []);
 
+	// Sync containerSize with availableHeight when it changes (fixes race condition)
+	// Ensure container size is at least the minimum required to maintain original tile size
+	useEffect(() => {
+		const size = Math.max(availableHeight, minContainerSize);
+		setContainerSize({ width: size, height: size });
+	}, [availableHeight, minContainerSize]);
+
+	// Calculate dynamic tile size to scale tiles to fill the square container
+	// Must be before early return to satisfy React Hook rules
+	const tileSize = useMemo(() => {
+		if (!map || containerSize.width === 0 || containerSize.height === 0) {
+			return TILE_SIZE; // Fallback to default
+		}
+		const containerDimension = Math.min(containerSize.width, containerSize.height);
+		const mapMaxDimension = Math.max(map.width, map.height);
+		const calculatedTileSize = Math.floor(containerDimension / mapMaxDimension);
+		// Ensure minimum tile size is at least TILE_SIZE (28px) to maintain original map size
+		return Math.max(calculatedTileSize, TILE_SIZE);
+	}, [map, containerSize.width, containerSize.height]);
+
 	if (!map) {
 		return (
 			<View style={styles.emptyState}>
@@ -674,8 +719,14 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 	return (
 		<View
 			ref={wrapperRef}
-			style={styles.wrapper}
-			onLayout={event => setContainerSize(event.nativeEvent.layout)}
+			style={[styles.wrapper, { height: Math.max(availableHeight, minContainerSize), width: Math.max(availableHeight, minContainerSize) }]}
+			onLayout={event => {
+				// Enforce square dimensions: use the smaller dimension for both width and height
+				// Ensure it's at least the minimum container size
+				const { width, height } = event.nativeEvent.layout;
+				const squareDimension = Math.max(Math.min(width, height), minContainerSize);
+				setContainerSize({ width: squareDimension, height: squareDimension });
+			}}
 			{...(enablePanning ? panResponder.panHandlers : {})}
 		>
 			<View style={styles.panSurface}>
@@ -683,8 +734,8 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 					style={[
 						styles.gridContainer,
 						{
-							width: map.width * TILE_SIZE,
-							height: map.height * TILE_SIZE,
+							width: map.width * tileSize,
+							height: map.height * tileSize,
 							transform: [
 								{ translateX: panOffset.x },
 								{ translateY: panOffset.y },
@@ -715,6 +766,7 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 										canInteract={canInteract}
 										isReachable={isReachable}
 										setHoveredTile={setHoveredTile}
+										tileSize={tileSize}
 									/>
 								);
 							})}
@@ -734,6 +786,7 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 								onTokenDragEnd={onTokenDragEnd}
 								map={map}
 								enableTokenDrag={enableTokenDrag}
+								tileSize={tileSize}
 							/>
 						))}
 					</View>
@@ -749,13 +802,13 @@ export const InteractiveMap = memo(InteractiveMapComponent);
 
 const styles = StyleSheet.create({
 	wrapper: {
-		padding: 12,
 		alignItems: 'center',
-		width: '100%',
+		justifyContent: 'center',
+		alignSelf: 'center',
 	},
 	panSurface: {
-		flex: 1,
 		width: '100%',
+		height: '100%',
 		alignItems: 'center',
 		justifyContent: 'center',
 	},
