@@ -549,12 +549,12 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 				onLongPress={handleLongPress}
 				disabled={!onTokenPress && !onTokenLongPress}
 			>
-				{renderTokenContent(token)}
+				{renderTokenContent(token, tileSize)}
 			</TouchableOpacity>
 		);
 	};
 
-	const renderTokenContent = (token: MapToken) => {
+	const renderTokenContent = (token: MapToken, tokenTileSize: number) => {
 		const icon = token.icon || token.metadata?.icon || token.metadata?.image;
 
 		let color = token.color;
@@ -578,12 +578,16 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 		}
 		console.log('[MapTokenComponent] icon', token, icon, color);
 
+		// Calculate icon size based on tile size (70% of tile size, minimum 16px)
+		const iconSize = Math.max(16, Math.floor(tokenTileSize * 0.7));
+		const labelFontSize = Math.max(10, Math.floor(tokenTileSize * 0.4));
+
 		// If icon exists, render it using ExpoIcon
 		if (typeof icon === 'string' && icon.trim().length > 0) {
 			return (
 				<ExpoIcon
 					icon={icon.trim()}
-					size={20}
+					size={iconSize}
 					color="#1F130A"
 					style={{ color }}
 				/>
@@ -592,7 +596,7 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 
 		// Fallback to initials only if no icon is available
 		return (
-			<Text style={styles.tokenLabel} numberOfLines={1}>
+			<Text style={[styles.tokenLabel, { fontSize: labelFontSize }]} numberOfLines={1}>
 				{token.label?.slice(0, 2).toUpperCase() || 'T'}
 			</Text>
 		);
