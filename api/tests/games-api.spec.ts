@@ -518,7 +518,7 @@ describe('Games API with Cloudflare Workers', () => {
 		it('creates, reads, updates, and deletes characters', async () => {
 			// Create a character
 			const createResponse = await fetchWithAuth(
-				'http://localhost/api/games/me/characters',
+				'http://localhost/api/characters',
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -550,7 +550,7 @@ describe('Games API with Cloudflare Workers', () => {
 
 			// Read characters
 			const listResponse = await fetchWithAuth(
-				'http://localhost/api/games/me/characters',
+				'http://localhost/api/characters',
 				{
 					method: 'GET',
 				},
@@ -566,7 +566,7 @@ describe('Games API with Cloudflare Workers', () => {
 
 			// Update character
 			const updateResponse = await fetchWithAuth(
-				'http://localhost/api/games/me/characters/char-1',
+				'http://localhost/api/characters/char-1',
 				{
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json' },
@@ -587,7 +587,7 @@ describe('Games API with Cloudflare Workers', () => {
 
 			// Delete character
 			const deleteResponse = await fetchWithAuth(
-				'http://localhost/api/games/me/characters/char-1',
+				'http://localhost/api/characters/char-1',
 				{
 					method: 'DELETE',
 				},
@@ -598,7 +598,7 @@ describe('Games API with Cloudflare Workers', () => {
 
 			// Verify deletion
 			const listAfterDelete = await fetchWithAuth(
-				'http://localhost/api/games/me/characters',
+				'http://localhost/api/characters',
 				{
 					method: 'GET',
 				},

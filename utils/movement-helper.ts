@@ -1,7 +1,7 @@
 import { findPathWithCosts, type Coordinate } from './movement-calculator';
 
-import type { MapState } from '@/types/multiplayer-map';
 import type { MapTokenUpsertRequest } from '@/types/api/multiplayer-api';
+import type { MapState } from '@/types/multiplayer-map';
 
 export interface MoveTokenParams {
 	/** The map state containing terrain and tokens */
@@ -135,11 +135,7 @@ export async function moveTokenWithBudget(params: MoveTokenParams): Promise<Move
 			},
 		};
 
-		// Set the appropriate ID field based on token type
-		if (token.type === 'npc' && token.entityId) {
-			tokenData.npcId = token.entityId;
-			tokenData.overrideValidation = isHost; // DM can override validation for NPCs
-		} else if (token.type === 'player' && token.entityId) {
+		if (token.type === 'player' && token.entityId) {
 			tokenData.characterId = token.entityId;
 		}
 

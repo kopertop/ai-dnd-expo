@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import { corsMiddleware } from './cors';
 import type { CloudflareBindings } from './env';
 import adminRoutes from './routes/admin';
+import characterRoutes from './routes/characters';
 import gameRoutes from './routes/games';
 import mapRoutes from './routes/maps';
 import meRoutes from './routes/me';
@@ -84,6 +85,7 @@ app.post('/api/auth/google/callback', async (c) => {
 
 // Mount API routes
 app.route('/api/games', gameRoutes);
+app.route('/api/characters', characterRoutes);
 app.route('/api/quests', questRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/maps', mapRoutes);

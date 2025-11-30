@@ -236,8 +236,8 @@ export class Database {
 	async createCharacter(character: Omit<CharacterRow, 'created_at' | 'updated_at'>): Promise<void> {
 		const now = Date.now();
 		await this.db.prepare(
-			`INSERT INTO characters (id, player_id, player_email, name, level, race, class, description, stats, skills, inventory, equipped, health, max_health, action_points, max_action_points, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO characters (id, player_id, player_email, name, level, race, class, description, trait, stats, skills, inventory, equipped, health, max_health, action_points, max_action_points, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		).bind(
 			character.id,
 			character.player_id,
@@ -247,6 +247,7 @@ export class Database {
 			character.race,
 			character.class,
 			character.description || null,
+			character.trait || '', // Database requires NOT NULL, default to empty string
 			character.stats,
 			character.skills,
 			character.inventory,

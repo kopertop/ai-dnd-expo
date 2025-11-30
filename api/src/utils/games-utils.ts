@@ -199,7 +199,7 @@ export const serializeCharacter = (
 	race: character.race,
 	class: character.class,
 	description: character.description || null,
-	trait: character.trait || null,
+	trait: character.trait || '', // Database requires NOT NULL, default to empty string
 	stats: JSON.stringify(character.stats),
 	skills: JSON.stringify(character.skills || []),
 	inventory: JSON.stringify(character.inventory || []),

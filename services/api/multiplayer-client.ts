@@ -164,28 +164,28 @@ export class MultiplayerClient {
 	}
 
 	async getMyCharacters(): Promise<Character[]> {
-		const response = await apiService.fetchApi('/games/me/characters', {
+		const response = await apiService.fetchApi('/characters', {
 			method: 'GET',
 		});
 		return response.characters || [];
 	}
 
 	async createCharacter(payload: Character): Promise<Character> {
-		return apiService.fetchApi('/games/me/characters', {
+		return apiService.fetchApi('/characters', {
 			method: 'POST',
 			body: JSON.stringify(payload),
 		});
 	}
 
 	async updateCharacter(id: string, payload: Partial<Character>): Promise<Character> {
-		return apiService.fetchApi(`/games/me/characters/${id}`, {
+		return apiService.fetchApi(`/characters/${id}`, {
 			method: 'PUT',
 			body: JSON.stringify(payload),
 		});
 	}
 
 	async deleteCharacter(id: string): Promise<void> {
-		return apiService.fetchApi(`/games/me/characters/${id}`, {
+		return apiService.fetchApi(`/characters/${id}`, {
 			method: 'DELETE',
 		});
 	}

@@ -9,7 +9,7 @@ import type { CharacterActionResult } from '@/types/combat';
  * Get current user's characters
  */
 export function useMyCharacters() {
-	return useQueryApi<Character[] | { characters: Character[] }>('/games/me/characters', {
+	return useQueryApi<Character[] | { characters: Character[] }>('/characters', {
 		select: (data) => {
 			// Handle both array and object response formats
 			if (Array.isArray(data)) {
@@ -42,7 +42,7 @@ export function useCreateCharacter() {
 		method: 'POST',
 		onSuccess: () => {
 			// Invalidate my characters list
-			queryClient.invalidateQueries({ queryKey: ['/games/me/characters'] });
+			queryClient.invalidateQueries({ queryKey: ['/characters'] });
 		},
 	});
 }
@@ -57,7 +57,7 @@ export function useUpdateCharacter() {
 		method: 'PUT',
 		onSuccess: () => {
 			// Invalidate my characters list
-			queryClient.invalidateQueries({ queryKey: ['/games/me/characters'] });
+			queryClient.invalidateQueries({ queryKey: ['/characters'] });
 		},
 	});
 }
@@ -72,7 +72,7 @@ export function useDeleteCharacter() {
 		method: 'DELETE',
 		onSuccess: () => {
 			// Invalidate my characters list
-			queryClient.invalidateQueries({ queryKey: ['/games/me/characters'] });
+			queryClient.invalidateQueries({ queryKey: ['/characters'] });
 		},
 	});
 }

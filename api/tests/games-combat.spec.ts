@@ -65,7 +65,7 @@ describe('Games Combat API', () => {
 			const inviteCode = createData.inviteCode;
 
 			// Create a character
-			const charResponse = await fetchWithAuth('http://localhost/api/games/me/characters', {
+			const charResponse = await fetchWithAuth('http://localhost/api/characters', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({

@@ -1,162 +1,169 @@
+import { readdir, readFile } from 'fs/promises';
+import path from 'path';
+
+import { env } from 'cloudflare:test';
 import { Hono } from 'hono';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import games from '../src/routes/games';
-import type { CharacterRow } from '../../shared/workers/db';
-import * as dbModule from '../../shared/workers/db';
+import type { CloudflareBindings } from '@/api/src/env';
+import gameRoutes from '@/api/src/routes/games';
+import * as dbModule from '@/shared/workers/db';
 
-type MockUser = { id: string; email: string };
+describe('Games Character Routes - Game-specific endpoints', () => {
+	let hostUser: { id: string; email: string; name?: string | null };
+	let testApp: Hono<{ Bindings: CloudflareBindings; Variables: { user: typeof hostUser | null } }>;
 
-class MockCharacterDatabase {
-	private records = new Map<string, CharacterRow>();
+	beforeEach(async () => {
+		hostUser = { id: 'host-123', email: 'host@example.com', name: 'Host User' };
 
-	constructor(initial: CharacterRow[] = []) {
-		initial.forEach(record => this.records.set(record.id, record));
-	}
-
-	async getCharactersByPlayerIdentity(playerId?: string, playerEmail?: string | null) {
-		return Array.from(this.records.values()).filter(
-			character => character.player_id === playerId || character.player_email === playerEmail,
-		);
-	}
-
-	async createCharacter(character: CharacterRow) {
-		this.records.set(character.id, character);
-	}
-
-	async updateCharacter(id: string, updates: Partial<CharacterRow>) {
-		const existing = this.records.get(id);
-		if (!existing) return;
-		this.records.set(id, { ...existing, ...updates });
-	}
-
-	async getCharacterById(id: string) {
-		return this.records.get(id) ?? null;
-	}
-
-	async deleteCharacter(id: string) {
-		this.records.delete(id);
-	}
-}
-
-const mockEnv = { DATABASE: {} as any };
-
-const createApp = (user?: MockUser) => {
-	const app = new Hono();
-	if (user) {
-		app.use('*', async (c, next) => {
-			(c as any).set('user', user);
+		testApp = new Hono<{ Bindings: CloudflareBindings; Variables: { user: typeof hostUser | null } }>();
+		testApp.use('*', async (c, next) => {
+			c.set('user', hostUser);
 			await next();
 		});
-	}
-	app.route('/', games);
-	return app;
-};
+		testApp.route('/api/games', gameRoutes);
 
-describe('games character routes', () => {
-	const mockUser: MockUser = { id: 'user-1', email: 'user@example.com' };
-	let mockDb: MockCharacterDatabase;
-
-	beforeEach(() => {
-		mockDb = new MockCharacterDatabase([
-			{
-				id: 'char-1',
-				player_id: 'user-1',
-				player_email: 'user@example.com',
-				name: 'Hero',
-				level: 2,
-				race: 'Human',
-				class: 'Fighter',
-				description: null,
-				trait: null,
-				stats: JSON.stringify({ STR: 14 }),
-				skills: JSON.stringify([]),
-				inventory: JSON.stringify([]),
-				equipped: JSON.stringify({}),
-				health: 15,
-				max_health: 15,
-				action_points: 3,
-				max_action_points: 3,
-				status_effects: JSON.stringify([]),
-				created_at: Date.now(),
-				updated_at: Date.now(),
-			},
-		]);
-
-		vi.spyOn(dbModule, 'Database').mockImplementation(() => mockDb as unknown as dbModule.Database);
+		const db = (env as CloudflareBindings).DATABASE;
+		const migrationFiles = await readdir(path.join(__dirname, '..', 'migrations'));
+		for (const migrationFile of migrationFiles) {
+			await db.exec(await readFile(path.join(__dirname, '..', 'migrations', migrationFile), 'utf8'));
+		}
+		vi.spyOn(dbModule, 'Database').mockImplementation(() => {
+			return new dbModule.Database((env as CloudflareBindings).DATABASE) as unknown as dbModule.Database;
+		});
 	});
 
-	it('returns characters for the authenticated user', async () => {
-		const app = createApp(mockUser);
-		const res = await app.fetch(new Request('http://test/me/characters'), mockEnv);
-		expect(res.status).toBe(200);
-		const body = await res.json<{ characters: Array<{ id: string }> }>();
-		expect(body.characters).toHaveLength(1);
-		expect(body.characters[0].id).toBe('char-1');
-	});
+	const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+		return testApp.fetch(new Request(url, options), env as CloudflareBindings);
+	};
 
-	it('creates a new character via POST', async () => {
-		const app = createApp(mockUser);
-		const res = await app.fetch(
-			new Request('http://test/me/characters', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					id: 'char-2',
-					name: 'Mage',
-					level: 1,
-					race: 'Elf',
-					class: 'Wizard',
-					description: '',
-					stats: { INT: 16 },
-					skills: [],
-					inventory: [],
-					equipped: {},
-					health: 8,
-					maxHealth: 8,
-					actionPoints: 3,
-					maxActionPoints: 3,
-				}),
+	it('returns all characters in a game (host only)', async () => {
+		// Create a game
+		const quest = {
+			id: 'quest-1',
+			title: 'Test Quest',
+			description: 'A test quest',
+			objectives: [],
+			createdAt: Date.now(),
+			createdBy: hostUser.email,
+		};
+
+		const createResponse = await fetchWithAuth('http://localhost/api/games', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				quest,
+				world: 'Test World',
+				startingArea: 'Test Area',
+				hostId: hostUser.id,
+				hostEmail: hostUser.email,
 			}),
-			mockEnv,
+		});
+
+		expect(createResponse.status).toBe(200);
+		const createData = (await createResponse.json()) as { inviteCode: string };
+		const inviteCode = createData.inviteCode;
+
+		// Create a character for the host
+		const characterPayload = {
+			id: 'char-1',
+			name: 'Host Character',
+			level: 1,
+			race: 'Human',
+			class: 'Fighter',
+			stats: { STR: 14 },
+			skills: [],
+			inventory: [],
+			equipped: {},
+			health: 10,
+			maxHealth: 10,
+			actionPoints: 3,
+			maxActionPoints: 3,
+			statusEffects: [],
+		};
+
+		// Create character via the characters API
+		const db = (env as CloudflareBindings).DATABASE;
+		const { Database } = await import('@/shared/workers/db');
+		const dbInstance = new Database(db);
+		const { serializeCharacter } = await import('@/api/src/utils/games-utils');
+		const serialized = serializeCharacter(characterPayload, hostUser.id, hostUser.email);
+		await dbInstance.createCharacter(serialized);
+
+		// Join the game with this character
+		await fetchWithAuth(`http://localhost/api/games/${inviteCode}/join`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				inviteCode,
+				characterId: 'char-1',
+				playerId: hostUser.id,
+				playerEmail: hostUser.email,
+			}),
+		});
+
+		// Get all characters in the game (host only)
+		const response = await fetchWithAuth(`http://localhost/api/games/${inviteCode}/characters`);
+		expect(response.status).toBe(200);
+		const data = (await response.json()) as { characters: Array<{ id: string; name: string }> };
+		expect(data.characters).toBeInstanceOf(Array);
+		expect(data.characters.length).toBeGreaterThan(0);
+		expect(data.characters.some(c => c.id === 'char-1')).toBe(true);
+	});
+
+	it('returns 403 when non-host tries to access game characters', async () => {
+		// Create a game
+		const quest = {
+			id: 'quest-1',
+			title: 'Test Quest',
+			description: 'A test quest',
+			objectives: [],
+			createdAt: Date.now(),
+			createdBy: hostUser.email,
+		};
+
+		const createResponse = await fetchWithAuth('http://localhost/api/games', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				quest,
+				world: 'Test World',
+				startingArea: 'Test Area',
+				hostId: hostUser.id,
+				hostEmail: hostUser.email,
+			}),
+		});
+
+		const createData = (await createResponse.json()) as { inviteCode: string };
+		const inviteCode = createData.inviteCode;
+
+		// Try to access as a different user (non-host)
+		const otherUser = { id: 'other-user', email: 'other@example.com', name: 'Other User' };
+		const otherUserApp = new Hono<{ Bindings: CloudflareBindings; Variables: { user: typeof otherUser | null } }>();
+		otherUserApp.use('*', async (c, next) => {
+			c.set('user', otherUser);
+			await next();
+		});
+		otherUserApp.route('/api/games', gameRoutes);
+
+		const response = await otherUserApp.fetch(
+			new Request(`http://localhost/api/games/${inviteCode}/characters`),
+			env as CloudflareBindings,
 		);
 
-		expect(res.status).toBe(200);
-		const created = await res.json<{ character: { id: string } }>();
-		expect(created.character.id).toBe('char-2');
-		const list = await app.fetch(new Request('http://test/me/characters'), mockEnv);
-		const data = await list.json<{ characters: Array<{ id: string }> }>();
-		expect(data.characters).toHaveLength(2);
+		expect(response.status).toBe(403);
 	});
 
-	it('updates an existing character', async () => {
-		const app = createApp(mockUser);
-		const res = await app.fetch(
-			new Request('http://test/me/characters/char-1', {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: 'Veteran Hero' }),
-			}),
-			mockEnv,
-		);
-		expect(res.status).toBe(200);
-		const body = await res.json<{ character: { name: string } }>();
-		expect(body.character.name).toBe('Veteran Hero');
+	it('returns 404 when game does not exist', async () => {
+		const response = await fetchWithAuth('http://localhost/api/games/non-existent-game/characters');
+		expect(response.status).toBe(404);
 	});
 
-	it('deletes a character owned by the user', async () => {
-		const app = createApp(mockUser);
-		const res = await app.fetch(
-			new Request('http://test/me/characters/char-1', {
-				method: 'DELETE',
-			}),
-			mockEnv,
-		);
-
-		expect(res.status).toBe(200);
-		const list = await app.fetch(new Request('http://test/me/characters'), mockEnv);
-		const body = await list.json<{ characters: Array<{ id: string }> }>();
-		expect(body.characters).toHaveLength(0);
+	afterEach(async () => {
+		const db = (env as CloudflareBindings).DATABASE;
+		const tables = await db.prepare('SELECT name FROM sqlite_master WHERE type = "table"').all<{ name: string }>();
+		for (const table of tables.results) {
+			await db.exec(`DELETE FROM ${table.name}`);
+		}
 	});
 });
-
