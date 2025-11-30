@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MultiplayerGameScreen from '../multiplayer-game';
 
 import { AppFooter } from '@/components/app-footer';
+import { RefreshButton } from '@/components/refresh-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useMyCharacters } from '@/hooks/api/use-character-queries';
@@ -112,11 +113,11 @@ const GameRoute: React.FC = () => {
 	const [selectedTemplateId, setSelectedTemplateId] = useState<string>(CHARACTER_TEMPLATES[0].id);
 	const [loading, setLoading] = useState(false);
 
-	// Fetch game session
+	// Fetch game session with 15 second polling
 	const { data: session, isLoading: sessionLoading, refetch: refetchSession } = useGameSession(
 		inviteCode || null,
 		{
-			refetchInterval: (data) => data?.status === 'active' ? 5000 : undefined,
+			refetchInterval: 15000, // Poll every 15 seconds
 		},
 	);
 
@@ -259,6 +260,9 @@ const GameRoute: React.FC = () => {
 					options={{
 						title: 'Waiting for Host',
 						headerShown: true,
+						headerRight: () => (
+							<RefreshButton onPress={() => refetchSession()} variant="small" showLabel />
+						),
 					}}
 				/>
 				<View style={styles.waitingContainer}>
@@ -273,6 +277,12 @@ const GameRoute: React.FC = () => {
 							{session.players.length} player{session.players.length !== 1 ? 's' : ''} joined
 						</ThemedText>
 					)}
+					<RefreshButton
+						disabled={sessionLoading}
+						onPress={() => !sessionLoading && refetchSession()}
+						variant="large"
+						showLabel
+					/>
 				</View>
 				<AppFooter />
 			</ThemedView>

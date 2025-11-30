@@ -37,13 +37,21 @@ app.use('*', async (c, next) => {
 	await next();
 });
 
-// Health check (no auth required)
+// Health check (no auth required) - available at both root and /api paths
 app.get('/health', c => {
+	return c.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/health', c => {
 	return c.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Status endpoint (no auth required)
 app.get('/status', c => {
+	return c.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/status', c => {
 	return c.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 

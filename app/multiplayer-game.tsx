@@ -8,6 +8,7 @@ import { CharacterSheetModal } from '@/components/character-sheet-modal';
 import { CharacterViewModal } from '@/components/character-view-modal';
 import { CombatResultModal } from '@/components/combat-result-modal';
 import { CommandPalette, type Command } from '@/components/command-palette';
+import { ConnectionStatusIndicator } from '@/components/connection-status-indicator';
 import { MapElementPicker, type MapElementType } from '@/components/map-element-picker';
 import { InteractiveMap } from '@/components/map/interactive-map';
 import { TileActionMenu, type TileAction } from '@/components/map/tile-action-menu';
@@ -93,6 +94,7 @@ const MultiplayerGameScreen: React.FC = () => {
 	const [npcPlacementMode, setNpcPlacementMode] = useState<{ npcId: string; npcName: string } | null>(null);
 	const placingCharactersRef = useRef<Set<string>>(new Set());
 	const isPlacingRef = useRef(false);
+	const [isPlacing, setIsPlacing] = useState(false);
 	const { isMobile } = useScreenSize();
 	const insets = useSafeAreaInsets();
 
@@ -130,7 +132,7 @@ const MultiplayerGameScreen: React.FC = () => {
 	}, []);
 
 	// Polling fallback when WebSocket is not connected OR when we need initial state
-	const { gameState: polledState, refresh: refreshGameState } = usePollingGameState({
+	const { gameState: polledState, refresh: refreshGameState, isFetching: isPollingFetching } = usePollingGameState({
 		inviteCode: inviteCode || '',
 		enabled: (!wsIsConnected && !!inviteCode) || !gameState, // Poll if WS not connected OR no gameState yet
 		pollInterval: 15000,
@@ -370,7 +372,112 @@ const MultiplayerGameScreen: React.FC = () => {
 		});
 	}, [effectiveGameState?.characters, sharedMap?.tokens]);
 
-	// Auto-place missing characters on the map
+	// Auto-place missing characters function
+	const handleAutoPlaceCharacters = useCallback(async () => {
+		if (!isHost || !sharedMap || !inviteCode || charactersWithoutTokens.length === 0) {
+			return;
+		}
+
+		// Prevent concurrent runs
+		if (isPlacingRef.current || isPlacing) return;
+		isPlacingRef.current = true;
+		setIsPlacing(true);
+
+		try {
+			// Filter out characters that are already being placed or already have tokens
+			const charactersToPlace = charactersWithoutTokens.filter(char => {
+				// Skip if already being placed
+				if (placingCharactersRef.current.has(char.id)) {
+					return false;
+				}
+				// Double-check: verify character doesn't already have a token
+				const hasToken = sharedMap.tokens?.some(
+					token => token.type === 'player' && token.entityId === char.id,
+				);
+				return !hasToken;
+			});
+
+			if (charactersToPlace.length === 0) {
+				isPlacingRef.current = false;
+				return; // All characters already placed or being placed
+			}
+
+			// Find open tiles (not blocked, not occupied, preferring roads/gravel)
+			const occupiedTiles = new Set(
+				(sharedMap.tokens || []).map(t => `${t.x},${t.y}`),
+			);
+
+			const openTiles: Array<{ x: number; y: number; priority: number }> = [];
+
+			// Iterate through map to find open tiles
+			for (let y = 0; y < sharedMap.height; y++) {
+				for (let x = 0; x < sharedMap.width; x++) {
+					const key = `${x},${y}`;
+					if (occupiedTiles.has(key)) continue;
+
+					// Check if tile is blocked
+					const cell = sharedMap.terrain?.[y]?.[x];
+					if (cell?.difficult) continue; // Skip blocked/difficult terrain
+
+					// Prefer roads/gravel over other terrain
+					const terrain = cell?.terrain || sharedMap.defaultTerrain || 'stone';
+					const isRoad = terrain === 'road' || terrain === 'gravel';
+					const priority = isRoad ? 1 : 2; // Lower number = higher priority
+
+					openTiles.push({ x, y, priority });
+				}
+			}
+
+			// Sort by priority (roads first), then randomize within same priority
+			openTiles.sort((a, b) => {
+				if (a.priority !== b.priority) return a.priority - b.priority;
+				return Math.random() - 0.5; // Randomize
+			});
+
+			// Place each missing character
+			let placedCount = 0;
+			for (let i = 0; i < charactersToPlace.length && i < openTiles.length; i++) {
+				const character = charactersToPlace[i];
+				const tile = openTiles[i];
+
+				// Mark as being placed
+				placingCharactersRef.current.add(character.id);
+
+				try {
+					await placePlayerTokenMutation.mutateAsync({
+						path: `/games/${inviteCode}/map/tokens`,
+						body: {
+							characterId: character.id,
+							x: tile.x,
+							y: tile.y,
+							label: character.name || 'Unknown',
+							icon: character.icon,
+							tokenType: 'player',
+						},
+					});
+					placedCount++;
+					// Remove from placing set after successful placement
+					placingCharactersRef.current.delete(character.id);
+				} catch (error) {
+					console.error(`Failed to auto-place character ${character.id}:`, error);
+					// Remove from placing set on error so it can be retried
+					placingCharactersRef.current.delete(character.id);
+				}
+			}
+
+			if (placedCount > 0) {
+				Alert.alert('Success', `Placed ${placedCount} character${placedCount > 1 ? 's' : ''} on the map`);
+			}
+		} catch (error) {
+			console.error('Failed to auto-place characters:', error);
+			Alert.alert('Error', 'Failed to place some characters. Please try again.');
+		} finally {
+			isPlacingRef.current = false;
+			setIsPlacing(false);
+		}
+	}, [isHost, sharedMap, charactersWithoutTokens, inviteCode, placePlayerTokenMutation, isPlacing]);
+
+	// Auto-place missing characters on the map (automatic when game becomes active)
 	useEffect(() => {
 		if (
 			isHost &&
@@ -380,100 +487,9 @@ const MultiplayerGameScreen: React.FC = () => {
 			effectiveGameState?.status === 'active' &&
 			!isPlacingRef.current // Prevent concurrent placement runs
 		) {
-			const autoPlaceCharacters = async () => {
-				// Prevent concurrent runs
-				if (isPlacingRef.current) return;
-				isPlacingRef.current = true;
-
-				try {
-					// Filter out characters that are already being placed or already have tokens
-					const charactersToPlace = charactersWithoutTokens.filter(char => {
-						// Skip if already being placed
-						if (placingCharactersRef.current.has(char.id)) {
-							return false;
-						}
-						// Double-check: verify character doesn't already have a token
-						const hasToken = sharedMap.tokens?.some(
-							token => token.type === 'player' && token.entityId === char.id,
-						);
-						return !hasToken;
-					});
-
-					if (charactersToPlace.length === 0) {
-						isPlacingRef.current = false;
-						return; // All characters already placed or being placed
-					}
-
-					// Find open tiles (not blocked, not occupied, preferring roads/gravel)
-					const occupiedTiles = new Set(
-						(sharedMap.tokens || []).map(t => `${t.x},${t.y}`),
-					);
-
-					const openTiles: Array<{ x: number; y: number; priority: number }> = [];
-
-					// Iterate through map to find open tiles
-					for (let y = 0; y < sharedMap.height; y++) {
-						for (let x = 0; x < sharedMap.width; x++) {
-							const key = `${x},${y}`;
-							if (occupiedTiles.has(key)) continue;
-
-							// Check if tile is blocked
-							const cell = sharedMap.terrain?.[y]?.[x];
-							if (cell?.difficult) continue; // Skip difficult terrain
-
-							// Prefer roads/gravel over other terrain
-							const terrain = cell?.terrain || sharedMap.defaultTerrain || 'stone';
-							const isRoad = terrain === 'road' || terrain === 'gravel';
-							const priority = isRoad ? 1 : 2; // Lower number = higher priority
-
-							openTiles.push({ x, y, priority });
-						}
-					}
-
-					// Sort by priority (roads first), then randomize within same priority
-					openTiles.sort((a, b) => {
-						if (a.priority !== b.priority) return a.priority - b.priority;
-						return Math.random() - 0.5; // Randomize
-					});
-
-					// Place each missing character
-					for (let i = 0; i < charactersToPlace.length && i < openTiles.length; i++) {
-						const character = charactersToPlace[i];
-						const tile = openTiles[i];
-
-						// Mark as being placed
-						placingCharactersRef.current.add(character.id);
-
-						try {
-							await placePlayerTokenMutation.mutateAsync({
-								path: `/games/${inviteCode}/map/tokens`,
-								body: {
-									characterId: character.id,
-									x: tile.x,
-									y: tile.y,
-									label: character.name || 'Unknown',
-									icon: character.icon,
-									tokenType: 'player',
-								},
-							});
-							// Remove from placing set after successful placement
-							placingCharactersRef.current.delete(character.id);
-						} catch (error) {
-							console.error(`Failed to auto-place character ${character.id}:`, error);
-							// Remove from placing set on error so it can be retried
-							placingCharactersRef.current.delete(character.id);
-						}
-					}
-				} catch (error) {
-					console.error('Failed to auto-place characters:', error);
-				} finally {
-					isPlacingRef.current = false;
-				}
-			};
-
-			autoPlaceCharacters();
+			handleAutoPlaceCharacters();
 		}
-	}, [isHost, sharedMap, charactersWithoutTokens, inviteCode, effectiveGameState?.status, placePlayerTokenMutation]);
+	}, [isHost, sharedMap, charactersWithoutTokens.length, inviteCode, effectiveGameState?.status, handleAutoPlaceCharacters]);
 
 	// Track unread messages
 	useEffect(() => {
@@ -2159,7 +2175,7 @@ const MultiplayerGameScreen: React.FC = () => {
 				}}
 			/>
 			<View style={styles.statusBar}>
-				<ThemedText style={styles.statusText}>{wsConnected ? '🟢 Connected' : '🟡 Polling'}</ThemedText>
+				<ConnectionStatusIndicator onGameStateUpdate={handleGameStateUpdate} />
 				<View style={styles.statusRight}>
 					{currentTurnName && (
 						<ThemedText style={styles.turnIndicator}>
@@ -2357,8 +2373,17 @@ const MultiplayerGameScreen: React.FC = () => {
 											• {char.name || 'Unknown'}
 										</ThemedText>
 									))}
+									<TouchableOpacity
+										style={[styles.button, styles.autoPlaceButton]}
+										onPress={handleAutoPlaceCharacters}
+										disabled={isPlacingRef.current}
+									>
+										<ThemedText style={styles.buttonText}>
+											{isPlacingRef.current ? 'Placing...' : 'Auto Place Characters'}
+										</ThemedText>
+									</TouchableOpacity>
 									<ThemedText style={styles.warningHint}>
-										Go to the map editor to place these characters.
+										Or go to the map editor to place these characters manually.
 									</ThemedText>
 								</View>
 							)}
@@ -2802,6 +2827,11 @@ const styles = StyleSheet.create({
 		borderBottomWidth: 1,
 		borderBottomColor: '#C9B037',
 	},
+	statusLeft: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+	},
 	statusText: {
 		fontSize: 12,
 		color: '#6B5B3D',
@@ -3095,6 +3125,24 @@ const styles = StyleSheet.create({
 		color: '#856404',
 		fontStyle: 'italic',
 		marginTop: 8,
+	},
+	button: {
+		backgroundColor: '#8B6914',
+		paddingVertical: 12,
+		paddingHorizontal: 24,
+		borderRadius: 8,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	buttonText: {
+		color: '#FFFFFF',
+		fontSize: 14,
+		fontWeight: '600',
+	},
+	autoPlaceButton: {
+		backgroundColor: '#059669',
+		marginTop: 12,
+		marginBottom: 8,
 	},
 	itemPalette: {
 		position: 'absolute',

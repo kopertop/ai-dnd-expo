@@ -45,6 +45,7 @@ export function usePollingGameState(options: UsePollingGameStateOptions) {
 	return {
 		gameState: query.data || null,
 		isLoading: query.isLoading,
+		isFetching: query.isFetching,
 		error: query.error?.message || null,
 		refresh: query.refetch,
 	};

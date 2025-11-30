@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppFooter } from '@/components/app-footer';
+import { ConnectionStatusIndicator } from '@/components/connection-status-indicator';
 import { InviteCodeDisplay } from '@/components/invite-code-display';
 import { LocationChooser } from '@/components/location-chooser';
 import { MapManagementPanel } from '@/components/map-management-panel';
@@ -28,20 +29,6 @@ import { Quest } from '@/types/quest';
 import { WorldOption } from '@/types/world-option';
 
 type HostStep = 'quest' | 'world' | 'location' | 'ready' | 'waiting';
-
-const createAdHocWorldOption = (name: string): WorldOption => ({
-	id: `saved-world-${name}`,
-	name,
-	description: `Adventure in ${name}`,
-	image: {} as any,
-});
-
-const createAdHocLocationOption = (name: string): LocationOption => ({
-	id: `saved-location-${name}`,
-	name,
-	description: `Begin at ${name}`,
-	image: {} as any,
-});
 
 const HostGameLobbyScreen: React.FC = () => {
 	const params = useLocalSearchParams<{ id: string }>();
@@ -63,8 +50,8 @@ const HostGameLobbyScreen: React.FC = () => {
 	const { data: session, isLoading: sessionLoading, refetch: refetchSession } = useGameSession(
 		shouldFetchSession ? inviteCode : null,
 		{
-			// Poll every 5 seconds when game is active to catch newly joined players
-			refetchInterval: (data) => data?.status === 'active' ? 5000 : undefined,
+			// Poll every 15 seconds
+			refetchInterval: 15000,
 		},
 	);
 
@@ -439,6 +426,10 @@ const HostGameLobbyScreen: React.FC = () => {
 												Refreshing character roster...
 											</ThemedText>
 										)}
+										<ConnectionStatusIndicator
+											inviteCode={inviteCode}
+											onGameStateUpdate={() => {}}
+										/>
 										<PlayerList
 											players={session.players}
 											characters={
@@ -481,10 +472,10 @@ const HostGameLobbyScreen: React.FC = () => {
 														});
 														setCurrentMapId(mapId);
 													}
-													
+
 													// Ensure game is started
 													await ensureGameStarted();
-													
+
 													// Initiative will be automatically rolled when tokens are placed
 													// Navigate to the multiplayer game to show the encounter
 													router.replace(`/multiplayer-game?inviteCode=${inviteCode}&hostId=${hostId}`);
@@ -560,7 +551,11 @@ const HostGameLobbyScreen: React.FC = () => {
 
 	return (
 		<ThemedView style={styles.container}>
-			<Stack.Screen options={{ title: 'Host Game Lobby', headerShown: true }} />
+			<Stack.Screen
+				options={{
+					title: 'Host Game Lobby',
+				}}
+			/>
 			<ScrollView
 				style={styles.scrollView}
 				contentContainerStyle={[
