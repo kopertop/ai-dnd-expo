@@ -7,6 +7,7 @@ const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:8081';
 // Preload auth storage for this origin so AuthGuard sees a session immediately
 test.use({
 	storageState: {
+		cookies: [],
 		origins: [
 			{
 				origin: baseURL,
@@ -73,7 +74,6 @@ test.describe('Spell casting with mocked backend', () => {
 
 		await page.goto('/multiplayer-game?inviteCode=TEST01&hostId=host-1&playerId=player-1&token=dev-token');
 
-		await expect(page.getByText('Shared Map')).toBeVisible();
 		await expect(page.getByText('Goblin')).toBeVisible();
 
 		// Click the NPC to open the action menu (player is adjacent, so cast spell should be available)

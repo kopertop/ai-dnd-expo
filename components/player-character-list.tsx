@@ -3,10 +3,12 @@ import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
+import { TurnResourceValues } from './turn-resource-values';
 
 import { STATUS_EFFECTS, type StatusEffect } from '@/constants/status-effects';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { Character } from '@/types/character';
+import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { MapToken } from '@/types/multiplayer-map';
 
 interface PlayerCharacterListProps {
@@ -14,6 +16,7 @@ interface PlayerCharacterListProps {
 	currentPlayerId?: string;
 	npcTokens?: MapToken[];
 	activeTurnEntityId?: string;
+	activeTurn?: MultiplayerGameState['activeTurn'];
 	onCharacterSelect?: (characterId: string, type: 'player' | 'npc') => void;
 	canSelect?: boolean;
 	initiativeOrder?: Array<{
@@ -28,6 +31,7 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 	currentPlayerId,
 	npcTokens = [],
 	activeTurnEntityId,
+	activeTurn,
 	onCharacterSelect,
 	canSelect = false,
 	initiativeOrder,
@@ -38,11 +42,11 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 	// For players: use character.id as the key (matches initiative order entityId)
 	// For NPCs: use token.id as the key (which equals token.entityId and matches initiative order entityId)
 	const entityMap = new Map<string, { type: 'player' | 'npc'; id: string; name: string; data: Character | MapToken }>();
-	
+
 	characters.forEach(char => {
 		entityMap.set(char.id, { type: 'player', id: char.id, name: char.name, data: char });
 	});
-	
+
 	npcTokens.forEach(token => {
 		// For NPCs, token.id equals token.entityId (set in schema-adapters.ts)
 		// Initiative order uses token.id as entityId, so we use token.id as the key
@@ -53,7 +57,7 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 	// Build list of all entities, prioritizing initiative order but including all entities
 	// Initiative order is already sorted highest to lowest from backend
 	let allEntities: Array<{ type: 'player' | 'npc'; id: string; name: string; data: Character | MapToken; initiative?: number; initiativeIndex?: number }>;
-	
+
 	if (initiativeOrder && initiativeOrder.length > 0) {
 		// Create a map of entities in initiative order with their initiative data
 		const initiativeMap = new Map<string, { initiative: number; initiativeIndex: number }>();
@@ -63,35 +67,35 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 				initiativeIndex: index,
 			});
 		});
-		
+
 		// Get all entities from entityMap, add initiative data if available
 		const seen = new Set<string>();
 		const entitiesWithInitiative: typeof allEntities = [];
 		const entitiesWithoutInitiative: typeof allEntities = [];
-		
+
 		entityMap.forEach((entity, entityId) => {
 			if (seen.has(entity.id)) {
 				return; // Skip duplicates
 			}
 			seen.add(entity.id);
-			
+
 			const initiativeData = initiativeMap.get(entityId);
 			const entityWithData = {
 				...entity,
 				initiative: initiativeData?.initiative,
 				initiativeIndex: initiativeData?.initiativeIndex,
 			};
-			
+
 			if (initiativeData) {
 				entitiesWithInitiative.push(entityWithData);
 			} else {
 				entitiesWithoutInitiative.push(entityWithData);
 			}
 		});
-		
+
 		// Sort entities with initiative by their initiative index (already sorted)
 		entitiesWithInitiative.sort((a, b) => (a.initiativeIndex ?? 0) - (b.initiativeIndex ?? 0));
-		
+
 		// Combine: entities with initiative first, then entities without
 		allEntities = [...entitiesWithInitiative, ...entitiesWithoutInitiative];
 	} else {
@@ -119,7 +123,7 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 					// For players, entity.id is character.id (which matches initiative order entityId)
 					const entityIdForTurnCheck = entity.id;
 					const isActiveTurn = entityIdForTurnCheck === activeTurnEntityId;
-					
+
 					if (entity.type === 'player') {
 						const character = entity.data as Character;
 						const displayName = character.name || character.race || character.class || 'Unknown';
@@ -196,6 +200,9 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 										})}
 									</View>
 								)}
+								{(isActiveTurn) && (
+									<TurnResourceValues character={character} activeTurn={activeTurn} />
+								)}
 							</CardComponent>
 						);
 					} else {
@@ -246,6 +253,9 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 											</ThemedText>
 										</View>
 									</View>
+								)}
+								{(isActiveTurn) && (
+									<TurnResourceValues npcToken={npcToken} activeTurn={activeTurn} />
 								)}
 							</CardComponent>
 						);

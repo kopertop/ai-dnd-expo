@@ -1905,41 +1905,6 @@ const MultiplayerGameScreen: React.FC = () => {
 			showsHorizontalScrollIndicator={true}
 		>
 			<View style={styles.mapContainer}>
-				<View style={styles.mapHeader}>
-					<ThemedText type="subtitle">Shared Map</ThemedText>
-				</View>
-				{(isPlayerTurn || isHost) && (
-					<View style={styles.turnResourceRow}>
-						<View style={styles.turnResourceBadge}>
-							<ThemedText style={styles.turnResourceLabel}>Movement</ThemedText>
-							<ThemedText style={styles.turnResourceValue}>
-								{formatMovementValue(movementBudget)} / {formatMovementValue(totalMovementSpeedForActive)}
-							</ThemedText>
-						</View>
-						<View
-							style={[
-								styles.turnResourceBadge,
-								activeTurnForMovement?.majorActionUsed && styles.turnResourceBadgeUsed,
-							]}
-						>
-							<ThemedText style={styles.turnResourceLabel}>Major</ThemedText>
-							<ThemedText style={styles.turnResourceValue}>
-								{activeTurnForMovement?.majorActionUsed ? 'Used' : 'Ready'}
-							</ThemedText>
-						</View>
-						<View
-							style={[
-								styles.turnResourceBadge,
-								activeTurnForMovement?.minorActionUsed && styles.turnResourceBadgeUsed,
-							]}
-						>
-							<ThemedText style={styles.turnResourceLabel}>Minor</ThemedText>
-							<ThemedText style={styles.turnResourceValue}>
-								{activeTurnForMovement?.minorActionUsed ? 'Used' : 'Ready'}
-							</ThemedText>
-						</View>
-					</View>
-				)}
 				{gameState?.pausedTurn && (
 					<View style={styles.pausedIndicator}>
 						<ThemedText style={styles.pausedText}>⏸️ Turn Paused - DM Action</ThemedText>
@@ -2325,6 +2290,7 @@ const MultiplayerGameScreen: React.FC = () => {
 							currentPlayerId={currentCharacterId}
 							npcTokens={sharedMap?.tokens?.filter(t => t.type === 'npc') || []}
 							activeTurnEntityId={effectiveGameState?.activeTurn?.entityId}
+							activeTurn={effectiveGameState?.activeTurn}
 							onCharacterSelect={
 								isHost
 									? handleCharacterSelect
@@ -2347,6 +2313,7 @@ const MultiplayerGameScreen: React.FC = () => {
 								currentPlayerId={currentCharacterId}
 								npcTokens={sharedMap?.tokens?.filter(t => t.type === 'npc') || []}
 								activeTurnEntityId={effectiveGameState?.activeTurn?.entityId}
+								activeTurn={effectiveGameState?.activeTurn}
 								onCharacterSelect={
 									isHost
 										? handleCharacterSelect
