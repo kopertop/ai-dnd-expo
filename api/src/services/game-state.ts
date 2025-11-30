@@ -230,7 +230,7 @@ export class GameStateService {
 	/**
 	 * Save game state to database
 	 */
-	private async saveState(gameId: string, state: MultiplayerGameState): Promise<void> {
+	async saveState(gameId: string, state: MultiplayerGameState): Promise<void> {
 		const stateData: GameStateData = {
 			activeTurn: state.activeTurn,
 			initiativeOrder: state.initiativeOrder,
