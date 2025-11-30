@@ -1,12 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SearchableList, type SearchableListItem } from './searchable-list';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
-import { SearchableList, type SearchableListItem } from './searchable-list';
 
-import { multiplayerClient } from '@/services/api/multiplayer-client';
+import { useMyCharacters } from '@/hooks/api/use-character-queries';
+import { useNpcDefinitions } from '@/hooks/api/use-map-queries';
+import { Character } from '@/types/character';
 import { NpcDefinition } from '@/types/multiplayer-map';
 
 interface NpcSelectorProps {
@@ -26,6 +28,8 @@ interface NpcSelectorProps {
 	}) => void;
 }
 
+type SelectableItem = { type: 'npc'; data: NpcDefinition } | { type: 'character'; data: Character };
+
 export const NpcSelector: React.FC<NpcSelectorProps> = ({
 	visible,
 	onClose,
@@ -34,8 +38,6 @@ export const NpcSelector: React.FC<NpcSelectorProps> = ({
 	onCreateCustomNpc,
 }) => {
 	const insets = useSafeAreaInsets();
-	const [npcs, setNpcs] = useState<NpcDefinition[]>([]);
-	const [isLoading, setIsLoading] = useState(false);
 	const [showCreateForm, setShowCreateForm] = useState(false);
 	const [customNpc, setCustomNpc] = useState({
 		name: '',
@@ -48,50 +50,101 @@ export const NpcSelector: React.FC<NpcSelectorProps> = ({
 		color: '#3B2F1B',
 	});
 
-	useEffect(() => {
-		if (visible && inviteCode) {
-			loadNpcs();
-		}
-	}, [visible, inviteCode]);
+	// Fetch NPCs and Characters using React Query hooks
+	const { data: npcData, isLoading: npcsLoading } = useNpcDefinitions(inviteCode);
+	const { data: characterData, isLoading: charactersLoading } = useMyCharacters();
 
-	const loadNpcs = async () => {
-		setIsLoading(true);
-		try {
-			const response = await multiplayerClient.getNpcDefinitions(inviteCode);
-			setNpcs(response.npcs || []);
-		} catch (error) {
-			console.error('Failed to load NPCs:', error);
-			Alert.alert('Error', 'Failed to load NPCs');
-		} finally {
-			setIsLoading(false);
-		}
-	};
+	const isLoading = npcsLoading || charactersLoading;
 
 	const handleSelectNpc = (npc: NpcDefinition) => {
 		onSelectNpc(npc.slug || npc.id, npc.name);
 		// Don't call onClose here - let the parent handle closing after setting placement mode
 	};
 
-	// Convert NPCs to SearchableListItem format
-	const searchableItems = useMemo<SearchableListItem<NpcDefinition>[]>(() => {
-		return npcs.map(npc => ({
-			id: npc.id,
-			data: npc,
+	const handleSelectCharacter = (character: Character) => {
+		// Convert character to custom NPC format
+		// Calculate AC: 10 + DEX modifier (simplified, doesn't account for armor)
+		const dexModifier = Math.floor((character.stats.DEX - 10) / 2);
+		const armorClass = 10 + dexModifier;
+
+		onCreateCustomNpc({
+			name: character.name,
+			role: character.class,
+			alignment: 'neutral neutral', // Default alignment for characters
+			disposition: 'neutral', // Default disposition
+			description: character.description || `Level ${character.level} ${character.race} ${character.class}`,
+			maxHealth: character.maxHealth,
+			armorClass: Math.max(armorClass, 10), // Ensure minimum AC of 10
+			color: '#4A6741', // Default color
+		});
+		onClose();
+	};
+
+	// Convert NPCs and Characters to SearchableListItem format
+	const searchableItems = useMemo<SearchableListItem<SelectableItem>[]>(() => {
+		const npcs = npcData?.npcs || [];
+		const characters = characterData?.characters || [];
+
+		const npcItems: SearchableListItem<SelectableItem>[] = npcs.map(npc => ({
+			id: `npc-${npc.id}`,
+			data: { type: 'npc' as const, data: npc },
 			searchText: `${npc.name} ${npc.role} ${npc.alignment} ${npc.disposition} ${npc.description || ''}`.trim(),
 		}));
-	}, [npcs]);
 
-	const renderNpcItem = (item: SearchableListItem<NpcDefinition>, isSelected: boolean) => {
-		const npc = item.data;
-		return (
-			<View style={[styles.npcItem, isSelected && styles.npcItemSelected]}>
-				<ThemedText style={styles.npcName}>{npc.name}</ThemedText>
-				<ThemedText style={styles.npcDetails}>
-					{npc.role} • {npc.alignment} • {npc.disposition}
-				</ThemedText>
-				{npc.description && <ThemedText style={styles.npcDescription}>{npc.description}</ThemedText>}
-			</View>
-		);
+		const characterItems: SearchableListItem<SelectableItem>[] = characters.map(character => ({
+			id: `character-${character.id}`,
+			data: { type: 'character' as const, data: character },
+			searchText: `${character.name} ${character.class} ${character.race} level ${character.level} ${character.description || ''}`.trim(),
+		}));
+
+		return [...npcItems, ...characterItems];
+	}, [npcData?.npcs, characterData?.characters]);
+
+	const renderItem = (item: SearchableListItem<SelectableItem>, isSelected: boolean) => {
+		const selectableItem = item.data;
+
+		if (selectableItem.type === 'npc') {
+			const npc = selectableItem.data;
+			return (
+				<View style={[styles.npcItem, isSelected && styles.npcItemSelected]}>
+					<View style={styles.itemHeader}>
+						<ThemedText style={styles.npcName}>{npc.name}</ThemedText>
+						<View style={styles.typeBadge}>
+							<ThemedText style={styles.typeBadgeText}>NPC</ThemedText>
+						</View>
+					</View>
+					<ThemedText style={styles.npcDetails}>
+						{npc.role} • {npc.alignment} • {npc.disposition}
+					</ThemedText>
+					{npc.description && <ThemedText style={styles.npcDescription}>{npc.description}</ThemedText>}
+				</View>
+			);
+		} else {
+			const character = selectableItem.data;
+			return (
+				<View style={[styles.npcItem, isSelected && styles.npcItemSelected]}>
+					<View style={styles.itemHeader}>
+						<ThemedText style={styles.npcName}>{character.name}</ThemedText>
+						<View style={[styles.typeBadge, styles.characterBadge]}>
+							<ThemedText style={styles.typeBadgeText}>Character</ThemedText>
+						</View>
+					</View>
+					<ThemedText style={styles.npcDetails}>
+						Level {character.level} {character.race} {character.class}
+					</ThemedText>
+					{character.description && <ThemedText style={styles.npcDescription}>{character.description}</ThemedText>}
+				</View>
+			);
+		}
+	};
+
+	const handleSelectItem = (item: SearchableListItem<SelectableItem>) => {
+		const selectableItem = item.data;
+		if (selectableItem.type === 'npc') {
+			handleSelectNpc(selectableItem.data);
+		} else {
+			handleSelectCharacter(selectableItem.data);
+		}
 	};
 
 	const handleCreateCustom = () => {
@@ -258,17 +311,17 @@ export const NpcSelector: React.FC<NpcSelectorProps> = ({
 					]}
 				>
 					<ThemedText type="subtitle" style={styles.title}>
-						Select or Create NPC
+						Select NPC or Character
 					</ThemedText>
 					{isLoading ? (
-						<ThemedText style={styles.loadingText}>Loading NPCs...</ThemedText>
+						<ThemedText style={styles.loadingText}>Loading...</ThemedText>
 					) : (
 						<SearchableList
 							items={searchableItems}
-							onSelect={(item) => handleSelectNpc(item.data)}
-							renderItem={renderNpcItem}
-							placeholder="Search NPCs by name, role, alignment..."
-							emptyText="No NPCs found. Create a custom one!"
+							onSelect={handleSelectItem}
+							renderItem={renderItem}
+							placeholder="Search NPCs or characters by name, class, role..."
+							emptyText="No NPCs or characters found. Create a custom one!"
 							itemHeight={80}
 						/>
 					)}
@@ -323,6 +376,26 @@ const styles = StyleSheet.create({
 		backgroundColor: '#E9D8A6',
 		borderColor: '#C9B037',
 		borderWidth: 2,
+	},
+	itemHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginBottom: 4,
+	},
+	typeBadge: {
+		backgroundColor: '#E2D3B3',
+		borderRadius: 4,
+		paddingHorizontal: 8,
+		paddingVertical: 2,
+	},
+	characterBadge: {
+		backgroundColor: '#B8D4E3',
+	},
+	typeBadgeText: {
+		fontSize: 10,
+		color: '#3B2F1B',
+		fontWeight: '600',
 	},
 	npcName: {
 		fontSize: 16,

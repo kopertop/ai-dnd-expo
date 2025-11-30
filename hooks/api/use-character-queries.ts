@@ -9,15 +9,7 @@ import type { CharacterActionResult } from '@/types/combat';
  * Get current user's characters
  */
 export function useMyCharacters() {
-	return useQueryApi<Character[] | { characters: Character[] }>('/characters', {
-		select: (data) => {
-			// Handle both array and object response formats
-			if (Array.isArray(data)) {
-				return data;
-			}
-			return (data as { characters: Character[] }).characters || [];
-		},
-	});
+	return useQueryApi<CharacterListResponse>('/characters');
 }
 
 /**
