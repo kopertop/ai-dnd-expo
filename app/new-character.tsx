@@ -16,7 +16,7 @@ import { newGameStyles } from '../styles/new-game.styles';
 
 import { AttributePicker } from '@/components/attribute-picker';
 import { ClassChooser } from '@/components/class-chooser';
-import { IconPicker } from '@/components/icon-picker';
+import { ExpoIconPicker } from '@/components/expo-icon-picker';
 import { LocationChooser } from '@/components/location-chooser';
 import { RaceChooser } from '@/components/race-chooser';
 import { SkillChooser } from '@/components/skill-chooser';
@@ -499,7 +499,7 @@ const NewGameScreen: React.FC = () => {
 
 							{/* Icon Picker Section */}
 							<View style={{ marginBottom: isMobile ? 16 : 24 }}>
-								<IconPicker value={characterIcon} onChange={setCharacterIcon} label="Character Icon" />
+								<ExpoIconPicker value={characterIcon} onChange={setCharacterIcon} label="Character Icon" />
 							</View>
 
 							{/* Background Section - Flexible */}

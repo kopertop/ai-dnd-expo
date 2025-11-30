@@ -150,11 +150,14 @@ npcs.post('/:inviteCode/npcs', async (c) => {
 	const actionPoints = payload.actionPoints ?? 3;
 	const maxActionPoints = 3;
 
-	// Store action points in metadata
+	// Store action points and icon in metadata
+	// Copy icon from NPC definition if it exists
 	const tokenMetadata = {
 		...(JSON.parse(npc.metadata || '{}')),
 		actionPoints,
 		maxActionPoints,
+		// Ensure icon is copied from NPC definition to token metadata
+		...(npcMetadata.icon ? { icon: npcMetadata.icon } : {}),
 	};
 
 	await db.saveMapToken({

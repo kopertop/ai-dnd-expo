@@ -82,6 +82,85 @@ export const resolveMapRow = async (db: Database, game: GameRow): Promise<MapRow
 };
 
 /**
+ * Get default icon for a token based on its type and properties
+ * @param token - Token row from database
+ * @param npc - Optional NPC definition
+ * @param character - Optional character data
+ * @returns Default icon string or undefined
+ */
+const getDefaultTokenIcon = (
+	token: MapTokenRow,
+	npc?: { role?: string; name?: string; icon?: string } | null,
+	character?: { class?: string; icon?: string; image?: string } | null,
+): string | undefined => {
+	// If token already has icon in metadata, use it
+	const metadata = JSON.parse(token.metadata || '{}');
+	if (metadata.icon) {
+		return metadata.icon;
+	}
+	if (metadata.image) {
+		return metadata.image;
+	}
+
+	// For NPCs: try NPC definition icon, then role-based defaults
+	if (token.token_type === 'npc') {
+		if (npc?.icon) {
+			return npc.icon;
+		}
+		const role = (npc?.role || token.label || '').toLowerCase();
+		if (role.includes('guard') || role.includes('sentinel') || role.includes('captain')) {
+			return 'MaterialIcons:security';
+		}
+		if (role.includes('vendor') || role.includes('merchant') || role.includes('shop')) {
+			return 'MaterialIcons:store';
+		}
+		if (role.includes('scout') || role.includes('ranger') || role.includes('raider')) {
+			return 'MaterialIcons:explore';
+		}
+		if (role.includes('healer') || role.includes('cleric')) {
+			return 'MaterialIcons:healing';
+		}
+		if (role.includes('goblin') || role.includes('hostile') || role.includes('monster')) {
+			return 'MaterialIcons:dangerous';
+		}
+		// Default NPC icon
+		return 'MaterialIcons:person';
+	}
+
+	// For players: try character icon/image, then class-based defaults
+	if (token.token_type === 'player') {
+		if (character?.icon) {
+			return character.icon;
+		}
+		if (character?.image) {
+			return character.image;
+		}
+		const charClass = (character?.class || '').toLowerCase();
+		if (charClass.includes('fighter') || charClass.includes('warrior') || charClass.includes('paladin')) {
+			return 'MaterialIcons:security';
+		}
+		if (charClass.includes('wizard') || charClass.includes('mage') || charClass.includes('sorcerer')) {
+			return 'MaterialIcons:auto-fix-high';
+		}
+		if (charClass.includes('rogue') || charClass.includes('thief') || charClass.includes('assassin')) {
+			return 'FontAwesome5:mask';
+		}
+		if (charClass.includes('cleric') || charClass.includes('priest')) {
+			return 'MaterialIcons:healing';
+		}
+		// Default player icon
+		return 'MaterialIcons:person';
+	}
+
+	// For objects: default object icon
+	if (token.token_type === 'object') {
+		return 'MaterialIcons:category';
+	}
+
+	return undefined;
+};
+
+/**
  * Build complete map state including tiles and tokens
  * @param db - Database instance
  * @param game - Game row from database
@@ -93,7 +172,63 @@ export const buildMapState = async (db: Database, game: GameRow) => {
 		db.getMapTiles(mapRow.id),
 		db.listMapTokensForGame(game.id),
 	]);
-	return mapStateFromDb(mapRow, { tiles, tokens });
+
+	// Normalize token icons by fetching NPC definitions and characters
+	const normalizedTokens = await Promise.all(
+		tokens.map(async (token) => {
+			// Check if token already has icon
+			const metadata = JSON.parse(token.metadata || '{}');
+			if (metadata.icon || metadata.image) {
+				return token; // Already has icon, no need to normalize
+			}
+
+			// Fetch NPC definition if this is an NPC token
+			let npc: { role?: string; name?: string; icon?: string } | null = null;
+			if (token.token_type === 'npc' && token.npc_id) {
+				const npcRow = await db.getNpcById(token.npc_id);
+				if (npcRow) {
+					const npcMetadata = JSON.parse(npcRow.metadata || '{}');
+					npc = {
+						role: npcRow.role,
+						name: npcRow.name,
+						icon: npcMetadata.icon,
+					};
+				}
+			}
+
+			// Fetch character if this is a player token
+			let character: { class?: string; icon?: string; image?: string } | null = null;
+			if (token.token_type === 'player' && token.character_id) {
+				const charRow = await db.getCharacterById(token.character_id);
+				if (charRow) {
+					const char = deserializeCharacter(charRow);
+					character = {
+						class: char.class,
+						icon: char.icon,
+						image: char.image,
+					};
+				}
+			}
+
+			// Get default icon
+			const defaultIcon = getDefaultTokenIcon(token, npc, character);
+			if (defaultIcon) {
+				// Update token metadata with default icon
+				const updatedMetadata = {
+					...metadata,
+					icon: defaultIcon,
+				};
+				return {
+					...token,
+					metadata: JSON.stringify(updatedMetadata),
+				};
+			}
+
+			return token;
+		}),
+	);
+
+	return mapStateFromDb(mapRow, { tiles, tokens: normalizedTokens });
 };
 
 /**

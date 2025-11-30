@@ -109,7 +109,7 @@ const NPC_SEEDS: NpcSeed[] = [
 		stats: { strength: 16, dexterity: 12, wisdom: 13 },
 		abilities: ['Commanding Presence', 'Shield Wall'],
 		lootTable: ['Halberd', 'Guard Insignia'],
-		metadata: { tags: ['friendly', 'quest-giver'] },
+		metadata: { tags: ['friendly', 'quest-giver'], icon: 'MaterialIcons:security' },
 	},
 	{
 		id: 'npc_merchant_arcanist',
@@ -127,7 +127,7 @@ const NPC_SEEDS: NpcSeed[] = [
 		stats: { intelligence: 17, charisma: 15 },
 		abilities: ['Identify', 'Mystic Shield'],
 		lootTable: ['Potion of Healing', 'Scroll of Shield'],
-		metadata: { tags: ['vendor', 'support'] },
+		metadata: { tags: ['vendor', 'support'], icon: 'MaterialIcons:store' },
 	},
 	{
 		id: 'npc_goblin_raider',
@@ -145,7 +145,7 @@ const NPC_SEEDS: NpcSeed[] = [
 		stats: { dexterity: 15, constitution: 12 },
 		abilities: ['Pack Tactics'],
 		lootTable: ['Rusty Dagger', 'Coin Pouch'],
-		metadata: { tags: ['hostile', 'underground'] },
+		metadata: { tags: ['hostile', 'underground'], icon: 'MaterialIcons:dangerous' },
 	},
 ];
 

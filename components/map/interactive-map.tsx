@@ -1,6 +1,7 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, Image, PanResponder, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { MapState, MapToken } from '@/types/multiplayer-map';
 
 const TILE_SIZE = 28;
@@ -529,21 +530,20 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 	};
 
 	const renderTokenContent = (token: MapToken) => {
-		const icon = token.icon || token.metadata?.icon;
-		const isImageIcon = typeof icon === 'string' && (icon.startsWith('http') || icon.startsWith('data:'));
+		const icon = token.icon || token.metadata?.icon || token.metadata?.image;
 
-		if (isImageIcon) {
-			return <Image source={{ uri: icon }} style={styles.tokenImage} />;
-		}
-
+		// If icon exists, render it using ExpoIcon
 		if (typeof icon === 'string' && icon.trim().length > 0) {
 			return (
-				<Text style={[styles.tokenLabel, styles.tokenEmoji]} numberOfLines={1}>
-					{icon.trim()}
-				</Text>
+				<ExpoIcon
+					icon={icon.trim()}
+					size={20}
+					color="#1F130A"
+				/>
 			);
 		}
 
+		// Fallback to initials only if no icon is available
 		return (
 			<Text style={styles.tokenLabel} numberOfLines={1}>
 				{token.label?.slice(0, 2).toUpperCase() || 'T'}
