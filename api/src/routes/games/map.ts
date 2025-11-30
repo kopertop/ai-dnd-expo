@@ -14,7 +14,7 @@ import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import { Database, MapTokenRow } from '@/shared/workers/db';
 import { generateProceduralMap, MapGeneratorPreset } from '@/shared/workers/map-generator';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
-import { getTerrainCost } from '@/utils/movement-calculator';
+import { BLOCKED_COST, getTerrainCost } from '@/utils/movement-calculator';
 import { mapStateFromDb } from '@/utils/schema-adapters';
 
 
@@ -434,15 +434,10 @@ map.post('/:inviteCode/map/tokens', async (c) => {
 			const step = path[i];
 			const cell = parsedMapState.terrain?.[step.y]?.[step.x];
 			const stepCost = getTerrainCost(cell);
-			if (!Number.isFinite(stepCost)) {
-				cost = Number.POSITIVE_INFINITY;
-				break;
+			if (stepCost >= BLOCKED_COST) {
+				return c.json({ error: 'Forbidden: Path crosses blocked terrain' }, 403);
 			}
 			cost += stepCost;
-		}
-
-		if (!Number.isFinite(cost)) {
-			return c.json({ error: 'Forbidden: Path crosses invalid terrain' }, 403);
 		}
 
 		playerMoveCost = cost;

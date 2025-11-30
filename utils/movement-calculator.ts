@@ -12,29 +12,28 @@ export interface ReachableTile extends MovementPath {
         y: number;
 }
 
+// Cost for blocked/impassible terrain
+export const BLOCKED_COST = 999;
+
 export const TERRAIN_COSTS: Record<string, number> = {
-	water: Number.POSITIVE_INFINITY,
-	mountain: Number.POSITIVE_INFINITY,
-	impassible: Number.POSITIVE_INFINITY,
-	impassable: Number.POSITIVE_INFINITY,
+	water: BLOCKED_COST,
+	mountain: BLOCKED_COST,
+	impassible: BLOCKED_COST,
+	impassable: BLOCKED_COST,
 	road: 0.5,
-	path: 0.75,
-	grass: 1,
-	cobblestone: 0.8,
-	stone: 1.25,
-	sand: 1.5,
-	forest: 2,
-	swamp: 2.5,
-	default: 2,
+	// All other terrain types default to 1 (normal movement cost)
+	// Difficult terrain is handled separately via the difficult flag
+	default: 1,
 };
 
 const normalizeTerrain = (terrain?: string) => terrain?.trim().toLowerCase() ?? 'default';
 
 const isBlockedCell = (terrain?: string, difficult?: boolean) => {
-	if (difficult) {
+	// If difficult is true, it means is_blocked from database - treat as blocked
+	if (difficult === true) {
 		return true;
 	}
-
+	
 	const normalized = normalizeTerrain(terrain);
 	return normalized === 'water' || normalized === 'mountain' || normalized === 'impassible' || normalized === 'impassable';
 };
@@ -44,8 +43,9 @@ export const getTerrainCost = (cell?: { terrain?: string; difficult?: boolean })
 		return TERRAIN_COSTS.default;
 	}
 
+	// Check if cell is blocked (either by terrain type or difficult flag from is_blocked)
 	if (isBlockedCell(cell.terrain, cell.difficult)) {
-		return Number.POSITIVE_INFINITY;
+		return BLOCKED_COST;
 	}
 
 	const normalized = normalizeTerrain(cell.terrain);
@@ -109,13 +109,13 @@ export const calculateMovementRange = (
 		for (const neighbor of getNeighbors(map, current.x, current.y)) {
 			const cell = map.terrain?.[neighbor.y]?.[neighbor.x];
 			const stepCost = getTerrainCost(cell);
-			if (!Number.isFinite(stepCost)) {
+			if (stepCost >= BLOCKED_COST) {
 				continue;
 			}
 
 			const newCost = (costs.get(tileKey(current.x, current.y)) ?? 0) + stepCost;
 			const neighborKey = tileKey(neighbor.x, neighbor.y);
-			if (newCost > maxCost || newCost >= (costs.get(neighborKey) ?? Number.POSITIVE_INFINITY)) {
+			if (newCost > maxCost || newCost >= (costs.get(neighborKey) ?? BLOCKED_COST)) {
 				continue;
 			}
 
@@ -136,6 +136,13 @@ export const findPathWithCosts = (
 	start: Coordinate,
 	end: Coordinate,
 ): MovementPath | null => {
+	// Check if destination is blocked - if so, no path is possible
+	const endCell = map.terrain?.[end.y]?.[end.x];
+	const endCost = getTerrainCost(endCell);
+	if (endCost >= BLOCKED_COST) {
+		return null; // Destination is blocked
+	}
+
 	const frontier: Array<{ x: number; y: number; cost: number }> = [{ ...start, cost: 0 }];
 	const parents = new Map<string, string | null>();
 	const costs = new Map<string, number>();
@@ -154,19 +161,19 @@ export const findPathWithCosts = (
 		const currentKey = tileKey(current.x, current.y);
 		if (currentKey === targetKey) {
 			const path = reconstructPath(currentKey, parents);
-			return { path, cost: costs.get(currentKey) ?? Number.POSITIVE_INFINITY };
+			return { path, cost: costs.get(currentKey) ?? BLOCKED_COST };
 		}
 
 		for (const neighbor of getNeighbors(map, current.x, current.y)) {
 			const cell = map.terrain?.[neighbor.y]?.[neighbor.x];
 			const stepCost = getTerrainCost(cell);
-			if (!Number.isFinite(stepCost)) {
-				continue;
+			if (stepCost >= BLOCKED_COST) {
+				continue; // Skip blocked tiles
 			}
 
 			const newCost = (costs.get(currentKey) ?? 0) + stepCost;
 			const neighborKey = tileKey(neighbor.x, neighbor.y);
-			if (newCost >= (costs.get(neighborKey) ?? Number.POSITIVE_INFINITY)) {
+			if (newCost >= (costs.get(neighborKey) ?? BLOCKED_COST)) {
 				continue;
 			}
 

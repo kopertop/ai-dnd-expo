@@ -1,4 +1,4 @@
-import { findPathWithCosts, type Coordinate } from './movement-calculator';
+import { BLOCKED_COST, findPathWithCosts, getTerrainCost, type Coordinate } from './movement-calculator';
 
 import type { MapTokenUpsertRequest } from '@/types/api/multiplayer-api';
 import type { MapState } from '@/types/multiplayer-map';
@@ -77,6 +77,21 @@ export async function moveTokenWithBudget(params: MoveTokenParams): Promise<Move
 		onError,
 	} = params;
 
+	// Check if destination is blocked before attempting pathfinding
+	const destinationCell = map.terrain?.[to.y]?.[to.x];
+	const destinationCost = getTerrainCost(destinationCell);
+	if (destinationCost >= BLOCKED_COST) {
+		const error = new Error('Cannot move to blocked terrain.');
+		onError?.(error);
+		return {
+			success: false,
+			path: [],
+			cost: 0,
+			updatedMovementUsed: currentMovementUsed,
+			error: error.message,
+		};
+	}
+
 	// Calculate path and cost
 	const pathResult = findPathWithCosts(map, from, to);
 
@@ -143,9 +158,15 @@ export async function moveTokenWithBudget(params: MoveTokenParams): Promise<Move
 		await saveToken(tokenData);
 
 		// Update movement budget (only for players and NPCs, not objects)
-		// Use turnEntityId override if provided, otherwise use token.entityId
+		// NOTE: For non-host player tokens, the backend already updates movementUsed in map.ts,
+		// so we skip the frontend update to avoid overwriting with stale values.
+		// For host player tokens and NPCs, we need to update from the frontend.
 		const entityIdForTurnUpdate = turnEntityId || token.entityId;
-		if ((token.type === 'player' || token.type === 'npc') && entityIdForTurnUpdate) {
+		const shouldUpdateFromFrontend = 
+			(token.type === 'npc' && entityIdForTurnUpdate) ||
+			(token.type === 'player' && isHost && entityIdForTurnUpdate);
+		
+		if (shouldUpdateFromFrontend) {
 			await updateTurnUsage(
 				{
 					movementUsed: updatedMovementUsed,

@@ -123,9 +123,10 @@ export function useSaveMapToken(inviteCode: string) {
 	return useMutationApi<MapTokenMutationResponse>({
 		method: 'POST',
 		onSuccess: () => {
-			// Invalidate map tokens and state
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			// Invalidate map tokens and map state
+			queryClient.invalidateQueries();
+			// Immediately refetch game state to get updated movementUsed
+			queryClient.refetchQueries();
 		},
 	});
 }
