@@ -345,6 +345,7 @@ export const serializeCharacter = (
 	health: character.health,
 	max_health: character.maxHealth,
 	action_points: character.actionPoints,
+	prepared_spells: character.preparedSpells ? JSON.stringify(character.preparedSpells) : null,
 	max_action_points: character.maxActionPoints,
 	status_effects: JSON.stringify(character.statusEffects || []),
 });
@@ -371,6 +372,7 @@ export const deserializeCharacter = (row: CharacterRow): Character => ({
 	actionPoints: row.action_points,
 	maxActionPoints: row.max_action_points,
 	statusEffects: JSON.parse(row.status_effects || '[]'),
+	preparedSpells: row.prepared_spells ? JSON.parse(row.prepared_spells) : [],
 });
 
 /**

@@ -16,7 +16,9 @@ import {
 
 import { ThemedView } from '@/components/themed-view';
 import { SKILL_LIST } from '@/constants/skills';
+import { getSpellsForClass, SPELL_DEFINITIONS } from '@/constants/spells';
 import { STAT_KEYS } from '@/constants/stats';
+import { useUpdateCharacter } from '@/hooks/api/use-character-queries';
 import { useAudio } from '@/hooks/use-audio-player';
 import { useGameState } from '@/hooks/use-game-state';
 import { useScreenSize } from '@/hooks/use-screen-size';
@@ -26,21 +28,49 @@ import { GearSlot } from '@/types/stats';
 interface CharacterSheetModalProps {
 	visible: boolean;
 	onClose: () => void;
+	allowClose?: boolean; // If false, hide the close button (for long rest view)
 }
 
-export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visible, onClose }) => {
+export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visible, onClose, allowClose = true }) => {
 	const [tooltipSkill, setTooltipSkill] = useState<string | null>(null);
 	const [activeSlot, setActiveSlot] = useState<GearSlot | null>(null);
 	const { isMobile } = useScreenSize();
 	const { togglePlayPause, isPlaying } = useAudio();
 	const { playerCharacter, playerPortrait } = useGameState();
-	// TODO: Restore inventory manager
-	const loading = false;
-	const error = null;
-	const inventory: any[] = [];
-	const equipped: Record<string, any> = {};
-	const equipItem = async () => { };
-	const unequipItem = async () => { };
+	const updateCharacterMutation = useUpdateCharacter();
+	
+	// Inventory management - use character's inventory and equipped fields
+	const inventory = playerCharacter?.inventory || [];
+	const equipped = playerCharacter?.equipped || {};
+	const loading = updateCharacterMutation.isPending;
+	const error = updateCharacterMutation.error;
+	
+	const equipItem = async (item: any, slot: GearSlot) => {
+		if (!playerCharacter) return;
+		const newEquipped = { ...equipped, [slot]: item.id };
+		try {
+			await updateCharacterMutation.mutateAsync({
+				path: `/characters/${playerCharacter.id}`,
+				body: { equipped: newEquipped },
+			});
+		} catch (error) {
+			Alert.alert('Error', 'Failed to equip item');
+		}
+	};
+	
+	const unequipItem = async (slot: GearSlot) => {
+		if (!playerCharacter) return;
+		const newEquipped = { ...equipped };
+		delete newEquipped[slot];
+		try {
+			await updateCharacterMutation.mutateAsync({
+				path: `/characters/${playerCharacter.id}`,
+				body: { equipped: newEquipped },
+			});
+		} catch (error) {
+			Alert.alert('Error', 'Failed to unequip item');
+		}
+	};
 
 	if (!playerCharacter) return null;
 
@@ -57,6 +87,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 		maxHealth,
 		actionPoints,
 		maxActionPoints,
+		preparedSpells = [],
 	} = playerCharacter;
 	const portraitSource = playerPortrait;
 
@@ -66,12 +97,12 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 
 	const handleAssignItem = async (item: any) => {
 		if (!activeSlot) return;
-		await equipItem();
+		await equipItem(item, activeSlot);
 		setActiveSlot(null);
 	};
 
 	const handleUnequipSlot = async (slot: GearSlot) => {
-		await unequipItem();
+		await unequipItem(slot);
 		setActiveSlot(null);
 	};
 
@@ -97,10 +128,19 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 	};
 
 	// Use inventory with equipped status for display
-	// Items are already sorted with equipped items first
+	// Map inventory items to include equipped status
+	const inventoryWithStatus = inventory.map((item: any) => {
+		const equippedSlot = Object.entries(equipped).find(([_, itemId]) => itemId === item.id)?.[0] as GearSlot | undefined;
+		return {
+			item,
+			isEquipped: !!equippedSlot,
+			equippedSlot,
+		};
+	});
+	
 	const filteredInventory = activeSlot
-		? inventory.filter(entry => entry.item.slot === activeSlot)
-		: inventory;
+		? inventoryWithStatus.filter(entry => entry.item.slot === activeSlot)
+		: inventoryWithStatus;
 
 	return (
 		<Modal visible={visible} animationType="slide" transparent>
@@ -274,6 +314,48 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 												</Pressable>
 											);
 										})
+									)}
+								</View>
+								{/* Spell Preparation Section */}
+								<Text style={styles.label}>Prepared Spells</Text>
+								<View style={styles.spellListContainer}>
+									{getSpellsForClass(characterClass, level).map(spell => {
+										const isPrepared = preparedSpells.includes(spell.id);
+										return (
+											<TouchableOpacity
+												key={spell.id}
+												style={[
+													styles.spellItem,
+													isPrepared && styles.spellItemPrepared,
+												]}
+												onPress={async () => {
+													const newPreparedSpells = isPrepared
+														? preparedSpells.filter(id => id !== spell.id)
+														: [...preparedSpells, spell.id];
+													try {
+														await updateCharacterMutation.mutateAsync({
+															path: `/characters/${playerCharacter.id}`,
+															body: {
+																preparedSpells: newPreparedSpells,
+															},
+														});
+													} catch (error) {
+														Alert.alert('Error', 'Failed to update prepared spells');
+													}
+												}}
+											>
+												<Text style={[styles.spellName, isPrepared && styles.spellNamePrepared]}>
+													{spell.name}
+												</Text>
+												<Text style={styles.spellLevel}>Level {spell.level}</Text>
+												{isPrepared && <Text style={styles.spellPreparedMark}>✓</Text>}
+											</TouchableOpacity>
+										);
+									})}
+									{getSpellsForClass(characterClass, level).length === 0 && (
+										<Text style={styles.emptyInventory}>
+											No spells available for {characterClass}
+										</Text>
 									)}
 								</View>
 							</View>
@@ -562,54 +644,56 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 							</View>
 						</View>
 					</ScrollView>
-					{/* Button row */}
-					<View style={isMobile ? styles.buttonRowMobile : styles.buttonRow}>
-						{/* Music control button */}
-						<TouchableOpacity
-							style={isMobile ? styles.actionButtonMobile : styles.actionButton}
-							onPress={togglePlayPause}
-							accessibilityLabel={
-								isPlaying ? 'Mute background music' : 'Unmute background music'
-							}
-						>
-							<Feather
-								name={isPlaying ? 'volume-2' : 'volume-x'}
-								size={isMobile ? 16 : 18}
-								color={isPlaying ? '#4caf50' : '#f44336'}
-								style={{ marginRight: 6 }}
-							/>
-							<Text
-								style={[
-									styles.actionButtonText,
-									{ color: isPlaying ? '#4caf50' : '#f44336' },
-								]}
+					{/* Button row - only show if allowClose is true (not in long rest mode) */}
+					{allowClose && (
+						<View style={isMobile ? styles.buttonRowMobile : styles.buttonRow}>
+							{/* Music control button */}
+							<TouchableOpacity
+								style={isMobile ? styles.actionButtonMobile : styles.actionButton}
+								onPress={togglePlayPause}
+								accessibilityLabel={
+									isPlaying ? 'Mute background music' : 'Unmute background music'
+								}
 							>
-								{isPlaying ? 'Mute' : 'Unmute'}
-							</Text>
-						</TouchableOpacity>
+								<Feather
+									name={isPlaying ? 'volume-2' : 'volume-x'}
+									size={isMobile ? 16 : 18}
+									color={isPlaying ? '#4caf50' : '#f44336'}
+									style={{ marginRight: 6 }}
+								/>
+								<Text
+									style={[
+										styles.actionButtonText,
+										{ color: isPlaying ? '#4caf50' : '#f44336' },
+									]}
+								>
+									{isPlaying ? 'Mute' : 'Unmute'}
+								</Text>
+							</TouchableOpacity>
 
-						{/* Main menu button */}
-						<TouchableOpacity
-							style={isMobile ? styles.actionButtonMobile : styles.actionButton}
-							onPress={handleMainMenu}
-						>
-							<Feather
-								name="home"
-								size={isMobile ? 16 : 18}
-								color="#3B2F1B"
-								style={{ marginRight: 6 }}
-							/>
-							<Text style={styles.actionButtonText}>Main Menu</Text>
-						</TouchableOpacity>
+							{/* Main menu button */}
+							<TouchableOpacity
+								style={isMobile ? styles.actionButtonMobile : styles.actionButton}
+								onPress={handleMainMenu}
+							>
+								<Feather
+									name="home"
+									size={isMobile ? 16 : 18}
+									color="#3B2F1B"
+									style={{ marginRight: 6 }}
+								/>
+								<Text style={styles.actionButtonText}>Main Menu</Text>
+							</TouchableOpacity>
 
-						{/* Close button */}
-						<TouchableOpacity
-							style={isMobile ? styles.closeButtonMobile : styles.closeButton}
-							onPress={onClose}
-						>
-							<Text style={styles.closeButtonText}>Close</Text>
-						</TouchableOpacity>
-					</View>
+							{/* Close button */}
+							<TouchableOpacity
+								style={isMobile ? styles.closeButtonMobile : styles.closeButton}
+								onPress={onClose}
+							>
+								<Text style={styles.closeButtonText}>Close</Text>
+							</TouchableOpacity>
+						</View>
+					)}
 				</ThemedView>
 			</View>
 		</Modal>

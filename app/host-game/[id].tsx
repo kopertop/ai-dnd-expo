@@ -62,6 +62,10 @@ const HostGameLobbyScreen: React.FC = () => {
 	const shouldFetchSession = inviteCode && inviteCode !== 'new';
 	const { data: session, isLoading: sessionLoading, refetch: refetchSession } = useGameSession(
 		shouldFetchSession ? inviteCode : null,
+		{
+			// Poll every 5 seconds when game is active to catch newly joined players
+			refetchInterval: (data) => data?.status === 'active' ? 5000 : undefined,
+		},
 	);
 
 	// Derive initial values from session query (must be after session is defined)

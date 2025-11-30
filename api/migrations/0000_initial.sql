@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS `characters` (
 	`action_points` integer NOT NULL,
 	`max_action_points` integer NOT NULL,
 	`status_effects` text DEFAULT NULL,
+	`prepared_spells` text DEFAULT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL
 );

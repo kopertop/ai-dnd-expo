@@ -243,9 +243,24 @@ const MapTile: React.FC<{
 	}
 	const isTrapTriggered = trapMetadata?.triggered === true;
 
+	// Check if tile is blocked - database is_blocked is converted to 'difficult' in the cell object
+	const isBlocked = cell?.difficult === true || cell?.blocked === true || cell?.isBlocked === true || cell?.is_blocked === true;
+	
 	// Check if tile has fog of war
 	const hasFog = cell?.fogged === true;
 	const fogOpacity = hasFog ? (isHost ? 0.1 : 0.9) : 0;
+	
+	// Determine background color - blocked tiles are black (or water blue if water terrain)
+	const getBackgroundColor = () => {
+		if (isBlocked) {
+			const terrain = cell?.terrain?.trim().toLowerCase();
+			if (terrain === 'water') {
+				return '#7FD1F7'; // Water blue
+			}
+			return '#000000'; // Black for all other blocked tiles
+		}
+		return terrainColor(cell?.terrain);
+	};
 
 	// Determine border color - prioritize path, then hover, then trap, then default
 	const getBorderColor = () => {
@@ -315,7 +330,7 @@ const MapTile: React.FC<{
 				{
 					width: tileSize,
 					height: tileSize,
-					backgroundColor: terrainColor(cell?.terrain),
+					backgroundColor: getBackgroundColor(),
 					borderColor: getBorderColor(),
 					borderWidth: getBorderWidth(),
 					opacity: hoveredTile?.x === x && hoveredTile?.y === y ? 0.6 : 1,
@@ -327,7 +342,7 @@ const MapTile: React.FC<{
 					<Text style={styles.trapIcon}>⚠</Text>
 				</View>
 			)}
-			{hasFog && (
+			{hasFog && !isBlocked && (
 				<View style={[styles.fogOverlay, { opacity: fogOpacity }]} pointerEvents="none">
 					<View style={styles.fogPatternContainer}>
 						{fogWavePattern}

@@ -596,4 +596,47 @@ export default StyleSheet.create({
 		fontWeight: 'bold',
 		fontSize: 14,
 	},
+	spellListContainer: {
+		flexDirection: 'column',
+		gap: 8,
+		marginTop: 8,
+		marginBottom: 8,
+		maxHeight: 300,
+	},
+	spellItem: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		padding: 12,
+		borderWidth: 1,
+		borderColor: '#8B5C2A',
+		borderRadius: 8,
+		backgroundColor: '#F9F6EF',
+		marginBottom: 4,
+	},
+	spellItemPrepared: {
+		backgroundColor: '#FFF8E1',
+		borderWidth: 2,
+		borderColor: '#C9B037',
+	},
+	spellName: {
+		fontSize: 14,
+		fontWeight: 'bold',
+		color: '#3B2F1B',
+		flex: 1,
+	},
+	spellNamePrepared: {
+		color: '#8B2323',
+	},
+	spellLevel: {
+		fontSize: 12,
+		color: '#8B5C2A',
+		marginLeft: 8,
+	},
+	spellPreparedMark: {
+		fontSize: 18,
+		color: '#C9B037',
+		fontWeight: 'bold',
+		marginLeft: 8,
+	},
 });

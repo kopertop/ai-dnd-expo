@@ -365,6 +365,15 @@ core.patch('/:inviteCode/stop', async (c) => {
 		return c.json({ error: 'Forbidden - Only the host can stop this game' }, 403);
 	}
 
+	// End encounter and trigger long rest (restore characters to full health/AP)
+	const gameStateService = new GameStateService(db);
+	try {
+		await gameStateService.endEncounter(game);
+	} catch (error) {
+		// If encounter isn't active, that's fine - just continue
+		console.log('No active encounter to end:', error);
+	}
+
 	// Change game status back to 'waiting' to allow lobby access
 	await db.updateGameStatus(game.id, 'waiting');
 

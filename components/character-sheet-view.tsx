@@ -13,6 +13,7 @@ import {
 import { ThemedView } from '@/components/themed-view';
 import { SKILL_LIST } from '@/constants/skills';
 import { STAT_KEYS } from '@/constants/stats';
+import { useUpdateCharacter } from '@/hooks/api/use-character-queries';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useGameState } from '@/hooks/use-game-state';
 import { GearSlot } from '@/types/stats';
@@ -22,14 +23,40 @@ export const CharacterSheetView: React.FC = () => {
 	const [activeSlot, setActiveSlot] = useState<GearSlot | null>(null);
 	const { playerCharacter, playerPortrait } = useGameState();
 	const colorScheme = useColorScheme();
+	const updateCharacterMutation = useUpdateCharacter();
 
-	// TODO: Restore inventory manager
-	const loading = false;
-	const error = null;
-	const inventory: any[] = [];
-	const equipped: Record<string, any> = {};
-	const equipItem = async () => { };
-	const unequipItem = async () => { };
+	// Inventory management - use character's inventory and equipped fields
+	const inventory = playerCharacter?.inventory || [];
+	const equipped = playerCharacter?.equipped || {};
+	const loading = updateCharacterMutation.isPending;
+	const error = updateCharacterMutation.error;
+	
+	const equipItem = async (item: any, slot: GearSlot) => {
+		if (!playerCharacter) return;
+		const newEquipped = { ...equipped, [slot]: item.id };
+		try {
+			await updateCharacterMutation.mutateAsync({
+				path: `/characters/${playerCharacter.id}`,
+				body: { equipped: newEquipped },
+			});
+		} catch (error) {
+			// Error handling - could show alert if needed
+		}
+	};
+	
+	const unequipItem = async (slot: GearSlot) => {
+		if (!playerCharacter) return;
+		const newEquipped = { ...equipped };
+		delete newEquipped[slot];
+		try {
+			await updateCharacterMutation.mutateAsync({
+				path: `/characters/${playerCharacter.id}`,
+				body: { equipped: newEquipped },
+			});
+		} catch (error) {
+			// Error handling - could show alert if needed
+		}
+	};
 
 	if (!playerCharacter) return null;
 
@@ -55,19 +82,28 @@ export const CharacterSheetView: React.FC = () => {
 
 	const handleAssignItem = async (item: any) => {
 		if (!activeSlot) return;
-		await equipItem();
+		await equipItem(item, activeSlot);
 		setActiveSlot(null);
 	};
 
 	const handleUnequipSlot = async (slot: GearSlot) => {
-		await unequipItem();
+		await unequipItem(slot);
 		setActiveSlot(null);
 	};
 
 	// Use inventory with equipped status for display
+	const inventoryWithStatus = inventory.map((item: any) => {
+		const equippedSlot = Object.entries(equipped).find(([_, itemId]) => itemId === item.id)?.[0] as GearSlot | undefined;
+		return {
+			item,
+			isEquipped: !!equippedSlot,
+			equippedSlot,
+		};
+	});
+	
 	const filteredInventory = activeSlot
-		? inventory.filter(entry => entry.item.slot === activeSlot)
-		: inventory;
+		? inventoryWithStatus.filter(entry => entry.item.slot === activeSlot)
+		: inventoryWithStatus;
 
 	const backgroundColor = colorScheme === 'dark' ? '#2C1810' : '#F9F6EF';
 

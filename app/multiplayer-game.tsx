@@ -4,6 +4,7 @@ import { Alert, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharacterDMModal } from '@/components/character-dm-modal';
+import { CharacterSheetModal } from '@/components/character-sheet-modal';
 import { CharacterViewModal } from '@/components/character-view-modal';
 import { CombatResultModal } from '@/components/combat-result-modal';
 import { CommandPalette, type Command } from '@/components/command-palette';
@@ -78,6 +79,7 @@ const MultiplayerGameScreen: React.FC = () => {
 	const [npcStats, setNpcStats] = useState<{ STR: number; DEX: number; CON: number; INT: number; WIS: number; CHA: number } | undefined>(undefined);
 	const [selectedCharacterForView, setSelectedCharacterForView] = useState<{ id: string; type: 'player' | 'npc' } | null>(null);
 	const [showCharacterViewModal, setShowCharacterViewModal] = useState(false);
+	const [showCharacterSheetModal, setShowCharacterSheetModal] = useState(false);
 	const [tileDetails, setTileDetails] = useState<{ x: number; y: number } | null>(null);
 	const [showMapElementPicker, setShowMapElementPicker] = useState(false);
 	const [showSpellActionSelector, setShowSpellActionSelector] = useState(false);
@@ -2289,7 +2291,16 @@ const MultiplayerGameScreen: React.FC = () => {
 				</View>
 			</View>
 			<View style={styles.content}>
-				{isMobile ? (
+				{/* Show character sheet for non-hosts when no active encounter */}
+				{!isHost && !effectiveGameState?.activeTurn ? (
+					<CharacterSheetModal
+						visible={true}
+						onClose={() => {
+							// Don't allow closing - this is the main view during long rest
+						}}
+						allowClose={false}
+					/>
+				) : isMobile ? (
 					// Mobile: Stacked layout
 					<ScrollView
 						style={styles.scrollView}

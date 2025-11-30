@@ -14,12 +14,13 @@ export const CharacterSchema = z.object({
 	description: z.string().optional(),
 	stats: StatBlockSchema,
 	skills: z.array(z.string()),
-	inventory: z.array(z.any()), // TODO: Define proper inventory schema
+	inventory: z.array(z.any()), // Array of item objects with id, name, slot, icon, etc.
 	equipped: z.record(GearSlotSchema, z.string().nullable()),
 	health: z.number().int(),
 	maxHealth: z.number().int(),
 	actionPoints: z.number().int(),
 	maxActionPoints: z.number().int(),
 	statusEffects: z.array(z.string()).default([]),
+	preparedSpells: z.array(z.string()).default([]), // Array of spell IDs
 });
 export type Character = z.infer<typeof CharacterSchema>;

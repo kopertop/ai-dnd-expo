@@ -12,11 +12,16 @@ import { Quest } from '@/types/quest';
 /**
  * Get game session by invite code
  */
-export function useGameSession(inviteCode: string | null | undefined) {
+export function useGameSession(
+	inviteCode: string | null | undefined,
+	options?: { refetchInterval?: number | ((data: GameSessionResponse | undefined) => number | undefined) },
+) {
+	// Don't make API call if inviteCode is falsy - pass empty string and disable query
 	return useQueryApi<GameSessionResponse>(
 		inviteCode ? `/games/${inviteCode}` : '',
 		{
-			enabled: !!inviteCode,
+			enabled: !!inviteCode, // Only enable when we have an invite code
+			refetchInterval: options?.refetchInterval,
 		},
 	);
 }

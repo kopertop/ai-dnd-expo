@@ -117,6 +117,7 @@ export class GameStateService {
 			actionPoints: row.action_points,
 			maxActionPoints: row.max_action_points,
 			statusEffects: JSON.parse(row.status_effects || '[]'),
+			preparedSpells: row.prepared_spells ? JSON.parse(row.prepared_spells) : [],
 		};
 	}
 
@@ -563,6 +564,41 @@ export class GameStateService {
 			...state,
 			characters: updatedCharacters,
 			activeTurn: this.resetTurnUsage(activeTurn, updatedCharacters),
+			lastUpdated: Date.now(),
+		};
+
+		await this.saveState(game.id, updatedState);
+		return updatedState;
+	}
+
+	/**
+	 * End encounter and trigger long rest (restore all characters to full health/AP)
+	 */
+	async endEncounter(game: GameRow): Promise<MultiplayerGameState> {
+		const state = await this.getState(game);
+		if (state.status !== 'active') {
+			throw new Error('Game not started');
+		}
+
+		const characters = state.characters ?? [];
+		
+		// Restore all characters to full health/AP (long rest)
+		const restoredCharacters = this.restoreAllCharactersToFull(characters);
+		
+		// Update characters in database
+		for (const character of restoredCharacters) {
+			await this.db.updateCharacter(character.id, {
+				health: character.maxHealth,
+				action_points: character.maxActionPoints,
+			});
+		}
+		
+		// Clear active turn and initiative order to end encounter
+		const updatedState: MultiplayerGameState = {
+			...state,
+			characters: restoredCharacters,
+			activeTurn: null,
+			initiativeOrder: undefined,
 			lastUpdated: Date.now(),
 		};
 

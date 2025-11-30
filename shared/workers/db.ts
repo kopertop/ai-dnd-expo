@@ -36,6 +36,7 @@ export interface CharacterRow {
 	action_points: number;
 	max_action_points: number;
 	status_effects: string; // JSON array
+	prepared_spells: string | null; // JSON array of spell IDs
 	created_at: number;
 	updated_at: number;
 }

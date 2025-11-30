@@ -98,14 +98,15 @@ characters.put('/:id', async (c) => {
 		return c.json({ error: 'Forbidden' }, 403);
 	}
 
+	const updatedCharacter = { ...deserializeCharacter(existing), ...updates, id: characterId };
 	const serializedUpdate = serializeCharacter(
-		{ ...deserializeCharacter(existing), ...updates, id: characterId },
+		updatedCharacter,
 		existing.player_id || user.id,
 		existing.player_email || user.email,
 	);
 	await db.updateCharacter(characterId, serializedUpdate);
 	const updated = await db.getCharacterById(characterId);
-	return c.json({ character: updated ? deserializeCharacter(updated) : updates });
+	return c.json({ character: updated ? deserializeCharacter(updated) : updatedCharacter });
 });
 
 /**
