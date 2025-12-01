@@ -16,6 +16,7 @@ import {
 	MapTokenListResponse,
 	MapTokenMutationResponse,
 	MapTokenUpsertRequest,
+	MapMoveResponse,
 	MovementValidationResponse,
 	MyGamesResponse,
 	NpcDefinitionListResponse,
@@ -301,6 +302,16 @@ export class MultiplayerClient {
 		request: { characterId: string; fromX: number; fromY: number; toX: number; toY: number },
 	): Promise<MovementValidationResponse> {
 		return apiService.fetchApi(`/games/${inviteCode}/map/movement/validate`, {
+			method: 'POST',
+			body: JSON.stringify(request),
+		});
+	}
+
+	async moveToken(
+		inviteCode: string,
+		request: { tokenId: string; x: number; y: number; overrideValidation?: boolean },
+	): Promise<MapMoveResponse> {
+		return apiService.fetchApi(`/games/${inviteCode}/map/move`, {
 			method: 'POST',
 			body: JSON.stringify(request),
 		});

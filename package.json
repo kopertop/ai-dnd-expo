@@ -33,7 +33,7 @@
 		"android": "expo run:android",
 		"ios": "expo run:ios",
 		"web": "expo start --web",
-		"lint": "eslint . --fix",
+		"lint": "eslint . --fix --quiet",
 		"typecheck": "tsc --noEmit",
 		"check": "bun run format && bun run lint && bun run typecheck && bunx expo-doctor",
 		"fix-imports": "bunx tsx scripts/fix-relative-imports.ts",

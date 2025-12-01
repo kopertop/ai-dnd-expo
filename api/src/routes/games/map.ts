@@ -14,8 +14,9 @@ import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import { Database, MapTokenRow } from '@/shared/workers/db';
 import { generateProceduralMap, MapGeneratorPreset } from '@/shared/workers/map-generator';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
-import { BLOCKED_COST, getTerrainCost } from '@/utils/movement-calculator';
+import { BLOCKED_COST, findPathWithCosts, getTerrainCost } from '@/utils/movement-calculator';
 import { mapStateFromDb } from '@/utils/schema-adapters';
+import { getCharacterSpeed } from '@/utils/character-utils';
 
 
 const map = new Hono<GamesContext>();
@@ -270,6 +271,128 @@ map.get('/:inviteCode/map/tokens', async (c) => {
 
 	const mapState = await buildMapState(db, game);
 	return c.json({ tokens: mapState.tokens });
+});
+
+/**
+ * Move a token and return updated game state with movement budget
+ * POST /api/games/:inviteCode/map/move
+ */
+map.post('/:inviteCode/map/move', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = new Database(c.env.DATABASE);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	const isHost = isHostUser(game, user);
+	const body = (await c.req.json().catch(() => null)) as {
+		tokenId?: string;
+		x?: number;
+		y?: number;
+		overrideValidation?: boolean;
+	};
+
+	if (!body || !body.tokenId || typeof body.x !== 'number' || typeof body.y !== 'number') {
+		return c.json({ error: 'Invalid move request' }, 400);
+	}
+
+	const gameStateService = new GameStateService(db);
+	const currentState = await gameStateService.getState(game);
+	if (currentState.status !== 'active') {
+		return c.json({ error: 'Game is not active' }, 400);
+	}
+
+	const tokens = await db.listMapTokensForGame(game.id);
+	const token = tokens.find(t => t.id === body.tokenId);
+	if (!token) {
+		return c.json({ error: 'Token not found' }, 404);
+	}
+
+	const mapRow = await resolveMapRow(db, game);
+	const mapState = mapStateFromDb(mapRow, { tokens, tiles: await db.getMapTiles(mapRow.id) });
+
+	const actorEntityId =
+		token.token_type === 'player'
+			? token.character_id
+			: token.token_type === 'npc'
+				? token.id
+				: null;
+
+	if (!actorEntityId) {
+		return c.json({ error: 'Unsupported token type for movement' }, 400);
+	}
+
+	// Permission checks
+	if (!isHost) {
+		// Players can only move their own character tokens
+		if (token.token_type !== 'player' || token.character_id !== currentState.players.find(p => p.playerId === user.id)?.characterId) {
+			return c.json({ error: 'Forbidden: Not your token' }, 403);
+		}
+		if (currentState.pausedTurn) {
+			return c.json({ error: 'Forbidden: Turn is paused' }, 403);
+		}
+		if (
+			!currentState.activeTurn ||
+			currentState.activeTurn.entityId !== actorEntityId ||
+			currentState.activeTurn.type !== 'player'
+		) {
+			return c.json({ error: 'Forbidden: Not your turn' }, 403);
+		}
+	}
+
+	// Find path and cost
+	const pathResult = findPathWithCosts(
+		mapState,
+		{ x: token.x, y: token.y },
+		{ x: body.x, y: body.y },
+	);
+
+	if (!pathResult) {
+		return c.json({ error: 'No valid path to destination' }, 400);
+	}
+
+	const activeTurnMatches = currentState.activeTurn?.entityId === actorEntityId;
+	const actorCharacter = currentState.characters.find(c => c.id === actorEntityId) || null;
+	const speed =
+		activeTurnMatches && typeof currentState.activeTurn?.speed === 'number'
+			? currentState.activeTurn.speed
+			: actorCharacter
+				? getCharacterSpeed(actorCharacter)
+				: DEFAULT_RACE_SPEED;
+	const used = activeTurnMatches ? currentState.activeTurn?.movementUsed ?? 0 : 0;
+	const updatedMovement = used + pathResult.cost;
+
+	if (!isHost && !body.overrideValidation && activeTurnMatches) {
+		if (updatedMovement - speed > 1e-6) {
+			return c.json({ error: 'Forbidden: Not enough movement remaining' }, 403);
+		}
+	}
+
+	// Persist token move
+	await db.updateMapToken(token.id, { x: body.x, y: body.y });
+
+	// Update turn usage if this is the active entity
+	if (activeTurnMatches) {
+		await gameStateService.updateTurn(game, {
+			movementUsed: Math.min(speed, updatedMovement),
+			actorEntityId,
+		});
+	}
+
+	// Return full updated game state (includes refreshed map state)
+	const updatedState = await gameStateService.getState(game);
+	return c.json({
+		gameState: updatedState,
+		cost: pathResult.cost,
+		path: pathResult.path,
+	});
 });
 
 /**
@@ -683,5 +806,3 @@ map.delete('/:inviteCode/map/tokens/:tokenId', async (c) => {
 });
 
 export default map;
-
-

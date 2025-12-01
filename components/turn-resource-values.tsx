@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import { ThemedText } from './themed-text';
+
+import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import { Character } from '@/types/character';
 import { MapToken } from '@/types/multiplayer-map';
 import { getCharacterSpeed } from '@/utils/character-utils';

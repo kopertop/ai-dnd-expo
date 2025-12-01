@@ -93,7 +93,7 @@ export const ExpoIconPicker: React.FC<ExpoIconPickerProps> = ({ value = '', onCh
 	const filteredIcons = searchQuery
 		? ALL_ICONS.filter(icon =>
 			icon.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			icon.name.toLowerCase().includes(searchQuery.toLowerCase())
+			icon.name.toLowerCase().includes(searchQuery.toLowerCase()),
 		)
 		: ALL_ICONS;
 
@@ -172,7 +172,7 @@ export const ExpoIconPicker: React.FC<ExpoIconPickerProps> = ({ value = '', onCh
 								const categoryIcons = searchQuery
 									? icons.filter(icon =>
 										icon.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-										icon.name.toLowerCase().includes(searchQuery.toLowerCase())
+										icon.name.toLowerCase().includes(searchQuery.toLowerCase()),
 									)
 									: icons;
 

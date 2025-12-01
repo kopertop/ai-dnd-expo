@@ -260,6 +260,19 @@ export const MapTokenListResponseSchema = z.object({
 	tokens: z.array(MapTokenSchema),
 });
 
+export const MapMoveRequestSchema = z.object({
+	tokenId: z.string(),
+	x: z.number(),
+	y: z.number(),
+	overrideValidation: z.boolean().optional(),
+});
+
+export const MapMoveResponseSchema = z.object({
+	gameState: GameStateResponseSchema,
+	cost: z.number(),
+	path: z.array(z.object({ x: z.number(), y: z.number() })),
+});
+
 // Type exports
 export type CreateGameRequest = z.infer<typeof CreateGameRequestSchema>;
 export type JoinGameRequest = z.infer<typeof JoinGameRequestSchema>;
@@ -290,6 +303,8 @@ export type MapStateResponse = z.infer<typeof MapStateResponseSchema>;
 export type NpcDefinitionListResponse = z.infer<typeof NpcDefinitionListResponseSchema>;
 export type MapTokenMutationResponse = z.infer<typeof MapTokenMutationResponseSchema>;
 export type MapTokenListResponse = z.infer<typeof MapTokenListResponseSchema>;
+export type MapMoveRequest = z.infer<typeof MapMoveRequestSchema>;
+export type MapMoveResponse = z.infer<typeof MapMoveResponseSchema>;
 // MapState, MapToken, and NpcDefinition are exported from @/types/multiplayer-map
 export type MapTile = z.infer<typeof MapTileSchema>;
 

@@ -315,7 +315,7 @@ const MapTile: React.FC<{
 								height: Math.max(1, height),
 							},
 						]}
-					/>
+					/>,
 				);
 			}
 		}

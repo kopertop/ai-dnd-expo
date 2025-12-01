@@ -16,7 +16,7 @@ import {
 
 import { ThemedView } from '@/components/themed-view';
 import { SKILL_LIST } from '@/constants/skills';
-import { getSpellsForClass, SPELL_DEFINITIONS } from '@/constants/spells';
+import { getSpellsForClass } from '@/constants/spells';
 import { STAT_KEYS } from '@/constants/stats';
 import { useUpdateCharacter } from '@/hooks/api/use-character-queries';
 import { useAudio } from '@/hooks/use-audio-player';

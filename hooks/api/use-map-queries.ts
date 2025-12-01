@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 
 import type {
+	MapMoveResponse,
 	MapStateResponse,
 	MapTokenListResponse,
 	MapTokenMutationResponse,
@@ -217,6 +218,28 @@ export function useValidateMovement(inviteCode: string) {
 }
 
 /**
+ * Move a token and return updated game state (including movement budget)
+ */
+export function useMoveToken(inviteCode: string) {
+	const queryClient = useQueryClient();
+
+	return useMutationApi<MapMoveResponse>({
+		method: 'POST',
+		onSuccess: (data) => {
+			if (!inviteCode || !data?.gameState) return;
+			queryClient.setQueryData([`/games/${inviteCode}/state`], data.gameState);
+			if (data.gameState.mapState) {
+				queryClient.setQueryData([`/games/${inviteCode}/map`], data.gameState.mapState);
+			} else {
+				queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			}
+			// Also refresh tokens list if used elsewhere
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
+		},
+	});
+}
+
+/**
  * Get NPC definitions for a game
  */
 export function useNpcDefinitions(inviteCode: string | null | undefined) {
@@ -288,4 +311,3 @@ export function useUpdateNpcInstance(inviteCode: string) {
 		},
 	});
 }
-
