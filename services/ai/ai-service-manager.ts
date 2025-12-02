@@ -1,8 +1,24 @@
-import type { LocalDMResponse } from './providers/local-dm-provider';
+import type { LocalDMResponse, ResourceUsage } from './providers/local-dm-provider';
 import { LocalDMProvider } from './providers/local-dm-provider';
-import { OllamaProvider } from './providers/ollama-provider';
 
-export type ProviderType = 'ollama' | 'local' | 'rule-based';
+export type ProviderType = 'local' | 'ollama' | 'rule-based' | 'fallback';
+
+export interface ServiceStatus {
+	primary: { available: boolean; latency?: number };
+	local: { available: boolean; resourceUsage?: ResourceUsage };
+	cache: { size: number; hitRate: number };
+	overall: 'healthy' | 'degraded' | 'offline';
+}
+
+export interface DetailedServiceStatus {
+	local: {
+		ready: boolean;
+		initialized: boolean;
+		status?: { error?: string | null; resourceUsage?: ResourceUsage };
+	};
+	fallback: { ready: boolean };
+	ollama?: { ready: boolean; status?: { error?: string | null } };
+}
 
 export interface AIServiceConfig {
 	ollama: { enabled: boolean; apiKey?: string };
@@ -17,7 +33,7 @@ export const DefaultAIConfig: AIServiceConfig = {
 	local: { enabled: true, powerSavingMode: false },
 	fallback: { enabled: true },
 	performance: { cacheResponses: true },
-	providerSelection: { preferLocal: true, fallbackChain: ['local', 'ollama', 'rule-based'] },
+	providerSelection: { preferLocal: true, fallbackChain: ['local', 'ollama', 'fallback'] },
 };
 
 interface GameContext {
@@ -36,13 +52,11 @@ interface ProviderHealth {
 export class AIServiceManager {
 	private config: AIServiceConfig;
 	private localDMProvider: LocalDMProvider;
-	private ollamaProvider: OllamaProvider;
 
 	private gameContextStates = new Map<string, GameContext>();
 	private conversationHistory = new Map<string, Array<{ role: 'user' | 'assistant'; text: string }>>();
 	private responseCache = new Map<string, any>();
-	private providerHealthStatus: Record<'ollama' | 'local', ProviderHealth> = {
-		ollama: { healthy: true, consecutiveFailures: 0 },
+	private providerHealthStatus: Record<'local', ProviderHealth> = {
 		local: { healthy: true, consecutiveFailures: 0 },
 	};
 
@@ -56,16 +70,10 @@ export class AIServiceManager {
 			enableResourceMonitoring: false,
 			powerSavingMode: this.config.local.powerSavingMode ?? false,
 		});
-		this.ollamaProvider = new OllamaProvider({
-			baseUrl: process.env.EXPO_PUBLIC_OLLAMA_HOST || 'https://ollama.com',
-			defaultModel: process.env.EXPO_PUBLIC_OLLAMA_MODEL || 'gpt-oss:120b-cloud',
-			timeout: 30000,
-			apiKey: config.ollama?.apiKey || process.env.EXPO_PUBLIC_OLLAMA_API_KEY,
-		});
 	}
 
 	getOptimalProvider(): ProviderType {
-		return this.config.providerSelection.preferLocal ? 'local' : 'ollama';
+		return this.config.providerSelection.preferLocal ? 'local' : 'fallback';
 	}
 
 	async switchProvider(update: Partial<AIServiceConfig>): Promise<boolean> {
@@ -123,20 +131,7 @@ export class AIServiceManager {
 			let result: LocalDMResponse | null = null;
 			if (provider === 'local' && this.config.local.enabled) {
 				result = await this.tryLocalProvider(prompt, _ctx);
-			} else if (provider === 'ollama' && this.config.ollama.enabled && this.ollamaProvider) {
-				const res = await this.ollamaProvider.completion([{
-					role: 'user',
-					content: prompt,
-				}]);
-				result = {
-					text: res,
-					confidence: 0.9,
-					processingTime: 1,
-					source: 'ollama',
-					toolCommands: [],
-					contextId: undefined,
-				};
-			} else if (provider === 'rule-based') {
+			} else if (provider === 'rule-based' || provider === 'fallback') {
 				result = await this.tryRuleBasedProvider(prompt);
 			}
 			if (result) {
@@ -157,24 +152,40 @@ export class AIServiceManager {
 		return this.localDMProvider.generateDnDResponse(prompt, ctx);
 	}
 
-	getServiceStatus() {
+	getServiceStatus(): ServiceStatus {
 		return {
-			ollama: { status: 'ready' },
-			local: { status: 'ready' },
-			overall: 'healthy',
+			primary: { available: true, latency: 0 },
+			local: {
+				available: true,
+				resourceUsage: {
+					memory: { used: 0, available: 0, total: 0, percentage: 0, pressure: 'low' },
+					cpu: { usage: 0, temperature: 0, cores: 0, frequency: 0, throttled: false },
+					battery: {
+						level: 100,
+						isCharging: true,
+						chargingState: 'charging',
+						estimatedTimeRemaining: 0,
+						powerSavingMode: false,
+						lowPowerModeActive: false,
+					},
+					thermal: { state: 'nominal', temperature: 0, throttlingActive: false, recommendedAction: 'none' },
+					timestamp: Date.now(),
+				},
+			},
+			cache: { size: this.responseCache.size, hitRate: 1 },
+			overall: 'healthy' as const,
 		};
 	}
 
-	getDetailedStatus() {
+	getDetailedStatus(): DetailedServiceStatus {
 		return {
-			ollama: { ready: true },
-			local: { ready: true },
+			local: { ready: true, initialized: true, status: { error: null } },
 			fallback: { ready: true },
+			ollama: { ready: false, status: { error: 'Not configured' } },
 		};
 	}
 
 	async performHealthChecks() {
-		this.providerHealthStatus.ollama.healthy = true;
 		this.providerHealthStatus.local.healthy = true;
 	}
 

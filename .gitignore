@@ -69,6 +69,7 @@ app-example
 # Generated images and audio
 /generated/
 /temp/
+.tmp/
 
 # Logs
 logs/

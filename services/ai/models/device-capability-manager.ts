@@ -25,6 +25,7 @@ export interface DeviceCapabilities {
 	performanceClass: 'high' | 'medium' | 'low';
 	supportedQuantizations: QuantizationType[];
 	recommendedQuantization: QuantizationType;
+	supportsNeuralEngine?: boolean;
 }
 
 export type QuantizationType = 'int8' | 'int4' | 'fp16' | 'fp32';

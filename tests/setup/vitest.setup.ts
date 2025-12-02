@@ -119,6 +119,18 @@ vi.mock('expo-file-system', () => ({
 	createDownloadResumable: vi.fn(),
 }));
 
+vi.mock('@expo/vector-icons', () => ({
+	Ionicons: () => null,
+	MaterialIcons: () => null,
+	Feather: () => null,
+	FontAwesome: () => null,
+	default: () => null,
+}));
+
+vi.mock('@expo/vector-icons/build/createIconSet', () => ({
+	default: () => () => null,
+}));
+
 vi.mock('@react-native-async-storage/async-storage', () => ({
 	getItem: vi.fn(),
 	setItem: vi.fn(),

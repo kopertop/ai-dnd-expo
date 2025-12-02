@@ -13,6 +13,23 @@ export interface ResourceUsage {
 	timestamp: number;
 }
 
+export interface BatteryStatus {
+	level: number;
+	isCharging: boolean;
+	chargingState: string;
+	estimatedTimeRemaining: number;
+	powerSavingMode: boolean;
+	lowPowerModeActive: boolean;
+}
+
+export interface ResourceEvent {
+	type: string;
+	severity: string;
+	message?: string;
+	actionRequired?: boolean;
+	data?: ResourceUsage;
+}
+
 export interface ResourceManagerConfig {
 	updateInterval: number;
 	memoryPressureThreshold: number;
@@ -142,5 +159,9 @@ export class DeviceResourceManager {
 			},
 			timestamp: Date.now(),
 		};
+	}
+
+	getCachedResourceUsage(): ResourceUsage | null {
+		return this.currentUsage;
 	}
 }

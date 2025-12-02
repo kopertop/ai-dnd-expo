@@ -72,6 +72,30 @@ export default defineConfig({
 			'react-native': path.resolve(rootDir, 'tests/setup/react-native-mock.ts'),
 			'@expo/vector-icons$': path.resolve(rootDir, 'tests/setup/expo-vector-icons-mock.ts'),
 			'@expo/vector-icons/build/createIconSet': path.resolve(rootDir, 'tests/setup/expo-vector-icons-mock.ts'),
+			'@expo/vector-icons/MaterialIcons': path.resolve(
+				rootDir,
+				'tests/setup/expo-vector-icons-mock.ts',
+			),
+			'@expo/vector-icons/Feather': path.resolve(
+				rootDir,
+				'tests/setup/expo-vector-icons-mock.ts',
+			),
+			'@expo/vector-icons/FontAwesome': path.resolve(
+				rootDir,
+				'tests/setup/expo-vector-icons-mock.ts',
+			),
+			'@expo/vector-icons/FontAwesome5': path.resolve(
+				rootDir,
+				'tests/setup/expo-vector-icons-mock.ts',
+			),
+			'@expo/vector-icons/Ionicons': path.resolve(
+				rootDir,
+				'tests/setup/expo-vector-icons-mock.ts',
+			),
+			'@expo/vector-icons/MaterialCommunityIcons': path.resolve(
+				rootDir,
+				'tests/setup/expo-vector-icons-mock.ts',
+			),
 			'react-data-table-component$': path.resolve(rootDir, 'tests/setup/react-native-mock.ts'),
 			'@react-native-community/datetimepicker$': path.resolve(rootDir, 'tests/setup/react-native-mock.ts'),
 		},

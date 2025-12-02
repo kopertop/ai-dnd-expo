@@ -16,7 +16,35 @@ export interface LocalDMResponse {
 }
 
 export interface ResourceUsage {
-	memory: { used?: number };
+	memory: {
+		used?: number;
+		available?: number;
+		total?: number;
+		percentage?: number;
+		pressure?: string;
+	};
+	cpu?: {
+		usage?: number;
+		temperature?: number;
+		cores?: number;
+		frequency?: number;
+		throttled?: boolean;
+	};
+	battery?: {
+		level?: number;
+		isCharging?: boolean;
+		estimatedTimeRemaining?: number;
+		chargingState?: string;
+		powerSavingMode?: boolean;
+		lowPowerModeActive?: boolean;
+	};
+	thermal?: {
+		state?: string;
+		temperature?: number;
+		throttlingActive?: boolean;
+		recommendedAction?: string;
+	};
+	timestamp?: number;
 }
 
 export interface LocalModelConfig {
@@ -142,6 +170,24 @@ export class LocalDMProvider {
 	}
 
 	getResourceUsage(): ResourceUsage {
-		return { memory: {} };
+		return {
+			memory: { used: 0, available: 0, total: 0, percentage: 0, pressure: 'low' },
+			cpu: { usage: 0, temperature: 0, cores: 0, frequency: 0, throttled: false },
+			battery: {
+				level: 100,
+				isCharging: true,
+				estimatedTimeRemaining: 0,
+				chargingState: 'charging',
+				powerSavingMode: false,
+				lowPowerModeActive: false,
+			},
+			thermal: {
+				state: 'nominal',
+				temperature: 0,
+				throttlingActive: false,
+				recommendedAction: 'none',
+			},
+			timestamp: Date.now(),
+		};
 	}
 }

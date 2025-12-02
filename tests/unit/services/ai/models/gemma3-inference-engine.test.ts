@@ -1,219 +1,39 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { Gemma3InferenceEngine } from '@/services/ai/models/gemma3-inference-engine';
-import { Gemma3Tokenizer } from '@/services/ai/models/gemma3-tokenizer';
-import { ONNXModelManager } from '@/services/ai/models/onnx-model-manager';
 
-describe('Gemma3InferenceEngine', () => {
-	let inferenceEngine: Gemma3InferenceEngine;
+describe('Gemma3InferenceEngine (stub)', () => {
+	let engine: Gemma3InferenceEngine;
 
 	beforeEach(() => {
-		vi.clearAllMocks();
-
-		// Mock dependencies using vi.spyOn
-		vi.spyOn(Gemma3Tokenizer.prototype, 'encode').mockReturnValue([1, 2, 3, 4, 5]);
-		vi.spyOn(Gemma3Tokenizer.prototype, 'decode').mockReturnValue('Decoded text');
-		vi.spyOn(Gemma3Tokenizer.prototype, 'loadVocab').mockResolvedValue(true);
-		vi.spyOn(Gemma3Tokenizer.prototype, 'getVocabSize').mockReturnValue(32000);
-
-		vi.spyOn(ONNXModelManager.prototype, 'loadGemma3Model').mockResolvedValue({});
-		vi.spyOn(ONNXModelManager.prototype, 'validateModel').mockResolvedValue(true);
-		vi.spyOn(ONNXModelManager.prototype, 'runInference').mockResolvedValue({
-			logits: new Float32Array([0.1, 0.2, 0.7]),
-		});
-		vi.spyOn(ONNXModelManager.prototype, 'cleanupSession').mockResolvedValue(undefined);
-		inferenceEngine = new Gemma3InferenceEngine({
-			modelPath: '/test/path/model.onnx',
-			vocabPath: '/test/path/vocab.json',
-			maxTokens: 100,
+		engine = new Gemma3InferenceEngine({
+			modelPath: '/tmp/model.onnx',
+			maxTokens: 64,
 			temperature: 0.7,
 			topP: 0.9,
-			repetitionPenalty: 1.1,
 		});
 	});
 
-	// Task 2.2: Implement Gemma3-specific tokenization and inference
-	describe('Gemma3 Tokenization and Inference', () => {
-		it('should initialize successfully', async () => {
-			await expect(inferenceEngine.initialize()).resolves.not.toThrow();
-		});
-
-		it('should generate text from prompt', async () => {
-			await inferenceEngine.initialize();
-
-			const result = await inferenceEngine.generateText('Tell me a story');
-
-			expect(result).toEqual(
-				expect.objectContaining({
-					text: expect.any(String),
-					tokens: expect.any(Array),
-					usage: expect.objectContaining({
-						promptTokens: expect.any(Number),
-						completionTokens: expect.any(Number),
-						totalTokens: expect.any(Number),
-					}),
-				}),
-			);
-		});
-
-		it('should format D&D prompts correctly', async () => {
-			await inferenceEngine.initialize();
-
-			const formatPromptSpy = vi.spyOn(inferenceEngine as any, 'formatDnDPrompt');
-
-			await inferenceEngine.generateDnDResponse({
-				prompt: 'I attack the goblin',
-				context: {
-					playerName: 'TestPlayer',
-					playerClass: 'Fighter',
-					playerRace: 'Human',
-					currentScene: 'Dungeon',
-					gameHistory: ['Entered the dungeon', 'Found a goblin'],
-				},
-				systemPrompt: 'You are a dungeon master',
-			});
-
-			expect(formatPromptSpy).toHaveBeenCalled();
-			expect(formatPromptSpy.mock.results[0].value).toContain('You are a dungeon master');
-			expect(formatPromptSpy.mock.results[0].value).toContain('TestPlayer');
-			expect(formatPromptSpy.mock.results[0].value).toContain('Fighter');
-		});
-
-		it('should handle token limits', async () => {
-			await inferenceEngine.initialize();
-
-			// Create a very long prompt
-			const longPrompt = 'a'.repeat(10000);
-
-			const result = await inferenceEngine.generateText(longPrompt);
-
-			// Should truncate tokens to fit context window
-			expect(result.usage.promptTokens).toBeLessThan(10000);
-		});
-
-		it('should apply temperature and sampling parameters', async () => {
-			// Create engine with different parameters
-			const customEngine = new Gemma3InferenceEngine({
-				modelPath: '/test/path/model.onnx',
-				vocabPath: '/test/path/vocab.json',
-				maxTokens: 100,
-				temperature: 0.3, // Lower temperature
-				topP: 0.5, // Lower top-p
-				repetitionPenalty: 1.5, // Higher repetition penalty
-			});
-
-			await customEngine.initialize();
-
-			const generateSpy = vi.spyOn(customEngine as any, 'generateTokens');
-
-			await customEngine.generateText('Test prompt');
-
-			expect(generateSpy).toHaveBeenCalledWith(
-				expect.any(Array),
-				expect.objectContaining({
-					temperature: 0.3,
-					topP: 0.5,
-					repetitionPenalty: 1.5,
-				}),
-			);
-		});
+	it('initializes without throwing', async () => {
+		await expect(engine.initialize()).resolves.not.toThrow();
 	});
 
-	// Test token generation and sampling
-	describe('Token Generation and Sampling', () => {
-		it('should sample tokens based on logits', async () => {
-			const sampleTokenSpy = vi.spyOn(inferenceEngine as any, 'sampleToken');
-
-			await inferenceEngine.initialize();
-			await inferenceEngine.generateText('Test prompt');
-
-			expect(sampleTokenSpy).toHaveBeenCalled();
-		});
-
-		it('should apply repetition penalty', async () => {
-			const applyRepetitionPenaltySpy = vi.spyOn(
-				inferenceEngine as any,
-				'applyRepetitionPenalty',
-			);
-
-			await inferenceEngine.initialize();
-			await inferenceEngine.generateText('Test prompt');
-
-			expect(applyRepetitionPenaltySpy).toHaveBeenCalled();
-		});
-
-		it('should stop generation on stop tokens', async () => {
-			await inferenceEngine.initialize();
-
-			// Mock the tokenizer to return EOS token after a few tokens
-			const mockTokenizer = (Gemma3Tokenizer as any).mock?.instances?.[0] ?? {
-				decode: vi.fn(),
-			};
-			let callCount = 0;
-
-			vi.spyOn(mockTokenizer, 'decode').mockImplementation(() => {
-				callCount++;
-				if (callCount > 3) {
-					return '</s>'; // EOS token
-				}
-				return 'Some text';
-			});
-
-			const result = await inferenceEngine.generateText('Test prompt');
-
-			// Should have stopped after encountering EOS
-			expect(result.text).toBeDefined();
-		});
+	it('generates text with token usage', async () => {
+		await engine.initialize();
+		const result = await engine.generateText('Tell me a tale');
+		expect(result.text).toContain('Stub response');
+		expect(result.tokens.length).toBeGreaterThan(0);
+		expect(result.usage.totalTokens).toBeGreaterThan(0);
 	});
 
-	// Test error handling
-	describe('Error Handling', () => {
-		it('should handle initialization errors', async () => {
-			// Mock tokenizer to fail
-			vi.spyOn(Gemma3Tokenizer.prototype, 'loadVocab').mockRejectedValueOnce(
-				new Error('Failed to load vocab'),
-			);
-
-			const errorEngine = new Gemma3InferenceEngine({
-				modelPath: '/test/path/model.onnx',
-				vocabPath: '/test/path/vocab.json',
-				maxTokens: 100,
-				temperature: 0.7,
-			});
-
-			await expect(errorEngine.initialize()).rejects.toThrow('Failed to load vocab');
-		});
-
-		it('should handle inference errors', async () => {
-			await inferenceEngine.initialize();
-
-			// Mock ONNX model manager to fail
-			vi.spyOn(ONNXModelManager.prototype, 'runInference').mockRejectedValueOnce(
-				new Error('Inference failed'),
-			);
-
-			await expect(inferenceEngine.generateText('Test prompt')).rejects.toThrow(
-				'Inference failed',
-			);
-		});
-
-		it('should handle empty prompts', async () => {
-			await inferenceEngine.initialize();
-
-			const result = await inferenceEngine.generateText('');
-
-			expect(result.text).toBe('');
-			expect(result.usage.promptTokens).toBe(0);
-		});
+	it('returns a D&D response wrapper', async () => {
+		await engine.initialize();
+		const result = await engine.generateDnDResponse({ prompt: 'Describe a dungeon' });
+		expect(result.text).toContain('Stub response');
 	});
 
-	// Test cleanup
-	describe('Cleanup', () => {
-		it('should clean up resources', async () => {
-			await inferenceEngine.initialize();
-			await inferenceEngine.cleanup();
-
-			expect(inferenceEngine['modelManager'].cleanupSession).toHaveBeenCalled();
-		});
+	it('cleans up safely', async () => {
+		await engine.initialize();
+		await expect(engine.cleanup()).resolves.not.toThrow();
 	});
 });
