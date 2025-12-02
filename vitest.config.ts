@@ -3,6 +3,10 @@ import { resolve } from 'path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
+// Use JS/wasm fallback for esbuild when native binary is restricted in sandboxed CI/dev
+process.env.ESBUILD_BINARY_PATH = process.env.ESBUILD_BINARY_PATH
+	|| resolve(__dirname, 'node_modules/esbuild-wasm/bin/esbuild');
+
 export default defineConfig({
 	plugins: [react()],
 	esbuild: {
