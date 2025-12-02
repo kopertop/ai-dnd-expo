@@ -18,14 +18,14 @@ interface SearchableListProps<T> {
 	itemHeight?: number;
 }
 
-export function SearchableList<T>({
+export const SearchableList = <T,>({
 	items,
 	onSelect,
 	renderItem,
 	placeholder = 'Search...',
 	emptyText = 'No items found',
 	itemHeight = 60,
-}: SearchableListProps<T>) {
+}: SearchableListProps<T>) => {
 	const [searchQuery, setSearchQuery] = useState('');
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const inputRef = useRef<TextInput>(null);
@@ -128,7 +128,7 @@ export function SearchableList<T>({
 			</ScrollView>
 		</View>
 	);
-}
+};
 
 const styles = StyleSheet.create({
 	container: {

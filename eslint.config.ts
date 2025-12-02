@@ -6,13 +6,13 @@ import { FlatCompat } from '@eslint/eslintrc';
 import js from '@eslint/js';
 import typescriptEslint from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
-import { defineConfig } from 'eslint/config';
 import _import from 'eslint-plugin-import';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactNative from 'eslint-plugin-react-native';
 import unicorn from 'eslint-plugin-unicorn';
 import unusedImports from 'eslint-plugin-unused-imports';
+import { defineConfig } from 'eslint/config';
 import globals from 'globals';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -101,9 +101,9 @@ export default defineConfig([
 			'unicorn/filename-case': [
 				'error',
 				{
-					cases: {
-						kebabCase: true,
-					},
+					case: 'kebabCase',
+					// Allow Next.js-style dynamic routes: [inviteCode].tsx, [id].ts, etc
+					ignore: ['^\\[.+\\]\\.[jt]sx$'],
 				},
 			],
 

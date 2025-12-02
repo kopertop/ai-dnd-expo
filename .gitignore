@@ -78,6 +78,7 @@ logs/
 coverage/
 *.lcov
 test-results/
+reports/
 
 # IDE
 .vscode/
