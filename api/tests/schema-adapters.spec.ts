@@ -67,6 +67,7 @@ const sampleTokens: MapTokenRow[] = [
 		is_visible: 1,
 		hit_points: null,
 		max_hit_points: null,
+		status_effects: null,
 		metadata: JSON.stringify({ note: 'spawn' }),
 		created_at: Date.now(),
 		updated_at: Date.now(),
@@ -153,4 +154,3 @@ describe('schema adapters', () => {
 		});
 	});
 });
-

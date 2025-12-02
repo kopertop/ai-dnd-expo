@@ -1500,8 +1500,9 @@ const MultiplayerGameScreen: React.FC = () => {
 
 				if (response?.gameState) {
 					setGameState(response.gameState);
-					if (response.gameState.mapState?.tokens) {
-						updateCachedTokens(() => response.gameState.mapState.tokens || []);
+					const updatedTokens = response.gameState.mapState?.tokens;
+					if (updatedTokens) {
+						updateCachedTokens(() => updatedTokens);
 					}
 				}
 
@@ -1631,8 +1632,9 @@ const MultiplayerGameScreen: React.FC = () => {
 
 							if (response?.gameState) {
 								setGameState(response.gameState);
-								if (response.gameState.mapState?.tokens) {
-									updateCachedTokens(() => response.gameState.mapState.tokens || []);
+								const updatedTokens = response.gameState.mapState?.tokens;
+								if (updatedTokens) {
+									updateCachedTokens(() => updatedTokens);
 								}
 							}
 
@@ -1881,8 +1883,9 @@ const MultiplayerGameScreen: React.FC = () => {
 								}).then((response) => {
 									if (response?.gameState) {
 										setGameState(response.gameState);
-										if (response.gameState.mapState?.tokens) {
-											updateCachedTokens(() => response.gameState.mapState.tokens || []);
+										const updatedTokens = response.gameState.mapState?.tokens;
+										if (updatedTokens) {
+											updateCachedTokens(() => updatedTokens);
 										}
 									}
 								}).catch((error: any) => {

@@ -10,6 +10,17 @@ import { ThemedView } from '@/components/themed-view';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
 import { Character } from '@/types/character';
 
+const DEFAULT_EQUIPPED = {
+	helmet: null,
+	chest: null,
+	arms: null,
+	legs: null,
+	boots: null,
+	mainHand: null,
+	offHand: null,
+	accessory: null,
+};
+
 const createDefaultCharacter = (overrides?: Partial<Character>): Character => ({
 	id: overrides?.id ?? `character-${Date.now()}`,
 	name: overrides?.name ?? 'Unnamed Hero',
@@ -20,12 +31,13 @@ const createDefaultCharacter = (overrides?: Partial<Character>): Character => ({
 	stats: overrides?.stats ?? { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 },
 	skills: overrides?.skills ?? [],
 	inventory: overrides?.inventory ?? [],
-	equipped: overrides?.equipped ?? {},
+	equipped: { ...DEFAULT_EQUIPPED, ...(overrides?.equipped ?? {}) },
 	health: overrides?.health ?? 10,
 	maxHealth: overrides?.maxHealth ?? 10,
 	actionPoints: overrides?.actionPoints ?? 3,
 	maxActionPoints: overrides?.maxActionPoints ?? 3,
 	statusEffects: overrides?.statusEffects ?? [],
+	preparedSpells: overrides?.preparedSpells ?? [],
 	trait: overrides?.trait,
 });
 
@@ -393,4 +405,3 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 	},
 });
-

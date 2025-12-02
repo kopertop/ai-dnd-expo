@@ -30,6 +30,7 @@ export const CharacterSheetView: React.FC = () => {
 	const equipped = playerCharacter?.equipped || {};
 	const loading = updateCharacterMutation.isPending;
 	const error = updateCharacterMutation.error;
+	const errorMessage = error ? (error instanceof Error ? error.message : String(error)) : null;
 	
 	const equipItem = async (item: any, slot: GearSlot) => {
 		if (!playerCharacter) return;
@@ -93,13 +94,23 @@ export const CharacterSheetView: React.FC = () => {
 
 	// Use inventory with equipped status for display
 	const inventoryWithStatus = inventory.map((item: any) => {
-		const equippedSlot = Object.entries(equipped).find(([_, itemId]) => itemId === item.id)?.[0] as GearSlot | undefined;
+		const equippedSlot = Object.entries(equipped).find(([_, itemValue]) => {
+			const equippedId = typeof itemValue === 'string' ? itemValue : (itemValue as any)?.id;
+			return equippedId === item.id;
+		})?.[0] as GearSlot | undefined;
 		return {
 			item,
 			isEquipped: !!equippedSlot,
 			equippedSlot,
 		};
 	});
+	const resolveEquippedItem = (slot: GearSlot) => {
+		const equippedEntry = (equipped as Record<GearSlot, any>)[slot];
+		if (!equippedEntry) return undefined;
+		return typeof equippedEntry === 'string'
+			? inventory.find((item: any) => item.id === equippedEntry)
+			: equippedEntry;
+	};
 	
 	const filteredInventory = activeSlot
 		? inventoryWithStatus.filter(entry => entry.item.slot === activeSlot)
@@ -194,29 +205,32 @@ export const CharacterSheetView: React.FC = () => {
 								'mainHand',
 								'offHand',
 							] as GearSlot[]
-						).map(slot => (
-							<TouchableOpacity
-								key={slot}
-								style={[
-									styles.gearSlot,
-									activeSlot === slot && styles.gearSlotActive,
-								]}
-								onPress={() => handleSlotPress(slot)}
-							>
-								{equipped[slot] ? (
-									<Image
-										source={equipped[slot]!.icon as ImageSourcePropType}
-										style={styles.gearIcon}
-									/>
-								) : (
-									<View style={styles.emptyGearSlot}>
-										<Text style={styles.gearSlotLabel}>
-											{slot.charAt(0).toUpperCase() + slot.slice(1)}
-										</Text>
-									</View>
-								)}
-							</TouchableOpacity>
-						))}
+						).map(slot => {
+							const equippedItem = resolveEquippedItem(slot);
+							return (
+								<TouchableOpacity
+									key={slot}
+									style={[
+										styles.gearSlot,
+										activeSlot === slot && styles.gearSlotActive,
+									]}
+									onPress={() => handleSlotPress(slot)}
+								>
+									{equippedItem ? (
+										<Image
+											source={equippedItem.icon as ImageSourcePropType}
+											style={styles.gearIcon}
+										/>
+									) : (
+										<View style={styles.emptyGearSlot}>
+											<Text style={styles.gearSlotLabel}>
+												{slot.charAt(0).toUpperCase() + slot.slice(1)}
+											</Text>
+										</View>
+									)}
+								</TouchableOpacity>
+							);
+						})}
 					</View>
 				</View>
 
@@ -226,8 +240,8 @@ export const CharacterSheetView: React.FC = () => {
 					<View style={styles.inventoryGrid}>
 						{loading ? (
 							<Text style={styles.emptyText}>Loading inventory...</Text>
-						) : error ? (
-							<Text style={styles.emptyText}>Error loading inventory: {error}</Text>
+						) : errorMessage ? (
+							<Text style={styles.emptyText}>Error loading inventory: {errorMessage}</Text>
 						) : filteredInventory.length === 0 ? (
 							<Text style={styles.emptyText}>No items</Text>
 						) : (

@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { type UseQueryOptions, useQueryClient } from '@tanstack/react-query';
 import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 
 import type {
@@ -14,7 +14,7 @@ import { Quest } from '@/types/quest';
  */
 export function useGameSession(
 	inviteCode: string | null | undefined,
-	options?: { refetchInterval?: number | ((data: GameSessionResponse | undefined) => number | undefined) },
+	options?: { refetchInterval?: UseQueryOptions<GameSessionResponse>['refetchInterval'] },
 ) {
 	// Don't make API call if inviteCode is falsy - pass empty string and disable query
 	return useQueryApi<GameSessionResponse>(
@@ -234,4 +234,3 @@ export function useClearActivityLogs(inviteCode: string) {
 		},
 	});
 }
-

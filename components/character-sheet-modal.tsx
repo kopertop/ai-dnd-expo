@@ -44,6 +44,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 	const equipped = playerCharacter?.equipped || {};
 	const loading = updateCharacterMutation.isPending;
 	const error = updateCharacterMutation.error;
+	const errorMessage = error ? (error instanceof Error ? error.message : String(error)) : null;
 	
 	const equipItem = async (item: any, slot: GearSlot) => {
 		if (!playerCharacter) return;
@@ -130,13 +131,32 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 	// Use inventory with equipped status for display
 	// Map inventory items to include equipped status
 	const inventoryWithStatus = inventory.map((item: any) => {
-		const equippedSlot = Object.entries(equipped).find(([_, itemId]) => itemId === item.id)?.[0] as GearSlot | undefined;
+		const equippedSlot = Object.entries(equipped).find(([_, itemValue]) => {
+			const equippedId = typeof itemValue === 'string' ? itemValue : (itemValue as any)?.id;
+			return equippedId === item.id;
+		})?.[0] as GearSlot | undefined;
 		return {
 			item,
 			isEquipped: !!equippedSlot,
 			equippedSlot,
 		};
 	});
+	const resolveEquippedItem = (slot: GearSlot) => {
+		const equippedEntry = (equipped as Record<GearSlot, any>)[slot];
+		if (!equippedEntry) return undefined;
+		return typeof equippedEntry === 'string'
+			? inventory.find((item: any) => item.id === equippedEntry)
+			: equippedEntry;
+	};
+	const equippedItems = {
+		helmet: resolveEquippedItem('helmet'),
+		arms: resolveEquippedItem('arms'),
+		chest: resolveEquippedItem('chest'),
+		legs: resolveEquippedItem('legs'),
+		boots: resolveEquippedItem('boots'),
+		mainHand: resolveEquippedItem('mainHand'),
+		offHand: resolveEquippedItem('offHand'),
+	};
 	
 	const filteredInventory = activeSlot
 		? inventoryWithStatus.filter(entry => entry.item.slot === activeSlot)
@@ -215,9 +235,9 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 										<Text style={styles.emptyInventory}>
 											Loading inventory...
 										</Text>
-									) : error ? (
+									) : errorMessage ? (
 										<Text style={styles.emptyInventory}>
-											Error loading inventory: {error}
+											Error loading inventory: {errorMessage}
 										</Text>
 									) : filteredInventory.length === 0 ? (
 										<Text style={styles.emptyInventory}>No items</Text>
@@ -375,10 +395,10 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 												]}
 												onPress={() => handleSlotPress('helmet')}
 											>
-												{equipped['helmet'] ? (
+												{equippedItems.helmet ? (
 													<Image
 														source={
-															equipped['helmet']!
+															equippedItems.helmet
 																.icon as ImageSourcePropType
 														}
 														style={styles.gearIcon}
@@ -402,15 +422,15 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 														styles.gearSlot,
 														styles.gearSlotArm,
 														activeSlot === 'arms' &&
-														styles.gearSlotActive,
+													styles.gearSlotActive,
 													]}
 													onPress={() => handleSlotPress('arms')}
 												>
-													{equipped['arms'] ? (
+													{equippedItems.arms ? (
 														<Image
 															source={
-																equipped['arms']!
-																	.icon as ImageSourcePropType
+															equippedItems.arms
+																.icon as ImageSourcePropType
 															}
 															style={styles.gearIcon}
 														/>
@@ -433,10 +453,10 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 												]}
 												onPress={() => handleSlotPress('chest')}
 											>
-												{equipped['chest'] ? (
+												{equippedItems.chest ? (
 													<Image
 														source={
-															equipped['chest']!
+															equippedItems.chest
 																.icon as ImageSourcePropType
 														}
 														style={styles.gearIcon}
@@ -457,15 +477,15 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 														styles.gearSlot,
 														styles.gearSlotArm,
 														activeSlot === 'arms' &&
-														styles.gearSlotActive,
+													styles.gearSlotActive,
 													]}
 													onPress={() => handleSlotPress('arms')}
 												>
-													{equipped['arms'] ? (
+													{equippedItems.arms ? (
 														<Image
 															source={
-																equipped['arms']!
-																	.icon as ImageSourcePropType
+															equippedItems.arms
+																.icon as ImageSourcePropType
 															}
 															style={styles.gearIcon}
 														/>
@@ -493,10 +513,10 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 												]}
 												onPress={() => handleSlotPress('mainHand')}
 											>
-												{equipped['mainHand'] ? (
+												{equippedItems.mainHand ? (
 													<Image
 														source={
-															equipped['mainHand']!
+															equippedItems.mainHand
 																.icon as ImageSourcePropType
 														}
 														style={styles.gearIcon}
@@ -518,10 +538,10 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 												]}
 												onPress={() => handleSlotPress('legs')}
 											>
-												{equipped['legs'] ? (
+												{equippedItems.legs ? (
 													<Image
 														source={
-															equipped['legs']!
+															equippedItems.legs
 																.icon as ImageSourcePropType
 														}
 														style={styles.gearIcon}
@@ -546,10 +566,10 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 												]}
 												onPress={() => handleSlotPress('offHand')}
 											>
-												{equipped['offHand'] ? (
+												{equippedItems.offHand ? (
 													<Image
 														source={
-															equipped['offHand']!
+															equippedItems.offHand
 																.icon as ImageSourcePropType
 														}
 														style={styles.gearIcon}
@@ -574,10 +594,10 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 												]}
 												onPress={() => handleSlotPress('boots')}
 											>
-												{equipped['boots'] ? (
+												{equippedItems.boots ? (
 													<Image
 														source={
-															equipped['boots']!
+															equippedItems.boots
 																.icon as ImageSourcePropType
 														}
 														style={styles.gearIcon}

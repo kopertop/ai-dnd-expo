@@ -175,6 +175,7 @@ describe('games map routes', () => {
 			is_visible: 1,
 			hit_points: null,
 			max_hit_points: null,
+			status_effects: null,
 			metadata: JSON.stringify({}),
 			created_at: Date.now(),
 			updated_at: Date.now(),
@@ -252,4 +253,3 @@ describe('games map routes', () => {
 		expect(mockDb.tokens.find(token => token.npc_id === 'npc-1')).toBeTruthy();
 	});
 });
-

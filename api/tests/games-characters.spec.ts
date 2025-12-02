@@ -71,15 +71,25 @@ describe('Games Character Routes - Game-specific endpoints', () => {
 			level: 1,
 			race: 'Human',
 			class: 'Fighter',
-			stats: { STR: 14 },
+			stats: { STR: 14, DEX: 12, CON: 13, INT: 10, WIS: 11, CHA: 9 },
 			skills: [],
 			inventory: [],
-			equipped: {},
+			equipped: {
+				helmet: null,
+				chest: null,
+				arms: null,
+				legs: null,
+				boots: null,
+				mainHand: null,
+				offHand: null,
+				accessory: null,
+			},
 			health: 10,
 			maxHealth: 10,
 			actionPoints: 3,
 			maxActionPoints: 3,
 			statusEffects: [],
+			preparedSpells: [],
 		};
 
 		// Create character via the characters API
