@@ -1,8 +1,7 @@
 /**
- * Enhanced Dungeon Master Hook with Cactus + Gemma3 Integration
+ * Enhanced Dungeon Master Hook with AI Integration
  *
  * This replaces the old use-dungeon-master.ts with better architecture:
- * - Cactus compute network for Gemma3 inference
  * - Intelligent fallback strategies
  * - Better error handling and recovery
  * - Performance monitoring

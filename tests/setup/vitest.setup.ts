@@ -119,12 +119,6 @@ vi.mock('expo-file-system', () => ({
 	createDownloadResumable: vi.fn(),
 }));
 
-vi.mock('cactus-react-native', () => ({
-	CactusVLM: {
-		init: vi.fn(),
-	},
-}));
-
 vi.mock('@react-native-async-storage/async-storage', () => ({
 	getItem: vi.fn(),
 	setItem: vi.fn(),

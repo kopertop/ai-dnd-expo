@@ -2,11 +2,6 @@
  * TypeScript declarations for web stubs
  */
 
-export interface CactusOAICompatibleMessage {
-	role: 'user' | 'assistant' | 'system';
-	content: string;
-}
-
 export const InferenceSession: {
 	create: (modelPath: string, options?: any) => Promise<any>;
 };

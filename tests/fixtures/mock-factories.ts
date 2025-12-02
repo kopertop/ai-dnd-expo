@@ -176,7 +176,7 @@ export class AIResponseFactory {
  * Factory for creating mock external dependencies
  */
 export class MockDependencyFactory {
-	static createMockCactusClient() {
+	static createMockOllamaClient() {
 		return {
 			generateText: vi.fn().mockResolvedValue(AIResponseFactory.createSuccess()),
 			isAvailable: vi.fn().mockReturnValue(true),

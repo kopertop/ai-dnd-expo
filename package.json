@@ -20,7 +20,6 @@
 		"train": "./ai-training/train.sh",
 		"train:validate": "./ai-training/validate.sh",
 		"train:convert": "python3.11 ai-training/simple_gguf_convert.py",
-		"train:deploy": "python3.11 ai-training/deploy_to_cactus.py",
 		"train:test": "python3.11 ai-training/test_deployed_model.py",
 		"clean": "rm -rf .expo  dist/ ios/ android/ build*.ipa",
 		"deploy": "run-s build:web build:web:* && wrangler deploy",

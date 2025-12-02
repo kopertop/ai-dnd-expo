@@ -29,11 +29,11 @@ class DnDModelManager {
 		// Try multiple possible config paths
 		const possiblePaths = [
 			// App bundle path (for development)
-			'../ai-training/trained_models/dnd_model/cactus_config.json',
+			'../ai-training/trained_models/dnd_model/config.json',
 			// Documents directory path (for runtime)
-			`${FileSystem.documentDirectory}dnd_model/cactus_config.json`,
+			`${FileSystem.documentDirectory}dnd_model/config.json`,
 			// Assets path (for deployed model)
-			'../assets/models/custom-dnd-model/cactus_integration.json',
+			'../assets/models/custom-dnd-model/integration.json',
 		];
 
 		let configContent: string | null = null;
@@ -80,7 +80,7 @@ class DnDModelManager {
 		const modelFiles = [
 			'adapter_config.json',
 			'adapter_model.safetensors',
-			'cactus_config.json',
+			'config.json',
 			'chat_template.jinja',
 			'merges.txt',
 			'special_tokens_map.json',
@@ -89,7 +89,7 @@ class DnDModelManager {
 			'vocab.json',
 			'config.json',
 			'model.safetensors',
-			'cactus_integration.json',
+			'integration.json',
 		];
 
 		let sourcePath: string | null = null;
@@ -141,7 +141,7 @@ class DnDModelManager {
 
 		return {
 			modelPath: targetDir,
-			configPath: targetDir + 'cactus_config.json',
+			configPath: targetDir + 'config.json',
 		};
 	}
 
@@ -269,7 +269,7 @@ class DnDModelManager {
 
 	private async simulateDnDResponse(message: DnDMessage, systemPrompt: string): Promise<string> {
 		// This simulates what the trained model would generate
-		// In production, this would use the actual model via CactusVLM
+		// In production, this would use the actual model via Ollama
 
 		const userInput = message.content.toLowerCase();
 
