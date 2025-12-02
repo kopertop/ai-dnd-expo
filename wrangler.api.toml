@@ -17,7 +17,7 @@ mode = "smart"
 [[d1_databases]]
 binding = "DATABASE"
 database_name = "ai-dnd-db"
-database_id = "44d163b1-a7e0-43eb-8091-8d0093f100f7"
+database_id = "1384cd1b-b374-488c-b51f-143a071799e1"
 migrations_dir = "api/migrations"
 
 [[kv_namespaces]]
