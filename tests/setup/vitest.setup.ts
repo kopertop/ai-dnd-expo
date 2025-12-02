@@ -202,6 +202,41 @@ vi.mock('@expo/vector-icons', () => ({
 	SimpleLineIcons: vi.fn(() => null),
 }));
 
+// Ensure console methods are mocked for tests that assert on mocks
+console.warn = vi.fn(console.warn);
+console.error = vi.fn(console.error);
+console.log = vi.fn(console.log);
+
+// Provide basic DOM API stubs expected by tests
+if (typeof (global as any).IntersectionObserver === 'undefined') {
+	(global as any).IntersectionObserver = vi.fn(() => ({
+		observe: vi.fn(),
+		unobserve: vi.fn(),
+		disconnect: vi.fn(),
+	}));
+}
+
+if (typeof (global as any).ResizeObserver === 'undefined') {
+	(global as any).ResizeObserver = vi.fn(() => ({
+		observe: vi.fn(),
+		unobserve: vi.fn(),
+		disconnect: vi.fn(),
+	}));
+}
+
+if (typeof (window as any).matchMedia === 'undefined') {
+	(window as any).matchMedia = vi.fn().mockImplementation((query: string) => ({
+		matches: false,
+		media: query,
+		onchange: null,
+		addListener: vi.fn(),
+		removeListener: vi.fn(),
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
+		dispatchEvent: vi.fn(),
+	}));
+}
+
 // Setup all external dependency mocks
 MockManager.setupAll();
 

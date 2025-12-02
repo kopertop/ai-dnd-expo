@@ -1,5 +1,5 @@
-import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -1509,6 +1509,11 @@ const MultiplayerGameScreen: React.FC = () => {
 				// Clear selection after move (immediate UI feedback)
 				setSelectedTokenId(null);
 				setSelectedTokenMovementRange([]);
+
+				// Wait half a second and then refresh the game state
+				setTimeout(() => {
+					refreshGameState();
+				}, 500);
 			} catch (error) {
 				console.error('Failed to move token:', error);
 				Alert.alert('Error', 'Failed to move token');
@@ -1666,6 +1671,11 @@ const MultiplayerGameScreen: React.FC = () => {
 						} finally {
 							setMovementInFlight(false);
 							console.log('[Movement] Movement handler finished');
+							// Wait half a second and then refresh the game state
+							setTimeout(() => {
+								console.log('[Movement] Refreshing game state');
+								refreshGameState();
+							}, 500);
 						}
 						break;
 					}

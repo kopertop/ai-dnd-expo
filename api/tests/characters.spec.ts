@@ -24,13 +24,10 @@ describe('Characters API', () => {
 		testApp.route('/api/characters', characterRoutes);
 
 		const db = (env as CloudflareBindings).DATABASE;
-		const migrationFiles = await readdir(path.join(__dirname, '..', 'migrations'));
+		const migrationFiles = await readdir(path.resolve(process.cwd(), 'api', 'migrations'));
 		for (const migrationFile of migrationFiles) {
 			await db.exec(await readFile(path.join(__dirname, '..', 'migrations', migrationFile), 'utf8'));
 		}
-		vi.spyOn(dbModule, 'Database').mockImplementation(() => {
-			return new dbModule.Database((env as CloudflareBindings).DATABASE) as unknown as dbModule.Database;
-		});
 	});
 
 	const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
@@ -319,4 +316,3 @@ describe('Characters API', () => {
 		}
 	});
 });
-

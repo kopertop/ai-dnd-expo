@@ -98,7 +98,7 @@ const buildFogMatrix = (map: MapRow) => {
 	return matrix;
 };
 
-const convertTokens = (tokens?: MapTokenRow[]): MapToken[] => {
+const convertTokens = (tokens?: MapTokenRow[]): Array<MapToken & { npcId?: string }> => {
 	if (!tokens?.length) {
 		return [];
 	}
@@ -123,6 +123,7 @@ const convertTokens = (tokens?: MapTokenRow[]): MapToken[] => {
 			id: token.id,
 			type: toTokenType(token.token_type),
 			entityId,
+			npcId: token.npc_id ?? undefined,
 			label: token.label ?? 'Token',
 			x: token.x,
 			y: token.y,
@@ -145,10 +146,10 @@ export interface MapStateAdapterOptions {
 export const mapStateFromDb = (
 	map: MapRow,
 	options: MapStateAdapterOptions = {},
-): MapState => {
+): MapState & { map: MapRow; tiles: MapTileRow[] } => {
 	const grid = applyTileOverrides(buildBaseTerrain(map), options.tiles);
 
-	return {
+	const state: MapState = {
 		id: map.id,
 		name: map.name,
 		width: map.width,
@@ -165,6 +166,12 @@ export const mapStateFromDb = (
 		isGenerated: Boolean(map.is_generated),
 		tokens: convertTokens(options.tokens),
 		updatedAt: map.updated_at,
+	};
+
+	return {
+		...state,
+		map,
+		tiles: options.tiles ?? [],
 	};
 };
 
@@ -193,4 +200,3 @@ export const npcFromDb = (npc: NpcRow): NpcDefinition => ({
 	color: parseJson<{ color?: string }>(npc.metadata, {}).color,
 	metadata: parseJson<Record<string, unknown>>(npc.metadata, {}),
 });
-

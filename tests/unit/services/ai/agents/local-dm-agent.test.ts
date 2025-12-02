@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LocalDMAgent } from '@/services/ai/agents/local-dm-agent';
+import { LocalDMProvider } from '@/services/ai/providers/local-dm-provider';
 
 describe('LocalDMAgent', () => {
 	let dmAgent: LocalDMAgent;
@@ -9,9 +10,6 @@ describe('LocalDMAgent', () => {
 		vi.clearAllMocks();
 
 		// Mock dependencies using vi.spyOn
-		const {
-			LocalDMProvider,
-		} = require('../../../../../services/ai/providers/local-dm-provider');
 		vi.spyOn(LocalDMProvider.prototype, 'initialize').mockResolvedValue(true);
 		vi.spyOn(LocalDMProvider.prototype, 'generateDnDResponse').mockResolvedValue({
 			text: 'You attack the goblin! [ROLL:1d20+5] Roll for attack.',

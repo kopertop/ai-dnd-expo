@@ -7,6 +7,7 @@ export default defineConfig({
 		target: 'es2020',
 	},
 	test: {
+		name: 'services',
 		// Use node environment for service tests
 		environment: 'node',
 		setupFiles: ['./tests/setup/vitest.services.setup.ts'],
@@ -56,6 +57,15 @@ export default defineConfig({
 
 		// Test timeout for fast execution
 		testTimeout: 10000,
+		deps: {
+			inline: [
+				'react-native',
+				'expo-modules-core',
+				'expo-file-system',
+				'@expo/vector-icons',
+				'@react-native-async-storage/async-storage',
+			],
+		},
 	},
 	resolve: {
 		alias: {
@@ -64,6 +74,9 @@ export default defineConfig({
 			'@/types': resolve(__dirname, './types'),
 			'@/constants': resolve(__dirname, './constants'),
 			'@/tests': resolve(__dirname, './tests'),
+			'react-native': resolve(__dirname, './tests/setup/react-native-mock.ts'),
+			'@expo/vector-icons$': resolve(__dirname, './tests/setup/expo-vector-icons-mock.ts'),
+			'@expo/vector-icons/build/createIconSet': resolve(__dirname, './tests/setup/expo-vector-icons-mock.ts'),
 		},
 	},
 });

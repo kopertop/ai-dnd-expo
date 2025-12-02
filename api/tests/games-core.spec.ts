@@ -38,14 +38,11 @@ describe('Games Core API', () => {
 		// Run migrations on the D1 database
 		const db = (env as CloudflareBindings).DATABASE;
 		// Execute all migration files in order
-		const migrationFiles = await readdir(path.join(__dirname, '..', 'migrations'));
+		const migrationFiles = await readdir(path.resolve(process.cwd(), 'api', 'migrations'));
 		for (const migrationFile of migrationFiles) {
 			await db.exec(await readFile(path.join(__dirname, '..', 'migrations', migrationFile), 'utf8'));
 		}
 		// Mock Database to use the real D1 database from Cloudflare Workers
-		vi.spyOn(dbModule, 'Database').mockImplementation(() => {
-			return new dbModule.Database((env as CloudflareBindings).DATABASE) as unknown as dbModule.Database;
-		});
 	});
 
 	// Helper to make requests with mocked auth
@@ -495,5 +492,3 @@ describe('Games Core API', () => {
 		}
 	});
 });
-
-

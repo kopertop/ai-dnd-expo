@@ -3,6 +3,15 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+vi.mock('react-native', () => ({
+	Platform: { OS: 'ios', select: (obj: any) => obj.ios || obj.default },
+	AppState: { addEventListener: vi.fn(() => ({ remove: vi.fn() })) },
+}));
+vi.mock('expo-modules-core', () => ({
+	NativeModule: class {},
+	requireOptionalNativeModule: () => undefined,
+	Platform: { OS: 'web' },
+}));
 
 // Test imports to ensure our new classes can be imported
 import { ModelCacheManager } from '@/services/ai/models/model-cache-manager';

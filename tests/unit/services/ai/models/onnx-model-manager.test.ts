@@ -1,5 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('react-native', () => ({
+	Platform: { OS: 'ios', select: (obj: any) => obj.ios || obj.default },
+	AppState: { addEventListener: vi.fn(() => ({ remove: vi.fn() })) },
+}));
+vi.mock('expo-modules-core', () => ({
+	NativeModule: class {},
+	requireOptionalNativeModule: () => undefined,
+	Platform: { OS: 'web' },
+}));
+
 import { ONNXModelManager, ONNXModelUtils } from '@/services/ai/models/onnx-model-manager';
 
 describe('ONNXModelManager', () => {
@@ -319,6 +329,13 @@ describe('ONNXModelManager', () => {
 					expect(result.issues.length).toBeGreaterThan(0);
 				});
 			});
+		});
+	});
+
+	describe('Smoke', () => {
+		it('instantiates', () => {
+			const manager = new ONNXModelManager();
+			expect(manager).toBeInstanceOf(ONNXModelManager);
 		});
 	});
 });

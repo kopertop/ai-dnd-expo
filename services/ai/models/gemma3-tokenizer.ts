@@ -98,6 +98,14 @@ export class Gemma3Tokenizer {
 	}
 
 	/**
+	 * Compatibility helper for tests - marks vocab as loaded.
+	 */
+	async loadVocab(): Promise<boolean> {
+		await this.initialize();
+		return true;
+	}
+
+	/**
 	 * Tokenize text with D&D-specific formatting
 	 * Requirement 2.1: D&D-specific prompt formatting
 	 */
@@ -415,6 +423,22 @@ Always stay in character as the DM and maintain the fantasy atmosphere.`;
 	 */
 	getVocabSize(): number {
 		return this.config.vocabSize;
+	}
+
+	/**
+	 * Simple encode helper used by tests (delegates to tokenize).
+	 */
+	async encode(text: string, context?: DnDPromptContext): Promise<number[]> {
+		const result = await this.tokenize(text, context);
+		return result.inputIds;
+	}
+
+	/**
+	 * Simple decode helper used by tests (delegates to detokenize).
+	 */
+	async decode(tokenIds: number[]): Promise<string> {
+		const result = await this.detokenize(tokenIds);
+		return result.text;
 	}
 
 	/**

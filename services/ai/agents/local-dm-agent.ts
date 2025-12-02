@@ -1274,3 +1274,6 @@ export const DefaultLocalDMAgentConfig: LocalModelConfig = {
 	enableGPU: false,
 	memoryLimit: 512,
 };
+
+// Legacy export expected by tests
+export { LocalDMAgentImpl as LocalDMAgent };

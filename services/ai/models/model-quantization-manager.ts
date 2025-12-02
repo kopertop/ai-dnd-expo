@@ -55,15 +55,24 @@ export interface QuantizationPerformance {
 export class ModelQuantizationManager {
 	private onnxManager: ONNXModelManager;
 	private deviceManager: DeviceCapabilityManager;
+	public deviceCapabilityManager: DeviceCapabilityManager;
 	private availableConfigs: Map<QuantizationType, QuantizationConfig> = new Map();
 	private currentConfig: QuantizationConfig | null = null;
 	private currentSession: InferenceSession | null = null;
 	private performanceHistory: QuantizationPerformance[] = [];
 	private isInitialized = false;
 
-	constructor(onnxManager: ONNXModelManager, deviceManager: DeviceCapabilityManager) {
+	constructor(
+		onnxManager: ONNXModelManager = new ONNXModelManager(),
+		deviceManager: DeviceCapabilityManager = new DeviceCapabilityManager(),
+	) {
 		this.onnxManager = onnxManager;
 		this.deviceManager = deviceManager;
+		this.deviceCapabilityManager = deviceManager;
+		// Seed with default configs for test scenarios
+		DefaultQuantizationConfigs.forEach(cfg => {
+			this.availableConfigs.set(cfg.type, cfg);
+		});
 	}
 
 	/**
@@ -421,6 +430,38 @@ export class ModelQuantizationManager {
 	isReady(): boolean {
 		return this.isInitialized && this.deviceManager.isReady();
 	}
+
+	getQuantizationOptions(_modelId: string): Array<{
+		type: QuantizationType;
+		sizeReduction: number;
+		speedImpact: string;
+		qualityImpact: string;
+	}> {
+		return Array.from(this.availableConfigs.values()).map(config => ({
+			type: config.type,
+			sizeReduction: Math.max(0, 1 - config.metadata.size / 1024),
+			speedImpact: config.metadata.expectedSpeed,
+			qualityImpact:
+				config.metadata.qualityScore >= 90
+					? 'high'
+					: config.metadata.qualityScore >= 75
+						? 'medium'
+						: 'low',
+		}));
+	}
+
+	estimateQuantizedSize(originalBytes: number, quantization: QuantizationType): number {
+		switch (quantization) {
+			case 'int4':
+				return originalBytes * 0.25;
+			case 'int8':
+				return originalBytes * 0.5;
+			case 'fp16':
+				return originalBytes * 0.75;
+			default:
+				return originalBytes;
+		}
+	}
 }
 
 /**
@@ -577,7 +618,7 @@ export const DefaultQuantizationConfigs: QuantizationConfig[] = [
 		tokenizerPath: '/Documents/AIModels/gemma-3-2b-fp16/tokenizer.json',
 		metadata: {
 			size: 4200,
-			memoryRequirement: 5000,
+			memoryRequirement: 3000,
 			expectedSpeed: 'medium',
 			qualityScore: 95,
 		},

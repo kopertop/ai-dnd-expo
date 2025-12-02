@@ -1,4 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+vi.mock('react-native', () => ({
+	Platform: { OS: 'ios', select: (obj: any) => obj.ios || obj.default },
+	AppState: { addEventListener: vi.fn(() => ({ remove: vi.fn() })) },
+}));
+vi.mock('expo-modules-core', () => ({
+	NativeModule: class {},
+	requireOptionalNativeModule: () => undefined,
+	Platform: { OS: 'web' },
+}));
 
 import { AIServiceManager, DefaultAIConfig } from '@/services/ai/ai-service-manager';
 import { CactusAIProvider } from '@/services/ai/providers/cactus-provider';
@@ -11,9 +20,6 @@ describe('AIServiceManager', () => {
 		vi.clearAllMocks();
 
 		// Mock LocalDMProvider using vi.spyOn
-		const {
-			LocalDMProvider,
-		} = require('../../../../../services/ai/providers/local-dm-provider');
 		vi.spyOn(LocalDMProvider.prototype, 'initialize').mockResolvedValue(true);
 		vi.spyOn(LocalDMProvider.prototype, 'generateDnDResponse').mockResolvedValue({
 			text: 'Local DM response',
@@ -36,9 +42,6 @@ describe('AIServiceManager', () => {
 		vi.spyOn(LocalDMProvider.prototype, 'cleanup').mockResolvedValue(undefined);
 
 		// Mock CactusAIProvider using vi.spyOn
-		const {
-			CactusAIProvider,
-		} = require('../../../../../services/ai/providers/cactus-provider');
 		vi.spyOn(CactusAIProvider.prototype, 'initialize').mockResolvedValue(true);
 		vi.spyOn(CactusAIProvider.prototype, 'generateDnDResponse').mockResolvedValue({
 			text: 'Cactus response',

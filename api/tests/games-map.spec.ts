@@ -148,6 +148,59 @@ class MockMapDatabase {
 	async getNpcBySlug(slug: string) {
 		return this.npcs.find(npc => npc.slug === slug) ?? null;
 	}
+
+	async getNpcById(id: string) {
+		return this.npcs.find(npc => npc.id === id) ?? null;
+	}
+
+	async getCharacterById(characterId: string) {
+		// No characters stored in this mock; return a minimal stub for icon resolution
+		return characterId
+			? {
+				id: characterId,
+				player_id: 'player-1',
+				player_email: 'player@example.com',
+				name: 'Mock Hero',
+				level: 1,
+				race: 'Human',
+				class: 'Fighter',
+				description: null,
+				trait: null,
+				stats: JSON.stringify({ STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 }),
+				skills: JSON.stringify([]),
+				inventory: JSON.stringify([]),
+				equipped: JSON.stringify({}),
+				health: 10,
+				max_health: 10,
+				action_points: 3,
+				max_action_points: 3,
+				status_effects: JSON.stringify([]),
+				prepared_spells: JSON.stringify([]),
+				created_at: Date.now(),
+				updated_at: Date.now(),
+			}
+			: null;
+	}
+
+	async getGamePlayers(gameId: string) {
+		return gameId === this.game.id ? [] : [];
+	}
+
+	async getGameState(gameId: string) {
+		const now = Date.now();
+		return {
+			game_id: gameId,
+			state_data: JSON.stringify({}),
+			map_state: JSON.stringify({}),
+			log_entries: JSON.stringify([]),
+			state_version: 1,
+			updated_at: now,
+		};
+	}
+
+	async updateGameState() {
+		// No-op for map state update in tests
+	}
 }
 
 describe('games map routes', () => {

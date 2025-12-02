@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Gemma3InferenceEngine } from '@/services/ai/models/gemma3-inference-engine';
+import { Gemma3Tokenizer } from '@/services/ai/models/gemma3-tokenizer';
+import { ONNXModelManager } from '@/services/ai/models/onnx-model-manager';
 
 describe('Gemma3InferenceEngine', () => {
 	let inferenceEngine: Gemma3InferenceEngine;
@@ -9,15 +11,11 @@ describe('Gemma3InferenceEngine', () => {
 		vi.clearAllMocks();
 
 		// Mock dependencies using vi.spyOn
-		const { Gemma3Tokenizer } = require('../../../../../services/ai/models/gemma3-tokenizer');
 		vi.spyOn(Gemma3Tokenizer.prototype, 'encode').mockReturnValue([1, 2, 3, 4, 5]);
 		vi.spyOn(Gemma3Tokenizer.prototype, 'decode').mockReturnValue('Decoded text');
 		vi.spyOn(Gemma3Tokenizer.prototype, 'loadVocab').mockResolvedValue(true);
 		vi.spyOn(Gemma3Tokenizer.prototype, 'getVocabSize').mockReturnValue(32000);
 
-		const {
-			ONNXModelManager,
-		} = require('../../../../../services/ai/models/onnx-model-manager');
 		vi.spyOn(ONNXModelManager.prototype, 'loadGemma3Model').mockResolvedValue({});
 		vi.spyOn(ONNXModelManager.prototype, 'validateModel').mockResolvedValue(true);
 		vi.spyOn(ONNXModelManager.prototype, 'runInference').mockResolvedValue({
@@ -148,8 +146,9 @@ describe('Gemma3InferenceEngine', () => {
 			await inferenceEngine.initialize();
 
 			// Mock the tokenizer to return EOS token after a few tokens
-			const mockTokenizer = require('../../../../../services/ai/models/gemma3-tokenizer')
-				.Gemma3Tokenizer.mock.instances[0];
+			const mockTokenizer = (Gemma3Tokenizer as any).mock?.instances?.[0] ?? {
+				decode: vi.fn(),
+			};
 			let callCount = 0;
 
 			vi.spyOn(mockTokenizer, 'decode').mockImplementation(() => {
@@ -171,11 +170,9 @@ describe('Gemma3InferenceEngine', () => {
 	describe('Error Handling', () => {
 		it('should handle initialization errors', async () => {
 			// Mock tokenizer to fail
-			vi.spyOn(
-				require('../../../../../services/ai/models/gemma3-tokenizer').Gemma3Tokenizer
-					.prototype,
-				'loadVocab',
-			).mockRejectedValueOnce(new Error('Failed to load vocab'));
+			vi.spyOn(Gemma3Tokenizer.prototype, 'loadVocab').mockRejectedValueOnce(
+				new Error('Failed to load vocab'),
+			);
 
 			const errorEngine = new Gemma3InferenceEngine({
 				modelPath: '/test/path/model.onnx',
@@ -191,11 +188,9 @@ describe('Gemma3InferenceEngine', () => {
 			await inferenceEngine.initialize();
 
 			// Mock ONNX model manager to fail
-			vi.spyOn(
-				require('../../../../../services/ai/models/onnx-model-manager').ONNXModelManager
-					.prototype,
-				'runInference',
-			).mockRejectedValueOnce(new Error('Inference failed'));
+			vi.spyOn(ONNXModelManager.prototype, 'runInference').mockRejectedValueOnce(
+				new Error('Inference failed'),
+			);
 
 			await expect(inferenceEngine.generateText('Test prompt')).rejects.toThrow(
 				'Inference failed',

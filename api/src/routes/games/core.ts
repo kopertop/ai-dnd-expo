@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import type { GamesContext } from './types';
 
 import { GameStateService } from '@/api/src/services/game-state';
-import { createId, isHostUser, serializeCharacter, toGameSummary } from '@/api/src/utils/games-utils';
+import { createId, deserializeCharacter, isHostUser, serializeCharacter, toGameSummary } from '@/api/src/utils/games-utils';
 import { Database } from '@/shared/workers/db';
 import { generateInviteCode } from '@/shared/workers/session-manager';
 import type { CreateGameBody, JoinGameBody } from '@/types/games-api';
@@ -250,10 +250,14 @@ core.post('/:inviteCode/join', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const body = (await c.req.json()) as JoinGameBody;
-	const { character } = body;
-	const playerId = body.playerId || user.id;
-	const playerEmail = body.playerEmail || user.email || null;
+	const body = (await c.req.json()) as JoinGameBody & { characterId?: string };
+	const db = new Database(c.env.DATABASE);
+
+	// Accept either full character payload or a characterId referring to an existing character
+	const existingCharacterRow = body.characterId ? await db.getCharacterById(body.characterId) : null;
+	const character = body.character || (existingCharacterRow ? deserializeCharacter(existingCharacterRow) : null);
+	const playerId = body.playerId || existingCharacterRow?.player_id || user.id;
+	const playerEmail = body.playerEmail || existingCharacterRow?.player_email || user.email || null;
 
 	if (!character) {
 		return c.json({ error: 'Character data is required' }, 400);
@@ -263,7 +267,6 @@ core.post('/:inviteCode/join', async (c) => {
 		return c.json({ error: 'Player identity is required' }, 400);
 	}
 
-	const db = new Database(c.env.DATABASE);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -417,5 +420,3 @@ core.delete('/:inviteCode', async (c) => {
 });
 
 export default core;
-
-
