@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
-import { multiplayerClient } from '@/services/api/multiplayer-client';
+import { useNpcDefinitions } from '@/hooks/api/use-npc-queries';
 import { NpcDefinition } from '@/types/api/multiplayer-api';
 
 interface NpcSelectorProps {
@@ -29,42 +29,23 @@ export const NpcSelector: React.FC<NpcSelectorProps> = ({
 	visible,
 	onClose,
 	inviteCode,
-	onSelectNpc,
-	onCreateCustomNpc,
+        onSelectNpc,
+        onCreateCustomNpc,
 }) => {
-	const insets = useSafeAreaInsets();
-	const [npcs, setNpcs] = useState<NpcDefinition[]>([]);
-	const [isLoading, setIsLoading] = useState(false);
-	const [showCreateForm, setShowCreateForm] = useState(false);
-	const [customNpc, setCustomNpc] = useState({
-		name: '',
+        const insets = useSafeAreaInsets();
+        const { data: npcDefinitionsData, isLoading } = useNpcDefinitions(visible ? inviteCode : null);
+        const npcs = npcDefinitionsData?.npcs ?? [];
+        const [showCreateForm, setShowCreateForm] = useState(false);
+        const [customNpc, setCustomNpc] = useState({
+                name: '',
 		role: 'commoner',
 		alignment: 'neutral',
 		disposition: 'neutral',
 		description: '',
 		maxHealth: 10,
-		armorClass: 10,
-		color: '#3B2F1B',
-	});
-
-	useEffect(() => {
-		if (visible && inviteCode) {
-			loadNpcs();
-		}
-	}, [visible, inviteCode]);
-
-	const loadNpcs = async () => {
-		setIsLoading(true);
-		try {
-			const response = await multiplayerClient.getNpcDefinitions(inviteCode);
-			setNpcs(response.npcs || []);
-		} catch (error) {
-			console.error('Failed to load NPCs:', error);
-			Alert.alert('Error', 'Failed to load NPCs');
-		} finally {
-			setIsLoading(false);
-		}
-	};
+                armorClass: 10,
+                color: '#3B2F1B',
+        });
 
 	const handleSelectNpc = (npc: NpcDefinition) => {
 		onSelectNpc(npc.slug || npc.id, npc.name);

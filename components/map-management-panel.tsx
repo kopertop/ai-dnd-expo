@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
-	ActivityIndicator,
-	Alert,
+        ActivityIndicator,
+        Alert,
 	ScrollView,
 	StyleSheet,
 	TextInput,
@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { multiplayerClient } from '@/services/api/multiplayer-client';
+import { useAllMaps, useCloneMap, useSwitchMap } from '@/hooks/api/use-map-queries';
 
 interface Map {
 	id: string;
@@ -30,85 +30,78 @@ interface MapManagementPanelProps {
 }
 
 export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
-	inviteCode,
-	currentMapId,
-	onMapSelected,
-	onMapCloned,
-	onEditMap,
+        inviteCode,
+        currentMapId,
+        onMapSelected,
+        onMapCloned,
+        onEditMap,
 }) => {
-	const [maps, setMaps] = useState<Map[]>([]);
-	const [loading, setLoading] = useState(false);
-	const [searchQuery, setSearchQuery] = useState('');
-	const [cloningMapId, setCloningMapId] = useState<string | null>(null);
+        const { data: mapsResponse, isLoading: mapsLoading, refetch: refetchMaps, isFetching } = useAllMaps();
+        const switchMapMutation = useSwitchMap(inviteCode);
+        const cloneMapMutation = useCloneMap();
+        const maps = mapsResponse?.maps ?? [];
+        const [searchQuery, setSearchQuery] = useState('');
+        const [cloningMapId, setCloningMapId] = useState<string | null>(null);
 
-	const loadMaps = useCallback(async () => {
-		setLoading(true);
-		try {
-			const response = await multiplayerClient.getAllMaps();
-			setMaps(response.maps || []);
-		} catch (error) {
-			console.error('Failed to load maps:', error);
-			Alert.alert('Error', error instanceof Error ? error.message : 'Failed to load maps');
-		} finally {
-			setLoading(false);
-		}
-	}, []);
-
-	useEffect(() => {
-		loadMaps();
-	}, [loadMaps]);
-
-	const handleCloneMap = useCallback(
-		async (sourceMap: Map) => {
+        const handleCloneMap = useCallback(
+                async (sourceMap: Map) => {
 			if (!sourceMap.id) return;
 
 			setCloningMapId(sourceMap.id);
 			try {
-				const newName = `${sourceMap.name} (Copy)`;
-				const response = await multiplayerClient.cloneMap(sourceMap.id, newName);
-				Alert.alert('Success', `Map "${newName}" created successfully`);
-				await loadMaps();
-				if (onMapCloned && response.map?.id) {
-					onMapCloned(response.map.id);
-				}
-			} catch (error) {
-				console.error('Failed to clone map:', error);
+                                const newName = `${sourceMap.name} (Copy)`;
+                                const response = await cloneMapMutation.mutateAsync({
+                                        path: '/maps/clone',
+                                        body: { sourceMapId: sourceMap.id, newName },
+                                });
+                                Alert.alert('Success', `Map "${newName}" created successfully`);
+                                await refetchMaps();
+                                if (onMapCloned && response.map?.id) {
+                                        onMapCloned(response.map.id);
+                                }
+                        } catch (error) {
+                                console.error('Failed to clone map:', error);
 				Alert.alert('Error', error instanceof Error ? error.message : 'Failed to clone map');
-			} finally {
-				setCloningMapId(null);
-			}
-		},
-		[loadMaps, onMapCloned],
-	);
+                        } finally {
+                                setCloningMapId(null);
+                        }
+                },
+                [cloneMapMutation, onMapCloned, refetchMaps],
+        );
 
-	const handleUseMap = useCallback(
-		async (mapId: string) => {
-			try {
-				await multiplayerClient.switchMap(inviteCode, mapId);
-				onMapSelected(mapId);
-				Alert.alert('Success', 'Map selected successfully');
-			} catch (error) {
+        const handleUseMap = useCallback(
+                async (mapId: string) => {
+                        try {
+                                                await switchMapMutation.mutateAsync({
+                                                        path: `/games/${inviteCode}/map`,
+                                                        body: { mapId },
+                                                });
+                                                onMapSelected(mapId);
+                                                Alert.alert('Success', 'Map selected successfully');
+                                        } catch (error) {
 				console.error('Failed to switch map:', error);
-				Alert.alert('Error', error instanceof Error ? error.message : 'Failed to switch map');
-			}
-		},
-		[inviteCode, onMapSelected],
-	);
+                                Alert.alert('Error', error instanceof Error ? error.message : 'Failed to switch map');
+                        }
+                },
+                [inviteCode, onMapSelected, switchMapMutation],
+        );
 
 	const filteredMaps = maps.filter(
-		map =>
-			map.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			(map.description && map.description.toLowerCase().includes(searchQuery.toLowerCase())),
-	);
+                map =>
+                        map.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (map.description && map.description.toLowerCase().includes(searchQuery.toLowerCase())),
+        );
+
+        const isLoading = mapsLoading || isFetching;
 
 	return (
 		<View style={styles.container}>
 			<View style={styles.header}>
-				<ThemedText type="subtitle">Map Management</ThemedText>
-				<TouchableOpacity style={styles.refreshButton} onPress={loadMaps}>
-					<ThemedText style={styles.refreshButtonText}>Refresh</ThemedText>
-				</TouchableOpacity>
-			</View>
+                                <ThemedText type="subtitle">Map Management</ThemedText>
+                                <TouchableOpacity style={styles.refreshButton} onPress={() => refetchMaps()}>
+                                        <ThemedText style={styles.refreshButtonText}>Refresh</ThemedText>
+                                </TouchableOpacity>
+                        </View>
 
 			{currentMapId && (
 				<View style={styles.currentMapSection}>
@@ -159,10 +152,10 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 					placeholderTextColor="#6B5B3D"
 				/>
 
-				{loading ? (
-					<View style={styles.loadingContainer}>
-						<ActivityIndicator size="small" color="#8B6914" />
-						<ThemedText style={styles.loadingText}>Loading maps...</ThemedText>
+                                {isLoading ? (
+                                        <View style={styles.loadingContainer}>
+                                                <ActivityIndicator size="small" color="#8B6914" />
+                                                <ThemedText style={styles.loadingText}>Loading maps...</ThemedText>
 					</View>
 				) : filteredMaps.length === 0 ? (
 					<ThemedText style={styles.emptyText}>

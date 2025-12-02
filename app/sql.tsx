@@ -1,10 +1,10 @@
 import { Feather } from '@expo/vector-icons';
-import { apiService } from 'expo-auth-template/frontend';
+import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 import { Stack } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-	ActivityIndicator,
-	Alert,
+        ActivityIndicator,
+        Alert,
 	ScrollView,
 	StyleSheet,
 	TextInput,
@@ -27,15 +27,31 @@ interface QueryResult {
 }
 
 const SqlDebugScreen: React.FC = () => {
-	const { width: screenWidth, height: screenHeight, isPhone } = useScreenSize();
-	const [tables, setTables] = useState<string[]>([]);
-	const [loadingTables, setLoadingTables] = useState(true);
-	const [query, setQuery] = useState('');
-	const [result, setResult] = useState<QueryResult | null>(null);
-	const [executing, setExecuting] = useState(false);
-	const [selectedTable, setSelectedTable] = useState<string | null>(null);
-	const [cellModalVisible, setCellModalVisible] = useState(false);
-	const [cellModalContent, setCellModalContent] = useState<{
+        const { width: screenWidth, height: screenHeight, isPhone } = useScreenSize();
+        const {
+                data: tablesData,
+                isLoading: loadingTables,
+                refetch: refetchTables,
+        } = useQueryApi<{ tables: string[] }>('/admin/sql/tables', {
+                onError: (error: any) => {
+                        console.error('Error loading tables:', error);
+                        if (error?.status === 403) {
+                                Alert.alert(
+                                        'Access Denied',
+                                        'You must be an admin to access the SQL debug interface.',
+                                );
+                        } else {
+                                Alert.alert('Error', 'Failed to load tables');
+                        }
+                },
+        });
+        const executeQueryMutation = useMutationApi<QueryResult>({ method: 'POST' });
+        const tables = tablesData?.tables || [];
+        const [query, setQuery] = useState('');
+        const [result, setResult] = useState<QueryResult | null>(null);
+        const [selectedTable, setSelectedTable] = useState<string | null>(null);
+        const [cellModalVisible, setCellModalVisible] = useState(false);
+        const [cellModalContent, setCellModalContent] = useState<{
 		column: string;
 		value: string;
 	} | null>(null);
@@ -44,58 +60,31 @@ const SqlDebugScreen: React.FC = () => {
 	const COLUMN_WIDTH = 150;
 	const ROW_ACTION_COLUMN_WIDTH = 50;
 
-	// Calculate modal dimensions based on screen size
-	const modalWidth = isPhone ? screenWidth * 0.95 : Math.max(screenWidth * 0.5, 400);
-	const modalHeight = isPhone ? screenHeight * 0.95 : Math.max(screenHeight * 0.5, 400);
-
-	useEffect(() => {
-		loadTables();
-	}, []);
-
-	const loadTables = async () => {
-		setLoadingTables(true);
-		try {
-			const response = await apiService.fetchApi('/admin/sql/tables', {
-				method: 'GET',
-			});
-			setTables(response.tables || []);
-		} catch (error: any) {
-			console.error('Error loading tables:', error);
-			if (error.status === 403) {
-				Alert.alert(
-					'Access Denied',
-					'You must be an admin to access the SQL debug interface.',
-				);
-			} else {
-				Alert.alert('Error', 'Failed to load tables');
-			}
-		} finally {
-			setLoadingTables(false);
-		}
-	};
+        // Calculate modal dimensions based on screen size
+        const modalWidth = isPhone ? screenWidth * 0.95 : Math.max(screenWidth * 0.5, 400);
+        const modalHeight = isPhone ? screenHeight * 0.95 : Math.max(screenHeight * 0.5, 400);
 
 	const handleTableClick = (tableName: string) => {
 		setSelectedTable(tableName);
 		setQuery(`SELECT * FROM ${tableName} LIMIT 100`);
 	};
 
-	const executeQuery = async () => {
-		if (!query.trim()) {
-			Alert.alert('Error', 'Please enter a SQL query');
-			return;
-		}
+        const executeQuery = async () => {
+                if (!query.trim()) {
+                        Alert.alert('Error', 'Please enter a SQL query');
+                        return;
+                }
 
-		setExecuting(true);
-		setResult(null);
+                setResult(null);
 
-		try {
-			const response = await apiService.fetchApi('/admin/sql/query', {
-				method: 'POST',
-				body: JSON.stringify({ query }),
-			});
+                try {
+                        const response = await executeQueryMutation.mutateAsync({
+                                path: '/admin/sql/query',
+                                body: { query },
+                        });
 
-			setResult({
-				columns: response.columns || [],
+                        setResult({
+                                columns: response.columns || [],
 				rows: response.rows || [],
 				rowCount: response.rowCount || 0,
 				executionTime: response.executionTime,
@@ -103,18 +92,16 @@ const SqlDebugScreen: React.FC = () => {
 			});
 		} catch (error: any) {
 			console.error('Error executing query:', error);
-			const errorMessage =
-				error.message || error.error || 'Failed to execute query';
-			setResult({
+                        const errorMessage =
+                                error.message || error.error || 'Failed to execute query';
+                        setResult({
 				columns: [],
 				rows: [],
 				rowCount: 0,
 				error: errorMessage,
 			});
-		} finally {
-			setExecuting(false);
-		}
-	};
+                }
+        };
 
 	const handleCellPress = (column: string, value: any) => {
 		const stringValue =
@@ -142,10 +129,10 @@ const SqlDebugScreen: React.FC = () => {
 					<ThemedText type="subtitle" style={styles.sidebarTitle}>
 						Tables
 					</ThemedText>
-					{loadingTables ? (
-						<ActivityIndicator size="small" color="#C9B037" />
-					) : (
-						<ScrollView style={styles.tableList}>
+                                        {loadingTables ? (
+                                                <ActivityIndicator size="small" color="#C9B037" />
+                                        ) : (
+                                                <ScrollView style={styles.tableList}>
 							{tables.map((table) => (
 								<TouchableOpacity
 									key={table}
@@ -185,15 +172,18 @@ const SqlDebugScreen: React.FC = () => {
 							multiline
 							textAlignVertical="top"
 						/>
-						<TouchableOpacity
-							style={[styles.executeButton, executing && styles.executeButtonDisabled]}
-							onPress={executeQuery}
-							disabled={executing}
-						>
-							{executing ? (
-								<ActivityIndicator size="small" color="#F5E6D3" />
-							) : (
-								<ThemedText style={styles.executeButtonText}>Execute</ThemedText>
+                                                <TouchableOpacity
+                                                        style={[
+                                                                styles.executeButton,
+                                                                executeQueryMutation.isPending && styles.executeButtonDisabled,
+                                                        ]}
+                                                        onPress={executeQuery}
+                                                        disabled={executeQueryMutation.isPending}
+                                                >
+                                                        {executeQueryMutation.isPending ? (
+                                                                <ActivityIndicator size="small" color="#F5E6D3" />
+                                                        ) : (
+                                                                <ThemedText style={styles.executeButtonText}>Execute</ThemedText>
 							)}
 						</TouchableOpacity>
 					</View>

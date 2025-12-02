@@ -42,11 +42,13 @@ export function useActivityLogs(
 	inviteCode: string | null | undefined,
 	limit: number = 100,
 	offset: number = 0,
+	queryOptions?: Parameters<typeof useQueryApi<ActivityLogListResponse>>[1],
 ) {
 	return useQueryApi<ActivityLogListResponse>(
 		inviteCode ? `/games/${inviteCode}/log?limit=${limit}&offset=${offset}` : '',
 		{
 			enabled: !!inviteCode,
+			...queryOptions,
 		},
 	);
 }
@@ -81,6 +83,32 @@ export function useCreateGame() {
 		onSuccess: () => {
 			// Invalidate my games list
 			queryClient.invalidateQueries({ queryKey: ['/games/me'] });
+		},
+	});
+}
+
+/**
+ * Clear activity logs for a game
+ */
+export function useClearActivityLogs(inviteCode: string) {
+	const queryClient = useQueryClient();
+
+	return useMutationApi<void>({
+		method: 'DELETE',
+		onSuccess: () => {
+			queryClient.setQueriesData(
+				{
+					predicate: query =>
+						typeof query.queryKey[0] === 'string' &&
+                                                query.queryKey[0].toString().startsWith(`/games/${inviteCode}/log`),
+				},
+				() => ({ logs: [] }),
+			);
+			queryClient.invalidateQueries({
+				predicate: query =>
+					typeof query.queryKey[0] === 'string' &&
+                                        query.queryKey[0].toString().startsWith(`/games/${inviteCode}/log`),
+			});
 		},
 	});
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
 	Alert,
 	Animated,
@@ -13,8 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { multiplayerClient } from '@/services/api/multiplayer-client';
-import { ActivityLog } from '@/types/api/multiplayer-api';
+import { useActivityLogs, useClearActivityLogs } from '@/hooks/api/use-game-queries';
 
 interface GameMessage {
 	id: string;
@@ -42,9 +41,15 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
 }) => {
 	const insets = useSafeAreaInsets();
 	const slideAnim = React.useRef(new Animated.Value(0)).current;
-	const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
-	const [loadingLogs, setLoadingLogs] = useState(false);
-	const [clearingLogs, setClearingLogs] = useState(false);
+	const {
+		data: activityLogsData,
+		isFetching: loadingLogs,
+	} = useActivityLogs(inviteCode ?? null, 100, 0, {
+		enabled: !!inviteCode && visible,
+	});
+	const clearActivityLogsMutation = useClearActivityLogs(inviteCode || '');
+	const activityLogs = activityLogsData?.logs ?? [];
+	const clearingLogs = clearActivityLogsMutation.isPending;
 
 	React.useEffect(() => {
 		if (visible) {
@@ -64,49 +69,22 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
 		}
 	}, [visible, slideAnim]);
 
-	// Fetch activity logs when panel opens
-	const fetchLogs = React.useCallback(() => {
-		if (inviteCode) {
-			setLoadingLogs(true);
-			multiplayerClient
-				.getActivityLogs(inviteCode, 100, 0)
-				.then(response => {
-					setActivityLogs(response.logs || []);
-					setLoadingLogs(false);
-				})
-				.catch(error => {
-					console.error('Failed to fetch activity logs:', error);
-					setLoadingLogs(false);
-				});
-		}
-	}, [inviteCode]);
-
-	useEffect(() => {
-		if (visible && inviteCode) {
-			fetchLogs();
-		}
-	}, [visible, inviteCode, fetchLogs]);
-
 	const handleClearLogs = React.useCallback(async () => {
 		console.log('[Activity Log] Clear logs called', { isHost, inviteCode });
 		if (!isHost || !inviteCode) {
 			console.warn('[Activity Log] Cannot clear - not host or no invite code');
 			return;
 		}
-		
-		setClearingLogs(true);
+
 		try {
-			console.log('[Activity Log] Calling clearActivityLogs API');
-			await multiplayerClient.clearActivityLogs(inviteCode);
-			console.log('[Activity Log] Successfully cleared logs');
-			setActivityLogs([]);
+			await clearActivityLogsMutation.mutateAsync({
+				path: `/games/${inviteCode}/log`,
+			});
 		} catch (error) {
 			console.error('[Activity Log] Failed to clear activity logs:', error);
 			Alert.alert('Error', error instanceof Error ? error.message : 'Failed to clear activity logs');
-		} finally {
-			setClearingLogs(false);
 		}
-	}, [isHost, inviteCode]);
+	}, [clearActivityLogsMutation, inviteCode, isHost]);
 
 	const translateX = slideAnim.interpolate({
 		inputRange: [0, 1],

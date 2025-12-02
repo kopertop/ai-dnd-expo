@@ -1,5 +1,5 @@
 import { Stack, router } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from 'expo-auth-template/frontend';
@@ -7,7 +7,12 @@ import { useAuth } from 'expo-auth-template/frontend';
 import { AppFooter } from '@/components/app-footer';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { multiplayerClient } from '@/services/api/multiplayer-client';
+import {
+        useCreateCharacter,
+        useDeleteCharacter,
+        useMyCharacters,
+        useUpdateCharacter,
+} from '@/hooks/api/use-character-queries';
 import { Character } from '@/types/character';
 
 const createDefaultCharacter = (overrides?: Partial<Character>): Character => ({
@@ -25,62 +30,47 @@ const createDefaultCharacter = (overrides?: Partial<Character>): Character => ({
 	maxHealth: overrides?.maxHealth ?? 10,
 	actionPoints: overrides?.actionPoints ?? 3,
 	maxActionPoints: overrides?.maxActionPoints ?? 3,
-	trait: overrides?.trait,
+        trait: overrides?.trait,
 });
 
 const CharacterManagerScreen: React.FC = () => {
-	const { user } = useAuth();
-	const insets = useSafeAreaInsets();
-	const [characters, setCharacters] = useState<Character[]>([]);
-	const [loading, setLoading] = useState(false);
-	const [editing, setEditing] = useState<Character | null>(null);
-	const [form, setForm] = useState(createDefaultCharacter());
+        const { user } = useAuth();
+        const insets = useSafeAreaInsets();
+        const { data: characters = [], isLoading: loading, refetch: refetchCharacters } = useMyCharacters();
+        const createCharacterMutation = useCreateCharacter();
+        const updateCharacterMutation = useUpdateCharacter();
+        const deleteCharacterMutation = useDeleteCharacter();
+        const [editing, setEditing] = useState<Character | null>(null);
+        const [form, setForm] = useState(createDefaultCharacter());
 
-	const resetForm = () => {
-		setEditing(null);
-		setForm(createDefaultCharacter());
-	};
+        const resetForm = () => {
+                setEditing(null);
+                setForm(createDefaultCharacter());
+        };
 
-	const loadCharacters = useCallback(async () => {
-		if (!user) {
-			setCharacters([]);
-			return;
-		}
+        const handleSave = async () => {
+                if (!user) {
+                        return;
+                }
 
-		setLoading(true);
-		try {
-			const data = await multiplayerClient.getMyCharacters();
-			setCharacters(data);
-		} catch (error) {
-			Alert.alert('Error', error instanceof Error ? error.message : 'Failed to load characters');
-		} finally {
-			setLoading(false);
-		}
-	}, [user]);
-
-	useEffect(() => {
-		if (user) {
-			loadCharacters().catch(() => undefined);
-		}
-	}, [user, loadCharacters]);
-
-	const handleSave = async () => {
-		if (!user) {
-			return;
-		}
-
-		try {
-			const payload = createDefaultCharacter({ ...form, id: editing?.id ?? form.id });
-			if (editing) {
-				await multiplayerClient.updateCharacter(payload.id, payload);
-			} else {
-				await multiplayerClient.createCharacter(payload);
-			}
-			resetForm();
-			await loadCharacters();
-		} catch (error) {
-			Alert.alert('Error', error instanceof Error ? error.message : 'Failed to save character');
-		}
+                try {
+                        const payload = createDefaultCharacter({ ...form, id: editing?.id ?? form.id });
+                        if (editing) {
+                                await updateCharacterMutation.mutateAsync({
+                                        path: `/games/me/characters/${payload.id}`,
+                                        body: payload,
+                                });
+                        } else {
+                                await createCharacterMutation.mutateAsync({
+                                        path: '/games/me/characters',
+                                        body: payload,
+                                });
+                        }
+                        resetForm();
+                        await refetchCharacters();
+                } catch (error) {
+                        Alert.alert('Error', error instanceof Error ? error.message : 'Failed to save character');
+                }
 	};
 
 	const handleEdit = (character: Character) => {
@@ -88,21 +78,22 @@ const CharacterManagerScreen: React.FC = () => {
 		setForm(character);
 	};
 
-	const deleteCharacter = useCallback(
-		async (character: Character) => {
-			try {
-				await multiplayerClient.deleteCharacter(character.id);
-				setCharacters(prev => prev.filter(existing => existing.id !== character.id));
-				if (editing?.id === character.id) {
-					resetForm();
-				}
-				await loadCharacters();
-			} catch (error) {
-				Alert.alert('Error', error instanceof Error ? error.message : 'Delete failed');
-			}
-		},
-		[editing?.id, loadCharacters],
-	);
+        const deleteCharacter = React.useCallback(
+                async (character: Character) => {
+                        try {
+                                await deleteCharacterMutation.mutateAsync({
+                                        path: `/games/me/characters/${character.id}`,
+                                });
+                                if (editing?.id === character.id) {
+                                        resetForm();
+                                }
+                                await refetchCharacters();
+                        } catch (error) {
+                                Alert.alert('Error', error instanceof Error ? error.message : 'Delete failed');
+                        }
+                },
+                [deleteCharacterMutation, editing?.id, refetchCharacters],
+        );
 
 	const handleDelete = (character: Character) => {
 		if (Platform.OS === 'web') {
@@ -146,12 +137,12 @@ const CharacterManagerScreen: React.FC = () => {
 					Your Adventuring Party
 				</ThemedText>
 				<View style={styles.section}>
-					<View style={styles.sectionHeader}>
-						<ThemedText type="subtitle">Saved Characters</ThemedText>
-						<TouchableOpacity style={styles.refreshBtn} onPress={() => loadCharacters().catch(() => undefined)}>
-							<ThemedText style={styles.refreshLabel}>Refresh</ThemedText>
-						</TouchableOpacity>
-					</View>
+                                        <View style={styles.sectionHeader}>
+                                                <ThemedText type="subtitle">Saved Characters</ThemedText>
+                                                <TouchableOpacity style={styles.refreshBtn} onPress={() => refetchCharacters()}>
+                                                        <ThemedText style={styles.refreshLabel}>Refresh</ThemedText>
+                                                </TouchableOpacity>
+                                        </View>
 					{characters.map(character => (
 						<View key={character.id} style={styles.card}>
 							<View style={styles.cardHeader}>
