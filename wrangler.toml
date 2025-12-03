@@ -17,6 +17,15 @@ enabled = true
 [placement]
 mode = "smart"
 
+[durable_objects]
+bindings = [
+  { name = "GameRoom", class_name = "GameRoom" },
+]
+
+[[migrations]]
+tag = "2025-12-03-gameroom"
+new_sqlite_classes = ["GameRoom"]
+
 [[d1_databases]]
 binding = "DATABASE"
 database_name = "ai-dnd-db"

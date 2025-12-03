@@ -1,5 +1,6 @@
 import { handleGoogleCallback, useAuth } from 'expo-auth-template/backend';
 import { Hono } from 'hono';
+import { partyserverMiddleware } from 'hono-party';
 
 import { corsMiddleware } from './cors';
 import type { CloudflareBindings } from './env';
@@ -10,6 +11,7 @@ import gameRoutes from './routes/games';
 import mapRoutes from './routes/maps';
 import meRoutes from './routes/me';
 import questRoutes from './routes/quests';
+import { GameRoom } from './partykit/server';
 
 type Variables = {
 	user: { id: string; email: string; name?: string | null } | null;
@@ -19,6 +21,13 @@ const app = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
 
 // Apply CORS globally
 app.use('*', corsMiddleware);
+
+// Attach PartyServer (Partykit-in-Worker) under /party/*
+app.use('/party/*', partyserverMiddleware({
+	options: {
+		prefix: 'party',
+	},
+}));
 
 // Apply auth middleware globally (sets user in context)
 // expo-auth-template handles authentication via useAuth function
@@ -36,20 +45,6 @@ app.use('*', async (c, next) => {
 	c.set('user', user);
 
 	await next();
-});
-
-// Forward websocket upgrade requests to the Partykit host
-app.all('/party/*', c => {
-	if (c.req.header('upgrade')?.toLowerCase() === 'websocket') {
-		const host = c.env.PARTYKIT_PUBLIC_URL || c.env.PARTYKIT_HOST;
-		if (!host) {
-			return c.json({ error: 'Partykit host not configured' }, 500);
-		}
-		const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'ws' : 'wss';
-		const target = `${protocol}://${host}${c.req.path}`;
-		return Response.redirect(target, 307);
-	}
-	return c.json({ error: 'Upgrade required' }, 400);
 });
 
 // Health check (no auth required) - available at both root and /api paths
@@ -207,5 +202,8 @@ app.get('*', async (c) => {
 });
 
 export default app;
+
+// Export PartyServer Durable Object for hono-party bindings
+export { GameRoom };
 
 // GameSession Durable Object removed - using D1 database directly

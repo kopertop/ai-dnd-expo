@@ -16,17 +16,18 @@ const websocket = new Hono<GamesContext>();
  */
 websocket.get('/:inviteCode/ws', async (c) => {
 	const inviteCode = c.req.param('inviteCode');
-	const host = c.env.PARTYKIT_PUBLIC_URL || c.env.PARTYKIT_HOST || 'localhost:1999';
-	const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'ws' : 'wss';
-	const room = `games/${inviteCode}`;
-	const url = `${protocol}://${host}/${room}`;
+	const url = new URL(c.req.url);
+	const protocol = url.protocol === 'https:' ? 'wss' : 'ws';
+	const host = url.host;
+	const path = `/party/game-room/${inviteCode}`;
+	const target = `${protocol}://${host}${path}`;
 
 	return c.json({
-		room,
-		url,
+		room: inviteCode,
+		url: target,
 		host,
+		path,
 	});
 });
 
 export default websocket;
-

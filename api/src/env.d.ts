@@ -15,6 +15,8 @@ export interface CloudflareBindings {
 	PARTYKIT_PUBLIC_URL?: string;
 	PARTYKIT_SECRET?: string;
 
+	GameRoom: DurableObjectNamespace;
+
 	OLLAMA_BASE_URL: string;
 	OLLAMA_MODEL: string;
 	ADMIN_EMAILS: string;

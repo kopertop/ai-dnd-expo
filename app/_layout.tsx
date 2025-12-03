@@ -194,11 +194,17 @@ const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 		const isLoginPage = currentPath === '/login' || currentPath.startsWith('/login');
 		const isAuthPage = currentPath.startsWith('/auth');
+		const isPartyTest = currentPath.startsWith('/party-test');
 		const inAuthGroup = isLoginPage || isAuthPage;
 		const isAuthenticated = !!session && !!user;
 
 		// In E2E mode, bypass redirects entirely
 		if (bypassAuth) {
+			return;
+		}
+
+		// Allow unauthenticated access to the PartyServer test page
+		if (isPartyTest) {
 			return;
 		}
 
@@ -275,6 +281,7 @@ const RootLayout: React.FC = () => {
 										<Stack.Screen name="new-game" options={{ headerShown: false }} />
 										<Stack.Screen name="game" options={{ headerShown: false }} />
 										<Stack.Screen name="sql" options={{ headerShown: false }} />
+										<Stack.Screen name="party-test" options={{ headerShown: true, title: 'PartyServer Test' }} />
 										<Stack.Screen name="+not-found" />
 									</Stack>
 									<StatusBar style="auto" />
