@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Alert, Image, Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { ExpoIcon } from './expo-icon';
+
 import { ThemedText } from '@/components/themed-text';
 import { MapToken } from '@/types/multiplayer-map';
 
@@ -102,7 +104,7 @@ export const TokenDetailModal: React.FC<TokenDetailModalProps> = ({
 								{isImageIcon ? (
 									<Image source={{ uri: icon }} style={styles.iconImage} />
 								) : (
-									<ThemedText style={styles.iconEmoji}>{String(icon)}</ThemedText>
+									<ExpoIcon icon={String(icon)} size={64} />
 								)}
 							</View>
 						) : null}

@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - cmoyer
 created_date: '2025-12-03 22:43'
-updated_date: '2025-12-03 23:16'
+updated_date: '2025-12-03 23:32'
 labels:
   - bug
 dependencies: []
@@ -34,4 +34,6 @@ WebSocket token now includes email by awaiting authService user/session and fall
 Adjusted websocket URL builder to use the API base origin (strips /api path) so clients connect to /party/game-room/* instead of /api/party/…; keeps email-bearing token.
 
 Enabled DM to auto-connect websockets by using hostId when playerId is absent; connection no longer requires characterId.
+
+Host token drag-and-drop now enabled during play; blocked tile drops warn and allow Undo; moves trigger WS refresh for others. Players see centered DM Action modal overlay when DM pauses.
 <!-- SECTION:NOTES:END -->

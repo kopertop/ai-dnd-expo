@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { BlurView } from 'expo-blur';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Easing, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { CharacterViewModal } from '@/components/character-view-modal';
 import { CombatResultModal } from '@/components/combat-result-modal';
 import { CommandPalette, type Command } from '@/components/command-palette';
 import { ConnectionStatusIndicator } from '@/components/connection-status-indicator';
+import { DMActionBanner } from '@/components/dm-action-banner';
 import { MapElementPicker, type MapElementType } from '@/components/map-element-picker';
 import { InteractiveMap } from '@/components/map/interactive-map';
 import { TileActionMenu, type TileAction } from '@/components/map/tile-action-menu';
@@ -20,7 +21,6 @@ import { NpcSelector } from '@/components/npc-selector';
 import { PlayerActionMenu, type PlayerAction } from '@/components/player-action-menu';
 import { PlayerCharacterList } from '@/components/player-character-list';
 import { SpellActionSelector } from '@/components/spell-action-selector';
-import { DMActionBanner } from '@/components/dm-action-banner';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TokenDetailModal } from '@/components/token-detail-modal';
@@ -96,9 +96,11 @@ const MultiplayerGameScreen: React.FC = () => {
 	const placingCharactersRef = useRef<Set<string>>(new Set());
 	const isPlacingRef = useRef(false);
 	const [isPlacing, setIsPlacing] = useState(false);
+	const [tokenPositionOverrides, setTokenPositionOverrides] = useState<Record<string, { x: number; y: number }>>({});
 	const { isMobile } = useScreenSize();
 	const insets = useSafeAreaInsets();
 	const dmOverlayPulse = useRef(new Animated.Value(0.5)).current;
+	const lastTokenPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
 
 	// Get character ID from gameState (memoized to prevent re-renders)
 	// Used for WebSocket connection - needs to be defined early
@@ -1217,6 +1219,127 @@ const MultiplayerGameScreen: React.FC = () => {
 		[inviteCode, dealDamageMutation, refreshGameState, gameState],
 	);
 
+	const isTileBlocked = useCallback(
+		(x: number, y: number) => {
+			const cell = mapState?.terrain?.[y]?.[x];
+			if (!cell) return false;
+			return Boolean(
+				cell.difficult === true
+				|| (cell as any).blocked === true
+				|| (cell as any).isBlocked === true
+				|| (cell as any).is_blocked === true,
+			);
+		},
+		[mapState?.terrain],
+	);
+
+	// Local helper to instantly reflect token position changes in UI and cache
+	const setTokenPositionLocally = useCallback(
+		(tokenId: string, x: number, y: number) => {
+			setGameState(prev => {
+				if (!prev?.mapState?.tokens) return prev;
+				return {
+					...prev,
+					mapState: {
+						...prev.mapState,
+						tokens: prev.mapState.tokens.map(t => (t.id === tokenId ? { ...t, x, y } : t)),
+					},
+				};
+			});
+			// Track override for render while waiting for server
+			setTokenPositionOverrides(prev => ({
+				...prev,
+				[tokenId]: { x, y },
+			}));
+			// Only update the map cache; leave the query cache untouched to avoid quick reverts
+			updateCachedTokens(tokens =>
+				tokens.map(t => (t.id === tokenId ? { ...t, x, y } : t)),
+			);
+		},
+		[updateCachedTokens],
+	);
+
+	const handleHostTokenDragEnd = useCallback(
+		(token: MapToken, x: number, y: number) => {
+			if (!inviteCode || !mapState) return;
+
+			// Ignore delete outside map signal
+			if (x === -1 && y === -1) return;
+
+			const prevPos = { x: token.x, y: token.y };
+			lastTokenPositionsRef.current.set(token.id, prevPos);
+
+			// Optimistic update for immediate visual feedback
+			setTokenPositionLocally(token.id, x, y);
+
+			const proceedMove = () => {
+				moveTokenMutation.mutateAsync({
+					path: `/games/${inviteCode}/map/move`,
+					body: {
+						tokenId: token.id,
+						x,
+						y,
+						overrideValidation: true,
+					},
+				}).then((response) => {
+					if (response?.gameState) {
+						setGameState(response.gameState);
+						const updatedTokens = response.gameState.mapState?.tokens;
+						if (updatedTokens) {
+							updateCachedTokens(() => updatedTokens);
+						}
+						// Clear override once server state is applied
+						setTokenPositionOverrides(prev => {
+							const next = { ...prev };
+							delete next[token.id];
+							return next;
+						});
+					}
+				}).catch((error: any) => {
+					console.error('Failed to save token movement:', error);
+					// Revert optimistic update on error
+					setTokenPositionLocally(token.id, prevPos.x, prevPos.y);
+					setTokenPositionOverrides(prev => {
+						const next = { ...prev };
+						delete next[token.id];
+						return next;
+					});
+					Alert.alert('Error', 'Failed to save movement. Changes reverted.');
+				});
+			};
+
+			if (isTileBlocked(x, y)) {
+				Alert.alert(
+					'Blocked tile',
+					'That tile is marked as blocked. Move the token anyway?',
+					[
+						{
+							text: 'Undo',
+							style: 'cancel',
+							onPress: () => {
+								setTokenPositionLocally(token.id, prevPos.x, prevPos.y);
+								setTokenPositionOverrides(prev => {
+									const next = { ...prev };
+									delete next[token.id];
+									return next;
+								});
+							},
+						},
+						{
+							text: 'Move Anyway',
+							style: 'destructive',
+							onPress: proceedMove,
+						},
+					],
+				);
+				return;
+			}
+
+			proceedMove();
+		},
+		[inviteCode, mapState, applyTokenPositionUpdates, moveTokenMutation, setGameState, updateCachedTokens, isTileBlocked],
+	);
+
 	const handleCharacterHeal = useCallback(
 		async (characterId: string, amount: number) => {
 			if (!inviteCode) return;
@@ -1551,6 +1674,15 @@ const MultiplayerGameScreen: React.FC = () => {
 
 			// Move the token
 			try {
+				// Optimistic move for self-movement to avoid bounce
+				setTokenPositionOverrides(prev => ({
+					...prev,
+					[selectedToken.id]: { x, y },
+				}));
+				updateCachedTokens(tokens =>
+					tokens.map(t => (t.id === selectedToken.id ? { ...t, x, y } : t)),
+				);
+
 				const response = await moveTokenMutation.mutateAsync({
 					path: `/games/${inviteCode}/map/move`,
 					body: {
@@ -1567,6 +1699,11 @@ const MultiplayerGameScreen: React.FC = () => {
 					if (updatedTokens) {
 						updateCachedTokens(() => updatedTokens);
 					}
+					setTokenPositionOverrides(prev => {
+						const next = { ...prev };
+						delete next[selectedToken.id];
+						return next;
+					});
 				}
 
 				// Clear selection after move (immediate UI feedback)
@@ -1580,6 +1717,15 @@ const MultiplayerGameScreen: React.FC = () => {
 			} catch (error) {
 				console.error('Failed to move token:', error);
 				Alert.alert('Error', 'Failed to move token');
+				// Revert optimistic update on error
+				setTokenPositionOverrides(prev => {
+					const next = { ...prev };
+					delete next[selectedToken.id];
+					return next;
+				});
+				updateCachedTokens(tokens =>
+					tokens.map(t => (t.id === selectedToken.id ? { ...t, x: selectedToken.x, y: selectedToken.y } : t)),
+				);
 			}
 		},
 		[selectedTokenId, mapState, inviteCode, selectedTokenMovementRange, isHost, moveTokenMutation, updateCachedTokens],
@@ -1898,19 +2044,6 @@ const MultiplayerGameScreen: React.FC = () => {
 						<ThemedText style={styles.editModeText}>✏️ Edit Mode Active - Drag tokens or long-press tiles</ThemedText>
 					</View>
 				)}
-				{!isPlayerTurn && !isHost && currentTurnName && !gameState?.pausedTurn && (
-					<ThemedText style={styles.mapHint}>Waiting for your turn... (Current: {currentTurnName})</ThemedText>
-				)}
-				{selectedTokenId && (
-					<ThemedText style={styles.mapHint}>
-						Showing movement range for selected token. Click another token to see its range.
-					</ThemedText>
-				)}
-				{elementPlacementMode && isHost && (
-					<ThemedText style={styles.mapHint}>
-						Tap on the map to place {elementPlacementMode}. Tap the element picker again to cancel.
-					</ThemedText>
-				)}
 				{npcPlacementMode && isHost && (
 					<View style={styles.placementHintContainer}>
 						<ThemedText style={styles.mapHint}>
@@ -1928,53 +2061,21 @@ const MultiplayerGameScreen: React.FC = () => {
 				)}
 				{mapState ? (
 					<View pointerEvents={isPausedForPlayers ? 'none' : 'auto'}>
-						<InteractiveMap
+							<InteractiveMap
 							map={mapState}
-							isEditable={isHost && isMapEditMode}
+							// Allow drag/drop targets even outside map edit mode so DM can reposition tokens mid-encounter
+							isEditable={isHost}
 							isHost={isHost}
-							// Allow token dragging for hosts during gameplay (not just edit mode)
-							onTokenDragEnd={isHost ? async (token, x, y) => {
-								try {
-								// Skip if invalid coordinates (deletion case)
-									if (x === -1 && y === -1) {
-										return;
-									}
-
-									// For NPCs, we need to pass npcId instead of characterId
-									// Optimistic update: update local state immediately
-									applyTokenPositionUpdates([{ id: token.id, x, y }]);
-
-									// Save to backend asynchronously
-									moveTokenMutation.mutateAsync({
-										path: `/games/${inviteCode}/map/move`,
-										body: {
-											tokenId: token.id,
-											x,
-											y,
-											overrideValidation: true,
-										},
-									}).then((response) => {
-										if (response?.gameState) {
-											setGameState(response.gameState);
-											const updatedTokens = response.gameState.mapState?.tokens;
-											if (updatedTokens) {
-												updateCachedTokens(() => updatedTokens);
-											}
-										}
-									}).catch((error: any) => {
-										console.error('Failed to save token movement:', error);
-										// Revert optimistic update on error
-										applyTokenPositionUpdates([{ id: token.id, x: token.x, y: token.y }]);
-										Alert.alert('Error', 'Failed to save movement. Changes reverted.');
-									});
-
-								// Refresh map state in background (non-blocking)
-								// Map state will refresh automatically via query invalidation
-								} catch (error) {
-									console.error('Failed to move token:', error);
-									Alert.alert('Error', 'Failed to move token');
-								}
+							enableTokenDrag={isHost}
+							tokenPositionOverrides={tokenPositionOverrides}
+							onTokenPreviewPosition={isHost ? (token, x, y) => {
+								setTokenPositionOverrides(prev => ({
+									...prev,
+									[token.id]: { x, y },
+								}));
 							} : undefined}
+							// Allow token dragging for hosts during gameplay (not just edit mode)
+							onTokenDragEnd={isHost ? handleHostTokenDragEnd : undefined}
 							// Highlight the token whose turn it is; fall back to the player's own token
 							highlightTokenId={activeTurnTokenId ?? playerToken?.id ?? currentCharacterId ?? undefined}
 							onTilePress={
@@ -1982,7 +2083,7 @@ const MultiplayerGameScreen: React.FC = () => {
 									? async (x, y) => {
 										if (!inviteCode || !mapState || !npcPlacementMode) return;
 										try {
-										// Count how many NPCs of this type already exist to create unique label
+											// Count how many NPCs of this type already exist to create unique label
 											const existingNpcsOfType = (mapState.tokens || []).filter(
 												token => token.type === 'npc' && token.label?.startsWith(npcPlacementMode.npcName),
 											);

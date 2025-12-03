@@ -20,6 +20,7 @@ interface InteractiveMapProps {
 	isEditable?: boolean;
 	isHost?: boolean;
 	enableTokenDrag?: boolean;
+	onTokenPreviewPosition?: (token: MapToken, x: number, y: number) => void;
 	onTilePress?: (x: number, y: number) => void;
 	onTileDrag?: (x: number, y: number) => void;
 	onTileDragEnd?: () => void;
@@ -30,6 +31,7 @@ interface InteractiveMapProps {
 	onTokenDrop?: (token: { type: 'npc' | 'player'; id: string; label: string; icon?: string }, x: number, y: number) => void;
 	onTokenDragEnd?: (token: MapToken, x: number, y: number) => void;
 	highlightTokenId?: string;
+	tokenPositionOverrides?: Record<string, { x: number; y: number }>;
 	reachableTiles?: Array<{ x: number; y: number; cost: number }>;
 	pathTiles?: Array<{ x: number; y: number }>;
 }
@@ -372,6 +374,8 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 	isEditable = false,
 	isHost = false,
 	enableTokenDrag = false,
+	onTokenPreviewPosition,
+	tokenPositionOverrides,
 	onTilePress,
 	onTileDrag,
 	onTileDragEnd,
@@ -472,15 +476,31 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 	const MapTokenComponent: React.FC<{
 		token: MapToken;
 		highlightTokenId?: string;
-		onTokenPress?: (token: MapToken) => void;
-		onTokenLongPress?: (token: MapToken) => void;
-		onTokenDragEnd?: (token: MapToken, x: number, y: number) => void;
-		map: MapState;
-		enableTokenDrag: boolean;
-		tileSize: number;
-	}> = ({ token, highlightTokenId, onTokenPress, onTokenLongPress, onTokenDragEnd, map, enableTokenDrag, tileSize }) => {
+	onTokenPress?: (token: MapToken) => void;
+	onTokenLongPress?: (token: MapToken) => void;
+	onTokenDragEnd?: (token: MapToken, x: number, y: number) => void;
+	onTokenPreviewPosition?: (token: MapToken, x: number, y: number) => void;
+	map: MapState;
+	enableTokenDrag: boolean;
+	tileSize: number;
+	tokenPositionOverrides?: Record<string, { x: number; y: number }>;
+}> = ({
+	token,
+	highlightTokenId,
+	onTokenPress,
+	onTokenLongPress,
+	onTokenDragEnd,
+	onTokenPreviewPosition,
+	map,
+	enableTokenDrag,
+	tileSize,
+	tokenPositionOverrides,
+}) => {
 		const tokenRef = useRef<View>(null);
 		const isDraggingRef = useRef(false);
+		const overridePos = tokenPositionOverrides?.[token.id];
+		const renderX = overridePos?.x ?? token.x;
+		const renderY = overridePos?.y ?? token.y;
 
 		useEffect(() => {
 			if (Platform.OS !== 'web' || !tokenRef.current) {
@@ -613,7 +633,14 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 							const tileX = Math.max(0, Math.min(map.width - 1, Math.floor(relativeX / tileSize)));
 							const tileY = Math.max(0, Math.min(map.height - 1, Math.floor(relativeY / tileSize)));
 
+							// Snap the DOM element immediately to the target tile for instant feedback
+							if (domNode) {
+								domNode.style.left = `${tileX * tileSize}px`;
+								domNode.style.top = `${tileY * tileSize}px`;
+							}
+
 							console.log('Moving token to tile:', tileX, tileY, 'from drop position:', dropX, dropY, 'relative:', relativeX, relativeY);
+							onTokenPreviewPosition?.(token, tileX, tileY);
 							onTokenDragEnd(token, tileX, tileY);
 						}
 					} else {
@@ -634,7 +661,12 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 							// This is a rough estimate - ideally we'd find the map container
 							const estimatedTileX = Math.floor((dropX - windowCenterX + 200) / tileSize);
 							const estimatedTileY = Math.floor((dropY - windowCenterY + 200) / tileSize);
+							if (domNode) {
+								domNode.style.left = `${estimatedTileX * tileSize}px`;
+								domNode.style.top = `${estimatedTileY * tileSize}px`;
+							}
 							console.log('Moving token to estimated tile (fallback):', estimatedTileX, estimatedTileY);
+							onTokenPreviewPosition?.(token, estimatedTileX, estimatedTileY);
 							onTokenDragEnd(token, estimatedTileX, estimatedTileY);
 						}
 					}
@@ -668,8 +700,8 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 				style={[
 					styles.token,
 					{
-						left: token.x * tileSize,
-						top: token.y * tileSize,
+						left: renderX * tileSize,
+						top: renderY * tileSize,
 						width: tileSize,
 						height: tileSize,
 						borderColor:
@@ -926,9 +958,11 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 								onTokenPress={onTokenPress}
 								onTokenLongPress={onTokenLongPress}
 								onTokenDragEnd={onTokenDragEnd}
+								onTokenPreviewPosition={onTokenPreviewPosition}
 								map={map}
 								enableTokenDrag={enableTokenDrag}
 								tileSize={tileSize}
+								tokenPositionOverrides={tokenPositionOverrides}
 							/>
 						))}
 					</View>
