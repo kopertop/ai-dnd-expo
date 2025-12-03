@@ -16,8 +16,8 @@ const ICON_CATEGORIES = {
 		{ family: 'MaterialIcons', name: 'security', label: 'Shield' },
 		{ family: 'MaterialIcons', name: 'dangerous', label: 'Dangerous' },
 		{ family: 'MaterialIcons', name: 'gavel', label: 'Weapon' },
-		{ family: 'FontAwesome5', name: 'sword', label: 'Sword (FA5)' },
-		{ family: 'FontAwesome5', name: 'shield-alt', label: 'Shield (FA5)' },
+		{ family: 'MaterialCommunityIcons', name: 'sword-cross', label: 'Sword' },
+		{ family: 'MaterialCommunityIcons', name: 'shield', label: 'Shield' },
 		{ family: 'Ionicons', name: 'shield', label: 'Shield (Ionicons)' },
 	],
 	'Characters': [

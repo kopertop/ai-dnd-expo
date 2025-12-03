@@ -137,6 +137,7 @@ describe('schema adapters', () => {
 			stats: JSON.stringify({ strength: 16 }),
 			abilities: JSON.stringify(['Command']),
 			loot_table: JSON.stringify(['Halberd']),
+			icon: 'MaterialIcons:shield',
 			metadata: JSON.stringify({ color: '#a00', icon: 'shield' }),
 			created_at: Date.now(),
 			updated_at: Date.now(),

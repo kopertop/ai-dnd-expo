@@ -74,6 +74,7 @@ class PreparedStatement {
 				alignment,
 				disposition,
 				description,
+				icon,
 				base_health,
 				base_armor_class,
 				challenge_rating,
@@ -85,7 +86,7 @@ class PreparedStatement {
 				metadata,
 				created_at,
 				updated_at,
-			] = this.args as [string, string, string, string, string, string, string | null, number, number, number, string, string, string, string, string, string, number, number];
+			] = this.args as [string, string, string, string, string, string, string | null, string | null, number, number, number, string, string, string, string, string, string, number, number];
 			const existingIndex = store.npcs.findIndex(n => n.id === id);
 			const npcRow = {
 				id,
@@ -95,6 +96,7 @@ class PreparedStatement {
 				alignment,
 				disposition,
 				description,
+				icon,
 				base_health,
 				base_armor_class,
 				challenge_rating,

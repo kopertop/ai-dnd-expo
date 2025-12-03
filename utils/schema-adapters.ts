@@ -196,7 +196,7 @@ export const npcFromDb = (npc: NpcRow): NpcDefinition => ({
 	maxHealth: npc.base_health,
 	armorClass: npc.base_armor_class,
 	stats: parseJson<Record<string, unknown>>(npc.stats, {}),
-	icon: parseJson<{ icon?: string }>(npc.metadata, {}).icon,
+	icon: npc.icon ?? parseJson<{ icon?: string }>(npc.metadata, {}).icon,
 	color: parseJson<{ color?: string }>(npc.metadata, {}).color,
 	metadata: parseJson<Record<string, unknown>>(npc.metadata, {}),
 });

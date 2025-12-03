@@ -61,6 +61,7 @@ const createDefaultStore = (): DataStore => {
 				alignment: 'lawful',
 				disposition: 'friendly',
 				description: null,
+				icon: null,
 				base_health: 20,
 				base_armor_class: 15,
 				challenge_rating: 1,

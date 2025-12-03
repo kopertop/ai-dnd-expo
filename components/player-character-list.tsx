@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
+import { ExpoIcon } from './expo-icon';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 import { TurnResourceValues } from './turn-resource-values';
@@ -128,6 +129,7 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 						const character = entity.data as Character;
 						const displayName = character.name || character.race || character.class || 'Unknown';
 						const CardComponent = canSelect && onCharacterSelect ? TouchableOpacity : View;
+						const icon = character.icon || (character as any).image;
 						return (
 							<CardComponent
 								key={character.id}
@@ -143,6 +145,7 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 							>
 								<View style={styles.characterHeader}>
 									<View style={styles.characterNameContainer}>
+										{icon ? <ExpoIcon icon={icon} size={18} style={styles.inlineIcon} /> : null}
 										{initiativeOrder && initiativeOrder.length > 0 && entity.initiativeIndex !== undefined && (
 											<ThemedText style={styles.initiativeNumber}>
 												{entity.initiativeIndex + 1}.
@@ -208,6 +211,9 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 					} else {
 						const npcToken = entity.data as MapToken;
 						const CardComponent = canSelect && onCharacterSelect ? TouchableOpacity : View;
+						const icon = typeof npcToken.metadata?.icon === 'string'
+							? npcToken.metadata.icon
+							: npcToken.icon;
 						return (
 							<CardComponent
 								key={npcToken.id}
@@ -223,6 +229,7 @@ export const PlayerCharacterList: React.FC<PlayerCharacterListProps> = ({
 							>
 								<View style={styles.characterHeader}>
 									<View style={styles.characterNameContainer}>
+										{icon ? <ExpoIcon icon={icon} size={18} style={styles.inlineIcon} /> : null}
 										{initiativeOrder && initiativeOrder.length > 0 && entity.initiativeIndex !== undefined && (
 											<ThemedText style={styles.initiativeNumber}>
 												{entity.initiativeIndex + 1}.
@@ -317,6 +324,9 @@ const styles = StyleSheet.create({
 		flex: 1,
 		gap: 6,
 	},
+	inlineIcon: {
+		marginRight: 4,
+	},
 	initiativeNumber: {
 		fontSize: 14,
 		fontWeight: 'bold',
@@ -389,4 +399,3 @@ const styles = StyleSheet.create({
 		cursor: 'pointer',
 	},
 });
-

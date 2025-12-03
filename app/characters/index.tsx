@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from 'expo-auth-template/frontend';
 
 import { AppFooter } from '@/components/app-footer';
+import { ExpoIconPicker } from '@/components/expo-icon-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
@@ -26,6 +27,7 @@ const createDefaultCharacter = (overrides?: Partial<Character>): Character => ({
 	name: overrides?.name ?? 'Unnamed Hero',
 	race: overrides?.race ?? 'Human',
 	class: overrides?.class ?? 'Adventurer',
+	icon: overrides?.icon ?? '',
 	level: overrides?.level ?? 1,
 	description: overrides?.description ?? '',
 	stats: overrides?.stats ?? { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 },
@@ -98,7 +100,7 @@ const CharacterManagerScreen: React.FC = () => {
 
 	const handleEdit = (character: Character) => {
 		setEditing(character);
-		setForm(character);
+		setForm(createDefaultCharacter(character));
 	};
 
 	const deleteCharacter = useCallback(
@@ -204,6 +206,13 @@ const CharacterManagerScreen: React.FC = () => {
 									placeholder="Character name"
 									placeholderTextColor="#9B8B7A"
 								/>
+								<View style={{ marginTop: 12 }}>
+									<ExpoIconPicker
+										label="Icon (vector or URL)"
+										value={form.icon || ''}
+										onChange={icon => setForm(prev => ({ ...prev, icon }))}
+									/>
+								</View>
 								<View style={styles.row}>
 									<TextInput
 										style={[styles.input, styles.rowInput]}

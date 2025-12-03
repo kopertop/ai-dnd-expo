@@ -169,21 +169,20 @@ const getDefaultTokenIcon = (
  * @param game - Game row from database
  * @returns Map state object with tiles and tokens
  */
-export const buildMapState = async (db: Database, game: GameRow) => {
+export const buildMapState = async (db: Database, game: GameRow, options: { characters?: Character[] } = {}) => {
 	const mapRow = await resolveMapRow(db, game);
 	const [tiles, tokens] = await Promise.all([
 		db.getMapTiles(mapRow.id),
 		db.listMapTokensForGame(game.id),
 	]);
 
+	const characterById = new Map<string, Character>();
+	(options.characters || []).forEach(char => characterById.set(char.id, char));
+
 	// Normalize token icons by fetching NPC definitions and characters
 	const normalizedTokens = await Promise.all(
 		tokens.map(async (token) => {
-			// Check if token already has icon
 			const metadata = JSON.parse(token.metadata || '{}');
-			if (metadata.icon || metadata.image) {
-				return token; // Already has icon, no need to normalize
-			}
 
 			// Fetch NPC definition if this is an NPC token
 			let npc: { role?: string; name?: string; icon?: string } | null = null;
@@ -202,24 +201,41 @@ export const buildMapState = async (db: Database, game: GameRow) => {
 			// Fetch character if this is a player token
 			let character: { class?: string; icon?: string; image?: string } | null = null;
 			if (token.token_type === 'player' && token.character_id) {
-				const charRow = await db.getCharacterById(token.character_id);
-				if (charRow) {
-					const char = deserializeCharacter(charRow);
+				const charFromState = characterById.get(token.character_id);
+				if (charFromState) {
 					character = {
-						class: char.class,
-						icon: char.icon,
-						image: char.image,
+						class: charFromState.class,
+						icon: charFromState.icon,
+						image: (charFromState as any).image,
 					};
+				} else {
+					const charRow = await db.getCharacterById(token.character_id);
+					if (charRow) {
+						const char = deserializeCharacter(charRow);
+						character = {
+							class: char.class,
+							icon: char.icon,
+							image: char.image,
+						};
+					}
 				}
 			}
 
 			// Get default icon
 			const defaultIcon = getDefaultTokenIcon(token, npc, character);
-			if (defaultIcon) {
-				// Update token metadata with default icon
+
+			// Prefer latest character/npc icon; if it changed, overwrite metadata
+			const desiredIcon =
+				(token.token_type === 'player' ? character?.icon || character?.image : undefined) ??
+				(token.token_type === 'npc' ? npc?.icon : undefined) ??
+				metadata.icon ??
+				metadata.image ??
+				defaultIcon;
+
+			if (desiredIcon) {
 				const updatedMetadata = {
 					...metadata,
-					icon: defaultIcon,
+					icon: desiredIcon,
 				};
 				return {
 					...token,
@@ -277,14 +293,15 @@ export const createCustomNpcDefinition = async (
 	custom: {
 		name: string;
 		role: string;
-		alignment: string;
-		disposition: string;
-		description?: string;
-		maxHealth?: number;
-		armorClass?: number;
-		challengeRating?: number;
-		color?: string;
-	},
+	alignment: string;
+	disposition: string;
+	description?: string;
+	maxHealth?: number;
+	armorClass?: number;
+	challengeRating?: number;
+	color?: string;
+	icon?: string;
+},
 ) => {
 	const slug = `${slugifyName(custom.name)}_${hostId.slice(0, 6)}`;
 	const npcId = `npc_${slug}_${Date.now()}`;
@@ -297,6 +314,7 @@ export const createCustomNpcDefinition = async (
 		alignment: custom.alignment || 'neutral',
 		disposition: custom.disposition || 'neutral',
 		description: custom.description ?? null,
+		icon: custom.icon ?? null,
 		base_health: custom.maxHealth ?? 10,
 		base_armor_class: custom.armorClass ?? 12,
 		challenge_rating: custom.challengeRating ?? 1,
@@ -305,7 +323,11 @@ export const createCustomNpcDefinition = async (
 		stats: JSON.stringify({}),
 		abilities: JSON.stringify([]),
 		loot_table: JSON.stringify([]),
-		metadata: JSON.stringify({ color: custom.color ?? '', createdBy: hostId }),
+		metadata: JSON.stringify({
+			color: custom.color ?? '',
+			icon: custom.icon ?? '',
+			createdBy: hostId,
+		}),
 		created_at: now,
 		updated_at: now,
 	});
@@ -338,6 +360,7 @@ export const serializeCharacter = (
 	class: character.class,
 	description: character.description || null,
 	trait: character.trait || '', // Database requires NOT NULL, default to empty string
+	icon: character.icon || null,
 	stats: JSON.stringify(character.stats),
 	skills: JSON.stringify(character.skills || []),
 	inventory: JSON.stringify(character.inventory || []),
@@ -363,6 +386,7 @@ export const deserializeCharacter = (row: CharacterRow): Character => ({
 	class: row.class,
 	description: row.description || undefined,
 	trait: row.trait || undefined,
+	icon: row.icon || undefined,
 	stats: JSON.parse(row.stats),
 	skills: JSON.parse(row.skills || '[]'),
 	inventory: JSON.parse(row.inventory || '[]'),
@@ -413,5 +437,3 @@ export const toGameSummary = (game: GameRow) => ({
 	createdAt: game.created_at,
 	updatedAt: game.updated_at,
 });
-
-

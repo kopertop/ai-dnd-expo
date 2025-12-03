@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { ExpoIconPicker } from './expo-icon-picker';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
@@ -20,6 +21,7 @@ interface CharacterDMModalProps {
 	onDamage?: (entityId: string, amount: number) => void;
 	onHeal?: (entityId: string, amount: number) => void;
 	onUpdateCharacter?: (characterId: string, updates: Partial<Character>) => void;
+	onDeleteToken?: () => void;
 	initiativeOrder?: Array<{ entityId: string; initiative: number; type: 'player' | 'npc' }>;
 	npcStats?: { STR: number; DEX: number; CON: number; INT: number; WIS: number; CHA: number };
 }
@@ -33,6 +35,7 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 	onDamage,
 	onHeal,
 	onUpdateCharacter,
+	onDeleteToken,
 	initiativeOrder,
 	npcStats,
 }) => {
@@ -40,6 +43,7 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 	const [actionAmount, setActionAmount] = useState('');
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [effectType, setEffectType] = useState<'damage' | 'heal' | null>(null);
+	const currentIcon = character?.icon || (npcToken?.metadata?.icon as string) || '';
 
 	// Get current status effects from character or NPC
 	const currentStatusEffects = character?.statusEffects || npcToken?.statusEffects || [];
@@ -226,6 +230,22 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 		}
 	};
 
+	const handleIconChange = (nextIcon: string) => {
+		if (character && onUpdateCharacter) {
+			onUpdateCharacter(character.id, { icon: nextIcon });
+		} else if (npcToken) {
+			updateNpcInstanceMutation.mutateAsync({
+				path: `/games/${gameId}/npcs/${npcToken.id}`,
+				body: JSON.stringify({
+					metadata: {
+						...(npcToken.metadata || {}),
+						icon: nextIcon,
+					},
+				}),
+			});
+		}
+	};
+
 	return (
 		<Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
 			<View style={styles.overlay}>
@@ -262,6 +282,13 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 										<View style={styles.statRow}>
 											<ThemedText style={styles.statLabel}>Name:</ThemedText>
 											<ThemedText style={styles.statValue}>{character.name}</ThemedText>
+										</View>
+										<View style={{ width: '100%', marginBottom: 12 }}>
+											<ExpoIconPicker
+												label="Icon (vector or URL)"
+												value={currentIcon}
+												onChange={handleIconChange}
+											/>
 										</View>
 										<View style={styles.infoRow}>
 											<ThemedText style={styles.infoLabel}>Level:</ThemedText>
@@ -364,6 +391,13 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 										<View style={styles.statRow}>
 											<ThemedText style={styles.statLabel}>Name:</ThemedText>
 											<ThemedText style={styles.statValue}>{npcToken.label}</ThemedText>
+										</View>
+										<View style={{ width: '100%', marginBottom: 12 }}>
+											<ExpoIconPicker
+												label="Icon (vector or URL)"
+												value={currentIcon}
+												onChange={handleIconChange}
+											/>
 										</View>
 										<View style={styles.statRow}>
 											<ThemedText style={styles.statLabel}>Type:</ThemedText>
@@ -793,4 +827,3 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 	},
 });
-

@@ -115,6 +115,7 @@ class MockMovementDatabase {
 			class: 'Fighter',
 			description: null,
 			trait: null,
+			icon: null,
 			stats: JSON.stringify({ STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 }),
 			skills: JSON.stringify([]),
 			inventory: JSON.stringify([]),

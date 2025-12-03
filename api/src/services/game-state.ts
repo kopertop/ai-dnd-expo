@@ -107,6 +107,7 @@ export class GameStateService {
 			class: row.class,
 			trait: row.trait || undefined,
 			image: undefined,
+			icon: row.icon || undefined,
 			description: row.description || undefined,
 			stats: JSON.parse(row.stats),
 			skills: JSON.parse(row.skills),
@@ -862,4 +863,3 @@ export class GameStateService {
 		return updatedCharacter;
 	}
 }
-

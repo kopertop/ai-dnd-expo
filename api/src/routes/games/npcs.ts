@@ -106,6 +106,7 @@ npcs.post('/:inviteCode/npcs', async (c) => {
 			maxHealth?: number;
 			armorClass?: number;
 			color?: string;
+			icon?: string;
 		};
 	};
 
@@ -158,6 +159,8 @@ npcs.post('/:inviteCode/npcs', async (c) => {
 		maxActionPoints,
 		// Ensure icon is copied from NPC definition to token metadata
 		...(npcMetadata.icon ? { icon: npcMetadata.icon } : {}),
+		...(npc.icon ? { icon: npc.icon } : {}),
+		...(payload.customNpc?.icon ? { icon: payload.customNpc.icon } : {}),
 	};
 
 	await db.saveMapToken({
@@ -331,5 +334,3 @@ npcs.patch('/:inviteCode/npcs/:tokenId', async (c) => {
 });
 
 export default npcs;
-
-

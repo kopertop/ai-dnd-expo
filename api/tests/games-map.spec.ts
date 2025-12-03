@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
 	GameRow,
+	GamePlayerRow,
 	MapRow,
 	MapTileRow,
 	MapTokenRow,
@@ -79,6 +80,7 @@ class MockMapDatabase {
 	];
 
 	public tokens: MapTokenRow[] = [];
+	public players: GamePlayerRow[] = [];
 	public npcs: NpcRow[] = [
 		{
 			id: 'npc-1',
@@ -96,11 +98,16 @@ class MockMapDatabase {
 			stats: JSON.stringify({ strength: 14 }),
 			abilities: JSON.stringify(['Shield']),
 			loot_table: JSON.stringify([]),
+			icon: 'MaterialIcons:shield',
 			metadata: JSON.stringify({ color: '#222' }),
 			created_at: Date.now(),
 			updated_at: Date.now(),
 		},
 	];
+	public stateData: Record<string, unknown> = {};
+	public mapStateData: Record<string, unknown> = {};
+	public logEntriesData: unknown[] = [];
+	public removedPlayers: Array<{ gameId: string; playerId: string }> = [];
 
 	async getGameByInviteCode(inviteCode: string) {
 		return inviteCode === this.game.invite_code ? this.game : null;
@@ -183,23 +190,37 @@ class MockMapDatabase {
 	}
 
 	async getGamePlayers(gameId: string) {
-		return gameId === this.game.id ? [] : [];
+		return this.players.filter(player => player.game_id === gameId);
 	}
 
 	async getGameState(gameId: string) {
 		const now = Date.now();
 		return {
 			game_id: gameId,
-			state_data: JSON.stringify({}),
-			map_state: JSON.stringify({}),
-			log_entries: JSON.stringify([]),
+			state_data: JSON.stringify(this.stateData),
+			map_state: JSON.stringify(this.mapStateData),
+			log_entries: JSON.stringify(this.logEntriesData),
 			state_version: 1,
 			updated_at: now,
 		};
 	}
 
-	async updateGameState() {
-		// No-op for map state update in tests
+	async updateGameState(_gameId: string, updates: Partial<{ state_data: string; map_state: string; log_entries: string }>) {
+		if (updates.state_data) {
+			this.stateData = JSON.parse(updates.state_data);
+		}
+		if (updates.map_state) {
+			this.mapStateData = JSON.parse(updates.map_state);
+		}
+		if (updates.log_entries) {
+			this.logEntriesData = JSON.parse(updates.log_entries);
+		}
+		this.game.updated_at = Date.now();
+	}
+
+	async removePlayerFromGame(gameId: string, playerId: string) {
+		this.players = this.players.filter(player => !(player.game_id === gameId && player.player_id === playerId));
+		this.removedPlayers.push({ gameId, playerId });
 	}
 }
 
@@ -285,6 +306,102 @@ describe('games map routes', () => {
 		);
 		expect(deleteRes.status).toBe(200);
 		expect(mockDb.tokens.find(token => token.id === 'token-2')).toBeUndefined();
+	});
+
+	it('removes player membership and character state when deleting a player token', async () => {
+		mockDb.game.status = 'active';
+		const now = Date.now();
+
+		mockDb.players.push({
+			id: 'gp-1',
+			game_id: mockDb.game.id,
+			player_id: 'player-123',
+			player_email: 'player@example.com',
+			character_id: 'char-123',
+			character_name: 'Hero',
+			joined_at: now,
+		});
+
+		mockDb.tokens.push({
+			id: 'token-hero',
+			game_id: mockDb.game.id,
+			map_id: mockDb.game.current_map_id || 'map-1',
+			character_id: 'char-123',
+			npc_id: null,
+			token_type: 'player',
+			label: 'Hero',
+			x: 0,
+			y: 0,
+			facing: 0,
+			color: '',
+			status: 'active',
+			is_visible: 1,
+			hit_points: 10,
+			max_hit_points: 10,
+			status_effects: JSON.stringify([]),
+			metadata: JSON.stringify({}),
+			created_at: now,
+			updated_at: now,
+		});
+
+		mockDb.stateData = {
+			activeTurn: {
+				type: 'player',
+				entityId: 'char-123',
+				turnNumber: 1,
+				startedAt: now,
+				movementUsed: 0,
+				majorActionUsed: false,
+				minorActionUsed: false,
+				speed: 30,
+			},
+			initiativeOrder: [{ entityId: 'char-123', initiative: 15, type: 'player' as const }],
+			players: [
+				{
+					playerId: 'player-123',
+					characterId: 'char-123',
+					name: 'Hero',
+					joinedAt: now,
+				},
+			],
+			characters: [
+				{
+					id: 'char-123',
+					name: 'Hero',
+					level: 1,
+					race: 'Human',
+					class: 'Fighter',
+					trait: undefined,
+					description: undefined,
+					stats: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 },
+					skills: [],
+					inventory: [],
+					equipped: {},
+					health: 10,
+					maxHealth: 10,
+					actionPoints: 3,
+					maxActionPoints: 3,
+					statusEffects: [],
+					preparedSpells: [],
+				},
+			],
+		};
+
+		const app = createApp();
+		const res = await app.fetch(
+			new Request('http://test/ABC123/map/tokens/token-hero', {
+				method: 'DELETE',
+			}),
+			mockEnv,
+		);
+
+		expect(res.status).toBe(200);
+		expect(mockDb.tokens.find(token => token.id === 'token-hero')).toBeUndefined();
+		expect(mockDb.removedPlayers).toContainEqual({ gameId: mockDb.game.id, playerId: 'player-123' });
+		expect((mockDb.stateData as any).characters?.find((c: any) => c.id === 'char-123')).toBeUndefined();
+		expect((mockDb.stateData as any).players?.find((p: any) => p.characterId === 'char-123')).toBeUndefined();
+		expect(((mockDb.stateData as any).initiativeOrder || [])).toEqual([]);
+		expect((mockDb.stateData as any).activeTurn).toBeNull();
 	});
 
 	it('exposes NPC palette and placement', async () => {

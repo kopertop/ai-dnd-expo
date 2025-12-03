@@ -492,6 +492,7 @@ combat.post('/:inviteCode/dm-action', async (c) => {
 		if (payload.maxHealth !== undefined) updates.maxHealth = payload.maxHealth;
 		if (payload.actionPoints !== undefined) updates.actionPoints = payload.actionPoints;
 		if (payload.maxActionPoints !== undefined) updates.maxActionPoints = payload.maxActionPoints;
+		if (payload.icon !== undefined) updates.icon = payload.icon as string;
 
 		console.log('[DM Action] Updating character:', { characterId, updates, payload });
 
@@ -510,6 +511,9 @@ combat.post('/:inviteCode/dm-action', async (c) => {
 		if (updates.statusEffects !== undefined) {
 			console.log('[DM Action] Setting status effects:', updates.statusEffects);
 			serializedUpdates.status_effects = JSON.stringify(updates.statusEffects);
+		}
+		if (updates.icon !== undefined) {
+			serializedUpdates.icon = updates.icon || null;
 		}
 
 		// Update character in database
@@ -542,5 +546,4 @@ combat.post('/:inviteCode/dm-action', async (c) => {
 });
 
 export default combat;
-
 

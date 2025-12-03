@@ -27,6 +27,7 @@ export interface CharacterRow {
 	class: string;
 	description: string | null;
 	trait: string | null;
+	icon: string | null;
 	stats: string; // JSON
 	skills: string; // JSON array
 	inventory: string; // JSON array
@@ -101,6 +102,7 @@ export interface NpcRow {
 	alignment: string;
 	disposition: string;
 	description: string | null;
+	icon: string | null;
 	base_health: number;
 	base_armor_class: number;
 	challenge_rating: number;
@@ -237,8 +239,8 @@ export class Database {
 	async createCharacter(character: Omit<CharacterRow, 'created_at' | 'updated_at'>): Promise<void> {
 		const now = Date.now();
 		await this.db.prepare(
-			`INSERT INTO characters (id, player_id, player_email, name, level, race, class, description, trait, stats, skills, inventory, equipped, health, max_health, action_points, max_action_points, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO characters (id, player_id, player_email, name, level, race, class, description, trait, icon, stats, skills, inventory, equipped, health, max_health, action_points, max_action_points, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		).bind(
 			character.id,
 			character.player_id,
@@ -249,6 +251,7 @@ export class Database {
 			character.class,
 			character.description || null,
 			character.trait || '', // Database requires NOT NULL, default to empty string
+			character.icon || null,
 			character.stats,
 			character.skills,
 			character.inventory,
@@ -675,10 +678,10 @@ export class Database {
 		const now = Date.now();
 		await this.db.prepare(
 			`INSERT INTO npcs (
-				id, slug, name, role, alignment, disposition, description, base_health, base_armor_class,
+				id, slug, name, role, alignment, disposition, description, icon, base_health, base_armor_class,
 				challenge_rating, archetype, default_actions, stats, abilities, loot_table, metadata,
 				created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(id) DO UPDATE SET
 				slug = excluded.slug,
 				name = excluded.name,
@@ -686,6 +689,7 @@ export class Database {
 				alignment = excluded.alignment,
 				disposition = excluded.disposition,
 				description = excluded.description,
+				icon = excluded.icon,
 				base_health = excluded.base_health,
 				base_armor_class = excluded.base_armor_class,
 				challenge_rating = excluded.challenge_rating,
@@ -704,6 +708,7 @@ export class Database {
 			npc.alignment,
 			npc.disposition,
 			npc.description,
+			npc.icon || null,
 			npc.base_health,
 			npc.base_armor_class,
 			npc.challenge_rating,
@@ -871,5 +876,3 @@ export class Database {
 		await this.db.prepare('DELETE FROM activity_logs WHERE game_id = ?').bind(gameId).run();
 	}
 }
-
-

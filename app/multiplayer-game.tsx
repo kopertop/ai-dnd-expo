@@ -19,6 +19,7 @@ import { NpcSelector } from '@/components/npc-selector';
 import { PlayerActionMenu, type PlayerAction } from '@/components/player-action-menu';
 import { PlayerCharacterList } from '@/components/player-character-list';
 import { SpellActionSelector } from '@/components/spell-action-selector';
+import { DMActionBanner } from '@/components/dm-action-banner';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TokenDetailModal } from '@/components/token-detail-modal';
@@ -340,6 +341,11 @@ const MultiplayerGameScreen: React.FC = () => {
 		);
 	}, [isHost, effectiveGameState?.pausedTurn, effectiveGameState?.activeTurn?.entityId]);
 
+	const isPausedForPlayers = useMemo(
+		() => Boolean(gameState?.pausedTurn && !isHost),
+		[gameState?.pausedTurn, isHost],
+	);
+
 	// Use query hooks
 	const { data: availableMapsData } = useAllMaps();
 	const switchMapMutation = useSwitchMap(inviteCode || '');
@@ -481,6 +487,9 @@ const MultiplayerGameScreen: React.FC = () => {
 							y: tile.y,
 							label: character.name || 'Unknown',
 							icon: character.icon,
+							metadata: {
+								icon: character.icon || character.image,
+							},
 							tokenType: 'player',
 						},
 					});
@@ -496,6 +505,11 @@ const MultiplayerGameScreen: React.FC = () => {
 
 			if (placedCount > 0) {
 				Alert.alert('Success', `Placed ${placedCount} character${placedCount > 1 ? 's' : ''} on the map`);
+				if (refreshGameState) {
+					setTimeout(() => {
+						refreshGameState();
+					}, 300);
+				}
 			}
 		} catch (error) {
 			console.error('Failed to auto-place characters:', error);
@@ -504,7 +518,7 @@ const MultiplayerGameScreen: React.FC = () => {
 			isPlacingRef.current = false;
 			setIsPlacing(false);
 		}
-	}, [isHost, mapState, charactersWithoutTokens, inviteCode, placePlayerTokenMutation]);
+	}, [isHost, mapState, charactersWithoutTokens, inviteCode, placePlayerTokenMutation, refreshGameState]);
 
 	// Auto-place missing characters on the map (automatic when game becomes active)
 	useEffect(() => {
@@ -1015,6 +1029,13 @@ const MultiplayerGameScreen: React.FC = () => {
 				? gameState?.activeTurn?.entityId
 				: currentCharacterId;
 
+			// Hosts: open token detail modal for quick delete/edit
+			if (isHost && !hostActingAsActiveCharacter) {
+				setSelectedToken(token);
+				setShowTokenModal(true);
+				return;
+			}
+
 			if (!isHost || hostActingAsActiveCharacter) {
 				const isOwnToken = token.type === 'player' && token.entityId === actingCharacterId;
 
@@ -1253,13 +1274,19 @@ const MultiplayerGameScreen: React.FC = () => {
 					characterId,
 					...updates,
 				});
-				// Game state will refresh automatically via query invalidation
+				// Force refresh of game and map queries to pick up icon/metadata changes
+				queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+				queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
+				queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
+				if (refreshGameState) {
+					await refreshGameState();
+				}
 			} catch (error) {
 				console.error('Failed to update character:', error);
 				Alert.alert('Error', 'Failed to update character');
 			}
 		},
-		[inviteCode, handleDMAction, submitDMActionMutation],
+		[inviteCode, handleDMAction, submitDMActionMutation, queryClient, refreshGameState],
 	);
 
 	const handleTileLongPress = useCallback(
@@ -1825,12 +1852,11 @@ const MultiplayerGameScreen: React.FC = () => {
 			showsVerticalScrollIndicator={true}
 			showsHorizontalScrollIndicator={true}
 		>
-			<View style={styles.mapContainer}>
-				{gameState?.pausedTurn && (
-					<View style={styles.pausedIndicator}>
-						<ThemedText style={styles.pausedText}>⏸️ Turn Paused - DM Action</ThemedText>
-					</View>
-				)}
+			<View style={[styles.mapContainer, isPausedForPlayers && styles.mapDimmed]}>
+				<DMActionBanner
+					visible={isPausedForPlayers}
+					message="DM is taking an action"
+				/>
 				{isHost && isMapEditMode && (
 					<View style={styles.editModeIndicator}>
 						<ThemedText style={styles.editModeText}>✏️ Edit Mode Active - Drag tokens or long-press tiles</ThemedText>
@@ -1865,124 +1891,131 @@ const MultiplayerGameScreen: React.FC = () => {
 					</View>
 				)}
 				{mapState ? (
-					<InteractiveMap
-						map={mapState}
-						isEditable={isHost && isMapEditMode}
-						isHost={isHost}
-						// Allow token dragging for hosts during gameplay (not just edit mode)
-						onTokenDragEnd={isHost ? async (token, x, y) => {
-							try {
+					<View pointerEvents={isPausedForPlayers ? 'none' : 'auto'}>
+						<InteractiveMap
+							map={mapState}
+							isEditable={isHost && isMapEditMode}
+							isHost={isHost}
+							// Allow token dragging for hosts during gameplay (not just edit mode)
+							onTokenDragEnd={isHost ? async (token, x, y) => {
+								try {
 								// Skip if invalid coordinates (deletion case)
-								if (x === -1 && y === -1) {
-									return;
-								}
-
-								// For NPCs, we need to pass npcId instead of characterId
-								// Optimistic update: update local state immediately
-								applyTokenPositionUpdates([{ id: token.id, x, y }]);
-
-								// Save to backend asynchronously
-								moveTokenMutation.mutateAsync({
-									path: `/games/${inviteCode}/map/move`,
-									body: {
-										tokenId: token.id,
-										x,
-										y,
-										overrideValidation: true,
-									},
-								}).then((response) => {
-									if (response?.gameState) {
-										setGameState(response.gameState);
-										const updatedTokens = response.gameState.mapState?.tokens;
-										if (updatedTokens) {
-											updateCachedTokens(() => updatedTokens);
-										}
+									if (x === -1 && y === -1) {
+										return;
 									}
-								}).catch((error: any) => {
-									console.error('Failed to save token movement:', error);
-									// Revert optimistic update on error
-									applyTokenPositionUpdates([{ id: token.id, x: token.x, y: token.y }]);
-									Alert.alert('Error', 'Failed to save movement. Changes reverted.');
-								});
+
+									// For NPCs, we need to pass npcId instead of characterId
+									// Optimistic update: update local state immediately
+									applyTokenPositionUpdates([{ id: token.id, x, y }]);
+
+									// Save to backend asynchronously
+									moveTokenMutation.mutateAsync({
+										path: `/games/${inviteCode}/map/move`,
+										body: {
+											tokenId: token.id,
+											x,
+											y,
+											overrideValidation: true,
+										},
+									}).then((response) => {
+										if (response?.gameState) {
+											setGameState(response.gameState);
+											const updatedTokens = response.gameState.mapState?.tokens;
+											if (updatedTokens) {
+												updateCachedTokens(() => updatedTokens);
+											}
+										}
+									}).catch((error: any) => {
+										console.error('Failed to save token movement:', error);
+										// Revert optimistic update on error
+										applyTokenPositionUpdates([{ id: token.id, x: token.x, y: token.y }]);
+										Alert.alert('Error', 'Failed to save movement. Changes reverted.');
+									});
 
 								// Refresh map state in background (non-blocking)
 								// Map state will refresh automatically via query invalidation
-							} catch (error) {
-								console.error('Failed to move token:', error);
-								Alert.alert('Error', 'Failed to move token');
-							}
-						} : undefined}
-						// Highlight the token whose turn it is; fall back to the player's own token
-						highlightTokenId={activeTurnTokenId ?? playerToken?.id ?? currentCharacterId ?? undefined}
-						onTilePress={
-							npcPlacementMode && isHost
-								? async (x, y) => {
-									if (!inviteCode || !mapState || !npcPlacementMode) return;
-									try {
-										// Count how many NPCs of this type already exist to create unique label
-										const existingNpcsOfType = (mapState.tokens || []).filter(
-											token => token.type === 'npc' && token.label?.startsWith(npcPlacementMode.npcName),
-										);
-										const count = existingNpcsOfType.length;
-										const uniqueLabel = count > 0 ? `${npcPlacementMode.npcName} ${count + 1}` : npcPlacementMode.npcName;
-
-										const result = await placeNpcMutation.mutateAsync({
-											path: `/games/${inviteCode}/npcs`,
-											body: {
-												npcId: npcPlacementMode.npcId,
-												x,
-												y,
-												label: uniqueLabel,
-											},
-										});
-
-										// Optimistically update map cache with the new NPC token list
-										if (result?.tokens) {
-											updateCachedTokens(() => result.tokens);
-										}
-
-										setNpcPlacementMode(null);
-										Alert.alert('Success', `${uniqueLabel} placed on map and added to character list`);
-									} catch (error) {
-										console.error('Failed to place NPC:', error);
-										Alert.alert('Error', error instanceof Error ? error.message : 'Failed to place NPC');
-									}
+								} catch (error) {
+									console.error('Failed to move token:', error);
+									Alert.alert('Error', 'Failed to move token');
 								}
-								: elementPlacementMode && isHost
+							} : undefined}
+							// Highlight the token whose turn it is; fall back to the player's own token
+							highlightTokenId={activeTurnTokenId ?? playerToken?.id ?? currentCharacterId ?? undefined}
+							onTilePress={
+								npcPlacementMode && isHost
 									? async (x, y) => {
-										if (!inviteCode || !mapState) return;
+										if (!inviteCode || !mapState || !npcPlacementMode) return;
 										try {
-											await saveMapTokenMutation.mutateAsync({
-												path: `/games/${inviteCode}/map/tokens`,
+										// Count how many NPCs of this type already exist to create unique label
+											const existingNpcsOfType = (mapState.tokens || []).filter(
+												token => token.type === 'npc' && token.label?.startsWith(npcPlacementMode.npcName),
+											);
+											const count = existingNpcsOfType.length;
+											const uniqueLabel = count > 0 ? `${npcPlacementMode.npcName} ${count + 1}` : npcPlacementMode.npcName;
+
+											const result = await placeNpcMutation.mutateAsync({
+												path: `/games/${inviteCode}/npcs`,
 												body: {
-													tokenType: 'object',
+													npcId: npcPlacementMode.npcId,
 													x,
 													y,
-													label: elementPlacementMode === 'fire' ? '🔥 Fire' : '🪨 Obstacle',
-													metadata: { itemType: elementPlacementMode },
-													overrideValidation: true,
+													label: uniqueLabel,
 												},
 											});
-											setElementPlacementMode(null);
-											Alert.alert('Success', `${elementPlacementMode} placed on map`);
+
+											// Optimistically update map cache with the new NPC token list
+											if (result?.tokens) {
+												updateCachedTokens(() => result.tokens);
+											}
+
+											setNpcPlacementMode(null);
+											Alert.alert('Success', `${uniqueLabel} placed on map and added to character list`);
+											if (refreshGameState) {
+												setTimeout(() => {
+													refreshGameState();
+												}, 300);
+											}
 										} catch (error) {
-											console.error('Failed to place element:', error);
-											Alert.alert('Error', 'Failed to place map element');
+											console.error('Failed to place NPC:', error);
+											Alert.alert('Error', error instanceof Error ? error.message : 'Failed to place NPC');
 										}
 									}
-									: isHost && isMapEditMode && selectedItemType
-										? handlePlaceItemToken
-										: selectedTokenId
-											? handleMovementRangeTilePress
-											: handlePlayerTilePress
-						}
-						onTileLongPress={isHost && isMapEditMode ? handleTileLongPress : undefined}
-						onTileRightPress={isHost ? handleTileRightPress : undefined}
-						onTokenPress={handleTokenPress}
-						onTokenLongPress={handleTokenLongPress}
-						reachableTiles={selectedTokenId ? selectedTokenMovementRange : movementRange}
-						pathTiles={pathPreview?.path}
-					/>
+									: elementPlacementMode && isHost
+										? async (x, y) => {
+											if (!inviteCode || !mapState) return;
+											try {
+												await saveMapTokenMutation.mutateAsync({
+													path: `/games/${inviteCode}/map/tokens`,
+													body: {
+														tokenType: 'object',
+														x,
+														y,
+														label: elementPlacementMode === 'fire' ? '🔥 Fire' : '🪨 Obstacle',
+														metadata: { itemType: elementPlacementMode },
+														overrideValidation: true,
+													},
+												});
+												setElementPlacementMode(null);
+												Alert.alert('Success', `${elementPlacementMode} placed on map`);
+											} catch (error) {
+												console.error('Failed to place element:', error);
+												Alert.alert('Error', 'Failed to place map element');
+											}
+										}
+										: isHost && isMapEditMode && selectedItemType
+											? handlePlaceItemToken
+											: selectedTokenId
+												? handleMovementRangeTilePress
+												: handlePlayerTilePress
+							}
+							onTileLongPress={isHost && isMapEditMode ? handleTileLongPress : undefined}
+							onTileRightPress={isHost ? handleTileRightPress : undefined}
+							onTokenPress={handleTokenPress}
+							onTokenLongPress={handleTokenLongPress}
+							reachableTiles={selectedTokenId ? selectedTokenMovementRange : movementRange}
+							pathTiles={pathPreview?.path}
+						/>
+					</View>
 				) : (
 					<ThemedText style={styles.mapHint}>Waiting for the DM to configure a map.</ThemedText>
 				)}
@@ -2566,6 +2599,11 @@ const MultiplayerGameScreen: React.FC = () => {
 							}
 
 							Alert.alert('Success', `${uniqueLabel} created and placed on map`);
+							if (refreshGameState) {
+								setTimeout(() => {
+									refreshGameState();
+								}, 300);
+							}
 						} catch (error) {
 							console.error('Failed to create NPC:', error);
 							Alert.alert('Error', 'Failed to create NPC');
@@ -2781,6 +2819,10 @@ const styles = StyleSheet.create({
 		marginBottom: 0,
 		backgroundColor: '#FFF9EF',
 		gap: 0,
+		position: 'relative',
+	},
+	mapDimmed: {
+		opacity: 0.6,
 	},
 	mapHeader: {
 		flexDirection: 'row',
@@ -3056,20 +3098,6 @@ const styles = StyleSheet.create({
 		marginTop: 8,
 		fontSize: 12,
 		color: '#6B5B3D',
-		textAlign: 'center',
-	},
-	pausedIndicator: {
-		backgroundColor: '#FEF3C7',
-		borderColor: '#F59E0B',
-		borderWidth: 2,
-		borderRadius: 8,
-		padding: 8,
-		marginBottom: 8,
-	},
-	pausedText: {
-		color: '#92400E',
-		fontWeight: '700',
-		fontSize: 14,
 		textAlign: 'center',
 	},
 	editModeIndicator: {

@@ -20,11 +20,12 @@ interface NpcSelectorProps {
 		name: string;
 		role: string;
 		alignment: string;
-		disposition: string;
-		description?: string;
-		maxHealth?: number;
-		armorClass?: number;
-		color?: string;
+	disposition: string;
+	description?: string;
+	maxHealth?: number;
+	armorClass?: number;
+	color?: string;
+	icon?: string;
 	}) => void;
 }
 
@@ -48,6 +49,7 @@ export const NpcSelector: React.FC<NpcSelectorProps> = ({
 		maxHealth: 10,
 		armorClass: 10,
 		color: '#3B2F1B',
+		icon: '',
 	});
 
 	// Fetch NPCs and Characters using React Query hooks
@@ -76,6 +78,7 @@ export const NpcSelector: React.FC<NpcSelectorProps> = ({
 			maxHealth: character.maxHealth,
 			armorClass: Math.max(armorClass, 10), // Ensure minimum AC of 10
 			color: '#4A6741', // Default color
+			icon: character.icon || character.image,
 		});
 		onClose();
 	};
@@ -189,6 +192,17 @@ export const NpcSelector: React.FC<NpcSelectorProps> = ({
 								onChangeText={(text) => setCustomNpc({ ...customNpc, role: text })}
 								placeholder="e.g., guard, merchant, bandit"
 								placeholderTextColor="#999"
+							/>
+
+							<ThemedText style={styles.label}>Icon (vector or URL)</ThemedText>
+							<TextInput
+								style={styles.input}
+								value={customNpc.icon}
+								onChangeText={(text) => setCustomNpc({ ...customNpc, icon: text })}
+								placeholder="MaterialIcons:dragon or https://example.com/dragon.png"
+								placeholderTextColor="#999"
+								autoCapitalize="none"
+								autoCorrect={false}
 							/>
 
 							<ThemedText style={styles.label}>Alignment</ThemedText>
@@ -517,4 +531,3 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 	},
 });
-

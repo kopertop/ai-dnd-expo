@@ -33,6 +33,8 @@ map.get('/:inviteCode/map', async (c) => {
 	const inviteCode = c.req.param('inviteCode');
 	const db = new Database(c.env.DATABASE);
 	const game = await db.getGameByInviteCode(inviteCode);
+	const gameStateService = new GameStateService(db);
+	const gameState = game ? await gameStateService.getState(game) : null;
 
 	if (!game) {
 		return c.json({ error: 'Game not found' }, 404);
@@ -40,7 +42,7 @@ map.get('/:inviteCode/map', async (c) => {
 
 	try {
 		// buildMapState internally calls resolveMapRow to ensure map exists
-		const mapState = await buildMapState(db, game);
+		const mapState = await buildMapState(db, game, { characters: gameState?.characters });
 		return c.json(mapState);
 	} catch (error) {
 		console.error('Failed to build map state:', error);
@@ -264,12 +266,14 @@ map.get('/:inviteCode/map/tokens', async (c) => {
 	const inviteCode = c.req.param('inviteCode');
 	const db = new Database(c.env.DATABASE);
 	const game = await db.getGameByInviteCode(inviteCode);
+	const gameStateService = new GameStateService(db);
+	const gameState = game ? await gameStateService.getState(game) : null;
 
 	if (!game) {
 		return c.json({ error: 'Game not found' }, 404);
 	}
 
-	const mapState = await buildMapState(db, game);
+	const mapState = await buildMapState(db, game, { characters: gameState?.characters });
 	return c.json({ tokens: mapState.tokens });
 });
 
@@ -427,6 +431,7 @@ map.post('/:inviteCode/map/tokens', async (c) => {
 		x: number;
 		y: number;
 		color?: string;
+		icon?: string;
 		characterId?: string;
 		npcId?: string;
 		elementType?: string;
@@ -541,6 +546,9 @@ map.post('/:inviteCode/map/tokens', async (c) => {
 
 	// Build metadata for elements
 	const metadata = body.metadata || {};
+	if (body.icon) {
+		metadata.icon = body.icon;
+	}
 	if (body.tokenType === 'element' && body.elementType) {
 		metadata.elementType = body.elementType;
 	}
@@ -776,24 +784,20 @@ map.delete('/:inviteCode/map/tokens/:tokenId', async (c) => {
 	const tokens = await db.listMapTokensForGame(game.id);
 	const tokenToDelete = tokens.find(t => t.id === tokenId);
 
+	const entityInfo = tokenToDelete
+		? tokenToDelete.token_type === 'player' && tokenToDelete.character_id
+			? { entityId: tokenToDelete.character_id, type: 'player' as const }
+			: tokenToDelete.token_type === 'npc'
+				? { entityId: tokenId, type: 'npc' as const }
+				: null
+		: null;
+
 	// Remove from initiative order if game is active
-	if (game.status === 'active' && tokenToDelete) {
+	if (game.status === 'active' && entityInfo) {
 		try {
 			const gameStateService = new GameStateService(db);
-			let entityId: string | null = null;
-
-			if (tokenToDelete.token_type === 'player' && tokenToDelete.character_id) {
-				// Player token - use character_id as entityId
-				entityId = tokenToDelete.character_id;
-			} else if (tokenToDelete.token_type === 'npc') {
-				// NPC token - use tokenId as entityId
-				entityId = tokenId;
-			}
-
-			if (entityId) {
-				await gameStateService.removeFromInitiativeOrder(game, entityId);
-				console.log(`[Auto-Initiative] Removed ${tokenToDelete.token_type} ${entityId} from initiative order`);
-			}
+			await gameStateService.removeFromInitiativeOrder(game, entityInfo.entityId);
+			console.log(`[Auto-Initiative] Removed ${entityInfo.type} ${entityInfo.entityId} from initiative order`);
 		} catch (error) {
 			console.error('Failed to remove entity from initiative order:', error);
 			// Don't fail the token deletion if initiative removal fails
@@ -802,6 +806,50 @@ map.delete('/:inviteCode/map/tokens/:tokenId', async (c) => {
 
 	await db.deleteMapToken(tokenId);
 	const mapState = await buildMapState(db, game);
+
+	// Clean up any related game state (characters/players/turn pointers)
+	if (entityInfo) {
+		try {
+			const gameStateService = new GameStateService(db);
+			const currentState = await gameStateService.getState(game);
+
+			// Remove player membership when deleting a player token
+			if (entityInfo.type === 'player' && tokenToDelete?.character_id) {
+				const playerToRemove = currentState.players.find(p => p.characterId === tokenToDelete.character_id);
+				if (playerToRemove) {
+					await db.removePlayerFromGame(game.id, playerToRemove.playerId);
+				}
+			}
+
+			const updatedInitiative = (currentState.initiativeOrder || []).filter(entry => entry.entityId !== entityInfo.entityId);
+			const updatedPlayers =
+				entityInfo.type === 'player' && tokenToDelete?.character_id
+					? currentState.players.filter(p => p.characterId !== tokenToDelete.character_id)
+					: currentState.players;
+			const updatedCharacters =
+				entityInfo.type === 'player' && tokenToDelete?.character_id
+					? (currentState.characters || []).filter(c => c.id !== tokenToDelete.character_id)
+					: currentState.characters || [];
+
+			const activeTurn = currentState.activeTurn?.entityId === entityInfo.entityId ? null : currentState.activeTurn;
+			const pausedTurn = currentState.pausedTurn?.entityId === entityInfo.entityId ? undefined : currentState.pausedTurn;
+
+			const updatedState: MultiplayerGameState = {
+				...currentState,
+				players: updatedPlayers,
+				characters: updatedCharacters,
+				initiativeOrder: updatedInitiative.length > 0 ? updatedInitiative : undefined,
+				activeTurn,
+				pausedTurn,
+				lastUpdated: Date.now(),
+			};
+
+			await gameStateService.saveState(game.id, updatedState);
+		} catch (error) {
+			console.error('Failed to clean up game state after token deletion:', error);
+			// Don't block deletion response on cleanup issues
+		}
+	}
 	return c.json({ tokens: mapState.tokens });
 });
 

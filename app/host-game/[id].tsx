@@ -229,6 +229,22 @@ const HostGameLobbyScreen: React.FC = () => {
 			messages: [],
 			mapState: null,
 			activityLog: [],
+			// Start in DM Mode so players see a paused indicator until the DM resumes
+			activeTurn: {
+				type: 'dm' as const,
+				entityId: hostId,
+				turnNumber: 1,
+				startedAt: Date.now(),
+				movementUsed: 0,
+				majorActionUsed: false,
+				minorActionUsed: false,
+			},
+			pausedTurn: {
+				type: 'dm' as const,
+				entityId: hostId,
+				turnNumber: 1,
+				startedAt: Date.now(),
+			},
 		};
 
 		await startGameMutation.mutateAsync({
@@ -746,4 +762,3 @@ const styles = StyleSheet.create({
 });
 
 export default HostGameLobbyScreen;
-
