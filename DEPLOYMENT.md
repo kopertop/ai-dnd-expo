@@ -268,6 +268,45 @@ eas build:view [BUILD_ID]
 - [ ] Check performance metrics
 - [ ] Gather user feedback
 
+## 🪩 Partykit + Cloudflare Worker Deployment
+
+The realtime backend now runs through Partykit rooms hosted on our Cloudflare Worker. Deployments require both the Worker bundl
+e and the Partykit server entrypoint.
+
+### Required bindings
+
+- `R2_SQL` — SQL-compatible binding backed by R2 (libSQL). Falls back to `DATABASE` locally.
+- `DATABASE` — legacy D1 binding kept for migration safety.
+- `PARTYKIT_HOST` / `PARTYKIT_PUBLIC_URL` — host used for websocket upgrades (e.g., `localhost:1999` locally or `<subdomain>.pa
+rtykit.dev`).
+- `PARTYKIT_SECRET` — optional shared secret for room auth handshakes.
+
+### Local development
+
+```bash
+# Run worker with Partykit routing enabled
+wrangler dev --config wrangler.api.toml
+
+# Run Partykit rooms side-by-side
+bunx partykit dev api/src/partykit/server.ts --host 0.0.0.0 --port 1999
+```
+
+### Production deployment
+
+```bash
+# Build Expo web bundle + worker
+bun run deploy
+
+# Deploy worker (includes websocket upgrade routing)
+wrangler deploy --config wrangler.toml
+
+# Deploy Partykit server (Cloudflare worker target)
+bunx partykit deploy api/src/partykit/server.ts --host $PARTYKIT_HOST
+```
+
+After deploy, verify `/api/games/:inviteCode/ws` returns a websocket URL pointing at the new Partykit host and that websocket u
+pgrades at `/party/*` succeed.
+
 ## 🤝 Team Workflow
 
 ### Roles & Responsibilities

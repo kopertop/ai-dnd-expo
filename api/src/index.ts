@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 
 import { corsMiddleware } from './cors';
 import type { CloudflareBindings } from './env';
+import { resolveSqlBinding } from './utils/repository';
 import adminRoutes from './routes/admin';
 import characterRoutes from './routes/characters';
 import gameRoutes from './routes/games';
@@ -22,11 +23,11 @@ app.use('*', corsMiddleware);
 // Apply auth middleware globally (sets user in context)
 // expo-auth-template handles authentication via useAuth function
 app.use('*', async (c, next) => {
-	// Create env with DB alias for expo-auth-template
-	const envWithDB = {
-		...c.env,
-		DB: c.env.DATABASE, // Package expects DB binding
-	};
+        // Create env with DB alias for expo-auth-template
+        const envWithDB = {
+                ...c.env,
+                DB: resolveSqlBinding(c.env), // Package expects DB binding
+        };
 
 	// Authenticate using expo-auth-template
 	const user = await useAuth(c.req.raw, envWithDB);
@@ -34,12 +35,26 @@ app.use('*', async (c, next) => {
 	// Set user in context
 	c.set('user', user);
 
-	await next();
+        await next();
+});
+
+// Forward websocket upgrade requests to the Partykit host
+app.all('/party/*', c => {
+        if (c.req.header('upgrade')?.toLowerCase() === 'websocket') {
+                        const host = c.env.PARTYKIT_PUBLIC_URL || c.env.PARTYKIT_HOST;
+                        if (!host) {
+                                return c.json({ error: 'Partykit host not configured' }, 500);
+                        }
+                        const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'ws' : 'wss';
+                        const target = `${protocol}://${host}${c.req.path}`;
+                        return Response.redirect(target, 307);
+        }
+        return c.json({ error: 'Upgrade required' }, 400);
 });
 
 // Health check (no auth required) - available at both root and /api paths
 app.get('/health', c => {
-	return c.json({ status: 'ok', timestamp: new Date().toISOString() });
+        return c.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 app.get('/api/health', c => {

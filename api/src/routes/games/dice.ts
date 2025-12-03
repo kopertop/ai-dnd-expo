@@ -4,7 +4,7 @@ import type { GamesContext } from './types';
 
 import { GameStateService } from '@/api/src/services/game-state';
 import { createId, jsonWithStatus } from '@/api/src/utils/games-utils';
-import { Database } from '@/shared/workers/db';
+import { createDatabase } from '@/api/src/utils/repository';
 
 const dice = new Hono<GamesContext>();
 
@@ -24,7 +24,7 @@ dice.post('/:inviteCode/dice/roll', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+        const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {

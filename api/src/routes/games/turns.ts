@@ -4,11 +4,11 @@ import type { GamesContext } from './types';
 
 import { GameStateService } from '@/api/src/services/game-state';
 import {
-	createId,
-	deserializeCharacter,
-	isHostUser,
+        createId,
+        deserializeCharacter,
+        isHostUser,
 } from '@/api/src/utils/games-utils';
-import { Database } from '@/shared/workers/db';
+import { createDatabase } from '@/api/src/utils/repository';
 import { Character } from '@/types/character';
 
 const turns = new Hono<GamesContext>();
@@ -29,7 +29,7 @@ turns.post('/:inviteCode/initiative/roll', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -235,7 +235,7 @@ turns.post('/:inviteCode/turn/start', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -298,7 +298,7 @@ turns.post('/:inviteCode/turn/end', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -358,7 +358,7 @@ turns.post('/:inviteCode/turn/next', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -415,7 +415,7 @@ turns.post('/:inviteCode/turn/update', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -466,7 +466,7 @@ turns.post('/:inviteCode/turn/interrupt', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -498,7 +498,7 @@ turns.post('/:inviteCode/turn/resume', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {

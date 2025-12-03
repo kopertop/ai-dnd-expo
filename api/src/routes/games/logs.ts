@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import type { GamesContext } from './types';
 
 import { createId, isHostUser } from '@/api/src/utils/games-utils';
-import { Database } from '@/shared/workers/db';
+import { createDatabase } from '@/api/src/utils/repository';
 
 const logs = new Hono<GamesContext>();
 
@@ -25,7 +25,7 @@ logs.get('/:inviteCode/log', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+        const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -65,7 +65,7 @@ logs.post('/:inviteCode/log', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -126,7 +126,7 @@ logs.delete('/:inviteCode/log', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
