@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { websocketClient } from '@/services/api/websocket-client';
 import {
@@ -22,6 +23,7 @@ export interface UseWebSocketOptions {
 	onDMMessage?: (message: DMMessage) => void;
 	onError?: (message: ErrorMessage) => void;
 	autoConnect?: boolean;
+	requireCharacterId?: boolean;
 }
 
 export function useWebSocket(options: UseWebSocketOptions) {
@@ -36,10 +38,12 @@ export function useWebSocket(options: UseWebSocketOptions) {
 		onDMMessage,
 		onError,
 		autoConnect = true,
+		requireCharacterId = true,
 	} = options;
 
 	const [isConnected, setIsConnected] = useState(false);
 	const [connectionError, setConnectionError] = useState<string | null>(null);
+	const queryClient = useQueryClient();
 	const handlersRef = useRef<{
 		onGameStateUpdate?: (gameState: MultiplayerGameState) => void;
 		onPlayerJoined?: (message: PlayerJoinedMessage) => void;
@@ -69,11 +73,40 @@ export function useWebSocket(options: UseWebSocketOptions) {
 	]);
 
 	// Message handler
-	const handleMessage = useCallback((message: WebSocketMessage) => {
+	const handleMessage = useCallback((message: WebSocketMessage | { type: 'state'; state: MultiplayerGameState }) => {
 		switch (message.type) {
 			case 'game_state_update':
 				handlersRef.current.onGameStateUpdate?.(message.data.gameState);
+				if (inviteCode) {
+					queryClient.setQueryData<MultiplayerGameState | undefined>(
+						[`/games/${inviteCode}/state`],
+						message.data.gameState,
+					);
+					if (message.data.gameState.mapState) {
+						queryClient.setQueryData(
+							[`/games/${inviteCode}/map`],
+							message.data.gameState.mapState,
+						);
+					}
+				}
 				break;
+			case 'state': {
+				const nextState = (message as { state: MultiplayerGameState }).state;
+				if (inviteCode) {
+					queryClient.setQueryData<MultiplayerGameState | undefined>(
+						[`/games/${inviteCode}/state`],
+						nextState,
+					);
+					if (nextState?.mapState) {
+						queryClient.setQueryData(
+							[`/games/${inviteCode}/map`],
+							nextState.mapState,
+						);
+					}
+				}
+				handlersRef.current.onGameStateUpdate?.(nextState);
+				break;
+			}
 			case 'player_joined':
 				handlersRef.current.onPlayerJoined?.(message);
 				break;
@@ -91,11 +124,15 @@ export function useWebSocket(options: UseWebSocketOptions) {
 				setConnectionError(message.data.error);
 				break;
 			case 'ping':
+				if (inviteCode) {
+					queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
+					queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+				}
+				break;
 			case 'pong':
-				// Handled within websocket client
 				break;
 		}
-	}, []);
+	}, [inviteCode, queryClient]);
 
 	// Connect
 	const connect = useCallback(async () => {
@@ -125,7 +162,8 @@ export function useWebSocket(options: UseWebSocketOptions) {
 	// Auto-connect on mount - use ref to prevent re-connection loops
 	const hasConnectedRef = useRef(false);
 	useEffect(() => {
-		if (autoConnect && inviteCode && playerId && characterId && !hasConnectedRef.current) {
+		const hasIdentity = requireCharacterId ? Boolean(playerId && characterId) : Boolean(playerId);
+		if (autoConnect && inviteCode && hasIdentity && !hasConnectedRef.current) {
 			hasConnectedRef.current = true;
 			connect();
 		}
@@ -137,7 +175,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
 			}
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [autoConnect, inviteCode, playerId, characterId]);
+	}, [autoConnect, inviteCode, playerId, characterId, requireCharacterId]);
 
 	// Check connection status periodically - removed isConnected from deps to prevent loop
 	useEffect(() => {
@@ -162,4 +200,3 @@ export function useWebSocket(options: UseWebSocketOptions) {
 		send: websocketClient.send.bind(websocketClient),
 	};
 }
-

@@ -175,14 +175,31 @@ export class GameStateService {
 			? JSON.parse(gameStateRow.state_data)
 			: {};
 
-		// Get players
+		// Get players from database and merge with any stored state to avoid losing late joiners
 		const memberships = await this.db.getGamePlayers(game.id);
-		const players: PlayerInfo[] = memberships.map(m => ({
+		const playersFromDb: PlayerInfo[] = memberships.map(m => ({
 			characterId: m.character_id,
 			playerId: m.player_id,
 			name: m.character_name,
 			joinedAt: m.joined_at,
 		}));
+		const playersFromState = stateData.players || [];
+		const playersFromDbMap = new Map(playersFromDb.map(p => [p.playerId, p]));
+		const mergedPlayersMap = new Map<string, PlayerInfo>();
+
+		// Start with any stored state (to retain optional fields) and overlay DB membership data
+		for (const player of playersFromState) {
+			const dbMatch = playersFromDbMap.get(player.playerId);
+			mergedPlayersMap.set(player.playerId, dbMatch ? { ...player, ...dbMatch } : player);
+		}
+
+		// Ensure every DB member is present (DB is the source of truth for current roster)
+		for (const player of playersFromDb) {
+			const existing = mergedPlayersMap.get(player.playerId);
+			mergedPlayersMap.set(player.playerId, existing ? { ...existing, ...player } : player);
+		}
+
+		const players = Array.from(mergedPlayersMap.values());
 
 		// Get characters
 		const characterRows = await Promise.all(
@@ -210,7 +227,7 @@ export class GameStateService {
 			inviteCode: game.invite_code,
 			hostId: game.host_id,
 			quest,
-			players: stateData.players || players,
+			players,
 			characters: finalCharacters,
 			playerCharacterId: players[0]?.characterId || '',
 			gameWorld: game.world,

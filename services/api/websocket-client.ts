@@ -1,7 +1,10 @@
+import { authService } from 'expo-auth-template/frontend';
+
+import { API_BASE_URL } from '@/services/config/api-base-url';
+import type { MultiplayerGameState } from '@/types/multiplayer-game';
 import {
 	WebSocketMessage,
 } from '@/types/api/websocket-messages';
-import { API_BASE_URL } from '@/services/config/api-base-url';
 
 export type WebSocketMessageHandler = (message: WebSocketMessage) => void;
 
@@ -10,6 +13,7 @@ export class WebSocketClient {
 	private inviteCode: string = '';
 	private playerId: string = '';
 	private characterId: string = '';
+	private token: string = '';
 	private reconnectAttempts: number = 0;
 	private maxReconnectAttempts: number = 5;
 	private reconnectDelay: number = 1000;
@@ -19,7 +23,7 @@ export class WebSocketClient {
 	/**
 	 * Connect to game WebSocket
 	 */
-	connect(
+	async connect(
 		inviteCode: string,
 		playerId: string,
 		characterId: string,
@@ -31,22 +35,37 @@ export class WebSocketClient {
 		this.inviteCode = inviteCode;
 		this.playerId = playerId;
 		this.characterId = characterId;
+		const user = authService.getUser ? await authService.getUser() : null;
+		const email =
+			(user as { email?: string | null } | null)?.email ||
+			(await authService.getSession())?.email ||
+			'unknown';
+		this.token = `${playerId}:${email}`;
 
 		return new Promise((resolve, reject) => {
 			this.isConnecting = true;
 
 			// Construct WebSocket URL
-			let wsUrl: string;
-			if (API_BASE_URL === '') {
-				// Relative URL (production) - use current protocol/host
-				const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-				const host = typeof window !== 'undefined' ? window.location.host : 'localhost:8787';
-				wsUrl = `${protocol}//${host}`;
-			} else {
-				// HTTP URL (local dev) - convert to WebSocket
-				wsUrl = API_BASE_URL.replace(/^http/, 'ws');
-			}
-			const url = `${wsUrl}/api/games/${inviteCode}/ws?playerId=${playerId}&characterId=${characterId}`;
+			const computeWsBase = () => {
+				// If API_BASE_URL is absolute, use its origin (strip /api path to avoid 404)
+				if (API_BASE_URL.startsWith('http')) {
+					const url = new URL(API_BASE_URL);
+					const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+					return `${protocol}//${url.host}`;
+				}
+
+				// For relative URLs or empty base, fall back to window or localhost
+				if (typeof window !== 'undefined') {
+					const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+					return `${protocol}//${window.location.host}`;
+				}
+
+				// Fallback for non-browser contexts
+				return 'ws://localhost:8787';
+			};
+
+			const wsBase = computeWsBase();
+			const url = `${wsBase.replace(/\/$/, '')}/party/game-room/${inviteCode}?token=${encodeURIComponent(this.token)}`;
 
 			try {
 				const ws = new WebSocket(url);
@@ -108,6 +127,10 @@ export class WebSocketClient {
 		}
 	}
 
+	sendRefresh(): void {
+		this.send({ type: 'ping', message: 'refresh' });
+	}
+
 	/**
 	 * Add message handler
 	 */
@@ -163,4 +186,3 @@ export class WebSocketClient {
 
 // Singleton instance
 export const websocketClient = new WebSocketClient();
-

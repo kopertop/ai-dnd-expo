@@ -1,6 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 
+import { websocketClient } from '@/services/api/websocket-client';
+
 import type {
 	MapMoveResponse,
 	MapStateResponse,
@@ -64,6 +66,7 @@ export function useUpdateMapState(inviteCode: string) {
 			// Invalidate map state and tokens
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -80,6 +83,7 @@ export function useGenerateMap(inviteCode: string) {
 			// Invalidate map state and tokens
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -95,6 +99,7 @@ export function useMutateTerrain(inviteCode: string) {
 		onSuccess: () => {
 			// Invalidate map state
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -111,6 +116,7 @@ export function usePlacePlayerToken(inviteCode: string) {
 			// Invalidate map tokens and state
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -128,6 +134,7 @@ export function useSaveMapToken(inviteCode: string) {
 			queryClient.invalidateQueries();
 			// Immediately refetch game state to get updated movementUsed
 			queryClient.refetchQueries();
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -148,6 +155,7 @@ export function useDeleteMapToken(inviteCode: string) {
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/npc-instances`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}`] });
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -164,6 +172,7 @@ export function usePlaceMapElement(inviteCode: string) {
 			// Invalidate map tokens and state
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -180,6 +189,7 @@ export function useSwitchMap(inviteCode: string) {
 			// Invalidate map state and tokens
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -235,6 +245,7 @@ export function useMoveToken(inviteCode: string) {
 			}
 			// Also refresh tokens list if used elsewhere
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
+			websocketClient.sendRefresh();
 		},
 	});
 }

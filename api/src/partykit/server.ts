@@ -113,15 +113,7 @@ export class GameRoom extends Server<CloudflareBindings> {
 		}
 
 		if (payload.type === 'ping') {
-			this.broadcast(
-				JSON.stringify({
-					type: 'ping',
-					playerId: user.playerId,
-					email: user.email,
-					message: payload.message ?? '',
-					at: Date.now(),
-				}),
-			);
+			await this.broadcastState(game);
 			return;
 		}
 

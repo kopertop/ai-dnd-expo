@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useMutationApi } from 'expo-auth-template/frontend';
 
+import { websocketClient } from '@/services/api/websocket-client';
 import type { GameStateResponse } from '@/types/api/multiplayer-api';
 import type { MultiplayerGameState } from '@/types/multiplayer-game';
 
@@ -15,6 +16,7 @@ export function useStartTurn(inviteCode: string) {
 		onSuccess: () => {
 			// Invalidate all queries to ensure UI updates immediately
 			queryClient.invalidateQueries();
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -30,6 +32,7 @@ export function useEndTurn(inviteCode: string) {
 		onSuccess: () => {
 			// Invalidate all queries to ensure UI updates immediately
 			queryClient.invalidateQueries();
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -45,6 +48,7 @@ export function useUpdateTurnState(inviteCode: string) {
 		onSuccess: () => {
 			// Invalidate all queries to ensure UI updates immediately
 			queryClient.invalidateQueries();
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -63,6 +67,7 @@ export function useInterruptTurn(inviteCode: string) {
 		onSuccess: () => {
 			// Invalidate all queries to ensure UI updates immediately
 			queryClient.invalidateQueries();
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -80,6 +85,7 @@ export function useResumeTurn(inviteCode: string) {
 		onSuccess: () => {
 			// Invalidate all queries to ensure UI updates immediately
 			queryClient.invalidateQueries();
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -95,6 +101,7 @@ export function useNextTurn(inviteCode: string) {
 		onSuccess: () => {
 			// Invalidate all queries to ensure UI updates immediately
 			queryClient.invalidateQueries();
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -117,7 +124,7 @@ export function useRollDice(inviteCode: string) {
 			// Invalidate game state to reflect dice roll in activity log
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/log`] });
+			websocketClient.sendRefresh();
 		},
 	});
 }
-

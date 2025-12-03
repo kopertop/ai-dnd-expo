@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { BlurView } from 'expo-blur';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Easing, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharacterDMModal } from '@/components/character-dm-modal';
@@ -97,6 +98,7 @@ const MultiplayerGameScreen: React.FC = () => {
 	const [isPlacing, setIsPlacing] = useState(false);
 	const { isMobile } = useScreenSize();
 	const insets = useSafeAreaInsets();
+	const dmOverlayPulse = useRef(new Animated.Value(0.5)).current;
 
 	// Get character ID from gameState (memoized to prevent re-renders)
 	// Used for WebSocket connection - needs to be defined early
@@ -105,6 +107,10 @@ const MultiplayerGameScreen: React.FC = () => {
 		const player = gameState.players.find(p => p.playerId === playerId);
 		return player?.characterId || '';
 	}, [gameState, playerId]);
+
+	// Connection identity for WebSocket: prefer playerId, fallback to hostId for DM
+	const connectionPlayerId = playerId || hostId || '';
+	const connectionCharacterId = characterId || '';
 
 	// Stable callback for game state updates
 	const handleGameStateUpdate = useCallback((newState: MultiplayerGameState) => {
@@ -115,14 +121,16 @@ const MultiplayerGameScreen: React.FC = () => {
 	// WebSocket connection - only connect when we have characterId
 	const { isConnected: wsIsConnected } = useWebSocket({
 		inviteCode: inviteCode || '',
-		playerId: playerId || '',
-		characterId: characterId,
+		playerId: connectionPlayerId,
+		characterId: connectionCharacterId,
+		requireCharacterId: false,
 		onGameStateUpdate: handleGameStateUpdate,
 		onPlayerAction: (message: PlayerActionMessage) => {
 			// Handle player action updates
 			console.log('Player action:', message);
 		},
-		autoConnect: !!inviteCode && !!playerId && !!characterId,
+		// Allow host to connect even without a characterId
+		autoConnect: !!inviteCode && !!connectionPlayerId,
 	});
 
 	// Stable callback for polling updates
@@ -345,6 +353,34 @@ const MultiplayerGameScreen: React.FC = () => {
 		() => Boolean(gameState?.pausedTurn && !isHost),
 		[gameState?.pausedTurn, isHost],
 	);
+
+	// Pulse animation for DM action overlay (non-hosts only)
+	useEffect(() => {
+		let loop: Animated.CompositeAnimation | null = null;
+		if (isPausedForPlayers) {
+			loop = Animated.loop(
+				Animated.sequence([
+					Animated.timing(dmOverlayPulse, {
+						toValue: 0.35,
+						duration: 800,
+						useNativeDriver: true,
+						easing: Easing.inOut(Easing.quad),
+					}),
+					Animated.timing(dmOverlayPulse, {
+						toValue: 0.7,
+						duration: 800,
+						useNativeDriver: true,
+						easing: Easing.inOut(Easing.quad),
+					}),
+				]),
+			);
+			loop.start();
+		}
+		return () => {
+			loop?.stop?.();
+			dmOverlayPulse.setValue(0.5);
+		};
+	}, [dmOverlayPulse, isPausedForPlayers]);
 
 	// Use query hooks
 	const { data: availableMapsData } = useAllMaps();
@@ -1854,7 +1890,7 @@ const MultiplayerGameScreen: React.FC = () => {
 		>
 			<View style={[styles.mapContainer, isPausedForPlayers && styles.mapDimmed]}>
 				<DMActionBanner
-					visible={isPausedForPlayers}
+					visible={Boolean(gameState?.pausedTurn) && isHost}
 					message="DM is taking an action"
 				/>
 				{isHost && isMapEditMode && (
@@ -2309,6 +2345,24 @@ const MultiplayerGameScreen: React.FC = () => {
 				commands={commandPaletteCommands}
 				onAIRequest={handleAIRequest}
 			/>
+
+			{/* DM Action Overlay (players only) */}
+			<Modal
+				visible={isPausedForPlayers}
+				transparent
+				animationType="fade"
+				presentationStyle="overFullScreen"
+			>
+				<View style={styles.dmModalBackdrop}>
+					<BlurView tint="dark" intensity={50} style={StyleSheet.absoluteFill} />
+					<Animated.View style={[styles.dmModalContent, { opacity: dmOverlayPulse }]}>
+						<ThemedText style={styles.dmModalTitle}>DM is taking an action</ThemedText>
+						<ThemedText style={styles.dmModalSubtitle}>
+							Hold tight while the DM is setting things up.
+						</ThemedText>
+					</Animated.View>
+				</View>
+			</Modal>
 
 			{/* Token Detail Modal */}
 			<TokenDetailModal
@@ -2823,6 +2877,36 @@ const styles = StyleSheet.create({
 	},
 	mapDimmed: {
 		opacity: 0.6,
+	},
+	dmModalBackdrop: {
+		flex: 1,
+		backgroundColor: 'rgba(0,0,0,0.35)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		padding: 24,
+	},
+	dmModalContent: {
+		paddingVertical: 24,
+		paddingHorizontal: 28,
+		backgroundColor: 'rgba(0,0,0,0.6)',
+		borderRadius: 16,
+		borderWidth: 1,
+		borderColor: 'rgba(255,255,255,0.18)',
+		maxWidth: 420,
+		alignItems: 'center',
+		gap: 10,
+	},
+	dmModalTitle: {
+		color: '#FFFFFF',
+		fontSize: 24,
+		fontWeight: '800',
+		textAlign: 'center',
+		letterSpacing: 0.3,
+	},
+	dmModalSubtitle: {
+		color: '#E5E7EB',
+		fontSize: 15,
+		textAlign: 'center',
 	},
 	mapHeader: {
 		flexDirection: 'row',

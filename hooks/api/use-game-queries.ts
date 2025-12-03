@@ -1,6 +1,8 @@
 import { type UseQueryOptions, useQueryClient } from '@tanstack/react-query';
 import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 
+import { websocketClient } from '@/services/api/websocket-client';
+
 import type {
 	ActivityLogListResponse,
 	GameSessionResponse,
@@ -167,6 +169,7 @@ export function useSubmitPlayerAction(inviteCode: string) {
 			// Invalidate game state
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}`] });
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -184,6 +187,7 @@ export function useSubmitDMAction(inviteCode: string) {
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/characters`] });
+			websocketClient.sendRefresh();
 		},
 	});
 }
@@ -201,6 +205,7 @@ export function useRollInitiative(inviteCode: string) {
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/turn`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}`] });
+			websocketClient.sendRefresh();
 		},
 	});
 }
