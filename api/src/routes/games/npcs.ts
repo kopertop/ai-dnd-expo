@@ -11,7 +11,7 @@ import {
 	npcTokenToResponse,
 	resolveMapRow,
 } from '@/api/src/utils/games-utils';
-import { Database } from '@/shared/workers/db';
+import { createDatabase } from '@/api/src/utils/repository';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { npcFromDb } from '@/utils/schema-adapters';
 
@@ -26,7 +26,7 @@ const npcs = new Hono<GamesContext>();
  * @returns Object with npcs array
  */
 npcs.get('/:inviteCode/npcs', async (c) => {
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const npcRows = await db.listNpcDefinitions();
 	return c.json({ npcs: npcRows.map(npcFromDb) });
 });
@@ -47,7 +47,7 @@ npcs.get('/:inviteCode/npcs/:npcId', async (c) => {
 
 	const inviteCode = c.req.param('inviteCode');
 	const npcId = c.req.param('npcId');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -78,7 +78,7 @@ npcs.post('/:inviteCode/npcs', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -241,7 +241,7 @@ npcs.get('/:inviteCode/npc-instances', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -274,7 +274,7 @@ npcs.patch('/:inviteCode/npcs/:tokenId', async (c) => {
 
 	const inviteCode = c.req.param('inviteCode');
 	const tokenId = c.req.param('tokenId');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {

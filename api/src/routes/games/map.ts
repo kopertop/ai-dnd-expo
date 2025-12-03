@@ -10,8 +10,9 @@ import {
 	isHostUser,
 	resolveMapRow,
 } from '@/api/src/utils/games-utils';
+import { createDatabase } from '@/api/src/utils/repository';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
-import { Database, MapTokenRow } from '@/shared/workers/db';
+import { MapTokenRow } from '@/shared/workers/db';
 import { generateProceduralMap, MapGeneratorPreset } from '@/shared/workers/map-generator';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { BLOCKED_COST, findPathWithCosts, getTerrainCost } from '@/utils/movement-calculator';
@@ -31,7 +32,7 @@ const map = new Hono<GamesContext>();
  */
 map.get('/:inviteCode/map', async (c) => {
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 	const gameStateService = new GameStateService(db);
 	const gameState = game ? await gameStateService.getState(game) : null;
@@ -65,7 +66,7 @@ map.patch('/:inviteCode/map', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -149,7 +150,7 @@ map.post('/:inviteCode/map/generate', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -207,7 +208,7 @@ map.post('/:inviteCode/map/terrain', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -264,7 +265,7 @@ map.post('/:inviteCode/map/terrain', async (c) => {
  */
 map.get('/:inviteCode/map/tokens', async (c) => {
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 	const gameStateService = new GameStateService(db);
 	const gameState = game ? await gameStateService.getState(game) : null;
@@ -288,7 +289,7 @@ map.post('/:inviteCode/map/move', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -415,7 +416,7 @@ map.post('/:inviteCode/map/tokens', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -769,7 +770,7 @@ map.delete('/:inviteCode/map/tokens/:tokenId', async (c) => {
 
 	const inviteCode = c.req.param('inviteCode');
 	const tokenId = c.req.param('tokenId');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {

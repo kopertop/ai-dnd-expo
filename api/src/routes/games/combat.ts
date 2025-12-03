@@ -5,7 +5,7 @@ import type { GamesContext } from './types';
 import { GameStateService } from '@/api/src/services/game-state';
 import { handleBasicAttack, handleSpellCast } from '@/api/src/utils/combat-helpers';
 import { createId, deserializeCharacter, isHostUser } from '@/api/src/utils/games-utils';
-import { Database } from '@/shared/workers/db';
+import { createDatabase } from '@/api/src/utils/repository';
 import type {
 	CharacterActionResult,
 } from '@/types/combat';
@@ -36,7 +36,7 @@ combat.post('/:inviteCode/characters/:characterId/:action', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -192,7 +192,7 @@ combat.post('/:inviteCode/characters/:characterId/actions', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -343,7 +343,7 @@ combat.post('/:inviteCode/characters/:characterId/perception-check', async (c) =
 
 	const inviteCode = c.req.param('inviteCode');
 	const characterId = c.req.param('characterId');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -458,7 +458,7 @@ combat.post('/:inviteCode/dm-action', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -546,4 +546,3 @@ combat.post('/:inviteCode/dm-action', async (c) => {
 });
 
 export default combat;
-

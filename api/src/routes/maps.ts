@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 
-import { Database } from '../../../shared/workers/db';
 import type { CloudflareBindings } from '../env';
+
+import { createDatabase } from '@/api/src/utils/repository';
 
 type Variables = {
 	user: { id: string; email: string; name?: string | null } | null;
@@ -13,7 +14,7 @@ const maps = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
  * List all available maps in the system
  */
 maps.get('/', async (c) => {
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	try {
 		const mapsList = await db.listMaps();
 		return c.json({ maps: mapsList });
@@ -32,7 +33,7 @@ maps.post('/clone', async (c) => {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
 
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const payload = (await c.req.json().catch(() => ({}))) as {
 		sourceMapId: string;
 		newName: string;
@@ -59,5 +60,3 @@ maps.post('/clone', async (c) => {
 });
 
 export default maps;
-
-

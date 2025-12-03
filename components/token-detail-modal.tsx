@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Image, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { MapToken } from '@/types/multiplayer-map';
@@ -55,8 +55,20 @@ export const TokenDetailModal: React.FC<TokenDetailModalProps> = ({
 
 	const handleDelete = () => {
 		if (!onDelete) return;
-		
+
 		const tokenName = token.label || token.type || 'this token';
+
+		// Alert button callbacks are ignored on web; use confirm instead
+		if (Platform.OS === 'web') {
+			const confirmed = typeof window !== 'undefined'
+				? window.confirm(`Are you sure you want to remove ${tokenName} from the map?`)
+				: false;
+			if (confirmed) {
+				onDelete();
+			}
+			return;
+		}
+
 		Alert.alert(
 			'Remove Token',
 			`Are you sure you want to remove ${tokenName} from the map?`,
@@ -320,4 +332,3 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 	},
 });
-

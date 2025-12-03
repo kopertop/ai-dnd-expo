@@ -6,7 +6,7 @@ import {
 	deserializeCharacter,
 	isHostUser,
 } from '@/api/src/utils/games-utils';
-import { Database } from '@/shared/workers/db';
+import { createDatabase } from '@/api/src/utils/repository';
 import { Character } from '@/types/character';
 
 const characters = new Hono<GamesContext>();
@@ -27,7 +27,7 @@ characters.get('/:inviteCode/characters', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -50,5 +50,4 @@ characters.get('/:inviteCode/characters', async (c) => {
 });
 
 export default characters;
-
 

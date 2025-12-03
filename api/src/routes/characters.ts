@@ -7,7 +7,7 @@ import {
 	deserializeCharacter,
 	serializeCharacter,
 } from '@/api/src/utils/games-utils';
-import { Database } from '@/shared/workers/db';
+import { createDatabase } from '@/api/src/utils/repository';
 import { Character } from '@/types/character';
 
 type Variables = {
@@ -32,7 +32,7 @@ characters.get('/', async (c) => {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
 
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const characterRows = await db.getCharactersByPlayerIdentity(user.id, user.email);
 
 	// Use map to de-duplicate characters that match both ID and email
@@ -60,7 +60,7 @@ characters.post('/', async (c) => {
 
 	const payload = (await c.req.json()) as Character;
 	const characterId = payload.id || createId('char');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const serialized = serializeCharacter(
 		{ ...payload, id: characterId },
 		user.id,
@@ -87,7 +87,7 @@ characters.put('/:id', async (c) => {
 
 	const characterId = c.req.param('id');
 	const updates = (await c.req.json()) as Partial<Character>;
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const existing = await db.getCharacterById(characterId);
 
 	if (!existing) {
@@ -124,7 +124,7 @@ characters.delete('/:id', async (c) => {
 	}
 
 	const characterId = c.req.param('id');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const existing = await db.getCharacterById(characterId);
 
 	if (!existing) {
@@ -140,4 +140,3 @@ characters.delete('/:id', async (c) => {
 });
 
 export default characters;
-

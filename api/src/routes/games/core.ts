@@ -4,7 +4,7 @@ import type { GamesContext } from './types';
 
 import { GameStateService } from '@/api/src/services/game-state';
 import { createId, deserializeCharacter, isHostUser, serializeCharacter, toGameSummary } from '@/api/src/utils/games-utils';
-import { Database } from '@/shared/workers/db';
+import { createDatabase } from '@/api/src/utils/repository';
 import { generateInviteCode } from '@/shared/workers/session-manager';
 import type { CreateGameBody, JoinGameBody } from '@/types/games-api';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
@@ -41,7 +41,7 @@ core.post('/', async (c) => {
 		return c.json({ error: 'Quest ID or quest data is required' }, 400);
 	}
 
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 
 	let questData = quest ?? null;
 	if (!questData && questId) {
@@ -126,7 +126,7 @@ core.get('/me', async (c) => {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
 
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const hostedGames = await db.getGamesHostedByUser(user.id, user.email);
 	const memberships = await db.getGameMembershipsForPlayer(user.id, user.email);
 
@@ -171,7 +171,7 @@ core.get('/me', async (c) => {
  */
 core.get('/:inviteCode', async (c) => {
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -212,7 +212,7 @@ core.get('/:inviteCode/state', async (c) => {
 	const inviteCode = c.req.param('inviteCode');
 	console.log(`[State] Fetching game state for invite code: "${inviteCode}" (length: ${inviteCode.length})`);
 
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 
 	// getGameByInviteCode now handles case-insensitive fallback internally
 	const game = await db.getGameByInviteCode(inviteCode);
@@ -251,7 +251,7 @@ core.post('/:inviteCode/join', async (c) => {
 
 	const inviteCode = c.req.param('inviteCode');
 	const body = (await c.req.json()) as JoinGameBody & { characterId?: string };
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 
 	// Accept either full character payload or a characterId referring to an existing character
 	const existingCharacterRow = body.characterId ? await db.getCharacterById(body.characterId) : null;
@@ -319,7 +319,7 @@ core.post('/:inviteCode/start', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -357,7 +357,7 @@ core.patch('/:inviteCode/stop', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {
@@ -399,7 +399,7 @@ core.delete('/:inviteCode', async (c) => {
 	}
 
 	const inviteCode = c.req.param('inviteCode');
-	const db = new Database(c.env.DATABASE);
+	const db = createDatabase(c.env);
 	const game = await db.getGameByInviteCode(inviteCode);
 
 	if (!game) {

@@ -101,6 +101,7 @@
 		"expo-web-browser": "~15.0.9",
 		"hono": "^4.10.6",
 		"openmemory-js": "^1.0.0",
+		"partykit": "0.0.115",
 		"react": "19.1.0",
 		"react-dom": "19.1.0",
 		"react-native": "0.81.5",
