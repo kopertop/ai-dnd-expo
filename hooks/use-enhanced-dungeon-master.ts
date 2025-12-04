@@ -1,8 +1,7 @@
 /**
- * Enhanced Dungeon Master Hook with Cactus + Gemma3 Integration
+ * Enhanced Dungeon Master Hook with AI Integration
  *
  * This replaces the old use-dungeon-master.ts with better architecture:
- * - Cactus compute network for Gemma3 inference
  * - Intelligent fallback strategies
  * - Better error handling and recovery
  * - Performance monitoring
@@ -12,9 +11,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useDMVoice } from '@/hooks/use-text-to-speech';
 import { DMMessage } from '@/services/ai/agents/dungeon-master-agent';
-import { AIServiceManager, DefaultAIConfig } from '@/services/ai/ai-service-manager';
+import {
+	AIServiceManager,
+	DefaultAIConfig,
+	type ProviderType,
+	type ServiceStatus,
+} from '@/services/ai/ai-service-manager';
 import { Character } from '@/types/character';
 import { GameWorldState } from '@/types/world-map';
+import type { ResourceUsage } from '@/services/ai/providers/local-dm-provider';
 
 export interface UseEnhancedDungeonMasterReturn {
 	messages: DMMessage[];
@@ -25,35 +30,27 @@ export interface UseEnhancedDungeonMasterReturn {
 	error: string | null;
 	dmVoice: ReturnType<typeof useDMVoice>;
 	replaceWelcomeMessage: (newContent: string) => void;
-	serviceStatus: {
-		primary: { available: boolean; latency?: number };
-		local: {
-			available: boolean;
-			resourceUsage?: import('../services/ai/providers/local-dm-provider').ResourceUsage;
-		};
-		cache: { size: number; hitRate: number };
-		overall: 'healthy' | 'degraded' | 'offline';
-	};
+	serviceStatus: ServiceStatus;
 	retryConnection: () => Promise<void>;
 	// New local provider functionality
 	localProviderStatus: {
 		isReady: boolean;
 		modelLoaded: boolean;
 		error: string | null;
-		resourceUsage?: import('../services/ai/providers/local-dm-provider').ResourceUsage;
+		resourceUsage?: ResourceUsage;
 	};
 	switchProvider: (providerType: 'local' | 'ollama') => Promise<boolean>;
 	getProviderRecommendation: () => {
-		recommended: 'local' | 'ollama' | 'fallback';
+		recommended: ProviderType;
 		reason: string;
 		confidence: number;
 	};
-	currentProvider: 'local' | 'ollama' | 'fallback';
+	currentProvider: ProviderType;
 	providerPreferences: {
 		preferLocal: boolean;
 		setPreferLocal: (prefer: boolean) => void;
-		fallbackChain: ('local' | 'ollama' | 'rule-based')[];
-		setFallbackChain: (chain: ('local' | 'ollama' | 'rule-based')[]) => void;
+		fallbackChain: ProviderType[];
+		setFallbackChain: (chain: ProviderType[]) => void;
 	};
 }
 
@@ -74,7 +71,7 @@ export const useEnhancedDungeonMaster = (
 		primary: { available: boolean; latency?: number };
 		local: {
 			available: boolean;
-			resourceUsage?: import('../services/ai/providers/local-dm-provider').ResourceUsage;
+			resourceUsage?: ResourceUsage;
 		};
 		cache: { size: number; hitRate: number };
 		overall: 'healthy' | 'degraded' | 'offline';
@@ -90,22 +87,18 @@ export const useEnhancedDungeonMaster = (
 		isReady: boolean;
 		modelLoaded: boolean;
 		error: string | null;
-		resourceUsage?: import('../services/ai/providers/local-dm-provider').ResourceUsage;
-			}>({
-				isReady: false,
-				modelLoaded: false,
-				error: null,
-			});
+		resourceUsage?: ResourceUsage;
+	}>({
+		isReady: false,
+		modelLoaded: false,
+		error: null,
+	});
 
-	const [currentProvider, setCurrentProvider] = useState<'local' | 'ollama' | 'fallback'>(
-		'fallback',
-	);
+	const [currentProvider, setCurrentProvider] = useState<ProviderType>('fallback');
 	const [preferLocal, setPreferLocal] = useState<boolean>(true); // Default to prefer local for privacy
-	const [fallbackChain, setFallbackChain] = useState<('local' | 'ollama' | 'rule-based')[]>([
-		'local',
-		'ollama',
-		'rule-based',
-	]);
+	const [fallbackChain, setFallbackChain] = useState<ProviderType[]>(
+		DefaultAIConfig.providerSelection.fallbackChain,
+	);
 	const [gameContextId] = useState<string>(
 		() => `game_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 	);
@@ -119,34 +112,14 @@ export const useEnhancedDungeonMaster = (
 
 		try {
 			const detailedStatus = aiServiceRef.current.getDetailedStatus();
-			const localStatus = detailedStatus.local;
-
-			// Convert resource usage to match expected type
-			let resourceUsage:
-				| import('../services/ai/providers/local-dm-provider').ResourceUsage
-				| undefined;
-			if (localStatus.status?.resourceUsage) {
-				const rawUsage = localStatus.status.resourceUsage;
-				resourceUsage = {
-					memory: rawUsage.memory,
-					cpu: rawUsage.cpu,
-					battery: {
-						level: rawUsage.battery.level,
-						isCharging: rawUsage.battery.isCharging,
-						estimatedTimeRemaining:
-							(rawUsage.battery as any).estimatedTimeRemaining || 0,
-					},
-					thermal: {
-						state: rawUsage.thermal.state,
-						temperature: (rawUsage.thermal as any).temperature || 0,
-					},
-				};
-			}
+			const status = await aiServiceRef.current.getServiceStatus();
+			const localStatus = detailedStatus.local ?? { ready: false, initialized: false };
+			const resourceUsage = status.local.resourceUsage;
 
 			setLocalProviderStatus({
-				isReady: localStatus.ready,
-				modelLoaded: localStatus.initialized,
-				error: localStatus.status?.error || null,
+				isReady: Boolean(localStatus.ready),
+				modelLoaded: Boolean((localStatus as any).initialized ?? localStatus.ready),
+				error: localStatus.status?.error ?? null,
 				resourceUsage,
 			});
 		} catch (error) {

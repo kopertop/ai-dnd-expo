@@ -198,27 +198,27 @@ export const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
 						]}
 					>
 						<TouchableOpacity
-						style={[
-							styles.micButton,
-							{ backgroundColor: getMicButtonColor() },
-							recognizing && styles.listeningButton,
-						]}
-						onPress={handleVoiceToggle}
-						disabled={disabled}
-						activeOpacity={0.8}
-					>
-						<FontAwesome
-							name={
-								recognizing
-									? 'microphone'
-									: hasPermission
+							style={[
+								styles.micButton,
+								{ backgroundColor: getMicButtonColor() },
+								recognizing && styles.listeningButton,
+							]}
+							onPress={handleVoiceToggle}
+							disabled={disabled}
+							activeOpacity={0.8}
+						>
+							<FontAwesome
+								name={
+									recognizing
 										? 'microphone'
-										: 'microphone-slash'
-							}
-							size={20}
-							color={getMicIconColor()}
-						/>
-					</TouchableOpacity>
+										: hasPermission
+											? 'microphone'
+											: 'microphone-slash'
+								}
+								size={20}
+								color={getMicIconColor()}
+							/>
+						</TouchableOpacity>
 					</Animated.View>
 				)}
 

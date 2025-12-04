@@ -16,7 +16,7 @@ const ChatTab: React.FC = () => {
 	const { loading, gameState, save } = useGameState();
 	const [saveError, setSaveError] = useState<string | null>(null);
 
-	// Initialize Dungeon Master agent (enhanced, cactus-free)
+	// Initialize Dungeon Master agent (enhanced)
 	const playerCharacter = gameState
 		? gameState.characters.find(c => c.id === gameState.playerCharacterId)
 		: null;

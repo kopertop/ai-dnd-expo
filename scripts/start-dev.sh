@@ -15,8 +15,8 @@ echo ""
 # Change to project root
 cd "$PROJECT_ROOT"
 
-# Start worker in background
-(cd "$PROJECT_ROOT/workers" && bun run dev) &
+# Start API worker in background (from project root)
+(bun run dev) &
 WORKER_PID=$!
 
 # Wait a moment for worker to start

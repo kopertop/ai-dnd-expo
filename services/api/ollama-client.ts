@@ -11,6 +11,7 @@ export interface OllamaMessage {
 }
 
 export interface OllamaCompletionParams {
+	model?: string;
 	temperature?: number;
 	top_p?: number;
 	num_predict?: number;
@@ -19,8 +20,8 @@ export interface OllamaCompletionParams {
 }
 
 export interface OllamaResponse {
-	text: string;
-	done: boolean;
+	text?: string;
+	done?: boolean;
 	model?: string;
 	total_duration?: number;
 	load_duration?: number;
@@ -28,6 +29,11 @@ export interface OllamaResponse {
 	prompt_eval_duration?: number;
 	eval_count?: number;
 	eval_duration?: number;
+	message?: {
+		role: string;
+		content: string;
+	};
+	response?: string;
 }
 
 export interface OllamaStreamChunk {
@@ -47,15 +53,30 @@ export class OllamaClient {
 	private baseUrl: string;
 	private defaultModel: string;
 	private timeout: number;
+	private apiKey: string | null;
 
 	constructor(config?: {
 		baseUrl?: string;
 		defaultModel?: string;
 		timeout?: number;
+		apiKey?: string;
 	}) {
 		this.baseUrl = config?.baseUrl || process.env.EXPO_PUBLIC_OLLAMA_BASE_URL || 'http://localhost:11434';
 		this.defaultModel = config?.defaultModel || 'llama3.2';
 		this.timeout = config?.timeout || 30000;
+		this.apiKey = config?.apiKey || process.env.EXPO_PUBLIC_OLLAMA_API_KEY || null;
+	}
+
+	private getHeaders(): Record<string, string> {
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json',
+		};
+		
+		if (this.apiKey) {
+			headers['Authorization'] = `Bearer ${this.apiKey}`;
+		}
+		
+		return headers;
 	}
 
 	/**
@@ -89,9 +110,7 @@ export class OllamaClient {
 
 			const response = await fetch(url, {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers: this.getHeaders(),
 				body: JSON.stringify(requestBody),
 				signal: controller.signal,
 			});
@@ -152,9 +171,7 @@ export class OllamaClient {
 
 			const response = await fetch(url, {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers: this.getHeaders(),
 				body: JSON.stringify(requestBody),
 				signal: controller.signal,
 			});
@@ -224,6 +241,7 @@ export class OllamaClient {
 
 			const response = await fetch(url, {
 				method: 'GET',
+				headers: this.getHeaders(),
 				signal: controller.signal,
 			});
 
@@ -242,6 +260,7 @@ export class OllamaClient {
 			const url = `${this.baseUrl}/api/tags`;
 			const response = await fetch(url, {
 				method: 'GET',
+				headers: this.getHeaders(),
 			});
 
 			if (!response.ok) {
@@ -255,21 +274,3 @@ export class OllamaClient {
 		}
 	}
 }
-
-// Fix for TypeScript - OllamaResponse might have message property
-interface OllamaResponse {
-	message?: {
-		role: string;
-		content: string;
-	};
-	response?: string;
-	done?: boolean;
-	model?: string;
-	total_duration?: number;
-	load_duration?: number;
-	prompt_eval_count?: number;
-	prompt_eval_duration?: number;
-	eval_count?: number;
-	eval_duration?: number;
-}
-

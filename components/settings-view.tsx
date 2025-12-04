@@ -71,12 +71,12 @@ const WebSlider = ({
 	style,
 }: {
 	value: number;
-	onValueChange: (value: number) => void;
+	onValueChange?: (value: number) => void;
 	style?: any;
 }) => (
 	<View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }, style]}>
 		<TouchableOpacity
-			onPress={() => onValueChange(Math.max(0, Number((value - 0.05).toFixed(2))))}
+			onPress={() => onValueChange?.(Math.max(0, Number((value - 0.05).toFixed(2))))}
 			style={styles.webSliderButton}
 		>
 			<Text style={styles.webSliderButtonText}>-</Text>
@@ -85,7 +85,7 @@ const WebSlider = ({
 			<View style={[styles.webSliderFill, { width: `${Math.min(100, Math.max(0, value * 100))}%` }]} />
 		</View>
 		<TouchableOpacity
-			onPress={() => onValueChange(Math.min(1, Number((value + 0.05).toFixed(2))))}
+			onPress={() => onValueChange?.(Math.min(1, Number((value + 0.05).toFixed(2))))}
 			style={styles.webSliderButton}
 		>
 			<Text style={styles.webSliderButtonText}>+</Text>
@@ -99,14 +99,14 @@ const AdaptiveSlider = ({
 	style,
 }: {
 	value: number;
-	onValueChange: (value: number) => void;
+	onValueChange?: (value: number) => void;
 	style?: any;
 }) => {
 	if (Platform.OS !== 'web' && SwiftUISlider) {
-		return <SwiftUISlider style={style} value={value} onValueChange={onValueChange} />;
+		return <SwiftUISlider style={style} value={value} onValueChange={onValueChange || (() => {})} />;
 	}
 
-	return <WebSlider style={style} value={value} onValueChange={onValueChange} />;
+	return <WebSlider style={style} value={value} onValueChange={onValueChange || (() => {})} />;
 };
 
 export const SettingsView: React.FC = () => {
@@ -221,7 +221,7 @@ export const SettingsView: React.FC = () => {
 					<View style={styles.settingItem}>
 						<ThemedText>Music Volume</ThemedText>
 						<View style={styles.volumeSliderContainer}>
-							<Slider
+							<AdaptiveSlider
 								style={styles.volumeSlider}
 								value={musicVolume}
 								onValueChange={isMusicMuted ? undefined : handleVolumeChange}

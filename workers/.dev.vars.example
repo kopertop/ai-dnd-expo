@@ -1,7 +1,0 @@
-# Copy this file to .dev.vars for local development
-# Cloudflare Workers will automatically load .dev.vars
-
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2
-ADMIN_EMAILS=kopertop@gmail.com,cmoyer@newstex.com
-

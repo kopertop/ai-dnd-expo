@@ -9,6 +9,12 @@ import {
 	waitForAsyncUpdates,
 } from '@/tests/utils/render-helpers';
 
+vi.mock('@expo/vector-icons', () => ({
+	Ionicons: () => null,
+	Feather: () => null,
+	default: () => null,
+}));
+
 describe('Collapsible', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();

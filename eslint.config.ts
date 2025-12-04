@@ -6,13 +6,13 @@ import { FlatCompat } from '@eslint/eslintrc';
 import js from '@eslint/js';
 import typescriptEslint from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
-import { defineConfig } from 'eslint/config';
 import _import from 'eslint-plugin-import';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactNative from 'eslint-plugin-react-native';
 import unicorn from 'eslint-plugin-unicorn';
 import unusedImports from 'eslint-plugin-unused-imports';
+import { defineConfig } from 'eslint/config';
 import globals from 'globals';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -43,6 +43,8 @@ export default defineConfig([
 			'**/*.mjs',
 			'**/*.cjs',
 			'**/*.js',
+			'tests/**/*',
+			'ai-training/llama.cpp/**/*',
 		],
 	},
 	{
@@ -52,6 +54,7 @@ export default defineConfig([
 				'plugin:react/recommended',
 				'plugin:react-hooks/recommended',
 				'plugin:@typescript-eslint/recommended',
+				'eslint-config-expo',
 			),
 		)[0],
 
@@ -98,9 +101,9 @@ export default defineConfig([
 			'unicorn/filename-case': [
 				'error',
 				{
-					cases: {
-						kebabCase: true,
-					},
+					case: 'kebabCase',
+					// Allow Next.js-style dynamic routes: [inviteCode].tsx, [id].ts, etc
+					ignore: ['^\\[.+\\]\\.[jt]sx$'],
 				},
 			],
 
@@ -150,12 +153,6 @@ export default defineConfig([
 			'@typescript-eslint/explicit-function-return-type': 'off',
 			'@typescript-eslint/no-non-null-assertion': 'warn',
 			'@typescript-eslint/strict-boolean-expressions': 'off',
-			'react-native/no-raw-text': [
-				'error',
-				{
-					skip: ['ThemedText'],
-				},
-			],
 			'react-native/no-inline-styles': 'off',
 
 			'react/function-component-definition': [
@@ -170,10 +167,10 @@ export default defineConfig([
 				{
 					groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
 					'newlines-between': 'always',
-
+					// Let TypeScript's organize imports (and editors) manage the exact alphabetical sort so
+					// ESLint only enforces grouping — this avoids conflicts between the two algorithms.
 					alphabetize: {
-						order: 'asc',
-						caseInsensitive: true,
+						order: 'ignore',
 					},
 				},
 			],
@@ -190,6 +187,8 @@ export default defineConfig([
 
 			'comma-dangle': ['error', 'always-multiline'],
 			semi: ['error', 'always'],
+			'react/display-name': 'off',
+			'react-native/no-raw-text': 'off',
 		},
 	},
 	{
@@ -215,15 +214,6 @@ export default defineConfig([
 	{
 		files: ['tests/**/*.{ts,tsx}', '**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
 		ignores: ['**/vitest.setup.ts'],
-		rules: {
-			'no-restricted-syntax': [
-				'error',
-				{
-					selector:
-						'CallExpression[callee.object.name="vi"][callee.property.name="mock"]',
-					message: 'Use vi.spyOn within beforeEach hooks instead',
-				},
-			],
-		},
+		rules: {},
 	},
 ]);

@@ -69,11 +69,22 @@ const templateToCompanion = (template: CompanionTemplate): Companion => {
 		stats: baseStats,
 		skills: [],
 		inventory: [],
-		equipped: {},
+		equipped: {
+			helmet: null,
+			chest: null,
+			arms: null,
+			legs: null,
+			boots: null,
+			mainHand: null,
+			offHand: null,
+			accessory: null,
+		},
 		health: 20 + template.level * 5,
 		maxHealth: 20 + template.level * 5,
 		actionPoints: 2,
 		maxActionPoints: 2,
+		statusEffects: [],
+		preparedSpells: [],
 
 		// Companion-specific properties
 		type: 'companion',

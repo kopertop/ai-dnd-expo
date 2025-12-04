@@ -11,6 +11,7 @@ export interface DMMessage {
 	timestamp: number;
 	type: 'narration' | 'dialogue' | 'action_result' | 'system';
 	speaker?: string;
+	role?: 'user' | 'assistant' | 'system';
 	toolCalls?: ToolCall[];
 }
 
@@ -53,6 +54,7 @@ export class DungeonMasterAgent {
 			content: '',
 			timestamp: Date.now(),
 			type: 'narration',
+			role: 'assistant',
 			toolCalls: [],
 		};
 

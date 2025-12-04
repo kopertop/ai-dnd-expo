@@ -11,6 +11,7 @@ export interface OllamaProviderConfig {
 	baseUrl?: string;
 	defaultModel?: string;
 	timeout?: number;
+	apiKey?: string;
 }
 
 export interface OllamaProviderInterface {
@@ -42,6 +43,7 @@ export class OllamaProvider implements OllamaProviderInterface {
 			baseUrl: config.baseUrl,
 			defaultModel: config.defaultModel,
 			timeout: config.timeout,
+			apiKey: config.apiKey,
 		});
 	}
 

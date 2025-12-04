@@ -41,9 +41,14 @@ An open-source platform for playing Dungeons and Dragons online with AI assistan
    Create a `.env` file in the root directory:
 
    ```env
+   # API routing (defaults to localhost dev)
+   EXPO_PUBLIC_API_BASE_URL=http://localhost:8787
+
    # Ollama Configuration (for web platform)
    EXPO_PUBLIC_OLLAMA_BASE_URL=http://localhost:11434
    EXPO_PUBLIC_OLLAMA_MODEL=llama3.2
+   # Optional API key for Ollama servers that require authentication
+   EXPO_PUBLIC_OLLAMA_API_KEY=your-api-key-here
 
    # Kokoro TTS Configuration (optional)
    EXPO_PUBLIC_TTS_BASE_URL=http://localhost:5000
@@ -52,7 +57,7 @@ An open-source platform for playing Dungeons and Dragons online with AI assistan
    EXPO_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
    EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB=your-google-client-id-web
 
-   # Apple OAuth (for authentication)
+   # Apple OAuth (for iOS authentication)
    EXPO_PUBLIC_APPLE_CLIENT_ID=your-apple-client-id
    ```
 

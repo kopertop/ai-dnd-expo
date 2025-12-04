@@ -1,47 +1,10 @@
+import { authService } from 'expo-auth-template/frontend';
+
+import { API_BASE_URL } from '@/services/config/api-base-url';
+import type { MultiplayerGameState } from '@/types/multiplayer-game';
 import {
-	GameStateUpdateMessage,
-	PlayerJoinedMessage,
-	PlayerLeftMessage,
-	PlayerActionMessage,
-	DMMessage,
-	ErrorMessage,
 	WebSocketMessage,
 } from '@/types/api/websocket-messages';
-import { MultiplayerGameState } from '@/types/multiplayer-game';
-
-// Determine API base URL (same logic as multiplayer-client.ts):
-// 1. If EXPO_PUBLIC_MULTIPLAYER_API_URL is set, use it (for explicit Worker URL)
-// 2. If running in browser on localhost, use http://localhost:8787 (local dev)
-// 3. If running in browser on production, use relative URLs (for Cloudflare Pages routing)
-// 4. Otherwise (Node/Expo), use localhost for local development
-const getApiBaseUrl = (): string => {
-	const explicitUrl = process.env.EXPO_PUBLIC_MULTIPLAYER_API_URL;
-	if (explicitUrl) {
-		return explicitUrl;
-	}
-	
-	// Check if we're in a browser environment
-	if (typeof window !== 'undefined') {
-		// Check if we're on localhost (local development)
-		const isLocalhost = window.location.hostname === 'localhost' || 
-		                   window.location.hostname === '127.0.0.1' ||
-		                   window.location.hostname === '';
-		
-		if (isLocalhost) {
-			// Local development - use full localhost URL
-			return 'http://localhost:8787';
-		}
-		
-		// Production - use relative URLs so Cloudflare Pages routes /api/* to Worker
-		// Return empty string, will be converted to WebSocket URL in connect()
-		return '';
-	}
-	
-	// Node/Expo dev server - use localhost
-	return 'http://localhost:8787';
-};
-
-const API_BASE_URL = getApiBaseUrl();
 
 export type WebSocketMessageHandler = (message: WebSocketMessage) => void;
 
@@ -50,6 +13,7 @@ export class WebSocketClient {
 	private inviteCode: string = '';
 	private playerId: string = '';
 	private characterId: string = '';
+	private token: string = '';
 	private reconnectAttempts: number = 0;
 	private maxReconnectAttempts: number = 5;
 	private reconnectDelay: number = 1000;
@@ -59,7 +23,7 @@ export class WebSocketClient {
 	/**
 	 * Connect to game WebSocket
 	 */
-	connect(
+	async connect(
 		inviteCode: string,
 		playerId: string,
 		characterId: string,
@@ -71,28 +35,42 @@ export class WebSocketClient {
 		this.inviteCode = inviteCode;
 		this.playerId = playerId;
 		this.characterId = characterId;
+		const user = authService.getUser ? await authService.getUser() : null;
+		const email =
+			(user as { email?: string | null } | null)?.email ||
+			(await authService.getSession())?.email ||
+			'unknown';
+		this.token = `${playerId}:${email}`;
 
 		return new Promise((resolve, reject) => {
 			this.isConnecting = true;
 
 			// Construct WebSocket URL
-			let wsUrl: string;
-			if (API_BASE_URL === '') {
-				// Relative URL (production) - use current protocol/host
-				const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-				const host = typeof window !== 'undefined' ? window.location.host : 'localhost:8787';
-				wsUrl = `${protocol}//${host}`;
-			} else {
-				// HTTP URL (local dev) - convert to WebSocket
-				wsUrl = API_BASE_URL.replace(/^http/, 'ws');
-			}
-			const url = `${wsUrl}/api/games/${inviteCode}/ws?playerId=${playerId}&characterId=${characterId}`;
+			const computeWsBase = () => {
+				// If API_BASE_URL is absolute, use its origin (strip /api path to avoid 404)
+				if (API_BASE_URL.startsWith('http')) {
+					const url = new URL(API_BASE_URL);
+					const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+					return `${protocol}//${url.host}`;
+				}
+
+				// For relative URLs or empty base, fall back to window or localhost
+				if (typeof window !== 'undefined') {
+					const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+					return `${protocol}//${window.location.host}`;
+				}
+
+				// Fallback for non-browser contexts
+				return 'ws://localhost:8787';
+			};
+
+			const wsBase = computeWsBase();
+			const url = `${wsBase.replace(/\/$/, '')}/party/game-room/${inviteCode}?token=${encodeURIComponent(this.token)}`;
 
 			try {
 				const ws = new WebSocket(url);
 
 				ws.onopen = () => {
-					console.log('WebSocket connected');
 					this.ws = ws;
 					this.isConnecting = false;
 					this.reconnectAttempts = 0;
@@ -115,7 +93,6 @@ export class WebSocketClient {
 				};
 
 				ws.onclose = () => {
-					console.log('WebSocket closed');
 					this.ws = null;
 					this.isConnecting = false;
 					this.attemptReconnect();
@@ -148,6 +125,10 @@ export class WebSocketClient {
 		} else {
 			console.warn('WebSocket is not connected');
 		}
+	}
+
+	sendRefresh(): void {
+		this.send({ type: 'ping', message: 'refresh' });
 	}
 
 	/**
@@ -194,10 +175,9 @@ export class WebSocketClient {
 		const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
 
 		setTimeout(() => {
-			console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
 			this.connect(this.inviteCode, this.playerId, this.characterId).catch(
 				(error) => {
-					console.error('Reconnection failed:', error);
+					// Silently handle reconnection failures
 				},
 			);
 		}, delay);
@@ -206,4 +186,3 @@ export class WebSocketClient {
 
 // Singleton instance
 export const websocketClient = new WebSocketClient();
-

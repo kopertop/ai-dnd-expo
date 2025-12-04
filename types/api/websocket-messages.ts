@@ -14,12 +14,6 @@ export const WebSocketMessageTypeSchema = z.enum([
 	'pong',
 ]);
 
-export const WebSocketMessageSchema = z.object({
-	type: WebSocketMessageTypeSchema,
-	timestamp: z.number(),
-	data: z.record(z.unknown()),
-});
-
 export const GameStateUpdateMessageSchema = z.object({
 	type: z.literal('game_state_update'),
 	timestamp: z.number(),
@@ -75,8 +69,30 @@ export const ErrorMessageSchema = z.object({
 	}),
 });
 
+export const PingMessageSchema = z.object({
+	type: z.literal('ping'),
+	timestamp: z.number(),
+	data: z.record(z.unknown()).optional().default({}),
+});
+
+export const PongMessageSchema = z.object({
+	type: z.literal('pong'),
+	timestamp: z.number(),
+	data: z.record(z.unknown()).optional().default({}),
+});
+
+export const WebSocketMessageSchema = z.union([
+	GameStateUpdateMessageSchema,
+	PlayerJoinedMessageSchema,
+	PlayerLeftMessageSchema,
+	PlayerActionMessageSchema,
+	DMMessageSchema,
+	ErrorMessageSchema,
+	PingMessageSchema,
+	PongMessageSchema,
+]);
+
 // Type exports
-export type WebSocketMessage = z.infer<typeof WebSocketMessageSchema>;
 export type WebSocketMessageType = z.infer<typeof WebSocketMessageTypeSchema>;
 export type GameStateUpdateMessage = z.infer<typeof GameStateUpdateMessageSchema>;
 export type PlayerJoinedMessage = z.infer<typeof PlayerJoinedMessageSchema>;
@@ -84,4 +100,7 @@ export type PlayerLeftMessage = z.infer<typeof PlayerLeftMessageSchema>;
 export type PlayerActionMessage = z.infer<typeof PlayerActionMessageSchema>;
 export type DMMessage = z.infer<typeof DMMessageSchema>;
 export type ErrorMessage = z.infer<typeof ErrorMessageSchema>;
+export type PingMessage = z.infer<typeof PingMessageSchema>;
+export type PongMessage = z.infer<typeof PongMessageSchema>;
+export type WebSocketMessage = z.infer<typeof WebSocketMessageSchema>;
 

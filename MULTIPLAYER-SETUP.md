@@ -47,6 +47,8 @@ cp .dev.vars.example .dev.vars
 ```
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.2
+# Optional API key for Ollama servers that require authentication
+OLLAMA_API_KEY=your-api-key-here
 ADMIN_EMAILS=kopertop@gmail.com,cmoyer@newstex.com
 ```
 
@@ -54,7 +56,7 @@ ADMIN_EMAILS=kopertop@gmail.com,cmoyer@newstex.com
 
 ### Frontend (.env in project root)
 ```env
-EXPO_PUBLIC_MULTIPLAYER_API_URL=http://localhost:8787
+EXPO_PUBLIC_API_BASE_URL=http://localhost:8787
 ```
 
 ### Worker (workers/.dev.vars)
@@ -73,7 +75,7 @@ ADMIN_EMAILS=kopertop@gmail.com,cmoyer@newstex.com
 
 ### API connection errors
 - Ensure worker is running on port 8787
-- Check `EXPO_PUBLIC_MULTIPLAYER_API_URL` matches worker URL
+- Check `EXPO_PUBLIC_API_BASE_URL` matches worker URL
 - Verify CORS is enabled (already configured in worker)
 
 ### Ollama connection issues

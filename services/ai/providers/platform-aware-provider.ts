@@ -7,7 +7,9 @@
  */
 
 import { Platform } from 'react-native';
+
 import { createOllamaProvider, OllamaProviderInterface } from './ollama-provider';
+
 import { AIMessage, AICompletionParams } from '@/types/ai';
 
 export interface PlatformAwareProviderConfig {
@@ -15,6 +17,7 @@ export interface PlatformAwareProviderConfig {
 	ollamaBaseUrl?: string;
 	ollamaModel?: string;
 	ollamaTimeout?: number;
+	ollamaApiKey?: string;
 }
 
 export interface PlatformAwareProviderInterface {
@@ -56,6 +59,7 @@ export class PlatformAwareProvider implements PlatformAwareProviderInterface {
 				baseUrl: this.config.ollamaBaseUrl,
 				defaultModel: this.config.ollamaModel || 'llama3.2',
 				timeout: this.config.ollamaTimeout || 30000,
+				apiKey: this.config.ollamaApiKey,
 			});
 			this.providerType = 'ollama';
 		} else {

@@ -67,12 +67,12 @@ const ModalWebSlider = ({
 	style,
 }: {
 	value: number;
-	onValueChange: (value: number) => void;
+	onValueChange?: (value: number) => void;
 	style?: any;
 }) => (
 	<View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }, style]}>
 		<TouchableOpacity
-			onPress={() => onValueChange(Math.max(0, Number((value - 0.05).toFixed(2))))}
+			onPress={() => onValueChange?.(Math.max(0, Number((value - 0.05).toFixed(2))))}
 			style={styles.webSliderButton}
 		>
 			<Text style={styles.webSliderButtonText}>-</Text>
@@ -81,7 +81,7 @@ const ModalWebSlider = ({
 			<View style={[styles.webSliderFill, { width: `${Math.min(100, Math.max(0, value * 100))}%` }]} />
 		</View>
 		<TouchableOpacity
-			onPress={() => onValueChange(Math.min(1, Number((value + 0.05).toFixed(2))))}
+			onPress={() => onValueChange?.(Math.min(1, Number((value + 0.05).toFixed(2))))}
 			style={styles.webSliderButton}
 		>
 			<Text style={styles.webSliderButtonText}>+</Text>
@@ -95,11 +95,11 @@ const ModalAdaptiveSlider = ({
 	style,
 }: {
 	value: number;
-	onValueChange: (value: number) => void;
+	onValueChange?: (value: number) => void;
 	style?: any;
 }) => {
 	if (Platform.OS !== 'web' && ModalSwiftSlider) {
-		return <ModalSwiftSlider style={style} value={value} onValueChange={onValueChange} />;
+		return <ModalSwiftSlider style={style} value={value} onValueChange={onValueChange || (() => {})} />;
 	}
 	return <ModalWebSlider style={style} value={value} onValueChange={onValueChange} />;
 };

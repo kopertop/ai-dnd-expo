@@ -6,48 +6,6 @@
 import { vi } from 'vitest';
 
 /**
- * Mock Cactus AI provider with configurable responses
- */
-export const mockCactusProvider = {
-	generateText: vi.fn().mockResolvedValue({
-		text: 'Mock AI response from Cactus',
-		usage: { totalTokens: 25 },
-	}),
-	isAvailable: vi.fn().mockReturnValue(true),
-	configure: vi.fn(),
-	setModel: vi.fn(),
-	getModel: vi.fn().mockReturnValue('gemma-3-2b-instruct'),
-	// Simulate different response scenarios
-	simulateSuccess: (response: string) => {
-		mockCactusProvider.generateText.mockResolvedValueOnce({
-			text: response,
-			usage: { totalTokens: response.length / 4 },
-		});
-	},
-	simulateError: (error: Error) => {
-		mockCactusProvider.generateText.mockRejectedValueOnce(error);
-	},
-	simulateTimeout: () => {
-		const timeoutError = new Error('Request timeout');
-		(timeoutError as any).code = 'TIMEOUT';
-		mockCactusProvider.generateText.mockRejectedValueOnce(timeoutError);
-	},
-	simulateRateLimit: () => {
-		const rateLimitError = new Error('Rate limit exceeded');
-		(rateLimitError as any).status = 429;
-		mockCactusProvider.generateText.mockRejectedValueOnce(rateLimitError);
-	},
-	reset: () => {
-		vi.clearAllMocks();
-		mockCactusProvider.generateText.mockResolvedValue({
-			text: 'Mock AI response from Cactus',
-			usage: { totalTokens: 25 },
-		});
-		mockCactusProvider.isAvailable.mockReturnValue(true);
-	},
-};
-
-/**
  * Mock AsyncStorage with in-memory implementation
  */
 export const mockAsyncStorage = (() => {
@@ -358,10 +316,6 @@ export class MockManager {
 		// This method is kept for backward compatibility
 	}
 
-	static setupCactus(): void {
-		// Use vi.mock('cactus-react-native', () => ({ ... })) in test files
-	}
-
 	static setupAsyncStorage(): void {
 		// Use vi.mock('@react-native-async-storage/async-storage', () => ({ ... })) in test files
 	}
@@ -379,7 +333,6 @@ export class MockManager {
 	}
 
 	static resetAll(): void {
-		mockCactusProvider.reset();
 		mockAsyncStorage.reset();
 		mockNavigation.reset();
 		mockExpoRouter.reset();
@@ -400,7 +353,6 @@ export class MockManager {
 // Export individual mocks for specific use cases
 export const AsyncStorageMock = mockAsyncStorage;
 export const AudioMock = mockExpoAudio;
-export const CactusMock = mockCactusProvider;
 export const ExpoRouterMock = mockExpoRouter;
 export const GestureHandlerMock = mockGestureHandler;
 export const HapticsMock = mockExpoHaptics;

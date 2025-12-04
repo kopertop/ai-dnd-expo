@@ -1,7 +1,8 @@
-import { Quest } from '@/types/quest';
 
 import { icebreakerQuest } from './icebreaker';
 import { dungeonCrawlQuest, mysteryQuest, rescueMissionQuest } from './starter-quests';
+
+import { Quest } from '@/types/quest';
 
 export const predefinedQuests: Quest[] = [
 	icebreakerQuest,
