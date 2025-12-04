@@ -72,6 +72,33 @@ characters.post('/', async (c) => {
 });
 
 /**
+ * Get a single character
+ * GET /api/characters/:id
+ *
+ * Returns the requested character if the authenticated user owns it.
+ */
+characters.get('/:id', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const characterId = c.req.param('id');
+	const db = createDatabase(c.env);
+	const existing = await db.getCharacterById(characterId);
+
+	if (!existing) {
+		return c.json({ error: 'Character not found' }, 404);
+	}
+
+	if (existing.player_id !== user.id && existing.player_email !== user.email) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	return c.json({ character: deserializeCharacter(existing) });
+});
+
+/**
  * Update a character
  * PUT /api/characters/:id
  *

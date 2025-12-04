@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from 'expo-auth-template/frontend';
 import { Stack, router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { AppFooter } from '@/components/app-footer';
@@ -15,6 +15,10 @@ const IndexScreen: React.FC = () => {
 	const { user } = useAuth();
 	const { data: charactersData, isLoading: charactersLoading } = useMyCharacters();
 	const characters = Array.isArray(charactersData) ? charactersData : (charactersData?.characters || []);
+	const sortedCharacters = useMemo(
+		() => [...characters].sort((a, b) => a.name.localeCompare(b.name)),
+		[characters],
+	);
 
 	useEffect(() => {
 		const checkSavedGame = async () => {
@@ -70,27 +74,45 @@ const IndexScreen: React.FC = () => {
 					<View style={styles.sectionHeader}>
 						<ThemedText type="subtitle">My Characters</ThemedText>
 						<TouchableOpacity
-							style={styles.manageBtn}
-							onPress={() => router.push('/characters' as never)}
+							style={styles.addBtn}
+							onPress={() => router.push({ pathname: '/new-character', params: { mode: 'character' } } as never)}
 						>
-							<ThemedText style={styles.manageLabel}>Manage</ThemedText>
+							<ThemedText style={styles.addLabel}>+ New Character</ThemedText>
 						</TouchableOpacity>
 					</View>
 					{charactersLoading && (
 						<ThemedText style={styles.sectionHint}>Loading your roster...</ThemedText>
 					)}
 					{!charactersLoading && characters.length === 0 && (
-						<ThemedText style={styles.sectionHint}>
-							Create heroes to reuse when you join DM-hosted games.
-						</ThemedText>
-					)}
-					{characters.slice(0, 3).map(character => (
-						<View key={character.id} style={styles.characterCard}>
-							<ThemedText style={styles.characterName}>{character.name}</ThemedText>
-							<ThemedText style={styles.characterMeta}>
-								{character.race} {character.class} • Level {character.level}
+						<View style={styles.emptyCard}>
+							<ThemedText style={styles.sectionHint}>
+								Create heroes to reuse when you join DM-hosted games.
 							</ThemedText>
+							<TouchableOpacity
+								style={styles.primaryBtn}
+								onPress={() => router.push({ pathname: '/new-character', params: { mode: 'character' } } as never)}
+							>
+								<ThemedText style={styles.primaryBtnLabel}>Create Character</ThemedText>
+							</TouchableOpacity>
 						</View>
+					)}
+					{sortedCharacters.map(character => (
+						<TouchableOpacity
+							key={character.id}
+							style={styles.characterCard}
+							onPress={() => router.push({ pathname: '/characters/[id]', params: { id: character.id } } as never)}
+						>
+							<View>
+								<ThemedText style={styles.characterName}>{character.name}</ThemedText>
+								<ThemedText style={styles.characterMeta}>
+									{character.race} {character.class} • Level {character.level}
+								</ThemedText>
+								{character.trait ? (
+									<ThemedText style={styles.characterTrait}>{character.trait}</ThemedText>
+								) : null}
+							</View>
+							<ThemedText style={styles.viewLabel}>View Sheet</ThemedText>
+						</TouchableOpacity>
 					))}
 				</View>
 			</ScrollView>
@@ -160,28 +182,59 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'space-between',
 	},
-	manageBtn: {
+	addBtn: {
 		paddingHorizontal: 12,
-		paddingVertical: 6,
-		borderRadius: 6,
-		backgroundColor: 'rgba(0,0,0,0.05)',
+		paddingVertical: 8,
+		borderRadius: 8,
+		backgroundColor: '#E6D5B8',
 	},
-	manageLabel: {
+	addLabel: {
 		color: '#3B2F1B',
 		fontWeight: '600',
 	},
 	sectionHint: {
 		color: '#6B5B3D',
 	},
+	emptyCard: {
+		gap: 12,
+		padding: 14,
+		borderRadius: 10,
+		backgroundColor: 'rgba(255,255,255,0.7)',
+	},
 	characterCard: {
 		padding: 12,
 		borderRadius: 8,
-		backgroundColor: 'rgba(255,255,255,0.6)',
+		backgroundColor: 'rgba(255,255,255,0.85)',
+		borderWidth: 1,
+		borderColor: '#E6D5B8',
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
 	},
 	characterName: {
 		fontWeight: '600',
 	},
 	characterMeta: {
 		color: '#6B5B3D',
+	},
+	characterTrait: {
+		color: '#8A765C',
+		fontSize: 12,
+		marginTop: 2,
+	},
+	viewLabel: {
+		color: '#8B6914',
+		fontWeight: '700',
+	},
+	primaryBtn: {
+		alignSelf: 'flex-start',
+		backgroundColor: '#8B6914',
+		paddingHorizontal: 14,
+		paddingVertical: 10,
+		borderRadius: 8,
+	},
+	primaryBtnLabel: {
+		color: '#F5E6D3',
+		fontWeight: '700',
 	},
 });
