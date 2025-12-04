@@ -1,10 +1,10 @@
 ---
 id: task-13
 title: Enable DM drag-and-drop token repositioning in DM Action Mode
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2025-12-02 21:27'
-updated_date: '2025-12-03 00:55'
+updated_date: '2025-12-04 18:07'
 labels: []
 dependencies: []
 priority: high
@@ -34,3 +34,11 @@ DMs should be able to drag any token on the battle map to a new, unblocked posit
 - Persist and broadcast the new position through the shared/durable session so all clients update live; ensure token snapshots/turn state remain consistent after manual moves.
 - Add automated coverage: unit/logic test for drop handler (blocked vs open, entityId vs token id resolution) and UI/integration test that a DM in Action Mode can drag-drop to an open tile, sees rejection on blocked tiles, and players cannot bypass the gate.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Continuing custom drag/drop implementation on web to eliminate native drag bounce; implementing optimistic positioning and blocked tile feedback. Working in branch custom-draggable.
+
+Replaced HTML5 drag on web tokens with custom mouse drag (grid rect-based tile calc, optimistic preview) to stop bounce-back; token opacity stays visible while dragging. Attempted `npm run test:e2e` but Playwright webServer failed to start in sandbox (wrangler log EPERM and Expo freeport ERR_SOCKET_BAD_PORT 65536).
+<!-- SECTION:NOTES:END -->
