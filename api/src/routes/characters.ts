@@ -11,7 +11,12 @@ import { createDatabase } from '@/api/src/utils/repository';
 import { Character } from '@/types/character';
 
 type Variables = {
-	user: { id: string; email: string; name?: string | null } | null;
+	user: {
+		id: string;
+		email: string;
+		name?: string | null;
+		is_admin?: boolean;
+	} | null;
 };
 
 type CharactersContext = { Bindings: CloudflareBindings; Variables: Variables };
@@ -91,7 +96,11 @@ characters.get('/:id', async (c) => {
 		return c.json({ error: 'Character not found' }, 404);
 	}
 
-	if (existing.player_id !== user.id && existing.player_email !== user.email) {
+	if (
+		existing.player_id !== user.id &&
+		existing.player_email !== user.email &&
+		!user.is_admin
+	) {
 		return c.json({ error: 'Forbidden' }, 403);
 	}
 
@@ -121,7 +130,11 @@ characters.put('/:id', async (c) => {
 		return c.json({ error: 'Character not found' }, 404);
 	}
 
-	if (existing.player_id !== user.id && existing.player_email !== user.email) {
+	if (
+		existing.player_id !== user.id
+		&& existing.player_email !== user.email
+		&& !user.is_admin
+	) {
 		return c.json({ error: 'Forbidden' }, 403);
 	}
 
@@ -158,7 +171,11 @@ characters.delete('/:id', async (c) => {
 		return c.json({ error: 'Character not found' }, 404);
 	}
 
-	if (existing.player_id !== user.id && existing.player_email !== user.email) {
+	if (
+		existing.player_id !== user.id
+		&& existing.player_email !== user.email
+		&& !user.is_admin
+	) {
 		return c.json({ error: 'Forbidden' }, 403);
 	}
 
