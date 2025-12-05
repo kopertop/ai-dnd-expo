@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { getServerByName } from 'partyserver';
 
 import type { GamesContext } from './types';
 
@@ -168,13 +169,13 @@ dice.post('/:inviteCode/dice/dm-roll', async (c) => {
 
 	// Notify connected clients via PartyServer/Partykit room to pull the latest state immediately
 	try {
-		const roomId = c.env.GameRoom.idFromName(`game-room/${inviteCode}`);
-		const stub = c.env.GameRoom.get(roomId);
+		// getServerByName expects a PartyServer namespace; use loose casting to satisfy types
+		const stub: any = await (getServerByName as any)(c.env.GameRoom, `game-room/${inviteCode}`);
 		const headers: Record<string, string> = { 'content-type': 'application/json' };
 		if (c.env.PARTYKIT_SECRET) {
 			headers['x-party-secret'] = c.env.PARTYKIT_SECRET;
 		}
-		await stub.fetch(`https://party/game-room/${inviteCode}`, {
+		await stub.fetch('https://party/broadcast-state', {
 			method: 'POST',
 			headers,
 			body: JSON.stringify({ type: 'broadcast-state' }),

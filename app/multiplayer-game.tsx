@@ -2182,7 +2182,7 @@ const MultiplayerGameScreen: React.FC = () => {
 				)}
 				{mapState ? (
 					<View pointerEvents={isPausedForPlayers ? 'none' : 'auto'}>
-							<InteractiveMap
+						<InteractiveMap
 							map={mapState}
 							// Allow drag/drop targets even outside map edit mode so DM can reposition tokens mid-encounter
 							isEditable={isHost}

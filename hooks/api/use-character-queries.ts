@@ -30,7 +30,7 @@ export function useAllCharacters() {
  */
 export function useGameCharacters(inviteCode: string | null | undefined) {
 	return useQueryApi<CharacterListResponse>(
-		inviteCode ? `/games/${inviteCode}/characters` : '',
+		inviteCode ? `/games/${inviteCode}/characters` : '/noop-disabled',
 		{
 			enabled: !!inviteCode,
 		},
@@ -181,4 +181,3 @@ export function useRollPerceptionCheck(inviteCode: string) {
 		},
 	});
 }
-

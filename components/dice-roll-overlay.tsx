@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { Animated, Dimensions, Modal, StyleSheet, View } from 'react-native';
+import { Animated, Dimensions, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
@@ -58,9 +58,7 @@ export const DiceRollOverlay: React.FC<DiceRollOverlayProps> = ({
 			]),
 		);
 		Animated.stagger(80, animations).start(() => {
-			if (onClose) {
-				setTimeout(onClose, 2000);
-			}
+			// Keep overlay open until user dismisses
 		});
 	}, [visible, diceAnimations, onClose]);
 
@@ -108,6 +106,9 @@ export const DiceRollOverlay: React.FC<DiceRollOverlayProps> = ({
 					</View>
 					<ThemedText style={styles.total}>Total: {total}</ThemedText>
 					<ThemedText style={styles.breakdown}>{breakdown}</ThemedText>
+					<TouchableOpacity style={styles.dismissButton} onPress={onClose}>
+						<ThemedText style={styles.dismissText}>Close</ThemedText>
+					</TouchableOpacity>
 				</ThemedView>
 			</View>
 		</Modal>
@@ -174,5 +175,16 @@ const styles = StyleSheet.create({
 	breakdown: {
 		color: '#6B5B3D',
 		textAlign: 'center',
+	},
+	dismissButton: {
+		marginTop: 16,
+		paddingHorizontal: 16,
+		paddingVertical: 10,
+		backgroundColor: '#4A6741',
+		borderRadius: 10,
+	},
+	dismissText: {
+		color: '#FFF9EF',
+		fontWeight: '700',
 	},
 });

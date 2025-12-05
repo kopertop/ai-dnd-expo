@@ -49,13 +49,11 @@ function requireAuth(request: Request) {
 }
 
 export class GameRoom extends Server<CloudflareBindings> {
-	private readonly env: CloudflareBindings;
 	private readonly db: Database;
 	private readonly stateService: GameStateService;
 
 	constructor(ctx: unknown, env: CloudflareBindings, database?: Database, stateService?: GameStateService) {
 		super(ctx as any, env);
-		this.env = env;
 		this.db = database ?? createDatabase(env);
 		this.stateService = stateService ?? new GameStateService(this.db);
 	}

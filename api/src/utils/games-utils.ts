@@ -194,7 +194,7 @@ export const buildMapState = async (db: Database, game: GameRow, options: { char
 						role: npcRow.role,
 						name: npcRow.name,
 						icon: npcMetadata.icon,
-						metadata: npcRow.metadata
+						metadata: npcRow.metadata,
 					};
 				}
 			}
@@ -231,14 +231,14 @@ export const buildMapState = async (db: Database, game: GameRow, options: { char
 				(token.token_type === 'npc'
 					? npc?.icon ||
 					  (npc?.metadata
-							? (() => {
-									try {
-										return JSON.parse(npc.metadata || '{}')?.icon;
-									} catch {
-										return undefined;
-									}
+					  	? (() => {
+					  		try {
+					  			return JSON.parse(npc.metadata || '{}')?.icon;
+					  		} catch {
+					  			return undefined;
+					  		}
 							  })()
-							: undefined)
+					  	: undefined)
 					: undefined) ??
 				metadata.icon ??
 				metadata.image ??

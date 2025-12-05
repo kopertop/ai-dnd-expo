@@ -1,12 +1,12 @@
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useQueryApi } from 'expo-auth-template/frontend';
 
 import CharacterSheet5e from '@/components/character-sheet-5e';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useDeleteCharacter, useMyCharacters } from '@/hooks/api/use-character-queries';
-import { useQueryApi } from 'expo-auth-template/frontend';
 import { Character } from '@/types/character';
 
 const CharacterSheetScreen: React.FC = () => {

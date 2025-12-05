@@ -2,7 +2,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 
 import { websocketClient } from '@/services/api/websocket-client';
-
 import type {
 	MapMoveResponse,
 	MapStateResponse,
@@ -19,7 +18,7 @@ import type { NpcDefinition } from '@/types/multiplayer-map';
  */
 export function useMapState(inviteCode: string | null | undefined) {
 	return useQueryApi<MapStateResponse>(
-		inviteCode ? `/games/${inviteCode}/map` : '',
+		inviteCode ? `/games/${inviteCode}/map` : '/noop-disabled',
 		{
 			enabled: !!inviteCode,
 		},
@@ -31,7 +30,7 @@ export function useMapState(inviteCode: string | null | undefined) {
  */
 export function useMapTokens(inviteCode: string | null | undefined) {
 	return useQueryApi<MapTokenListResponse>(
-		inviteCode ? `/games/${inviteCode}/map/tokens` : '',
+		inviteCode ? `/games/${inviteCode}/map/tokens` : '/noop-disabled',
 		{
 			enabled: !!inviteCode,
 		},
@@ -255,7 +254,7 @@ export function useMoveToken(inviteCode: string) {
  */
 export function useNpcDefinitions(inviteCode: string | null | undefined) {
 	return useQueryApi<NpcDefinitionListResponse>(
-		inviteCode ? `/games/${inviteCode}/npcs` : '',
+		inviteCode ? `/games/${inviteCode}/npcs` : '/noop-disabled',
 		{
 			enabled: !!inviteCode,
 		},
@@ -270,7 +269,7 @@ export function useNpcDefinition(
 	npcId: string | null | undefined,
 ) {
 	return useQueryApi<NpcDefinition>(
-		inviteCode && npcId ? `/games/${inviteCode}/npcs/${npcId}` : '',
+		inviteCode && npcId ? `/games/${inviteCode}/npcs/${npcId}` : '/noop-disabled',
 		{
 			enabled: !!inviteCode && !!npcId,
 		},
@@ -282,7 +281,7 @@ export function useNpcDefinition(
  */
 export function useNpcInstances(inviteCode: string | null | undefined) {
 	return useQueryApi<NpcInstanceListResponse>(
-		inviteCode ? `/games/${inviteCode}/npc-instances` : '',
+		inviteCode ? `/games/${inviteCode}/npc-instances` : '/noop-disabled',
 		{
 			enabled: !!inviteCode,
 		},
@@ -317,8 +316,11 @@ export function useUpdateNpcInstance(inviteCode: string) {
 	return useMutationApi<void>({
 		method: 'PATCH',
 		onSuccess: () => {
-			queryClient.invalidateQueries();
-			queryClient.refetchQueries();
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/npc-instances`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
+			websocketClient.sendRefresh();
 		},
 	});
 }

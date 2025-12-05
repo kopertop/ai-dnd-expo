@@ -201,10 +201,10 @@ describe('Characters API', () => {
 		});
 
 		expect(updateResponse.status).toBe(200);
-	const updateData = (await updateResponse.json()) as { character: { name: string; level: number } };
-	expect(updateData.character.name).toBe('Updated Name');
-	expect(updateData.character.level).toBe(2);
-});
+		const updateData = (await updateResponse.json()) as { character: { name: string; level: number } };
+		expect(updateData.character.name).toBe('Updated Name');
+		expect(updateData.character.level).toBe(2);
+	});
 
 	it('fetches a single character when owned by the requester', async () => {
 		const createPayload = {

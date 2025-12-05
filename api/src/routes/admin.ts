@@ -1,11 +1,9 @@
 import { Hono } from 'hono';
 
-import { isAdmin as sharedIsAdmin } from '../../../shared/workers/admin';
-import type { CloudflareBindings } from '../env';
-import { createDatabase } from '../utils/repository';
-import { deserializeCharacter } from '../utils/games-utils';
-
-
+import { isAdmin as sharedIsAdmin } from '@/shared/workers/admin';
+import type { CloudflareBindings } from '@/api/src/env';
+import { createDatabase } from '@/api/src/utils/repository';
+import { deserializeCharacter } from '@/api/src/utils/games-utils';
 import { Quest } from '@/types/quest';
 
 type Variables = {
@@ -139,5 +137,4 @@ admin.post('/sql/query', async (c) => {
 });
 
 export default admin;
-
 
