@@ -4,12 +4,14 @@ title: Revamp character sheet to 5e layout with editable equipment
 status: To Do
 assignee: []
 created_date: '2025-12-04 20:45'
+updated_date: '2025-12-05 03:22'
 labels:
   - feature
   - ui
   - character-sheet
 dependencies: []
 priority: high
+ordinal: 9000
 ---
 
 ## Description

@@ -4,11 +4,13 @@ title: 'Add animated dice rolls for checks (e.g., perception) with results'
 status: To Do
 assignee: []
 created_date: '2025-11-25 01:33'
+updated_date: '2025-12-05 03:22'
 labels:
   - feature
   - ui
   - dice
 dependencies: []
+ordinal: 6000
 ---
 
 ## Description

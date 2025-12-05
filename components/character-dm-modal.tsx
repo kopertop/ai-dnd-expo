@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { ExpoIconPicker } from './expo-icon-picker';
 import { ThemedText } from './themed-text';
@@ -7,6 +8,7 @@ import { ThemedView } from './themed-view';
 
 import { STATUS_EFFECT_LIST, type StatusEffect } from '@/constants/status-effects';
 import { useUpdateNpcInstance } from '@/hooks/api/use-npc-queries';
+import { websocketClient } from '@/services/api/websocket-client';
 import { Character } from '@/types/character';
 import { MapToken } from '@/types/multiplayer-map';
 import { STAT_KEYS } from '@/types/stats';
@@ -40,10 +42,27 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 	npcStats,
 }) => {
 	const updateNpcInstanceMutation = useUpdateNpcInstance(gameId);
+	const queryClient = useQueryClient();
 	const [actionAmount, setActionAmount] = useState('');
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [effectType, setEffectType] = useState<'damage' | 'heal' | null>(null);
-	const currentIcon = character?.icon || (npcToken?.metadata?.icon as string) || '';
+	const npcMetadata = useMemo(() => {
+		if (!npcToken?.metadata) return {};
+		if (typeof npcToken.metadata === 'string') {
+			try {
+				return JSON.parse(npcToken.metadata);
+			} catch {
+				return {};
+			}
+		}
+		return npcToken.metadata as Record<string, unknown>;
+	}, [npcToken?.metadata]);
+	const currentIcon = character?.icon || (npcMetadata?.icon as string) || '';
+	const [localIcon, setLocalIcon] = useState(currentIcon);
+
+	useEffect(() => {
+		setLocalIcon(currentIcon);
+	}, [currentIcon]);
 
 	// Get current status effects from character or NPC
 	const currentStatusEffects = character?.statusEffects || npcToken?.statusEffects || [];
@@ -62,8 +81,7 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 
 	// Get stats - from character or NPC
 	const stats = character?.stats || npcStats || { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 };
-	const npcMetadata = npcToken?.metadata as { armorClass?: number } | undefined;
-	const armorClass = character ? calculateAC(character) : npcMetadata?.armorClass;
+	const armorClass = character ? calculateAC(character) : (npcMetadata?.armorClass as number | undefined);
 
 	// Trigger visual effect animation
 	useEffect(() => {
@@ -230,19 +248,36 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 		}
 	};
 
-	const handleIconChange = (nextIcon: string) => {
-		if (character && onUpdateCharacter) {
-			onUpdateCharacter(character.id, { icon: nextIcon });
-		} else if (npcToken) {
-			updateNpcInstanceMutation.mutateAsync({
-				path: `/games/${gameId}/npcs/${npcToken.id}`,
-				body: JSON.stringify({
-					metadata: {
-						...(npcToken.metadata || {}),
-						icon: nextIcon,
-					},
-				}),
-			});
+	const refreshMapState = () => {
+		queryClient.invalidateQueries({ queryKey: [`/games/${gameId}/map`] });
+		queryClient.invalidateQueries({ queryKey: [`/games/${gameId}/map/tokens`] });
+		queryClient.invalidateQueries({ queryKey: [`/games/${gameId}/state`] });
+		websocketClient.sendRefresh();
+	};
+
+	const handleIconChange = async (nextIcon: string) => {
+		if (isProcessing) return;
+		setIsProcessing(true);
+		try {
+			if (character && onUpdateCharacter) {
+				setLocalIcon(nextIcon);
+				await Promise.resolve(onUpdateCharacter(character.id, { icon: nextIcon }) as unknown);
+				refreshMapState();
+			} else if (npcToken) {
+				setLocalIcon(nextIcon);
+				await updateNpcInstanceMutation.mutateAsync({
+					path: `/games/${gameId}/npcs/${npcToken.id}`,
+					body: JSON.stringify({
+						metadata: {
+							...npcMetadata,
+							icon: nextIcon,
+						},
+					}),
+				});
+				refreshMapState();
+			}
+		} finally {
+			setIsProcessing(false);
 		}
 	};
 
@@ -286,7 +321,7 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 										<View style={{ width: '100%', marginBottom: 12 }}>
 											<ExpoIconPicker
 												label="Icon (vector or URL)"
-												value={currentIcon}
+												value={localIcon}
 												onChange={handleIconChange}
 											/>
 										</View>

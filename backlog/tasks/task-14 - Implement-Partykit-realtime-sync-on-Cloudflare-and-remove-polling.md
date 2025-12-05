@@ -4,9 +4,10 @@ title: Implement Partykit realtime sync on Cloudflare and remove polling
 status: To Do
 assignee: []
 created_date: '2025-12-03 00:57'
-updated_date: '2025-12-03 00:57'
+updated_date: '2025-12-05 03:22'
 labels: []
 dependencies: []
+ordinal: 8000
 ---
 
 ## Description

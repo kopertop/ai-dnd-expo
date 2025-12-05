@@ -4,10 +4,12 @@ title: 'Add items, equipment, and character inventory management'
 status: To Do
 assignee: []
 created_date: '2025-11-25 01:32'
+updated_date: '2025-12-05 03:22'
 labels:
   - feature
   - inventory
 dependencies: []
+ordinal: 5000
 ---
 
 ## Description

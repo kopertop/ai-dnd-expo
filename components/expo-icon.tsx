@@ -13,10 +13,24 @@ interface ExpoIconProps {
 	style?: StyleProp<ViewStyle | ImageStyle | TextStyle>;
 }
 
+const LOCAL_ICON_MAP: Record<string, any> = {
+	'Characters:Elf:ElfRanger': require('@/assets/images/characters/elf/elf-ranger.png'),
+	'Characters:Goblin:GoblinArcher': require('@/assets/images/characters/goblin/goblin-archer.png'),
+	'Characters:Goblin:GoblinCleric': require('@/assets/images/characters/goblin/goblin-cleric.png'),
+	'Characters:Goblin:GoblinMage': require('@/assets/images/characters/goblin/goblin-mage.png'),
+	'Characters:Goblin:GoblinRaider': require('@/assets/images/characters/goblin/goblin-raider.png'),
+	'Characters:Goblin:GoblinRogue': require('@/assets/images/characters/goblin/goblin-rouge.png'),
+};
+
+const resolveLocalIcon = (icon: string) => {
+	return LOCAL_ICON_MAP[icon];
+};
+
 /**
  * Renders an icon from either Expo Vector Icons or an image URL.
  *
  * Format for vector icons: "IconFamily:icon-name" (e.g., "MaterialIcons:shield")
+ * Format for local portrait: "Characters:Folder:Name" (mapped to bundled assets)
  * Format for images: URL string (e.g., "https://..." or "data:image/...")
  */
 export const ExpoIcon: React.FC<ExpoIconProps> = ({
@@ -29,94 +43,112 @@ export const ExpoIcon: React.FC<ExpoIconProps> = ({
 		return null;
 	}
 
-	// Check if it's an image URL
-	const isImageUrl = icon.startsWith('http') || icon.startsWith('data:');
+	try {
+	const localSource = resolveLocalIcon(icon.trim());
+		if (localSource) {
+			return (
+				<Image
+					source={localSource}
+					style={[
+						{
+							width: size,
+							height: size,
+							resizeMode: 'contain',
+						},
+						style as StyleProp<ImageStyle>,
+					]}
+				/>
+			);
+		}
 
-	if (isImageUrl) {
-		return (
-			<Image
-				source={{ uri: icon }}
-				style={[
-					{
-						width: size,
-						height: size,
-						resizeMode: 'contain',
-					},
-					style as StyleProp<ImageStyle>,
-				]}
-			/>
-		);
-	}
+		// Check if it's an image URL
+		const isImageUrl = icon.startsWith('http') || icon.startsWith('data:');
 
-	// Parse vector icon format: "IconFamily:icon-name"
-	const parts = icon.split(':');
-	if (parts.length !== 2) {
-		// Invalid format, return null
+		if (isImageUrl) {
+			return (
+				<Image
+					source={{ uri: icon }}
+					style={[
+						{
+							width: size,
+							height: size,
+							resizeMode: 'contain',
+						},
+						style as StyleProp<ImageStyle>,
+					]}
+				/>
+			);
+		}
+
+		// Parse vector icon format: "IconFamily:icon-name"
+		const parts = icon.split(':');
+		if (parts.length !== 2) {
+			return null;
+		}
+
+		const [iconFamily, iconName] = parts;
+
+		// Render appropriate icon family
+		switch (iconFamily) {
+			case 'MaterialIcons':
+				return (
+					<MaterialIcons
+						name={iconName as any}
+						size={size}
+						color={color}
+						style={style as StyleProp<TextStyle>}
+					/>
+				);
+			case 'MaterialCommunityIcons':
+				return (
+					<MaterialCommunityIcons
+						name={iconName as any}
+						size={size}
+						color={color}
+						style={style as StyleProp<TextStyle>}
+					/>
+				);
+			case 'FontAwesome5':
+				return (
+					<FontAwesome5
+						name={iconName as any}
+						size={size}
+						color={color}
+						style={style}
+					/>
+				);
+			case 'FontAwesome':
+				return (
+					<FontAwesome
+						name={iconName as any}
+						size={size}
+						color={color}
+						style={style as StyleProp<TextStyle>}
+					/>
+				);
+			case 'Ionicons':
+				return (
+					<Ionicons
+						name={iconName as any}
+						size={size}
+						color={color}
+						style={style as StyleProp<TextStyle>}
+					/>
+				);
+			case 'Feather':
+				return (
+					<Feather
+						name={iconName as any}
+						size={size}
+						color={color}
+						style={style as StyleProp<TextStyle>}
+					/>
+				);
+			default:
+				return null;
+		}
+	} catch (error) {
+		console.error('[ExpoIcon] failed to render icon', icon, error);
 		return null;
 	}
-
-	const [iconFamily, iconName] = parts;
-
-	console.log('[ExpoIcon] iconFamily', iconFamily, iconName, color);
-	// Render appropriate icon family
-	switch (iconFamily) {
-		case 'MaterialIcons':
-			return (
-				<MaterialIcons
-					name={iconName as any}
-					size={size}
-					color={color}
-					style={style as StyleProp<TextStyle>}
-				/>
-			);
-		case 'MaterialCommunityIcons':
-			return (
-				<MaterialCommunityIcons
-					name={iconName as any}
-					size={size}
-					color={color}
-					style={style as StyleProp<TextStyle>}
-				/>
-			);
-		case 'FontAwesome5':
-			return (
-				<FontAwesome5
-					name={iconName as any}
-					size={size}
-					color={color}
-					style={style}
-				/>
-			);
-		case 'FontAwesome':
-			return (
-				<FontAwesome
-					name={iconName as any}
-					size={size}
-					color={color}
-					style={style as StyleProp<TextStyle>}
-				/>
-			);
-		case 'Ionicons':
-			return (
-				<Ionicons
-					name={iconName as any}
-					size={size}
-					color={color}
-					style={style as StyleProp<TextStyle>}
-				/>
-			);
-		case 'Feather':
-			return (
-				<Feather
-					name={iconName as any}
-					size={size}
-					color={color}
-					style={style as StyleProp<TextStyle>}
-				/>
-			);
-		default:
-			// Unknown icon family, return null
-			return null;
-	}
 };
-

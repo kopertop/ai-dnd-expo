@@ -723,26 +723,30 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 	};
 
 	const renderTokenContent = (token: MapToken, tokenTileSize: number) => {
-		const icon = token.icon || token.metadata?.icon || token.metadata?.image;
-
-		let color = token.color;
-		if (!color) {
+		let parsedMetadata: any = undefined;
+		if (token.metadata) {
 			try {
-				if (token.metadata) {
-					const metadata = typeof token.metadata === 'string' ? JSON.parse(token.metadata) : token.metadata;
-					if (metadata.tags?.includes('friendly')) {
-						color = '#4CAF50';
-					} else if (metadata.tags?.includes('hostile')) {
-						color = '#F44336';
-					} else if (metadata.tags?.includes('neutral')) {
-						color = '#2196F3';
-					} else {
-						color = '#1F130A';
-					}
-				}
+				parsedMetadata = typeof token.metadata === 'string' ? JSON.parse(token.metadata) : token.metadata;
 			} catch (error) {
 				console.error('Failed to parse token metadata:', error, token.metadata);
 			}
+		}
+
+		const icon = token.icon || parsedMetadata?.icon || parsedMetadata?.image;
+
+		let color = token.color;
+		if (!color && parsedMetadata) {
+			if (parsedMetadata.tags?.includes('friendly')) {
+				color = '#4CAF50';
+			} else if (parsedMetadata.tags?.includes('hostile')) {
+				color = '#F44336';
+			} else if (parsedMetadata.tags?.includes('neutral')) {
+				color = '#2196F3';
+			} else {
+				color = '#1F130A';
+			}
+		} else if (!color) {
+			color = '#1F130A';
 		}
 		console.log('[MapTokenComponent] icon', token, icon, color);
 

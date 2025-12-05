@@ -4,11 +4,13 @@ title: Add basic attacks (melee and ranged) for players and NPCs
 status: To Do
 assignee: []
 created_date: '2025-11-25 01:32'
+updated_date: '2025-12-05 03:22'
 labels:
   - feature
   - combat
   - attacks
 dependencies: []
+ordinal: 4000
 ---
 
 ## Description

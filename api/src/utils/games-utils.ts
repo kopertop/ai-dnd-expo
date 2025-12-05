@@ -227,7 +227,18 @@ export const buildMapState = async (db: Database, game: GameRow, options: { char
 			// Prefer latest character/npc icon; if it changed, overwrite metadata
 			const desiredIcon =
 				(token.token_type === 'player' ? character?.icon || character?.image : undefined) ??
-				(token.token_type === 'npc' ? npc?.icon : undefined) ??
+				(token.token_type === 'npc'
+					? npc?.icon ||
+					  (npc?.metadata
+							? (() => {
+									try {
+										return JSON.parse(npc.metadata || '{}')?.icon;
+									} catch {
+										return undefined;
+									}
+							  })()
+							: undefined)
+					: undefined) ??
 				metadata.icon ??
 				metadata.image ??
 				defaultIcon;

@@ -4,10 +4,11 @@ title: Enable DM drag-and-drop token repositioning in DM Action Mode
 status: To Do
 assignee: []
 created_date: '2025-12-02 21:27'
-updated_date: '2025-12-03 00:55'
+updated_date: '2025-12-05 03:22'
 labels: []
 dependencies: []
 priority: high
+ordinal: 7000
 ---
 
 ## Description
