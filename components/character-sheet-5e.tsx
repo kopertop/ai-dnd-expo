@@ -52,6 +52,11 @@ const CHARACTER_IMAGE_OPTIONS: Array<{
 		source: require('@/assets/images/characters/elf/elf-ranger.png'),
 	},
 	{
+		key: 'Characters:Elf:ElfMage',
+		label: 'Elf Mage',
+		source: require('@/assets/images/characters/elf/elf-mage.png'),
+	},
+	{
 		key: 'Characters:Goblin:GoblinArcher',
 		label: 'Goblin Archer',
 		source: require('@/assets/images/characters/goblin/goblin-archer.png'),
