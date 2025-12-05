@@ -239,3 +239,20 @@ export function useClearActivityLogs(inviteCode: string) {
 		},
 	});
 }
+
+/**
+ * DM dice roll mutation
+ */
+export function useDmRollDice(inviteCode: string | null) {
+	const queryClient = useQueryClient();
+
+	return useMutationApi<{ notation: string; rolls: number[]; total: number; breakdown: string }>({
+		method: 'POST',
+		onSuccess: () => {
+			if (inviteCode) {
+				queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
+				queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/log`] });
+			}
+		},
+	});
+}

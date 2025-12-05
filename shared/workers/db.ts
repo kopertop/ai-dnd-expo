@@ -335,6 +335,13 @@ export class Database {
 		await this.db.prepare('DELETE FROM characters WHERE id = ?').bind(characterId).run();
 	}
 
+	async getAllCharacters(): Promise<CharacterRow[]> {
+		const result = await this.db.prepare(
+			'SELECT * FROM characters ORDER BY updated_at DESC',
+		).all<CharacterRow>();
+		return result.results || [];
+	}
+
 	// Game player operations
 	async addPlayerToGame(player: Omit<GamePlayerRow, 'id'>): Promise<string> {
 		const id = `gp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;

@@ -1,23 +1,33 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from 'expo-auth-template/frontend';
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { AppFooter } from '@/components/app-footer';
+import { CharacterList } from '@/components/character-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useMyCharacters } from '@/hooks/api/use-character-queries';
+import { useUserInfo } from '@/hooks/api/use-auth-queries';
+import { useAllCharacters, useMyCharacters } from '@/hooks/api/use-character-queries';
 
 const IndexScreen: React.FC = () => {
 	const [hasSavedGame, setHasSavedGame] = useState(false);
 	const [loading, setLoading] = useState(true);
-	const { user } = useAuth();
-	const { data: charactersData, isLoading: charactersLoading } = useMyCharacters();
-	const characters = Array.isArray(charactersData) ? charactersData : (charactersData?.characters || []);
-	const sortedCharacters = useMemo(
-		() => [...characters].sort((a, b) => a.name.localeCompare(b.name)),
-		[characters],
+	const [activeTab, setActiveTab] = useState('my');
+	const { data: userInfo } = useUserInfo();
+
+	const { data: myCharactersData, isLoading: myCharactersLoading } = useMyCharacters();
+	const myCharacters = Array.isArray(myCharactersData) ? myCharactersData : (myCharactersData?.characters || []);
+	const sortedMyCharacters = useMemo(
+		() => [...myCharacters].sort((a, b) => a.name.localeCompare(b.name)),
+		[myCharacters],
+	);
+
+	const { data: allCharactersData, isLoading: allCharactersLoading } = useAllCharacters();
+	const allCharacters = Array.isArray(allCharactersData) ? allCharactersData : (allCharactersData?.characters || []);
+	const sortedAllCharacters = useMemo(
+		() => [...allCharacters].sort((a, b) => a.name.localeCompare(b.name)),
+		[allCharacters],
 	);
 
 	useEffect(() => {
@@ -72,7 +82,24 @@ const IndexScreen: React.FC = () => {
 				)}
 				<View style={styles.section}>
 					<View style={styles.sectionHeader}>
-						<ThemedText type="subtitle">My Characters</ThemedText>
+						{userInfo?.is_admin ? (
+							<View style={styles.tabs}>
+								<TouchableOpacity
+									style={[styles.tab, activeTab === 'my' && styles.activeTab]}
+									onPress={() => setActiveTab('my')}
+								>
+									<ThemedText style={[styles.tabLabel, activeTab === 'my' && styles.activeTabLabel]}>My Characters</ThemedText>
+								</TouchableOpacity>
+								<TouchableOpacity
+									style={[styles.tab, activeTab === 'all' && styles.activeTab]}
+									onPress={() => setActiveTab('all')}
+								>
+									<ThemedText style={[styles.tabLabel, activeTab === 'all' && styles.activeTabLabel]}>All Characters</ThemedText>
+								</TouchableOpacity>
+							</View>
+						) : (
+							<ThemedText type="subtitle">My Characters</ThemedText>
+						)}
 						<TouchableOpacity
 							style={styles.addBtn}
 							onPress={() => router.push({ pathname: '/new-character', params: { mode: 'character' } } as never)}
@@ -80,40 +107,13 @@ const IndexScreen: React.FC = () => {
 							<ThemedText style={styles.addLabel}>+ New Character</ThemedText>
 						</TouchableOpacity>
 					</View>
-					{charactersLoading && (
-						<ThemedText style={styles.sectionHint}>Loading your roster...</ThemedText>
+
+					{activeTab === 'my' && (
+						<CharacterList characters={sortedMyCharacters} isLoading={myCharactersLoading} />
 					)}
-					{!charactersLoading && characters.length === 0 && (
-						<View style={styles.emptyCard}>
-							<ThemedText style={styles.sectionHint}>
-								Create heroes to reuse when you join DM-hosted games.
-							</ThemedText>
-							<TouchableOpacity
-								style={styles.primaryBtn}
-								onPress={() => router.push({ pathname: '/new-character', params: { mode: 'character' } } as never)}
-							>
-								<ThemedText style={styles.primaryBtnLabel}>Create Character</ThemedText>
-							</TouchableOpacity>
-						</View>
+					{activeTab === 'all' && (
+						<CharacterList characters={sortedAllCharacters} isLoading={allCharactersLoading} />
 					)}
-					{sortedCharacters.map(character => (
-						<TouchableOpacity
-							key={character.id}
-							style={styles.characterCard}
-							onPress={() => router.push({ pathname: '/characters/[id]', params: { id: character.id } } as never)}
-						>
-							<View>
-								<ThemedText style={styles.characterName}>{character.name}</ThemedText>
-								<ThemedText style={styles.characterMeta}>
-									{character.race} {character.class} • Level {character.level}
-								</ThemedText>
-								{character.trait ? (
-									<ThemedText style={styles.characterTrait}>{character.trait}</ThemedText>
-								) : null}
-							</View>
-							<ThemedText style={styles.viewLabel}>View Sheet</ThemedText>
-						</TouchableOpacity>
-					))}
 				</View>
 			</ScrollView>
 			<AppFooter />
@@ -182,6 +182,27 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'space-between',
 	},
+	tabs: {
+		flexDirection: 'row',
+		backgroundColor: '#E6D5B8',
+		borderRadius: 8,
+		padding: 4,
+	},
+	tab: {
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		borderRadius: 6,
+	},
+	activeTab: {
+		backgroundColor: '#fff',
+	},
+	tabLabel: {
+		color: '#3B2F1B',
+		fontWeight: '600',
+	},
+	activeTabLabel: {
+		color: '#8B6914',
+	},
 	addBtn: {
 		paddingHorizontal: 12,
 		paddingVertical: 8,
@@ -191,50 +212,5 @@ const styles = StyleSheet.create({
 	addLabel: {
 		color: '#3B2F1B',
 		fontWeight: '600',
-	},
-	sectionHint: {
-		color: '#6B5B3D',
-	},
-	emptyCard: {
-		gap: 12,
-		padding: 14,
-		borderRadius: 10,
-		backgroundColor: 'rgba(255,255,255,0.7)',
-	},
-	characterCard: {
-		padding: 12,
-		borderRadius: 8,
-		backgroundColor: 'rgba(255,255,255,0.85)',
-		borderWidth: 1,
-		borderColor: '#E6D5B8',
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'space-between',
-	},
-	characterName: {
-		fontWeight: '600',
-	},
-	characterMeta: {
-		color: '#6B5B3D',
-	},
-	characterTrait: {
-		color: '#8A765C',
-		fontSize: 12,
-		marginTop: 2,
-	},
-	viewLabel: {
-		color: '#8B6914',
-		fontWeight: '700',
-	},
-	primaryBtn: {
-		alignSelf: 'flex-start',
-		backgroundColor: '#8B6914',
-		paddingHorizontal: 14,
-		paddingVertical: 10,
-		borderRadius: 8,
-	},
-	primaryBtnLabel: {
-		color: '#F5E6D3',
-		fontWeight: '700',
 	},
 });

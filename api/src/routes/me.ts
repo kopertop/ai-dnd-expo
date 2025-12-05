@@ -35,6 +35,7 @@ me.get('/', async (c: Context<MeContext>) => {
 			picture: result.picture || undefined,
 			created_at: result.created_at,
 			updated_at: result.updated_at,
+			is_admin: result.is_admin === 1,
 		});
 	} catch (error) {
 		console.error('Error fetching user:', error);

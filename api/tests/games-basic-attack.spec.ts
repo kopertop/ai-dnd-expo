@@ -99,8 +99,8 @@ describe('Basic attack actions', () => {
 
 	it('returns a critical hit with maximum damage on natural 20', async () => {
 		const inviteCode = await createGame();
-		await createCharacter('attacker', { stats: { STR: 16, DEX: 10 }, actionPoints: 2 });
-		await createCharacter('target', { health: 12, maxHealth: 12, stats: { DEX: 10 } });
+		await createCharacter('attacker', { stats: { STR: 16, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 }, actionPoints: 2 });
+		await createCharacter('target', { health: 12, maxHealth: 12, stats: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 } });
 
 		const attackSpy = vi.spyOn(diceRoller, 'rollDiceLocal').mockImplementation((notation: string) => {
 			expect(notation).toBe('1d20+5');
@@ -131,8 +131,8 @@ describe('Basic attack actions', () => {
 
 	it('marks a natural 1 as fumble and applies no damage', async () => {
 		const inviteCode = await createGame();
-		await createCharacter('attacker2', { stats: { STR: 16, DEX: 10 }, actionPoints: 2 });
-		await createCharacter('target2', { health: 10, maxHealth: 10, stats: { DEX: 10 } });
+		await createCharacter('attacker2', { stats: { STR: 16, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 }, actionPoints: 2 });
+		await createCharacter('target2', { health: 10, maxHealth: 10, stats: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 } });
 
 		const attackSpy = vi.spyOn(diceRoller, 'rollDiceLocal').mockImplementation((notation: string) => {
 			expect(notation).toBe('1d20+5');
@@ -162,8 +162,8 @@ describe('Basic attack actions', () => {
 
 	it('misses when roll total is below target AC', async () => {
 		const inviteCode = await createGame();
-		await createCharacter('attacker3', { stats: { STR: 10, DEX: 10 }, actionPoints: 2 });
-		await createCharacter('target3', { health: 15, maxHealth: 15, stats: { DEX: 18 } });
+		await createCharacter('attacker3', { stats: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 }, actionPoints: 2 });
+		await createCharacter('target3', { health: 15, maxHealth: 15, stats: { STR: 10, DEX: 18, CON: 10, INT: 10, WIS: 10, CHA: 10 } });
 
 		const attackSpy = vi.spyOn(diceRoller, 'rollDiceLocal').mockImplementation((notation: string) => {
 			expect(notation).toBe('1d20+2');

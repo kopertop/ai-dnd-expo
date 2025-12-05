@@ -185,7 +185,7 @@ export const buildMapState = async (db: Database, game: GameRow, options: { char
 			const metadata = JSON.parse(token.metadata || '{}');
 
 			// Fetch NPC definition if this is an NPC token
-			let npc: { role?: string; name?: string; icon?: string } | null = null;
+			let npc: { role?: string; name?: string; icon?: string, metadata?: string } | null = null;
 			if (token.token_type === 'npc' && token.npc_id) {
 				const npcRow = await db.getNpcById(token.npc_id);
 				if (npcRow) {
@@ -194,6 +194,7 @@ export const buildMapState = async (db: Database, game: GameRow, options: { char
 						role: npcRow.role,
 						name: npcRow.name,
 						icon: npcMetadata.icon,
+						metadata: npcRow.metadata
 					};
 				}
 			}

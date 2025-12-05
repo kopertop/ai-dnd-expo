@@ -1,6 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 
+import { useUserInfo } from './use-auth-queries';
+
 import type { CharacterListResponse } from '@/types/api/multiplayer-api';
 import type { Character } from '@/types/character';
 import type { CharacterActionResult } from '@/types/combat';
@@ -11,6 +13,17 @@ import type { CharacterActionResult } from '@/types/combat';
 export function useMyCharacters() {
 	return useQueryApi<CharacterListResponse>('/characters');
 }
+
+export function useAllCharacters() {
+	const { data: userInfo } = useUserInfo();
+	return useQueryApi<CharacterListResponse>(
+		'/admin/characters',
+		{
+			enabled: userInfo?.is_admin,
+		},
+	);
+}
+
 
 /**
  * Get characters in a game

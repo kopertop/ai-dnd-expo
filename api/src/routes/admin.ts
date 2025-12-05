@@ -2,6 +2,9 @@ import { Hono } from 'hono';
 
 import { isAdmin as sharedIsAdmin } from '../../../shared/workers/admin';
 import type { CloudflareBindings } from '../env';
+import { createDatabase } from '../utils/repository';
+import { deserializeCharacter } from '../utils/games-utils';
+
 
 import { Quest } from '@/types/quest';
 
@@ -22,6 +25,13 @@ admin.use('*', async (c, next) => {
 	}
 
 	await next();
+});
+
+admin.get('/characters', async (c) => {
+	const db = createDatabase(c.env);
+	const characterRows = await db.getAllCharacters();
+	const characters = characterRows.map(deserializeCharacter);
+	return c.json({ characters });
 });
 
 admin.post('/quests', async (c) => {
