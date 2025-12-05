@@ -1,20 +1,20 @@
-import { handleGoogleCallback, useAuth } from 'expo-auth-template/backend';
+import { handleGoogleCallback, useAuth, User } from 'expo-auth-template/backend';
 import { Hono } from 'hono';
 import { partyserverMiddleware } from 'hono-party';
 
 import { corsMiddleware } from './cors';
 import type { CloudflareBindings } from './env';
-import { resolveSqlBinding } from './utils/repository';
+import { GameRoom } from './partykit/server';
 import adminRoutes from './routes/admin';
 import characterRoutes from './routes/characters';
 import gameRoutes from './routes/games';
 import mapRoutes from './routes/maps';
 import meRoutes from './routes/me';
 import questRoutes from './routes/quests';
-import { GameRoom } from './partykit/server';
+import { resolveSqlBinding } from './utils/repository';
 
 type Variables = {
-	user: { id: string; email: string; name?: string | null } | null;
+	user: User | null;
 };
 
 const app = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();

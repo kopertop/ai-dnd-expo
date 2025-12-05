@@ -1,3 +1,4 @@
+import { User } from 'expo-auth-template/backend';
 import { Hono } from 'hono';
 
 import type { CloudflareBindings } from '../env';
@@ -11,12 +12,7 @@ import { createDatabase } from '@/api/src/utils/repository';
 import { Character } from '@/types/character';
 
 type Variables = {
-	user: {
-		id: string;
-		email: string;
-		name?: string | null;
-		is_admin?: boolean;
-	} | null;
+	user: User | null;
 };
 
 type CharactersContext = { Bindings: CloudflareBindings; Variables: Variables };
@@ -99,7 +95,7 @@ characters.get('/:id', async (c) => {
 	if (
 		existing.player_id !== user.id &&
 		existing.player_email !== user.email &&
-		!user.is_admin
+		!user.isAdmin
 	) {
 		return c.json({ error: 'Forbidden' }, 403);
 	}
@@ -133,7 +129,7 @@ characters.put('/:id', async (c) => {
 	if (
 		existing.player_id !== user.id
 		&& existing.player_email !== user.email
-		&& !user.is_admin
+		&& !user.isAdmin
 	) {
 		return c.json({ error: 'Forbidden' }, 403);
 	}
@@ -174,7 +170,7 @@ characters.delete('/:id', async (c) => {
 	if (
 		existing.player_id !== user.id
 		&& existing.player_email !== user.email
-		&& !user.is_admin
+		&& !user.isAdmin
 	) {
 		return c.json({ error: 'Forbidden' }, 403);
 	}
