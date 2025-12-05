@@ -123,6 +123,7 @@ const MultiplayerGameScreen: React.FC = () => {
 	const isPlacingRef = useRef(false);
 	const [isPlacing, setIsPlacing] = useState(false);
 	const [tokenPositionOverrides, setTokenPositionOverrides] = useState<Record<string, { x: number; y: number }>>({});
+	const hasInitializedDiceMessageRef = useRef(false);
 	const { isMobile } = useScreenSize();
 	const insets = useSafeAreaInsets();
 	const dmOverlayPulse = useRef(new Animated.Value(0.5)).current;
@@ -187,9 +188,19 @@ const MultiplayerGameScreen: React.FC = () => {
 		[effectiveGameState?.mapState, mapStateData],
 	);
 	useEffect(() => {
+		// Avoid replaying historical DM rolls on initial sync; only react to new messages after we have initialized
 		const messages = effectiveGameState?.messages || [];
 		const latestDiceMessage = [...messages].reverse().find(m => m.diceRoll);
-		if (latestDiceMessage?.diceRoll && latestDiceMessage.id !== lastDiceMessageIdRef.current && wsIsConnected) {
+		if (!wsIsConnected || !latestDiceMessage?.diceRoll) {
+			return;
+		}
+		if (!hasInitializedDiceMessageRef.current) {
+			// First sync: record the latest dice message so we only show overlays for subsequent rolls
+			lastDiceMessageIdRef.current = latestDiceMessage.id;
+			hasInitializedDiceMessageRef.current = true;
+			return;
+		}
+		if (latestDiceMessage.id !== lastDiceMessageIdRef.current) {
 			lastDiceMessageIdRef.current = latestDiceMessage.id;
 			setDiceOverlay({
 				id: latestDiceMessage.id,
