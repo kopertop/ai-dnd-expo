@@ -131,9 +131,9 @@ export function useSaveMapToken(inviteCode: string) {
 		method: 'POST',
 		onSuccess: () => {
 			// Invalidate map tokens and map state
-			queryClient.invalidateQueries();
-			// Immediately refetch game state to get updated movementUsed
-			queryClient.refetchQueries();
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
 			websocketClient.sendRefresh();
 		},
 	});

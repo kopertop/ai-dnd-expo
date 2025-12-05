@@ -166,6 +166,23 @@ dice.post('/:inviteCode/dice/dm-roll', async (c) => {
 		console.error('Failed to broadcast DM dice roll to game state:', error);
 	}
 
+	// Notify connected clients via PartyServer/Partykit room to pull the latest state immediately
+	try {
+		const roomId = c.env.GameRoom.idFromName(`game-room/${inviteCode}`);
+		const stub = c.env.GameRoom.get(roomId);
+		const headers: Record<string, string> = { 'content-type': 'application/json' };
+		if (c.env.PARTYKIT_SECRET) {
+			headers['x-party-secret'] = c.env.PARTYKIT_SECRET;
+		}
+		await stub.fetch(`https://party/game-room/${inviteCode}`, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify({ type: 'broadcast-state' }),
+		});
+	} catch (error) {
+		console.error('Failed to notify PartyServer for DM dice roll broadcast:', error);
+	}
+
 	return c.json({
 		...rollResult,
 	});

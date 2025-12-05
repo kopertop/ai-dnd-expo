@@ -49,11 +49,13 @@ function requireAuth(request: Request) {
 }
 
 export class GameRoom extends Server<CloudflareBindings> {
+	private readonly env: CloudflareBindings;
 	private readonly db: Database;
 	private readonly stateService: GameStateService;
 
 	constructor(ctx: unknown, env: CloudflareBindings, database?: Database, stateService?: GameStateService) {
 		super(ctx as any, env);
+		this.env = env;
 		this.db = database ?? createDatabase(env);
 		this.stateService = stateService ?? new GameStateService(this.db);
 	}
@@ -120,7 +122,26 @@ export class GameRoom extends Server<CloudflareBindings> {
 		connection.send(JSON.stringify({ type: 'error', message: 'Unknown message type' }));
 	}
 
-	async onRequest(_request: Request) {
+	async onRequest(request: Request) {
+		// Allow internal POST to trigger broadcast to all connected clients (e.g., after DM dice roll)
+		if (request.method === 'POST') {
+			const secretHeader = request.headers.get('x-party-secret') || request.headers.get('authorization')?.replace('Bearer ', '').trim();
+			if (this.env.PARTYKIT_SECRET && secretHeader !== this.env.PARTYKIT_SECRET) {
+				return new Response('Forbidden', { status: 403 });
+			}
+			try {
+				const game = await this.resolveGameByRoomName();
+				await this.broadcastState(game);
+				return new Response(JSON.stringify({ ok: true }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' },
+				});
+			} catch (error) {
+				console.error('PartyServer broadcastState failed', error);
+				return new Response(JSON.stringify({ ok: false }), { status: 500 });
+			}
+		}
+
 		return new Response('Not found', { status: 404 });
 	}
 
@@ -248,6 +269,11 @@ export class GameRoom extends Server<CloudflareBindings> {
 	private async broadcastState(game: GameRow) {
 		const state = await this.stateService.getState(game);
 		this.broadcast(JSON.stringify({ type: 'state', state }));
+	}
+
+	private async resolveGameByRoomName(): Promise<GameRow> {
+		const inviteCode = parseInviteCode(this.name);
+		return this.resolveGame(inviteCode);
 	}
 
 	private resolveConnectionUser(connection: Connection): { playerId: string; email: string | null } | null {
