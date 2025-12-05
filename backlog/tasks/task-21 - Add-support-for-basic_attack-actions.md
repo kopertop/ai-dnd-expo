@@ -1,10 +1,10 @@
 ---
 id: task-21
 title: Add support for "basic_attack" actions
-status: To Do
+status: Done
 assignee: []
 created_date: '2025-12-05 03:22'
-updated_date: '2025-12-05 03:26'
+updated_date: '2025-12-05 03:38'
 labels: []
 dependencies: []
 priority: medium
@@ -25,11 +25,11 @@ Damage should be automatically calculated and then applied, as well as taking th
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Issuing an attack with an available major action should trigger an attack
-- [ ] #2 Issuing an attack WITHOUT a major action available should reject the call
-- [ ] #3 A 1d20 roll of 1 should be marked a CRITICAL MISS and not do any damage
-- [ ] #4 A 1d20 roll of 20 should be marked a CRITICAL HIT and automatically do maximum damage
-- [ ] #5 Any roll between a 1 and 20 should calculate agains the target Armor Class (i.e. if the target has an AC of 10, they need above a 10 to hit), including any modifiers (str for meelee, dex for ranged)
+- [x] #1 Issuing an attack with an available major action should trigger an attack
+- [x] #2 Issuing an attack WITHOUT a major action available should reject the call
+- [x] #3 A 1d20 roll of 1 should be marked a CRITICAL MISS and not do any damage
+- [x] #4 A 1d20 roll of 20 should be marked a CRITICAL HIT and automatically do maximum damage
+- [x] #5 Any roll between a 1 and 20 should calculate agains the target Armor Class (i.e. if the target has an AC of 10, they need above a 10 to hit), including any modifiers (str for meelee, dex for ranged)
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -58,4 +58,8 @@ Testing ideas:
 - Unit: combat-helpers.handleBasicAttack covering hit vs miss, crit (20) max damage, fumble (1) zero damage, STR vs DEX modifiers, AC comparison, and damage application to character/token.
 - API: POST /games/:code/characters/:id/actions basic_attack happy path (200) and insufficient actionPoints (400/403) plus invalid target (404). Validate response body contains roll breakdown, critical flags, damage, and updated HP.
 - Integration/smoke: issue an attack in a running game, ensure map tokens reflect new HP and activity log records action; assert actionPoints decremented.
+
+Starting implementation: update crit/fumble handling for basic_attack, ensure action point guard, and add backend tests for hit/miss/crit/fumble cases.
+
+Implemented crit and fumble handling for basic_attack (nat 20 = max damage, nat 1 = miss) plus AC comparison. Added API tests covering hit, miss, crit, fumble, and AP guard. Scoped damage/heal route to avoid shadowing actions route.
 <!-- SECTION:NOTES:END -->

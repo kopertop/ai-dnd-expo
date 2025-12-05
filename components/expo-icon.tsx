@@ -4,7 +4,14 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Image, ImageStyle, StyleProp, TextStyle, ViewStyle } from 'react-native';
+import {
+	Image,
+	ImageSourcePropType,
+	ImageStyle,
+	StyleProp,
+	TextStyle,
+	ViewStyle,
+} from 'react-native';
 
 interface ExpoIconProps {
 	icon: string;
@@ -13,14 +20,12 @@ interface ExpoIconProps {
 	style?: StyleProp<ViewStyle | ImageStyle | TextStyle>;
 }
 
-const LOCAL_ICON_MAP: Record<string, any> = {
-	'Characters:Elf:ElfRanger': require('@/assets/images/characters/elf/elf-ranger.png'),
-	'Characters:Goblin:GoblinArcher': require('@/assets/images/characters/goblin/goblin-archer.png'),
-	'Characters:Goblin:GoblinCleric': require('@/assets/images/characters/goblin/goblin-cleric.png'),
-	'Characters:Goblin:GoblinMage': require('@/assets/images/characters/goblin/goblin-mage.png'),
-	'Characters:Goblin:GoblinRaider': require('@/assets/images/characters/goblin/goblin-raider.png'),
-	'Characters:Goblin:GoblinRogue': require('@/assets/images/characters/goblin/goblin-rouge.png'),
-};
+import { CHARACTER_IMAGE_OPTIONS } from '@/types/character-figure';
+
+const LOCAL_ICON_MAP: Record<string, ImageSourcePropType> = {};
+CHARACTER_IMAGE_OPTIONS.forEach((option) => {
+	LOCAL_ICON_MAP[option.key] = option.source;
+});
 
 const resolveLocalIcon = (icon: string) => {
 	return LOCAL_ICON_MAP[icon];
@@ -44,7 +49,7 @@ export const ExpoIcon: React.FC<ExpoIconProps> = ({
 	}
 
 	try {
-	const localSource = resolveLocalIcon(icon.trim());
+		const localSource = resolveLocalIcon(icon.trim());
 		if (localSource) {
 			return (
 				<Image

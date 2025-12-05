@@ -50,14 +50,29 @@ export const formatModifierText = (modifier: number): string => {
  * @returns Dice roll summary with breakdown
  * @throws Error if dice notation is invalid
  */
-export const rollDamageDice = (notation: string, abilityModifier: number, critical: boolean): DiceRollSummary => {
+export const rollDamageDice = (
+	notation: string,
+	abilityModifier: number,
+	critical: boolean,
+	options?: { criticalMode?: 'double' | 'max' },
+): DiceRollSummary => {
 	const parsed = parseDiceNotation(notation);
 	if (!parsed) {
 		throw new Error(`Invalid damage dice: ${notation}`);
 	}
 
-	const totalDice = critical ? parsed.numDice * 2 : parsed.numDice;
-	const rolls = Array.from({ length: totalDice }, () => rollDie(parsed.dieSize));
+	const criticalMode = options?.criticalMode ?? 'double';
+	const baseDice = parsed.numDice;
+	const totalDice = critical && criticalMode === 'double' ? baseDice * 2 : baseDice;
+
+	let rolls: number[];
+	if (critical && criticalMode === 'max') {
+		// Max damage: treat each die as rolling its maximum value
+		rolls = Array.from({ length: baseDice }, () => parsed.dieSize);
+	} else {
+		rolls = Array.from({ length: totalDice }, () => rollDie(parsed.dieSize));
+	}
+
 	const modifier = parsed.modifier + abilityModifier;
 	const total = rolls.reduce((sum, roll) => sum + roll, 0) + modifier;
 
@@ -230,8 +245,7 @@ export const handleBasicAttack = async ({
 	const naturalRoll = attackRoll.rolls[0] ?? 0;
 	const critical = naturalRoll === 20;
 	const fumble = naturalRoll === 1;
-	const hit =
-		critical || (!fumble && attackRoll.total >= target.armorClass);
+	const hit = critical || (!fumble && attackRoll.total >= target.armorClass);
 
 	let damageRoll: DiceRollSummary | undefined;
 	let damageDealt = 0;
@@ -242,7 +256,8 @@ export const handleBasicAttack = async ({
 		const abilityKey = attackStyle === 'ranged' ? 'DEX' : 'STR';
 		const abilityModifier = getAbilityModifier(getAbilityScore(attacker, abilityKey));
 		const damageDice = getDamageDice(attackStyle, params?.damageDice);
-		damageRoll = rollDamageDice(damageDice, abilityModifier, critical);
+		const criticalMode = critical ? { criticalMode: 'max' as const } : undefined;
+		damageRoll = rollDamageDice(damageDice, abilityModifier, critical, criticalMode);
 		damageDealt = Math.max(0, damageRoll.total);
 		remainingHealth = await applyDamageToTarget(db, target, damageDealt);
 	}
@@ -406,4 +421,3 @@ export const handleSpellCast = async ({
 
 	return { result };
 };
-

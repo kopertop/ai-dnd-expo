@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { CHARACTER_IMAGE_OPTIONS } from '@/types/character-figure';
 import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
 
@@ -69,14 +70,12 @@ const ICON_CATEGORIES: IconCategories = {
 		{ family: 'FontAwesome5', name: 'coins', label: 'Coins' },
 		{ family: 'Ionicons', name: 'bag', label: 'Bag' },
 	],
-	Portraits: [
-		{ family: 'Characters', name: 'ElfRanger', label: 'Elf Ranger', value: 'Characters:Elf:ElfRanger' },
-		{ family: 'Characters', name: 'GoblinArcher', label: 'Goblin Archer', value: 'Characters:Goblin:GoblinArcher' },
-		{ family: 'Characters', name: 'GoblinCleric', label: 'Goblin Cleric', value: 'Characters:Goblin:GoblinCleric' },
-		{ family: 'Characters', name: 'GoblinMage', label: 'Goblin Mage', value: 'Characters:Goblin:GoblinMage' },
-		{ family: 'Characters', name: 'GoblinRaider', label: 'Goblin Raider', value: 'Characters:Goblin:GoblinRaider' },
-		{ family: 'Characters', name: 'GoblinRogue', label: 'Goblin Rogue', value: 'Characters:Goblin:GoblinRogue' },
-	],
+	Portraits: CHARACTER_IMAGE_OPTIONS.map((opt) => ({
+		family: 'Characters',
+		name: opt.key.split(':').pop() || opt.key,
+		label: opt.label,
+		value: opt.key,
+	})),
 };
 
 const ALL_ICONS = Object.values(ICON_CATEGORIES).flat();

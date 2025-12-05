@@ -29,7 +29,7 @@ const combat = new Hono<GamesContext>();
  * @param action - Either 'damage' or 'heal'
  * @returns Updated character or NPC data
  */
-combat.post('/:inviteCode/characters/:characterId/:action', async (c) => {
+combat.post('/:inviteCode/characters/:characterId/:action{damage|heal}', async (c) => {
 	const user = c.get('user');
 	if (!user) {
 		return c.json({ error: 'Unauthorized' }, 401);

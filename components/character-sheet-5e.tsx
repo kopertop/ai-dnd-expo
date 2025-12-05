@@ -17,7 +17,8 @@ import { SKILL_LIST } from '@/constants/skills';
 import { STAT_KEYS } from '@/constants/stats';
 import { useUpdateCharacter } from '@/hooks/api/use-character-queries';
 import { Character } from '@/types/character';
-import { GearSlot, GEAR_SLOTS } from '@/types/stats';
+import { CHARACTER_IMAGE_OPTIONS } from '@/types/character-figure';
+import { GEAR_SLOTS, GearSlot } from '@/types/stats';
 import {
 	calculateAC,
 	calculatePassivePerception,
@@ -40,48 +41,6 @@ type InventoryEntry = {
 };
 
 const abilityModifier = (score: number) => Math.floor((score - 10) / 2);
-
-const CHARACTER_IMAGE_OPTIONS: Array<{
-	key: string;
-	label: string;
-	source: ImageSourcePropType;
-}> = [
-	{
-		key: 'Characters:Elf:ElfRanger',
-		label: 'Elf Ranger',
-		source: require('@/assets/images/characters/elf/elf-ranger.png'),
-	},
-	{
-		key: 'Characters:Elf:ElfMage',
-		label: 'Elf Mage',
-		source: require('@/assets/images/characters/elf/elf-mage.png'),
-	},
-	{
-		key: 'Characters:Goblin:GoblinArcher',
-		label: 'Goblin Archer',
-		source: require('@/assets/images/characters/goblin/goblin-archer.png'),
-	},
-	{
-		key: 'Characters:Goblin:GoblinCleric',
-		label: 'Goblin Cleric',
-		source: require('@/assets/images/characters/goblin/goblin-cleric.png'),
-	},
-	{
-		key: 'Characters:Goblin:GoblinMage',
-		label: 'Goblin Mage',
-		source: require('@/assets/images/characters/goblin/goblin-mage.png'),
-	},
-	{
-		key: 'Characters:Goblin:GoblinRaider',
-		label: 'Goblin Raider',
-		source: require('@/assets/images/characters/goblin/goblin-raider.png'),
-	},
-	{
-		key: 'Characters:Goblin:GoblinRogue',
-		label: 'Goblin Rogue',
-		source: require('@/assets/images/characters/goblin/goblin-rouge.png'),
-	},
-];
 
 const resolveCharacterImage = (icon?: string) => {
 	const match = CHARACTER_IMAGE_OPTIONS.find(option => option.key === icon);
