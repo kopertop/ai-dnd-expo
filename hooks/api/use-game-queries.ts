@@ -3,10 +3,10 @@ import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 
 import { websocketClient } from '@/services/api/websocket-client';
 import type {
-	ActivityLogListResponse,
-	GameSessionResponse,
-	GameStateResponse,
-	MyGamesResponse,
+    ActivityLogListResponse,
+    GameSessionResponse,
+    GameStateResponse,
+    MyGamesResponse,
 } from '@/types/api/multiplayer-api';
 import { Quest } from '@/types/quest';
 
@@ -19,7 +19,7 @@ export function useGameSession(
 ) {
 	// Don't make API call if inviteCode is falsy - pass empty string and disable query
 	return useQueryApi<GameSessionResponse>(
-		inviteCode ? `/games/${inviteCode}` : '/noop-disabled',
+		inviteCode ? `/games/${inviteCode}` : null,
 		{
 			enabled: !!inviteCode, // Only enable when we have an invite code
 			refetchInterval: options?.refetchInterval,
@@ -50,7 +50,7 @@ export function useActivityLogs(
 	offset: number = 0,
 ) {
 	return useQueryApi<ActivityLogListResponse>(
-		inviteCode ? `/games/${inviteCode}/log?limit=${limit}&offset=${offset}` : '/noop-disabled',
+		inviteCode ? `/games/${inviteCode}/log?limit=${limit}&offset=${offset}` : null,
 		{
 			enabled: !!inviteCode,
 		},
@@ -69,7 +69,7 @@ export function useCurrentTurn(inviteCode: string | null | undefined) {
 			startedAt: number;
 		} | null;
 	}>(
-		inviteCode ? `/games/${inviteCode}/turn` : '/noop-disabled',
+		inviteCode ? `/games/${inviteCode}/turn` : null,
 		{
 			enabled: !!inviteCode,
 		},

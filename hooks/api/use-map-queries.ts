@@ -3,13 +3,13 @@ import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 
 import { websocketClient } from '@/services/api/websocket-client';
 import type {
-	MapMoveResponse,
-	MapStateResponse,
-	MapTokenListResponse,
-	MapTokenMutationResponse,
-	MovementValidationResponse,
-	NpcDefinitionListResponse,
-	NpcInstanceListResponse,
+    MapMoveResponse,
+    MapStateResponse,
+    MapTokenListResponse,
+    MapTokenMutationResponse,
+    MovementValidationResponse,
+    NpcDefinitionListResponse,
+    NpcInstanceListResponse,
 } from '@/types/api/multiplayer-api';
 import type { NpcDefinition } from '@/types/multiplayer-map';
 
@@ -18,7 +18,7 @@ import type { NpcDefinition } from '@/types/multiplayer-map';
  */
 export function useMapState(inviteCode: string | null | undefined) {
 	return useQueryApi<MapStateResponse>(
-		inviteCode ? `/games/${inviteCode}/map` : '/noop-disabled',
+		inviteCode ? `/games/${inviteCode}/map` : null,
 		{
 			enabled: !!inviteCode,
 		},
@@ -30,7 +30,7 @@ export function useMapState(inviteCode: string | null | undefined) {
  */
 export function useMapTokens(inviteCode: string | null | undefined) {
 	return useQueryApi<MapTokenListResponse>(
-		inviteCode ? `/games/${inviteCode}/map/tokens` : '/noop-disabled',
+		inviteCode ? `/games/${inviteCode}/map/tokens` : null,
 		{
 			enabled: !!inviteCode,
 		},
@@ -111,10 +111,16 @@ export function usePlacePlayerToken(inviteCode: string) {
 
 	return useMutationApi<MapTokenMutationResponse>({
 		method: 'POST',
-		onSuccess: () => {
+		onSuccess: (data) => {
 			// Invalidate map tokens and state
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+
+			// Optimistically update caches if data is returned
+			if (data && data.tokens) {
+				queryClient.setQueryData([`/games/${inviteCode}/map/tokens`], { tokens: data.tokens });
+			}
+
 			websocketClient.sendRefresh();
 		},
 	});
@@ -128,11 +134,17 @@ export function useSaveMapToken(inviteCode: string) {
 
 	return useMutationApi<MapTokenMutationResponse>({
 		method: 'POST',
-		onSuccess: () => {
+		onSuccess: (data) => {
 			// Invalidate map tokens and map state
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
+
+			// Optimistically update caches if data is returned
+			if (data && data.tokens) {
+				queryClient.setQueryData([`/games/${inviteCode}/map/tokens`], { tokens: data.tokens });
+			}
+
 			websocketClient.sendRefresh();
 		},
 	});
@@ -167,10 +179,16 @@ export function usePlaceMapElement(inviteCode: string) {
 
 	return useMutationApi<MapTokenMutationResponse>({
 		method: 'POST',
-		onSuccess: () => {
+		onSuccess: (data) => {
 			// Invalidate map tokens and state
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+
+			// Optimistically update caches if data is returned
+			if (data && data.tokens) {
+				queryClient.setQueryData([`/games/${inviteCode}/map/tokens`], { tokens: data.tokens });
+			}
+
 			websocketClient.sendRefresh();
 		},
 	});
@@ -254,7 +272,7 @@ export function useMoveToken(inviteCode: string) {
  */
 export function useNpcDefinitions(inviteCode: string | null | undefined) {
 	return useQueryApi<NpcDefinitionListResponse>(
-		inviteCode ? `/games/${inviteCode}/npcs` : '/noop-disabled',
+		inviteCode ? `/games/${inviteCode}/npcs` : null,
 		{
 			enabled: !!inviteCode,
 		},
@@ -269,7 +287,7 @@ export function useNpcDefinition(
 	npcId: string | null | undefined,
 ) {
 	return useQueryApi<NpcDefinition>(
-		inviteCode && npcId ? `/games/${inviteCode}/npcs/${npcId}` : '/noop-disabled',
+		inviteCode && npcId ? `/games/${inviteCode}/npcs/${npcId}` : null,
 		{
 			enabled: !!inviteCode && !!npcId,
 		},
@@ -281,7 +299,7 @@ export function useNpcDefinition(
  */
 export function useNpcInstances(inviteCode: string | null | undefined) {
 	return useQueryApi<NpcInstanceListResponse>(
-		inviteCode ? `/games/${inviteCode}/npc-instances` : '/noop-disabled',
+		inviteCode ? `/games/${inviteCode}/npc-instances` : null,
 		{
 			enabled: !!inviteCode,
 		},
@@ -296,13 +314,20 @@ export function usePlaceNpc(inviteCode: string) {
 
 	return useMutationApi<MapTokenMutationResponse>({
 		method: 'POST',
-		onSuccess: () => {
+		onSuccess: (data) => {
 			// Invalidate NPC instances, tokens, map state, and character queries so NPCs show up immediately
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/npc-instances`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/characters`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
+
+			// Optimistically update caches if data is returned
+			if (data && data.tokens) {
+				queryClient.setQueryData([`/games/${inviteCode}/map/tokens`], { tokens: data.tokens });
+			}
+
+			websocketClient.sendRefresh();
 		},
 	});
 }

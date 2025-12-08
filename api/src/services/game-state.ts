@@ -598,11 +598,20 @@ export class GameStateService {
 			throw new Error('Game not started');
 		}
 
-		const characters = state.characters ?? [];
-		
+		// Fetch fresh characters from DB to ensure we have latest inventory/stats
+		// This avoids using potentially stale character data from state_data
+		const memberships = await this.db.getGamePlayers(game.id);
+		const characterRows = await Promise.all(
+			memberships.map(async m => {
+				const row = await this.db.getCharacterById(m.character_id);
+				return row ? this.deserializeCharacter(row) : null;
+			}),
+		);
+		const dbCharacters = characterRows.filter((c): c is Character => Boolean(c));
+
 		// Restore all characters to full health/AP (long rest)
-		const restoredCharacters = this.restoreAllCharactersToFull(characters);
-		
+		const restoredCharacters = this.restoreAllCharactersToFull(dbCharacters);
+
 		// Update characters in database
 		for (const character of restoredCharacters) {
 			await this.db.updateCharacter(character.id, {
@@ -610,12 +619,13 @@ export class GameStateService {
 				action_points: character.maxActionPoints,
 			});
 		}
-		
+
 		// Clear active turn and initiative order to end encounter
 		const updatedState: MultiplayerGameState = {
 			...state,
 			characters: restoredCharacters,
 			activeTurn: null,
+			pausedTurn: undefined,
 			initiativeOrder: undefined,
 			lastUpdated: Date.now(),
 		};
