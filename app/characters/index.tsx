@@ -1,14 +1,19 @@
+import { useAuth } from 'expo-auth-template/frontend';
 import { Stack, router } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from 'expo-auth-template/frontend';
 
 import { AppFooter } from '@/components/app-footer';
 import { ExpoIconPicker } from '@/components/expo-icon-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { multiplayerClient } from '@/services/api/multiplayer-client';
+import {
+    useCreateCharacter,
+    useDeleteCharacter,
+    useMyCharacters,
+    useUpdateCharacter,
+} from '@/hooks/api/use-character-queries';
 import { Character } from '@/types/character';
 
 const DEFAULT_EQUIPPED = {
@@ -46,8 +51,14 @@ const createDefaultCharacter = (overrides?: Partial<Character>): Character => ({
 const CharacterManagerScreen: React.FC = () => {
 	const { user } = useAuth();
 	const insets = useSafeAreaInsets();
-	const [characters, setCharacters] = useState<Character[]>([]);
-	const [loading, setLoading] = useState(false);
+
+	const { data: charactersData, isLoading: loadingCharacters, refetch } = useMyCharacters();
+	const characters = Array.isArray(charactersData) ? charactersData : (charactersData?.characters || []);
+
+	const createMutation = useCreateCharacter();
+	const updateMutation = useUpdateCharacter();
+	const deleteMutation = useDeleteCharacter();
+
 	const [editing, setEditing] = useState<Character | null>(null);
 	const [form, setForm] = useState(createDefaultCharacter());
 
@@ -56,28 +67,7 @@ const CharacterManagerScreen: React.FC = () => {
 		setForm(createDefaultCharacter());
 	};
 
-	const loadCharacters = useCallback(async () => {
-		if (!user) {
-			setCharacters([]);
-			return;
-		}
-
-		setLoading(true);
-		try {
-			const data = await multiplayerClient.getMyCharacters();
-			setCharacters(data);
-		} catch (error) {
-			Alert.alert('Error', error instanceof Error ? error.message : 'Failed to load characters');
-		} finally {
-			setLoading(false);
-		}
-	}, [user]);
-
-	useEffect(() => {
-		if (user) {
-			loadCharacters().catch(() => undefined);
-		}
-	}, [user, loadCharacters]);
+	const loading = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending || loadingCharacters;
 
 	const handleSave = async () => {
 		if (!user) {
@@ -87,12 +77,17 @@ const CharacterManagerScreen: React.FC = () => {
 		try {
 			const payload = createDefaultCharacter({ ...form, id: editing?.id ?? form.id });
 			if (editing) {
-				await multiplayerClient.updateCharacter(payload.id, payload);
+				await updateMutation.mutateAsync({
+					path: `/characters/${payload.id}`,
+					body: payload
+				});
 			} else {
-				await multiplayerClient.createCharacter(payload);
+				await createMutation.mutateAsync({
+					path: '/characters',
+					body: payload
+				});
 			}
 			resetForm();
-			await loadCharacters();
 		} catch (error) {
 			Alert.alert('Error', error instanceof Error ? error.message : 'Failed to save character');
 		}
@@ -103,21 +98,18 @@ const CharacterManagerScreen: React.FC = () => {
 		setForm(createDefaultCharacter(character));
 	};
 
-	const deleteCharacter = useCallback(
-		async (character: Character) => {
-			try {
-				await multiplayerClient.deleteCharacter(character.id);
-				setCharacters(prev => prev.filter(existing => existing.id !== character.id));
-				if (editing?.id === character.id) {
-					resetForm();
-				}
-				await loadCharacters();
-			} catch (error) {
-				Alert.alert('Error', error instanceof Error ? error.message : 'Delete failed');
+	const deleteCharacter = async (character: Character) => {
+		try {
+			await deleteMutation.mutateAsync({
+				path: `/characters/${character.id}`
+			});
+			if (editing?.id === character.id) {
+				resetForm();
 			}
-		},
-		[editing?.id, loadCharacters],
-	);
+		} catch (error) {
+			Alert.alert('Error', error instanceof Error ? error.message : 'Delete failed');
+		}
+	};
 
 	const handleDelete = (character: Character) => {
 		if (Platform.OS === 'web') {
@@ -163,35 +155,41 @@ const CharacterManagerScreen: React.FC = () => {
 				<View style={styles.section}>
 					<View style={styles.sectionHeader}>
 						<ThemedText type="subtitle">Saved Characters</ThemedText>
-						<TouchableOpacity style={styles.refreshBtn} onPress={() => loadCharacters().catch(() => undefined)}>
+						<TouchableOpacity style={styles.refreshBtn} onPress={() => refetch()}>
 							<ThemedText style={styles.refreshLabel}>Refresh</ThemedText>
 						</TouchableOpacity>
 					</View>
-					{characters.map(character => (
-						<View key={character.id} style={styles.card}>
-							<View style={styles.cardHeader}>
-								<ThemedText style={styles.characterName}>{character.name}</ThemedText>
-								<ThemedText style={styles.characterMeta}>
-									{character.race} {character.class} • Level {character.level}
-								</ThemedText>
-							</View>
-							<View style={styles.cardActions}>
-								<TouchableOpacity style={styles.secondaryBtn} onPress={() => handleEdit(character)}>
-									<ThemedText style={styles.secondaryLabel}>Edit</ThemedText>
-								</TouchableOpacity>
-								<TouchableOpacity style={styles.dangerBtn} onPress={() => handleDelete(character)}>
-									<ThemedText style={styles.dangerLabel}>Delete</ThemedText>
-								</TouchableOpacity>
-							</View>
-						</View>
-					))}
-					{characters.length === 0 && (
-						<View style={styles.emptyCard}>
-							<ThemedText style={styles.emptyTitle}>No characters yet</ThemedText>
-							<ThemedText style={styles.emptySubtitle}>
-								Create a hero below to store reusable DM session characters.
-							</ThemedText>
-						</View>
+					{loadingCharacters ? (
+						<ThemedText style={styles.emptySubtitle}>Loading characters...</ThemedText>
+					) : (
+						<>
+							{characters.map(character => (
+								<View key={character.id} style={styles.card}>
+									<View style={styles.cardHeader}>
+										<ThemedText style={styles.characterName}>{character.name}</ThemedText>
+										<ThemedText style={styles.characterMeta}>
+											{character.race} {character.class} • Level {character.level}
+										</ThemedText>
+									</View>
+									<View style={styles.cardActions}>
+										<TouchableOpacity style={styles.secondaryBtn} onPress={() => handleEdit(character)}>
+											<ThemedText style={styles.secondaryLabel}>Edit</ThemedText>
+										</TouchableOpacity>
+										<TouchableOpacity style={styles.dangerBtn} onPress={() => handleDelete(character)}>
+											<ThemedText style={styles.dangerLabel}>Delete</ThemedText>
+										</TouchableOpacity>
+									</View>
+								</View>
+							))}
+							{characters.length === 0 && (
+								<View style={styles.emptyCard}>
+									<ThemedText style={styles.emptyTitle}>No characters yet</ThemedText>
+									<ThemedText style={styles.emptySubtitle}>
+										Create a hero below to store reusable DM session characters.
+									</ThemedText>
+								</View>
+							)}
+						</>
 					)}
 				</View>
 				<View style={styles.section}>

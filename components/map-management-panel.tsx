@@ -1,16 +1,20 @@
-import React, { useCallback, useEffect, useState } from 'react';
 import {
-	ActivityIndicator,
-	Alert,
-	ScrollView,
-	StyleSheet,
-	TextInput,
-	TouchableOpacity,
-	View,
+    useAllMaps,
+    useCloneMap,
+    useSwitchMap,
+} from '@/hooks/api/use-map-queries';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { multiplayerClient } from '@/services/api/multiplayer-client';
 
 interface Map {
 	id: string;
@@ -38,28 +42,14 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 	onEditMap,
 	onStartEncounter,
 }) => {
-	const [maps, setMaps] = useState<Map[]>([]);
-	const [loading, setLoading] = useState(false);
+	const { data: mapsData, isLoading: loadingMaps, refetch } = useAllMaps();
+	const maps = mapsData?.maps || [];
+	const cloneMapMutation = useCloneMap();
+	const switchMapMutation = useSwitchMap(inviteCode);
+
 	const [searchQuery, setSearchQuery] = useState('');
 	const [cloningMapId, setCloningMapId] = useState<string | null>(null);
 	const [startingEncounterMapId, setStartingEncounterMapId] = useState<string | null>(null);
-
-	const loadMaps = useCallback(async () => {
-		setLoading(true);
-		try {
-			const response = await multiplayerClient.getAllMaps();
-			setMaps(response.maps || []);
-		} catch (error) {
-			console.error('Failed to load maps:', error);
-			Alert.alert('Error', error instanceof Error ? error.message : 'Failed to load maps');
-		} finally {
-			setLoading(false);
-		}
-	}, []);
-
-	useEffect(() => {
-		loadMaps();
-	}, [loadMaps]);
 
 	const handleCloneMap = useCallback(
 		async (sourceMap: Map) => {
@@ -68,9 +58,11 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 			setCloningMapId(sourceMap.id);
 			try {
 				const newName = `${sourceMap.name} (Copy)`;
-				const response = await multiplayerClient.cloneMap(sourceMap.id, newName);
+				const response = await cloneMapMutation.mutateAsync({
+					path: `/maps/${sourceMap.id}/clone`,
+					body: { name: newName }
+				});
 				Alert.alert('Success', `Map "${newName}" created successfully`);
-				await loadMaps();
 				if (onMapCloned && response.map?.id) {
 					onMapCloned(response.map.id);
 				}
@@ -81,7 +73,7 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 				setCloningMapId(null);
 			}
 		},
-		[loadMaps, onMapCloned],
+		[cloneMapMutation, onMapCloned],
 	);
 
 	const handleStartEncounter = useCallback(
@@ -98,7 +90,10 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 			} else {
 				// Fallback to just switching map if onStartEncounter is not provided
 				try {
-					await multiplayerClient.switchMap(inviteCode, mapId);
+					await switchMapMutation.mutateAsync({
+						path: `/games/${inviteCode}/map`,
+						body: { mapId }
+					});
 					onMapSelected(mapId);
 					Alert.alert('Success', 'Map selected successfully');
 				} catch (error) {
@@ -107,20 +102,20 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 				}
 			}
 		},
-		[inviteCode, onMapSelected, onStartEncounter],
+		[inviteCode, onMapSelected, onStartEncounter, switchMapMutation],
 	);
 
-	const filteredMaps = maps.filter(
+	const filteredMaps = useMemo(() => maps.filter(
 		map =>
 			map.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			(map.description && map.description.toLowerCase().includes(searchQuery.toLowerCase())),
-	);
+	), [maps, searchQuery]);
 
 	return (
 		<View style={styles.container}>
 			<View style={styles.header}>
 				<ThemedText type="subtitle">Map Management</ThemedText>
-				<TouchableOpacity style={styles.refreshButton} onPress={loadMaps}>
+				<TouchableOpacity style={styles.refreshButton} onPress={() => refetch()}>
 					<ThemedText style={styles.refreshButtonText}>Refresh</ThemedText>
 				</TouchableOpacity>
 			</View>
@@ -135,7 +130,7 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 					placeholderTextColor="#6B5B3D"
 				/>
 
-				{loading ? (
+				{loadingMaps ? (
 					<View style={styles.loadingContainer}>
 						<ActivityIndicator size="small" color="#8B6914" />
 						<ThemedText style={styles.loadingText}>Loading maps...</ThemedText>
