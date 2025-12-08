@@ -67,6 +67,9 @@ export class GameStateService {
 		if (!turn) {
 			return turn;
 		}
+		// When resetting turn usage (e.g., resuming or starting new turn),
+		// we MUST include the fields required by activeTurn schema:
+		// movementUsed, majorActionUsed, minorActionUsed
 		return {
 			...turn,
 			movementUsed: 0,
@@ -560,12 +563,31 @@ export class GameStateService {
 			entry => entry.entityId === currentTurn.entityId,
 		);
 
-		if (currentIndex === -1) {
-			throw new Error('Current turn entity not found in initiative order');
+		// If current turn is DM (type='dm') or entity not found, start from beginning
+		// This handles the case where DM interrupts/starts a turn that isn't in initiative
+		let nextIndex = 0;
+		if (currentIndex !== -1) {
+			// Move to next entity (wrap around if at end)
+			nextIndex = (currentIndex + 1) % state.initiativeOrder.length;
+		} else if (currentTurn.type === 'dm') {
+			// If it was DM's turn, we resume from the paused turn index if possible,
+			// OR if no paused turn, we just go to the first person in initiative (index 0)
+			// But wait! If there was a paused turn, resumeTurn should have been used.
+			// If endTurn is called on a DM turn, it implies the DM is DONE and wants to
+			// pass play to the next person in the list (or the first person if just starting).
+
+			// Let's see if we can find where we left off, or just default to 0
+			// For now, if DM ends turn, we go to top of initiative (or next logic could be smarter)
+			// A common pattern: DM interrupts -> DM Actions -> Resume Turn.
+			// But if DM is *taking a turn* (e.g. Lair Action) and then ending it?
+			// The request says: "moving from a DM turn to the FIRST character in the list"
+			nextIndex = 0;
+		} else {
+			// Entity not found and not DM? That's weird, but let's safe fallback to 0
+			console.warn(`[endTurn] Current turn entity ${currentTurn.entityId} not found in initiative, defaulting to first entity.`);
+			nextIndex = 0;
 		}
 
-		// Move to next entity (wrap around if at end)
-		const nextIndex = (currentIndex + 1) % state.initiativeOrder.length;
 		const nextEntity = state.initiativeOrder[nextIndex];
 
 		const characters = state.characters ?? [];
