@@ -24,7 +24,6 @@ import { PlayerCharacterList } from '@/components/player-character-list';
 import { SpellActionSelector } from '@/components/spell-action-selector';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { TokenDetailModal } from '@/components/token-detail-modal';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import { useCastSpell, useDealDamage, useHealCharacter, usePerformAction, useRollPerceptionCheck } from '@/hooks/api/use-character-queries';
 import {
@@ -1225,10 +1224,17 @@ const MultiplayerGameScreen: React.FC = () => {
 
 	const handleTokenLongPress = useCallback(
 		(token: MapToken) => {
-			// Only show token detail modal on long press for host
+			// Only show character modal on long press for host
 			if (isHost) {
-				setSelectedToken(token);
-				setShowTokenModal(true);
+				// Check if it's a player or NPC token and open appropriate modal
+				if (token.type === 'player' || token.type === 'npc') {
+					// Use CharacterDMModal instead of TokenDetailModal
+					setSelectedCharacterForDM({
+						id: token.id,
+						type: token.type as 'player' | 'npc',
+					});
+					setShowCharacterDMModal(true);
+				}
 			}
 		},
 		[isHost],
@@ -2712,7 +2718,8 @@ const MultiplayerGameScreen: React.FC = () => {
 				</View>
 			</Modal>
 
-			{/* Token Detail Modal */}
+			{/* Token Detail Modal - REMOVED in favor of CharacterDMModal */}
+			{/*
 			<TokenDetailModal
 				visible={showTokenModal}
 				token={selectedToken}
@@ -2738,6 +2745,7 @@ const MultiplayerGameScreen: React.FC = () => {
 				} : undefined}
 				canEdit={isHost}
 			/>
+			*/}
 
 			{/* Tile Action Menu */}
 			{tileActionMenu && (
