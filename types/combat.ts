@@ -16,6 +16,7 @@ export type DiceRollSummary = {
 	total: number;
 	breakdown: string;
 	critical?: boolean;
+	natural?: number;
 };
 
 export type AttackRollSummary = DiceRollSummary & {
@@ -45,6 +46,9 @@ export type SpellCastResult = {
 	hit?: boolean;
 	damageRoll?: DiceRollSummary;
 	damageDealt?: number;
+	saveDC?: number;
+	saveRoll?: DiceRollSummary;
+	saveResult?: 'success' | 'fail';
 };
 
 export type CharacterActionResult = BasicAttackResult | SpellCastResult;

@@ -9,9 +9,9 @@ import { CharacterDMModal } from '@/components/character-dm-modal';
 import { CharacterSheetModal } from '@/components/character-sheet-modal';
 import { CharacterViewModal } from '@/components/character-view-modal';
 import { CombatResultModal } from '@/components/combat-result-modal';
-import { DiceRollOverlay } from '@/components/dice-roll-overlay';
 import { CommandPalette, type Command } from '@/components/command-palette';
 import { ConnectionStatusIndicator } from '@/components/connection-status-indicator';
+import { DiceRollOverlay } from '@/components/dice-roll-overlay';
 import { DMActionBanner } from '@/components/dm-action-banner';
 import { MapElementPicker, type MapElementType } from '@/components/map-element-picker';
 import { InteractiveMap } from '@/components/map/interactive-map';
@@ -28,20 +28,20 @@ import { TokenDetailModal } from '@/components/token-detail-modal';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import { useCastSpell, useDealDamage, useHealCharacter, usePerformAction, useRollPerceptionCheck } from '@/hooks/api/use-character-queries';
 import {
-	useStopGame,
-	useSubmitDMAction,
-	useDmRollDice,
+    useDmRollDice,
+    useStopGame,
+    useSubmitDMAction,
 } from '@/hooks/api/use-game-queries';
 import {
-	useAllMaps,
-	useDeleteMapToken,
-	useMapState,
-	useMoveToken,
-	useMutateTerrain,
-	usePlaceNpc,
-	usePlacePlayerToken,
-	useSaveMapToken,
-	useSwitchMap,
+    useAllMaps,
+    useDeleteMapToken,
+    useMapState,
+    useMoveToken,
+    useMutateTerrain,
+    usePlaceNpc,
+    usePlacePlayerToken,
+    useSaveMapToken,
+    useSwitchMap,
 } from '@/hooks/api/use-map-queries';
 import { useEndTurn, useInterruptTurn, useNextTurn, useResumeTurn, useStartTurn, useUpdateTurnState } from '@/hooks/api/use-turn-queries';
 import { usePollingGameState } from '@/hooks/use-polling-game-state';
@@ -2157,7 +2157,7 @@ const MultiplayerGameScreen: React.FC = () => {
 		>
 			<View style={[styles.mapContainer, isPausedForPlayers && styles.mapDimmed]}>
 				<DMActionBanner
-					visible={Boolean(gameState?.pausedTurn) && isHost}
+					visible={Boolean(effectiveGameState?.pausedTurn) && isHost}
 					message="DM is taking an action"
 				/>
 				{isHost && isMapEditMode && (
@@ -2505,7 +2505,7 @@ const MultiplayerGameScreen: React.FC = () => {
 					)}
 					{isHost && (
 						<>
-							{gameState?.pausedTurn && (
+							{effectiveGameState?.pausedTurn && (
 								<TouchableOpacity
 									style={[styles.lobbyButton, styles.resumeButton]}
 									onPress={async () => {
@@ -2525,7 +2525,7 @@ const MultiplayerGameScreen: React.FC = () => {
 									<ThemedText style={styles.lobbyButtonText}>Resume Turn</ThemedText>
 								</TouchableOpacity>
 							)}
-							{gameState?.activeTurn && gameState.activeTurn.type !== 'dm' && (
+							{effectiveGameState?.activeTurn && !effectiveGameState?.pausedTurn && (
 								<TouchableOpacity
 									style={[styles.lobbyButton, styles.interruptButton]}
 									onPress={async () => {
@@ -2571,7 +2571,7 @@ const MultiplayerGameScreen: React.FC = () => {
 									}
 								}}
 							>
-								<ThemedText style={styles.lobbyButtonText}>End Enconter</ThemedText>
+								<ThemedText style={styles.lobbyButtonText}>End Encounter</ThemedText>
 							</TouchableOpacity>
 							<ThemedText style={styles.hostBadge}>Host</ThemedText>
 						</>

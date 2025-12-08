@@ -18,6 +18,7 @@ import {
 	calculateAC,
 	calculateAttackBonus,
 	calculateProficiencyBonus,
+	calculateSpellSaveDC,
 	getAbilityModifier,
 	getAbilityScore,
 	getSpellcastingAbilityModifier,
@@ -158,16 +159,32 @@ export const getAttackStyle = (params?: Record<string, unknown>): 'melee' | 'ran
 
 /**
  * Get damage dice notation based on attack style and custom dice
+ * @param attacker - Character performing the attack
  * @param attackStyle - Attack style ('melee' or 'ranged')
  * @param customDice - Optional custom dice notation override
  * @returns Damage dice notation string
  */
-export const getDamageDice = (attackStyle: 'melee' | 'ranged', customDice?: unknown): string => {
+export const getDamageDice = (attacker: Character, attackStyle: 'melee' | 'ranged', customDice?: unknown): string => {
 	if (typeof customDice === 'string' && customDice.trim().length > 0) {
 		return customDice.trim();
 	}
+
+	// Check for equipped weapon
+	// Cast to any to safely access inventory/equipped
+	const charAny = attacker as any;
+	if (charAny.equipped && Array.isArray(charAny.inventory)) {
+		const weaponId = charAny.equipped.mainHand;
+		if (weaponId) {
+			const weapon = charAny.inventory.find((i: any) => i.id === weaponId);
+			if (weapon && weapon.damageDice) {
+				return weapon.damageDice;
+			}
+		}
+	}
+
 	return attackStyle === 'ranged' ? '1d6' : '1d8';
 };
+
 
 /**
  * Calculate spell attack bonus for a character
@@ -219,6 +236,31 @@ export const buildTargetSummary = (target?: AttackTarget | null): CombatTargetSu
 };
 
 /**
+ * Roll a saving throw for a target
+ * @param target - Target to roll save for
+ * @param ability - Ability to roll save for (e.g. 'DEX', 'WIS')
+ * @returns Save roll result
+ */
+const rollSave = (target: AttackTarget, ability: string): { total: number; roll: number; modifier: number } => {
+	// Normalize ability string to StatKey (e.g. "dexterity" -> "DEX")
+	const statKey = ability.toUpperCase().substring(0, 3) as any;
+
+	let modifier = 0;
+	if (target.type === 'character') {
+		modifier = getAbilityModifier(getAbilityScore(target.character, statKey));
+	} else if (target.type === 'npc') {
+		const stats =
+			typeof target.npcDefinition?.stats === 'string'
+				? JSON.parse(target.npcDefinition.stats)
+				: target.npcDefinition?.stats || {};
+		modifier = getAbilityModifier(getAbilityScore({ stats }, statKey));
+	}
+
+	const roll = rollDie(20);
+	return { total: roll + modifier, roll, modifier };
+};
+
+/**
  * Handle a basic attack action
  * @param options - Basic attack options
  * @returns Attack result or error response
@@ -255,7 +297,7 @@ export const handleBasicAttack = async ({
 	if (hit) {
 		const abilityKey = attackStyle === 'ranged' ? 'DEX' : 'STR';
 		const abilityModifier = getAbilityModifier(getAbilityScore(attacker, abilityKey));
-		const damageDice = getDamageDice(attackStyle, params?.damageDice);
+		const damageDice = getDamageDice(attacker, attackStyle, params?.damageDice);
 		const criticalMode = critical ? { criticalMode: 'max' as const } : undefined;
 		damageRoll = rollDamageDice(damageDice, abilityModifier, critical, criticalMode);
 		damageDealt = Math.max(0, damageRoll.total);
@@ -409,11 +451,92 @@ export const handleSpellCast = async ({
 			break;
 		}
 
-		case 'save':
-			return { error: 'Saving throw spells are not supported yet', status: 400 };
+		case 'save': {
+			if (!spell.saveAbility || !target) {
+				return { error: 'Spell configuration incomplete', status: 400 };
+			}
 
-		case 'support':
-			return { error: 'Support spells are not supported yet', status: 400 };
+			const saveDC = calculateSpellSaveDC(attacker);
+			const saveRoll = rollSave(target, spell.saveAbility);
+			const success = saveRoll.total >= saveDC;
+
+			result.saveDC = saveDC;
+			result.saveRoll = {
+				notation: '1d20',
+				rolls: [saveRoll.roll],
+				modifier: saveRoll.modifier,
+				total: saveRoll.total,
+				breakdown: `${saveRoll.roll}${formatModifierText(saveRoll.modifier)} = ${saveRoll.total}`,
+				natural: saveRoll.roll,
+			};
+			result.saveResult = success ? 'success' : 'fail';
+			result.hit = !success; // Fail save = Hit
+
+			if (spell.damageDice) {
+				const damageModifier = getSpellDamageModifier(attacker, spell);
+				const damageDice =
+					typeof params?.damageDice === 'string' && params.damageDice.trim().length
+						? params.damageDice.trim()
+						: spell.damageDice;
+
+				const damageRoll = rollDamageDice(damageDice, damageModifier, false);
+				let damageDealt = Math.max(0, damageRoll.total);
+
+				if (success) {
+					// Half damage on save success for leveled spells
+					damageDealt = Math.floor(damageDealt / 2);
+				}
+
+				const remainingHealth = await applyDamageToTarget(db, target, damageDealt);
+
+				result.damageRoll = damageRoll;
+				result.damageDealt = damageDealt;
+				if (result.target) {
+					result.target.remainingHealth = remainingHealth;
+				}
+			}
+			break;
+		}
+
+		case 'support': {
+			// Handle healing
+			if (spell.damageType === 'healing' && spell.damageDice && target) {
+				const damageModifier = getSpellDamageModifier(attacker, spell);
+				const damageDice =
+					typeof params?.damageDice === 'string' && params.damageDice.trim().length
+						? params.damageDice.trim()
+						: spell.damageDice;
+
+				const healRoll = rollDamageDice(damageDice, damageModifier, false);
+				const healAmount = Math.max(0, healRoll.total);
+
+				// Apply healing (clamp to max health)
+				const currentHealth =
+					target.type === 'character'
+						? target.row.health
+						: target.token.hit_points ?? target.token.max_hit_points ?? 0;
+				const maxHealth =
+					target.type === 'character'
+						? target.row.max_health
+						: target.token.max_hit_points ?? 0;
+				const nextHealth = Math.min(maxHealth, currentHealth + healAmount);
+
+				if (target.type === 'character') {
+					await db.updateCharacter(target.row.id, { health: nextHealth });
+				} else {
+					await db.updateMapToken(target.token.id, { hit_points: nextHealth });
+				}
+
+				result.hit = true;
+				result.damageRoll = healRoll;
+				result.damageDealt = healAmount;
+				if (result.target) {
+					result.target.remainingHealth = nextHealth;
+				}
+			}
+			// Fallback for other support spells (no effect yet)
+			break;
+		}
 
 		default:
 			return { error: 'Unsupported spell type', status: 400 };

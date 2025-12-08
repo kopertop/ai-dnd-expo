@@ -4,6 +4,12 @@ import { defineConfig } from 'vitest/config';
 
 const rootDir = path.resolve(__dirname, '.');
 
+import path from 'node:path';
+
+import { defineConfig } from 'vitest/config';
+
+const rootDir = path.resolve(__dirname, '.');
+
 export default defineConfig({
 	test: {
 		name: 'api',

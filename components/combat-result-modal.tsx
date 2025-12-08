@@ -90,7 +90,8 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({
 			return;
 		}
 
-		const attackMeta = getDiceMeta(result.attackRoll);
+		const primaryRoll = result.type === 'spell' && result.saveRoll ? result.saveRoll : result.attackRoll;
+		const attackMeta = getDiceMeta(primaryRoll);
 		const damageMeta = getDiceMeta(result.damageRoll);
 
 		setRolling(true);
@@ -110,13 +111,13 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({
 
 		const revealTimeout = setTimeout(() => {
 			setRolling(false);
-			if (result.attackRoll?.rolls?.length) {
-				setDisplayAttackRolls(result.attackRoll.rolls);
+			if (primaryRoll?.rolls?.length) {
+				setDisplayAttackRolls(primaryRoll.rolls);
 			}
 			setAttackRevealed(true);
 			clearInterval(spinInterval);
 
-			if (result.hit && result.damageRoll) {
+			if ((result.hit || (result.type === 'spell' && result.saveResult)) && result.damageRoll) {
 				setDamageRolling(true);
 				const damageSpin = setInterval(() => {
 					setDisplayDamageRolls(randomRolls(damageMeta.count, damageMeta.dieSize));
@@ -148,13 +149,33 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({
 		return `Attack (${result.attackStyle})`;
 	}, [result]);
 
-	const hitLabel = result?.type === 'spell' ? (result?.hit === false ? 'Miss' : 'Hit') : result?.hit ? 'Hit' : 'Miss';
+	const hitLabel = useMemo(() => {
+		if (!result) return '';
+		if (result.type === 'spell') {
+			if (result.saveResult) {
+				return result.saveResult === 'success' ? 'Saved' : 'Failed Save';
+			}
+			return result.hit === false ? 'Miss' : 'Hit';
+		}
+		return result.hit ? 'Hit' : 'Miss';
+	}, [result]);
+
 	const targetName = result?.target?.name ?? 'Unknown Target';
 	const damageText =
-		typeof result?.damageDealt === 'number' ? `${result.damageDealt} damage` : result?.hit ? 'No damage dealt' : '—';
-	const naturalRoll = result?.attackRoll?.natural;
-	const isCritical = result?.attackRoll?.critical;
-	const isFumble = result?.attackRoll?.fumble;
+		typeof result?.damageDealt === 'number'
+			? `${result.damageDealt} damage`
+			: result?.hit
+				? 'No damage dealt'
+				: '—';
+	
+	const primaryRoll = result?.type === 'spell' && result?.saveRoll ? result.saveRoll : result?.attackRoll;
+	const naturalRoll = primaryRoll?.natural;
+	const isCritical = primaryRoll?.critical;
+	const isFumble = (primaryRoll as any)?.fumble;
+	const rollLabel = result?.type === 'spell' && result?.saveRoll ? 'Saving Throw' : 'Attack Roll';
+	const rollBreakdown = result?.type === 'spell' && result?.saveRoll 
+		? `${primaryRoll?.breakdown} vs DC ${result.saveDC}` 
+		: `${primaryRoll?.breakdown} vs AC ${(primaryRoll as any)?.targetAC}`;
 
 	if (!result) {
 		return null;
@@ -182,15 +203,15 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({
 					</View>
 
 					<View style={styles.section}>
-						<ThemedText style={styles.sectionLabel}>Attack Roll</ThemedText>
-						{result.attackRoll ? (
+						<ThemedText style={styles.sectionLabel}>{rollLabel}</ThemedText>
+						{primaryRoll ? (
 							<>
 								<DiceFaces
-									rolls={displayAttackRolls.length ? displayAttackRolls : result.attackRoll.rolls}
+									rolls={displayAttackRolls.length ? displayAttackRolls : primaryRoll.rolls}
 									highlight={isCritical || isFumble}
 								/>
 								<ThemedText style={styles.sectionValue}>
-									{rolling ? 'Rolling…' : `${result.attackRoll.breakdown} vs AC ${result.attackRoll.targetAC}`}
+									{rolling ? 'Rolling…' : rollBreakdown}
 								</ThemedText>
 							</>
 						) : (

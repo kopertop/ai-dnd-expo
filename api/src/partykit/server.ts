@@ -1,10 +1,10 @@
 import type { Connection, ConnectionContext } from 'partyserver';
 import { Server } from 'partyserver';
 
-import { GameStateService } from '@/api/src/services/game-state';
-import { createDatabase } from '@/api/src/utils/repository';
-import { createId } from '@/api/src/utils/games-utils';
 import type { CloudflareBindings } from '@/api/src/env';
+import { GameStateService } from '@/api/src/services/game-state';
+import { createId } from '@/api/src/utils/games-utils';
+import { createDatabase } from '@/api/src/utils/repository';
 import type { CharacterRow, GamePlayerRow, GameRow, MapTokenRow } from '@/shared/workers/db';
 import { Database } from '@/shared/workers/db';
 
@@ -194,6 +194,12 @@ export class GameRoom extends Server<CloudflareBindings> {
 		const characterName = payload?.characterName || character?.name || 'Unknown adventurer';
 
 		if (!character) {
+			// If no payload is provided (e.g. initial connection) and character not found,
+			// do not create a default character to avoid "Unknown Adventurer" issues.
+			if (!payload) {
+				return;
+			}
+
 			const defaultCharacter: CharacterRow = {
 				id: characterId,
 				player_id: playerId,
