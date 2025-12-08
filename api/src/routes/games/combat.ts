@@ -6,16 +6,16 @@ import { GameStateService } from '@/api/src/services/game-state';
 import { handleBasicAttack, handleSpellCast } from '@/api/src/utils/combat-helpers';
 import { createId, deserializeCharacter, isHostUser } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
-import type {
-	CharacterActionResult,
-} from '@/types/combat';
 import type { Character } from '@/types/character';
+import type {
+    CharacterActionResult,
+} from '@/types/combat';
 import {
-	calculatePassivePerception,
-	calculateProficiencyBonus,
-	getAbilityModifier,
-	getAbilityScore,
-	isSkillProficient,
+    calculatePassivePerception,
+    calculateProficiencyBonus,
+    getAbilityModifier,
+    getAbilityScore,
+    isSkillProficient,
 } from '@/utils/combat-utils';
 
 const combat = new Hono<GamesContext>();
@@ -239,6 +239,37 @@ combat.post('/:inviteCode/characters/:characterId/actions', async (c) => {
 			npcDefinition = await db.getNpcById(npcToken.npc_id);
 		} else {
 			return c.json({ error: 'Character not found' }, 404);
+		}
+	}
+
+	// Check target status if applicable
+	if (body.targetId && !isHost) {
+		const targetRow = await db.getCharacterById(body.targetId);
+		let targetHp = 10;
+		let targetFound = false;
+
+		if (targetRow) {
+			targetHp = targetRow.health ?? targetRow.max_health ?? 10;
+			targetFound = true;
+		} else {
+			const targetToken = await db.getMapTokenById(body.targetId);
+			if (targetToken) {
+				targetHp = targetToken.hit_points ?? targetToken.max_hit_points ?? 10;
+				targetFound = true;
+			}
+		}
+
+		if (targetFound && targetHp <= 0) {
+			// Target is unconscious/dead
+			// Only allow specific actions (resurrection) - for now, block attacks
+			if (body.actionType === 'basic_attack') {
+				return c.json({ error: 'Target is unconscious' }, 400);
+			}
+
+			// For spells/items, we ideally want to check if it's a resurrection effect
+			// But for now we'll allow them to proceed (could be Revivify)
+			// The restriction "cannot take damage or healing from other sources"
+			// might need to be enforced in the effect handler or just rely on DM supervision for complex spell effects
 		}
 	}
 

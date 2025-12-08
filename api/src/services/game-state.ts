@@ -563,32 +563,54 @@ export class GameStateService {
 			entry => entry.entityId === currentTurn.entityId,
 		);
 
-		// If current turn is DM (type='dm') or entity not found, start from beginning
-		// This handles the case where DM interrupts/starts a turn that isn't in initiative
-		let nextIndex = 0;
-		if (currentIndex !== -1) {
-			// Move to next entity (wrap around if at end)
-			nextIndex = (currentIndex + 1) % state.initiativeOrder.length;
-		} else if (currentTurn.type === 'dm') {
-			// If it was DM's turn, we resume from the paused turn index if possible,
-			// OR if no paused turn, we just go to the first person in initiative (index 0)
-			// But wait! If there was a paused turn, resumeTurn should have been used.
-			// If endTurn is called on a DM turn, it implies the DM is DONE and wants to
-			// pass play to the next person in the list (or the first person if just starting).
+		// Find next alive entity
+		let nextIndex = currentIndex;
+		let nextEntity = null;
+		let attempts = 0;
+		const totalEntities = state.initiativeOrder.length;
 
-			// Let's see if we can find where we left off, or just default to 0
-			// For now, if DM ends turn, we go to top of initiative (or next logic could be smarter)
-			// A common pattern: DM interrupts -> DM Actions -> Resume Turn.
-			// But if DM is *taking a turn* (e.g. Lair Action) and then ending it?
-			// The request says: "moving from a DM turn to the FIRST character in the list"
-			nextIndex = 0;
-		} else {
-			// Entity not found and not DM? That's weird, but let's safe fallback to 0
-			console.warn(`[endTurn] Current turn entity ${currentTurn.entityId} not found in initiative, defaulting to first entity.`);
-			nextIndex = 0;
+		// Prepare HP lookup maps
+		const playerHpMap = new Map(state.characters.map(c => [c.id, c.health]));
+		const npcHpMap = new Map(state.mapState?.tokens
+			.filter(t => t.type === 'npc')
+			.map(t => [t.id, t.hitPoints ?? 0]) || []);
+
+		// Loop until we find a living entity or have checked everyone
+		while (attempts < totalEntities) {
+			// Move to next entity (wrap around if at end)
+			// If currentIndex was -1 (e.g. DM turn), we start at 0
+			if (attempts === 0 && currentIndex === -1) {
+				nextIndex = 0;
+			} else {
+				nextIndex = (nextIndex + 1) % totalEntities;
+			}
+
+			const candidate = state.initiativeOrder[nextIndex];
+			let hp = 0;
+
+			if (candidate.type === 'player') {
+				hp = playerHpMap.get(candidate.entityId) ?? 0;
+			} else {
+				// NPC - look up in map tokens
+				// Use entityId which maps to token.id for NPCs
+				hp = npcHpMap.get(candidate.entityId) ?? 0;
+			}
+
+			if (hp > 0) {
+				nextEntity = candidate;
+				break;
+			}
+
+			attempts++;
 		}
 
-		const nextEntity = state.initiativeOrder[nextIndex];
+		if (!nextEntity) {
+			// Everyone is dead? Fallback to the very next person to avoid getting stuck
+			// or maybe end the encounter?
+			// For now, let's just pick the immediate next one even if dead to allow DM intervention
+			const fallbackIndex = (currentIndex + 1) % totalEntities;
+			nextEntity = state.initiativeOrder[fallbackIndex];
+		}
 
 		const characters = state.characters ?? [];
 		const activeTurn = this.buildActiveTurn(

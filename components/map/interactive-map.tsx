@@ -32,6 +32,7 @@ interface InteractiveMapProps {
 	onTokenDragEnd?: (token: MapToken, x: number, y: number) => void;
 	highlightTokenId?: string;
 	tokenPositionOverrides?: Record<string, { x: number; y: number }>;
+	tokenHealthOverrides?: Record<string, { current: number; max: number }>;
 	reachableTiles?: Array<{ x: number; y: number; cost: number }>;
 	pathTiles?: Array<{ x: number; y: number }>;
 }
@@ -247,11 +248,11 @@ const MapTile: React.FC<{
 
 	// Check if tile is blocked - database is_blocked is converted to 'difficult' in the cell object
 	const isBlocked = cell?.difficult === true || cell?.blocked === true || cell?.isBlocked === true || cell?.is_blocked === true;
-	
+
 	// Check if tile has fog of war
 	const hasFog = cell?.fogged === true;
 	const fogOpacity = hasFog ? (isHost ? 0.1 : 0.9) : 0;
-	
+
 	// Determine background color - blocked tiles are black (or water blue if water terrain)
 	const getBackgroundColor = () => {
 		if (isBlocked) {
@@ -286,17 +287,17 @@ const MapTile: React.FC<{
 		const numWaves = Math.ceil(tileSize / waveSpacing) + 1;
 		const waveAmplitude = Math.max(1.5, Math.floor(tileSize / 12));
 		const pointsPerWave = Math.max(12, Math.floor(tileSize / 2));
-		
+
 		for (let wave = 0; wave < numWaves; wave++) {
 			const baseY = wave * waveSpacing;
 			const wavePoints = [];
-			
+
 			for (let i = 0; i <= pointsPerWave; i++) {
 				const x = (i / pointsPerWave) * tileSize;
 				const y = baseY + Math.sin((i / pointsPerWave) * Math.PI * 4) * waveAmplitude;
 				wavePoints.push({ x, y });
 			}
-			
+
 			// Create segments between wave points
 			for (let i = 0; i < wavePoints.length - 1; i++) {
 				const p1 = wavePoints[i];
@@ -304,7 +305,7 @@ const MapTile: React.FC<{
 				const width = p2.x - p1.x;
 				const height = Math.abs(p2.y - p1.y) + 1;
 				const top = Math.min(p1.y, p2.y);
-				
+
 				fogWavePattern.push(
 					<View
 						key={`fog-wave-${wave}-${i}`}
@@ -376,6 +377,7 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 	enableTokenDrag = false,
 	onTokenPreviewPosition,
 	tokenPositionOverrides,
+	tokenHealthOverrides,
 	onTilePress,
 	onTileDrag,
 	onTileDragEnd,
@@ -732,6 +734,9 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 			}
 		}
 
+		// Check for 0 HP (unconscious/dead)
+		const isUnconscious = token.hitPoints !== undefined && token.hitPoints <= 0;
+
 		const icon = token.icon || parsedMetadata?.icon || parsedMetadata?.image;
 
 		let color = token.color;
@@ -748,29 +753,57 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 		} else if (!color) {
 			color = '#1F130A';
 		}
-		console.log('[MapTokenComponent] icon', token, icon, color);
 
 		// Calculate icon size based on tile size (70% of tile size, minimum 16px)
 		const iconSize = Math.max(16, Math.floor(tokenTileSize * 0.7));
 		const labelFontSize = Math.max(10, Math.floor(tokenTileSize * 0.4));
 
-		// If icon exists, render it using ExpoIcon
-		if (typeof icon === 'string' && icon.trim().length > 0) {
-			return (
-				<ExpoIcon
-					icon={icon.trim()}
-					size={iconSize}
-					color="#1F130A"
-					style={{ color }}
-				/>
-			);
-		}
+		const content = (() => {
+			// If icon exists, render it using ExpoIcon
+			if (typeof icon === 'string' && icon.trim().length > 0) {
+				return (
+					<ExpoIcon
+						icon={icon.trim()}
+						size={iconSize}
+						color="#1F130A"
+						style={{ color, opacity: isUnconscious ? 0.5 : 1 }}
+					/>
+				);
+			}
 
-		// Fallback to initials only if no icon is available
+			// Fallback to initials only if no icon is available
+			return (
+				<Text style={[styles.tokenLabel, { fontSize: labelFontSize, opacity: isUnconscious ? 0.5 : 1 }]} numberOfLines={1}>
+					{token.label?.slice(0, 2).toUpperCase() || 'T'}
+				</Text>
+			);
+		})();
+
 		return (
-			<Text style={[styles.tokenLabel, { fontSize: labelFontSize }]} numberOfLines={1}>
-				{token.label?.slice(0, 2).toUpperCase() || 'T'}
-			</Text>
+			<View style={{ alignItems: 'center', justifyContent: 'center' }}>
+				{content}
+				{isUnconscious && (
+					<View style={StyleSheet.absoluteFill} pointerEvents="none">
+						<View style={{
+							flex: 1,
+							alignItems: 'center',
+							justifyContent: 'center',
+							backgroundColor: 'rgba(0,0,0,0.3)',
+							borderRadius: 4,
+						}}>
+							<Text style={{
+								fontSize: iconSize * 1.5,
+								color: '#FF0000',
+								opacity: 0.5,
+								fontWeight: 'bold',
+								textShadowColor: 'rgba(0, 0, 0, 0.75)',
+								textShadowOffset: { width: 1, height: 1 },
+								textShadowRadius: 2,
+							}}>❌</Text>
+						</View>
+					</View>
+				)}
+			</View>
 		);
 	};
 

@@ -2055,6 +2055,15 @@ const MultiplayerGameScreen: React.FC = () => {
 							Alert.alert('No Target', 'Select a target to attack.');
 							break;
 						}
+
+						// Check if target is unconscious
+						const targetToken = mapState.tokens?.find(t => t.x === x && t.y === y);
+						const targetHp = targetToken?.hitPoints ?? 10; // Default to 10 if unknown
+						if (targetHp <= 0 && !isHost) {
+							Alert.alert('Invalid Target', 'Target is unconscious and cannot be attacked.');
+							break;
+						}
+
 						if (activeCharacterId) {
 							try {
 								const attackStyle =

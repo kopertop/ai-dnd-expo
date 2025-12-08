@@ -280,6 +280,12 @@ export const handleBasicAttack = async ({
 		return { error: 'Target not found', status: 404 };
 	}
 
+	// Check if target is unconscious (0 HP)
+	const currentHealth = target.type === 'character' ? target.row.health : (target.token.hit_points ?? target.token.max_hit_points ?? 0);
+	if (currentHealth <= 0) {
+		return { error: 'Target is unconscious and cannot be attacked', status: 400 };
+	}
+
 	const attackStyle = getAttackStyle(params);
 	const attackBonus = calculateAttackBonus(attacker, attackStyle);
 	const attackNotation = `1d20${attackBonus >= 0 ? `+${attackBonus}` : attackBonus}`;
@@ -360,14 +366,23 @@ export const handleSpellCast = async ({
 	}
 
 	let target: AttackTarget | null = null;
-	const needsTarget = spell.attackType === 'attack' || spell.attackType === 'auto-hit';
-	if (needsTarget) {
-		if (!targetId) {
-			return { error: 'Target is required', status: 400 };
-		}
+	const needsTarget = spell.attackType === 'attack' || spell.attackType === 'auto-hit' || spell.attackType === 'save' || spell.attackType === 'support';
+	if (needsTarget && targetId) {
 		target = await resolveAttackTarget(db, targetId);
 		if (!target) {
 			return { error: 'Target not found', status: 404 };
+		}
+
+		// Check if target is unconscious (0 HP)
+		const currentHealth = target.type === 'character' ? target.row.health : (target.token.hit_points ?? target.token.max_hit_points ?? 0);
+		if (currentHealth <= 0) {
+			// Allow healing spells and specific resurrection spells
+			const isHealing = spell.damageType === 'healing';
+			const isResurrection = ['revivify', 'raise dead', 'resurrection', 'true resurrection', 'reincarnate', 'spare the dying'].includes(spell.name.toLowerCase());
+			
+			if (!isHealing && !isResurrection) {
+				return { error: 'Target is unconscious and cannot be targeted by this spell', status: 400 };
+			}
 		}
 	}
 
