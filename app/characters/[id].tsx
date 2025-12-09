@@ -54,7 +54,7 @@ const CharacterSheetScreen: React.FC = () => {
 			setConfirmOpen(false);
 			setLocalCharacter(null);
 			setConfirmInput('');
-			router.replace('/characters');
+			router.replace('/');
 		} catch (error) {
 			Alert.alert(
 				'Delete failed',

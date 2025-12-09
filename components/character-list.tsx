@@ -1,15 +1,24 @@
 import { router } from 'expo-router';
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Image, ImageSourcePropType, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
-import { ExpoIcon } from './expo-icon';
 
 import { Character } from '@/types/character';
+import { CHARACTER_IMAGE_OPTIONS } from '@/types/character-figure';
 
 type CharacterListProps = {
   characters: Character[];
   isLoading: boolean;
+};
+
+const resolveCharacterImage = (icon?: string): ImageSourcePropType | { uri: string } | undefined => {
+	if (!icon) return undefined;
+	// Check if it's a preset key
+	const match = CHARACTER_IMAGE_OPTIONS.find(option => option.key === icon);
+	if (match) return match.source;
+	// Otherwise assume it's a URI
+	return { uri: icon };
 };
 
 export const CharacterList: React.FC<CharacterListProps> = ({ characters, isLoading }) => {
@@ -27,27 +36,40 @@ export const CharacterList: React.FC<CharacterListProps> = ({ characters, isLoad
 
 	return (
 		<>
-			{characters.map(character => (
-				<TouchableOpacity
-					key={character.id}
-					style={styles.characterCard}
-					onPress={() => router.push({ pathname: '/characters/[id]', params: { id: character.id } } as never)}
-				>
-					<View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-						{character.icon && <ExpoIcon icon={character.icon as any} size={24} color="#3B2F1B" />}
-						<View>
-							<ThemedText style={styles.characterName}>{character.name}</ThemedText>
-							<ThemedText style={styles.characterMeta}>
-								{character.race} {character.class} • Level {character.level}
-							</ThemedText>
-							{character.trait ? (
-								<ThemedText style={styles.characterTrait}>{character.trait}</ThemedText>
-							) : null}
+			{characters.map(character => {
+				const portraitSource = resolveCharacterImage(character.icon);
+				const portraitInitials = (character.name || '?').slice(0, 2).toUpperCase();
+
+				return (
+					<TouchableOpacity
+						key={character.id}
+						style={styles.characterCard}
+						onPress={() => router.push({ pathname: '/characters/[id]', params: { id: character.id } } as never)}
+					>
+						<View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+							<View style={styles.portraitWrapper}>
+								{portraitSource ? (
+									<Image source={portraitSource} style={styles.portraitImage} resizeMode="contain" />
+								) : (
+									<View style={styles.portraitFallback}>
+										<ThemedText style={styles.portraitInitial}>{portraitInitials}</ThemedText>
+									</View>
+								)}
+							</View>
+							<View>
+								<ThemedText style={styles.characterName}>{character.name}</ThemedText>
+								<ThemedText style={styles.characterMeta}>
+									{character.race} {character.class} • Level {character.level}
+								</ThemedText>
+								{character.trait ? (
+									<ThemedText style={styles.characterTrait}>{character.trait}</ThemedText>
+								) : null}
+							</View>
 						</View>
-					</View>
-					<ThemedText style={styles.viewLabel}>View Sheet</ThemedText>
-				</TouchableOpacity>
-			))}
+						<ThemedText style={styles.viewLabel}>View Sheet</ThemedText>
+					</TouchableOpacity>
+				);
+			})}
 		</>
 	);
 };
@@ -86,5 +108,31 @@ const styles = StyleSheet.create({
 	viewLabel: {
 		color: '#8B6914',
 		fontWeight: '700',
+	},
+	portraitWrapper: {
+		width: 48,
+		height: 48,
+		borderRadius: 8,
+		overflow: 'hidden',
+		backgroundColor: '#E6D5B8',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	portraitImage: {
+		width: 48,
+		height: 48,
+	},
+	portraitFallback: {
+		width: 48,
+		height: 48,
+		borderRadius: 8,
+		backgroundColor: '#C9B037',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	portraitInitial: {
+		color: '#3B2F1B',
+		fontWeight: 'bold',
+		fontSize: 16,
 	},
 });
