@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import {
 	ActivityIndicator,
 	Alert,
+	Dimensions,
 	Image,
 	ImageSourcePropType,
 	Modal,
@@ -22,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Accordion } from '@/components/ui/accordion';
 import { IMAGE_BLANKS, REFERENCE_IMAGE } from '@/constants/image-blanks';
 import { useUploadImage } from '@/hooks/api/use-image-queries';
 
@@ -42,6 +44,7 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
 	const [imageType, setImageType] = useState<'npc' | 'character' | 'both'>('both');
 	const [uploading, setUploading] = useState(false);
 	const [downloadingBlank, setDownloadingBlank] = useState<string | null>(null);
+	const [guidelinesExpanded, setGuidelinesExpanded] = useState(false);
 
 	const uploadMutation = useUploadImage();
 
@@ -168,15 +171,19 @@ Produce the final image as:
 		}
 	};
 
+	const screenWidth = Dimensions.get('window').width;
+	const isMobile = screenWidth < 768;
+
 	return (
 		<Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
 			<View style={styles.overlay}>
 				<ThemedView
 					style={[
 						styles.container,
+						isMobile && styles.containerMobile,
 						{
-							marginTop: insets.top + 20,
-							marginBottom: insets.bottom + 20,
+							marginTop: isMobile ? 0 : insets.top + 20,
+							marginBottom: isMobile ? 0 : insets.bottom + 20,
 						},
 					]}
 				>
@@ -188,66 +195,73 @@ Produce the final image as:
 					</View>
 
 					<ScrollView style={styles.content}>
-						{/* Prompt Tips Section */}
-						<View style={styles.section}>
-							<View style={styles.sectionHeaderRow}>
-								<ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-									🎨 Creation Guidelines
-								</ThemedText>
-								<TouchableOpacity onPress={handleCopyPrompt} style={styles.copyButton}>
-									<ExpoIcon icon="MaterialIcons:content-copy" size={16} color="#6B5B3D" />
-									<ThemedText style={styles.copyButtonText}>Copy</ThemedText>
-								</TouchableOpacity>
-							</View>
-							<View style={styles.tipsContainer}>
-								<ThemedText style={styles.tipText}>{promptText}</ThemedText>
-							</View>
-						</View>
-
-						{/* Blank Templates Section */}
-						<View style={styles.section}>
-							<ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-								📥 Download Image Blanks
-							</ThemedText>
-							<ThemedText style={styles.blanksDescription}>
-								Download these blank templates to use as reference in your AI image generation tools.
-								Upload the blank to your image generator along with your prompt to ensure consistent style.
-							</ThemedText>
-
-							<ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.blanksScroll}>
-								{/* Reference Image */}
-								<View style={styles.blankItem}>
-									<View style={styles.blankImageContainer}>
-										<Image source={REFERENCE_IMAGE.source} style={styles.blankImage} />
-										<View style={styles.referenceBadge}>
-											<ThemedText style={styles.referenceText}>EXAMPLE</ThemedText>
-										</View>
-									</View>
-									<ThemedText style={styles.blankName}>Goblin (Ref)</ThemedText>
+						{/* Creation Guidelines Accordion */}
+						<Accordion
+							title="🎨 Creation Guidelines"
+							expanded={guidelinesExpanded}
+							onToggle={() => setGuidelinesExpanded(!guidelinesExpanded)}
+						>
+							{/* Prompt Tips */}
+							<View style={styles.guidelinesSubsection}>
+								<View style={styles.sectionHeaderRow}>
+									<ThemedText type="defaultSemiBold" style={styles.subsectionTitle}>
+										Prompt Template
+									</ThemedText>
+									<TouchableOpacity onPress={handleCopyPrompt} style={styles.copyButton}>
+										<ExpoIcon icon="MaterialIcons:content-copy" size={16} color="#6B5B3D" />
+										<ThemedText style={styles.copyButtonText}>Copy</ThemedText>
+									</TouchableOpacity>
 								</View>
+								<View style={styles.tipsContainer}>
+									<ThemedText style={styles.tipText}>{promptText}</ThemedText>
+								</View>
+							</View>
 
-								{/* Blanks */}
-								{IMAGE_BLANKS.map((blank) => (
-									<View key={blank.id} style={styles.blankItem}>
+							{/* Blank Templates */}
+							<View style={styles.guidelinesSubsection}>
+								<ThemedText type="defaultSemiBold" style={styles.subsectionTitle}>
+									📥 Download Image Blanks
+								</ThemedText>
+								<ThemedText style={styles.blanksDescription}>
+									Download these blank templates to use as reference in your AI image generation tools.
+									Upload the blank to your image generator along with your prompt to ensure consistent style.
+								</ThemedText>
+
+								<ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.blanksScroll}>
+									{/* Reference Image */}
+									<View style={styles.blankItem}>
 										<View style={styles.blankImageContainer}>
-											<Image source={blank.source} style={styles.blankImage} />
-											<TouchableOpacity
-												style={styles.downloadOverlay}
-												onPress={() => downloadBlank(blank.id, blank.source, blank.filename)}
-												disabled={downloadingBlank === blank.id}
-											>
-												{downloadingBlank === blank.id ? (
-													<ActivityIndicator color="#FFF" size="small" />
-												) : (
-													<ExpoIcon icon="MaterialIcons:file-download" color="#FFF" size={24} />
-												)}
-											</TouchableOpacity>
+											<Image source={REFERENCE_IMAGE.source} style={styles.blankImage} />
+											<View style={styles.referenceBadge}>
+												<ThemedText style={styles.referenceText}>EXAMPLE</ThemedText>
+											</View>
 										</View>
-										<ThemedText style={styles.blankName}>{blank.name}</ThemedText>
+										<ThemedText style={styles.blankName}>Goblin (Ref)</ThemedText>
 									</View>
-								))}
-							</ScrollView>
-						</View>
+
+									{/* Blanks */}
+									{IMAGE_BLANKS.map((blank) => (
+										<View key={blank.id} style={styles.blankItem}>
+											<View style={styles.blankImageContainer}>
+												<Image source={blank.source} style={styles.blankImage} />
+												<TouchableOpacity
+													style={styles.downloadOverlay}
+													onPress={() => downloadBlank(blank.id, blank.source, blank.filename)}
+													disabled={downloadingBlank === blank.id}
+												>
+													{downloadingBlank === blank.id ? (
+														<ActivityIndicator color="#FFF" size="small" />
+													) : (
+														<ExpoIcon icon="MaterialIcons:file-download" color="#FFF" size={24} />
+													)}
+												</TouchableOpacity>
+											</View>
+											<ThemedText style={styles.blankName}>{blank.name}</ThemedText>
+										</View>
+									))}
+								</ScrollView>
+							</View>
+						</Accordion>
 
 						{/* Upload Form */}
 						<View style={styles.section}>
@@ -328,13 +342,20 @@ const styles = StyleSheet.create({
 	},
 	container: {
 		width: '90%',
-		maxWidth: 500,
+		maxWidth: 900,
 		maxHeight: '90%',
 		backgroundColor: '#FFF9EF',
 		borderRadius: 16,
 		overflow: 'hidden',
 		display: 'flex',
 		flexDirection: 'column',
+	},
+	containerMobile: {
+		width: '100%',
+		maxWidth: '100%',
+		height: '100%',
+		maxHeight: '100%',
+		borderRadius: 0,
 	},
 	header: {
 		flexDirection: 'row',
@@ -361,7 +382,15 @@ const styles = StyleSheet.create({
 	},
 	sectionTitle: {
 		color: '#3B2F1B',
-		marginBottom: 0, // Reset since it's in a row now usually, or handled by container
+		marginBottom: 0,
+	},
+	guidelinesSubsection: {
+		marginBottom: 20,
+	},
+	subsectionTitle: {
+		color: '#3B2F1B',
+		fontSize: 16,
+		marginBottom: 8,
 	},
 	sectionHeaderRow: {
 		flexDirection: 'row',
