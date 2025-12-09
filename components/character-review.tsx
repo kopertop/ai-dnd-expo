@@ -137,7 +137,7 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 		setEditableStats(newStats);
 	};
 
-	const getTotal = (key: StatKey) => editableStats[key] + (racialBonuses[key] || 0);
+	const getTotal = (key: StatKey) => editableStats[key] + ((racialBonuses && racialBonuses[key]) || 0);
 
 	const validateAndStart = () => {
 		const nameValid = name.trim().length > 0;
@@ -336,7 +336,7 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 												</TouchableOpacity>
 											</View>
 											<Text style={styles.racialBonus}>
-												{racialBonuses[key] ? `+${racialBonuses[key]}` : ''}
+												{racialBonuses && racialBonuses[key] ? `+${racialBonuses[key]}` : ''}
 											</Text>
 											<Text style={styles.statTotal}>{getTotal(key)}</Text>
 											{isPrimary(key) && (
