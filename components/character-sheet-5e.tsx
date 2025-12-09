@@ -10,10 +10,12 @@ import {
 	StyleSheet,
 	Text,
 	TextInput,
+	TouchableOpacity,
 	View,
 } from 'react-native';
 
 import { PortraitSelector } from '@/components/portrait-selector';
+import { CLASSES } from '@/constants/classes';
 import { SKILL_LIST } from '@/constants/skills';
 import { STAT_KEYS } from '@/constants/stats';
 import { useUpdateCharacter } from '@/hooks/api/use-character-queries';
@@ -29,6 +31,13 @@ import {
 interface CharacterSheet5eProps {
 	character: Character;
 	onCharacterUpdated?: (character: Character) => void;
+	// Optional props for character creation mode
+	editableName?: boolean;
+	onNameChange?: (name: string) => void;
+	onRandomizeName?: () => void;
+	editableBackground?: boolean;
+	onBackgroundChange?: (description: string) => void;
+	onRandomizeBackground?: () => void;
 }
 
 type InventoryEntry = {
@@ -55,6 +64,12 @@ const resolveCharacterImage = (icon?: string) => {
 export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 	character,
 	onCharacterUpdated,
+	editableName = false,
+	onNameChange,
+	onRandomizeName,
+	editableBackground = false,
+	onBackgroundChange,
+	onRandomizeBackground,
 }) => {
 	const [sheetCharacter, setSheetCharacter] = useState<Character>(character);
 	const [activeSlot, setActiveSlot] = useState<GearSlot | null>(null);
@@ -232,6 +247,16 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 	const portraitFallback = sheetCharacter.name?.charAt(0)?.toUpperCase() || '?';
 	const storyBlockHeight = Math.max(20 * 18, 320);
 
+	// Find class details for icon prompt generation
+	const classDetails = useMemo(() => {
+		const classOption = CLASSES.find(c => c.name === sheetCharacter.class);
+		return classOption ? {
+			name: classOption.name,
+			description: classOption.description,
+			primaryStats: classOption.primaryStats,
+		} : { name: sheetCharacter.class };
+	}, [sheetCharacter.class]);
+
 	const handlePortraitSelect = async (image: any, label?: string) => {
 		// image can be ImageSourcePropType (number) or { uri: string }
 		let iconValue = '';
@@ -258,10 +283,38 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 					<PortraitSelector
 						selectedImage={headerImage as any}
 						onSelect={handlePortraitSelect}
+						race={{ name: sheetCharacter.race }}
+						classOption={classDetails}
+						skills={sheetCharacter.skills || []}
 					/>
 				</View>
 				<View style={styles.bannerInfo}>
-					<Text style={styles.sheetTitle}>{sheetCharacter.name}</Text>
+					{editableName ? (
+						<View style={styles.nameInputRow}>
+							<TextInput
+								style={styles.nameInput}
+								value={sheetCharacter.name}
+								onChangeText={(text) => {
+									const updated = { ...sheetCharacter, name: text };
+									setSheetCharacter(updated);
+									onNameChange?.(text);
+									onCharacterUpdated?.(updated);
+								}}
+								placeholder="Character Name"
+								placeholderTextColor="#8a6c5a"
+							/>
+							{onRandomizeName && (
+								<TouchableOpacity
+									style={styles.randomizeButton}
+									onPress={onRandomizeName}
+								>
+									<Text style={styles.randomizeButtonText}>🎲</Text>
+								</TouchableOpacity>
+							)}
+						</View>
+					) : (
+						<Text style={styles.sheetTitle}>{sheetCharacter.name}</Text>
+					)}
 					<Text style={styles.sheetSubtitle}>
 						{sheetCharacter.class} • {sheetCharacter.race} • Level {sheetCharacter.level}
 					</Text>
@@ -356,19 +409,50 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 							multiline
 							placeholder="Tell this hero's story, goals, and notes..."
 							placeholderTextColor="#8a6c5a"
-							value={notesDraft}
-							onChangeText={setNotesDraft}
+							value={editableBackground ? (sheetCharacter.description ?? '') : notesDraft}
+							onChangeText={(text) => {
+								if (editableBackground) {
+									const updated = { ...sheetCharacter, description: text };
+									setSheetCharacter(updated);
+									onBackgroundChange?.(text);
+									onCharacterUpdated?.(updated);
+								} else {
+									setNotesDraft(text);
+								}
+							}}
 							textAlignVertical="top"
 						/>
-						<Pressable
-							style={[styles.actionButton, updateCharacter.isPending && styles.buttonDisabled]}
-							onPress={saveNotes}
-							disabled={updateCharacter.isPending}
-						>
-							<Text style={styles.actionButtonText}>
-								{updateCharacter.isPending ? 'Saving...' : 'Save'}
-							</Text>
-						</Pressable>
+						<View style={styles.actionButtonsRow}>
+							{editableBackground && onRandomizeBackground ? (
+								<>
+									<Pressable
+										style={[styles.randomizeBackgroundButton, styles.actionButtonHalf]}
+										onPress={onRandomizeBackground}
+									>
+										<Text style={styles.randomizeBackgroundButtonText}>🎲 Randomize</Text>
+									</Pressable>
+									<Pressable
+										style={[styles.saveBackgroundButton, styles.actionButtonHalf, updateCharacter.isPending && styles.buttonDisabled]}
+										onPress={saveNotes}
+										disabled={updateCharacter.isPending}
+									>
+										<Text style={styles.saveBackgroundButtonText}>
+											{updateCharacter.isPending ? 'Saving...' : 'Save'}
+										</Text>
+									</Pressable>
+								</>
+							) : (
+								<Pressable
+									style={[styles.saveBackgroundButton, updateCharacter.isPending && styles.buttonDisabled]}
+									onPress={saveNotes}
+									disabled={updateCharacter.isPending}
+								>
+									<Text style={styles.saveBackgroundButtonText}>
+										{updateCharacter.isPending ? 'Saving...' : 'Save'}
+									</Text>
+								</Pressable>
+							)}
+						</View>
 					</View>
 				</View>
 
@@ -572,6 +656,34 @@ const styles = StyleSheet.create({
 		fontFamily: baseFont,
 	},
 	bannerInfo: { flex: 1, gap: 6 },
+	nameInputRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+	},
+	nameInput: {
+		flex: 1,
+		fontSize: 26,
+		fontWeight: '700',
+		color: '#2a160e',
+		fontFamily: baseFont,
+		backgroundColor: '#fffaf0',
+		borderWidth: 1,
+		borderColor: '#d4b58e',
+		borderRadius: 8,
+		padding: 8,
+	},
+	randomizeButton: {
+		width: 44,
+		height: 44,
+		backgroundColor: '#C9B037',
+		borderRadius: 8,
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	randomizeButtonText: {
+		fontSize: 20,
+	},
 	sheetTitle: {
 		fontSize: 26,
 		fontWeight: '700',
@@ -762,12 +874,44 @@ const styles = StyleSheet.create({
 	largeTextArea: {
 		minHeight: 140,
 	},
+	actionButtonsRow: {
+		flexDirection: 'row',
+		gap: 8,
+		marginTop: 12,
+	},
 	actionButton: {
 		backgroundColor: '#8b1a1a',
 		borderRadius: 8,
 		paddingVertical: 10,
 		paddingHorizontal: 12,
 		alignItems: 'center',
+	},
+	actionButtonHalf: {
+		flex: 1,
+	},
+	randomizeBackgroundButton: {
+		backgroundColor: '#C9B037',
+		borderRadius: 8,
+		paddingVertical: 10,
+		paddingHorizontal: 12,
+		alignItems: 'center',
+	},
+	randomizeBackgroundButtonText: {
+		color: '#3B2F1B',
+		fontWeight: '700',
+		fontFamily: baseFont,
+	},
+	saveBackgroundButton: {
+		backgroundColor: '#4caf50',
+		borderRadius: 8,
+		paddingVertical: 10,
+		paddingHorizontal: 12,
+		alignItems: 'center',
+	},
+	saveBackgroundButtonText: {
+		color: '#FFFFFF',
+		fontWeight: '700',
+		fontFamily: baseFont,
 	},
 	secondaryButton: {
 		backgroundColor: '#f2e4cb',

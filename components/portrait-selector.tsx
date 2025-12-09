@@ -19,6 +19,9 @@ interface PortraitOption {
 interface PortraitSelectorProps {
 	selectedImage?: ImageSourcePropType | { uri: string };
 	onSelect: (image: ImageSourcePropType | { uri: string }, label?: string) => void;
+	race?: { name: string; description?: string };
+	classOption?: { name: string; description?: string; primaryStats?: string[] };
+	skills?: string[];
 }
 
 /**
@@ -36,7 +39,13 @@ const toTitleCase = (str: string): string => {
 		.join(' ');
 };
 
-export const PortraitSelector: React.FC<PortraitSelectorProps> = ({ selectedImage, onSelect }) => {
+export const PortraitSelector: React.FC<PortraitSelectorProps> = ({
+	selectedImage,
+	onSelect,
+	race,
+	classOption,
+	skills = [],
+}) => {
 	const [pickerVisible, setPickerVisible] = useState(false);
 	const [uploadModalVisible, setUploadModalVisible] = useState(false);
 	const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -236,6 +245,9 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({ selectedImag
 					setPickerVisible(true); // Re-open picker when upload cancelled/closed
 				}}
 				onUploadSuccess={handleUploadSuccess}
+				race={race}
+				classOption={classOption}
+				skills={skills}
 			/>
 
 			<ConfirmModal

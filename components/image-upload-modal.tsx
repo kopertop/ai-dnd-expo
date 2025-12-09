@@ -26,17 +26,24 @@ import { ThemedView } from '@/components/themed-view';
 import { Accordion } from '@/components/ui/accordion';
 import { IMAGE_BLANKS, REFERENCE_IMAGE } from '@/constants/image-blanks';
 import { useUploadImage } from '@/hooks/api/use-image-queries';
+import { generateIconPrompt } from '@/utils/icon-generation-prompt';
 
 interface ImageUploadModalProps {
 	visible: boolean;
 	onClose: () => void;
 	onUploadSuccess: (imageUrl: string) => void;
+	race?: { name: string; description?: string };
+	classOption?: { name: string; description?: string; primaryStats?: string[] };
+	skills?: string[];
 }
 
 export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
 	visible,
 	onClose,
 	onUploadSuccess,
+	race,
+	classOption,
+	skills = [],
 }) => {
 	const insets = useSafeAreaInsets();
 	const [selectedImage, setSelectedImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
@@ -48,7 +55,10 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
 
 	const uploadMutation = useUploadImage();
 
-	const promptText = `Create a D&D miniature of a [race] [gender] [class] standing on a [base type] base.
+	// Use filled-in prompt if race and class are provided, otherwise use template
+	const promptText = race && classOption
+		? generateIconPrompt(race as any, classOption as any, skills)
+		: `Create a D&D miniature of a [race] [gender] [class] standing on a [base type] base.
 The character should have [skin/scale color + features], [hair description], and [distinct racial traits] such as [horns/ears/tusks].
 
 Clothing should be [regal/simple/armored/etc], using [color palette].

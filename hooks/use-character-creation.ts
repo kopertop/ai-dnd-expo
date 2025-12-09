@@ -4,6 +4,7 @@ import { Alert, Platform } from 'react-native';
 
 import { CLASSES } from '@/constants/classes';
 import { RACES } from '@/constants/races';
+import { SKILL_LIST } from '@/constants/skills';
 import { TRAITS } from '@/constants/traits';
 import { useGameState } from '@/hooks/use-game-state';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
@@ -49,6 +50,7 @@ export const useCharacterCreation = () => {
 		mode?: string;
 		selections?: string | string[];
 		attrs?: string | string[];
+		skills?: string | string[];
 	}>();
 	const segments = useSegments();
 
@@ -104,7 +106,8 @@ export const useCharacterCreation = () => {
 		race: RaceOption | null,
 		classOption: ClassOption | null,
 		trait: TraitOption | null,
-		attributes?: StatBlock | null
+		attributes?: StatBlock | null,
+		skills?: Skill[] | null
 	) => {
 		if (!isCharacterMode) return; // Only update URL for character mode
 		if (isRestoringFromURL.current) return; // Don't update URL while restoring from URL
@@ -118,8 +121,23 @@ export const useCharacterCreation = () => {
 			? `/new-character/${segments.join('/')}`
 			: '/new-character';
 
-		// Add attributes to query string if provided
+		// Get current URL to preserve existing query params
+		const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
 		const queryParams = new URLSearchParams();
+		
+		// Parse existing query params from current URL if available
+		if (currentUrl) {
+			try {
+				const url = new URL(currentUrl);
+				url.searchParams.forEach((value, key) => {
+					queryParams.set(key, value);
+				});
+			} catch (e) {
+				// If URL parsing fails, continue with empty params
+			}
+		}
+
+		// Add/update attributes in query string if provided
 		if (attributes) {
 			// Encode attributes as a compact string: STR,DEX,CON,INT,WIS,CHA
 			const attrString = [
@@ -131,6 +149,13 @@ export const useCharacterCreation = () => {
 				attributes.CHA,
 			].join(',');
 			queryParams.set('attrs', attrString);
+		}
+
+		// Add/update skills in query string if provided
+		if (skills && skills.length > 0) {
+			// Encode skills as comma-separated IDs
+			const skillIds = skills.map(skill => typeof skill === 'string' ? skill : skill.id);
+			queryParams.set('skills', skillIds.join(','));
 		}
 
 		const queryString = queryParams.toString();
@@ -179,38 +204,56 @@ export const useCharacterCreation = () => {
 								setSelectedTrait(trait);
 							}
 
-							// Check for attributes in query string
-							const attrsParam = params.attrs;
-							if (attrsParam) {
-								const attrValues = (Array.isArray(attrsParam) ? attrsParam[0] : attrsParam).split(',');
-								if (attrValues.length === 6) {
-									const attributes: StatBlock = {
-										STR: parseInt(attrValues[0], 10),
-										DEX: parseInt(attrValues[1], 10),
-										CON: parseInt(attrValues[2], 10),
-										INT: parseInt(attrValues[3], 10),
-										WIS: parseInt(attrValues[4], 10),
-										CHA: parseInt(attrValues[5], 10),
-									};
-									// Only update if attributes are different
-									if (!selectedAttributes ||
-										selectedAttributes.STR !== attributes.STR ||
-										selectedAttributes.DEX !== attributes.DEX ||
-										selectedAttributes.CON !== attributes.CON ||
-										selectedAttributes.INT !== attributes.INT ||
-										selectedAttributes.WIS !== attributes.WIS ||
-										selectedAttributes.CHA !== attributes.CHA) {
-										setSelectedAttributes(attributes);
-									}
-									setCurrentStep('skills');
-									lastRestoredState.current = stateKey;
-									return;
-								}
-							}
+									// Check for attributes in query string
+									const attrsParam = params.attrs;
+									if (attrsParam) {
+										const attrValues = (Array.isArray(attrsParam) ? attrsParam[0] : attrsParam).split(',');
+										if (attrValues.length === 6) {
+											const attributes: StatBlock = {
+												STR: parseInt(attrValues[0], 10),
+												DEX: parseInt(attrValues[1], 10),
+												CON: parseInt(attrValues[2], 10),
+												INT: parseInt(attrValues[3], 10),
+												WIS: parseInt(attrValues[4], 10),
+												CHA: parseInt(attrValues[5], 10),
+											};
+											// Only update if attributes are different
+											if (!selectedAttributes ||
+												selectedAttributes.STR !== attributes.STR ||
+												selectedAttributes.DEX !== attributes.DEX ||
+												selectedAttributes.CON !== attributes.CON ||
+												selectedAttributes.INT !== attributes.INT ||
+												selectedAttributes.WIS !== attributes.WIS ||
+												selectedAttributes.CHA !== attributes.CHA) {
+												setSelectedAttributes(attributes);
+											}
 
-							setCurrentStep('attributes');
-							lastRestoredState.current = stateKey;
-							return; // Early return to prevent step reset
+											// Check for skills in query string
+											const skillsParam = params.skills;
+											if (skillsParam) {
+												const skillIds = (Array.isArray(skillsParam) ? skillsParam[0] : skillsParam).split(',');
+												if (skillIds.length > 0) {
+													const restoredSkills = skillIds
+														.map(id => SKILL_LIST.find(s => s.id === id))
+														.filter(Boolean) as Skill[];
+													if (restoredSkills.length > 0) {
+														setSelectedSkills(restoredSkills);
+													}
+													setCurrentStep('character');
+													lastRestoredState.current = stateKey;
+													return;
+												}
+											}
+
+											setCurrentStep('skills');
+											lastRestoredState.current = stateKey;
+											return;
+										}
+									}
+
+									setCurrentStep('attributes');
+									lastRestoredState.current = stateKey;
+									return; // Early return to prevent step reset
 						} else {
 							setCurrentStep('trait');
 							lastRestoredState.current = stateKey;
@@ -264,30 +307,31 @@ export const useCharacterCreation = () => {
 	const handleRaceSelect = (race: RaceOption) => {
 		setSelectedRace(race);
 		setCurrentStep('class');
-		updateURL(race, null, null, null);
+		updateURL(race, null, null, null, null);
 	};
 
 	const handleClassSelect = (classOption: ClassOption) => {
 		setSelectedClass(classOption);
 		setCurrentStep('trait');
-		updateURL(selectedRace, classOption, null, null);
+		updateURL(selectedRace, classOption, null, null, null);
 	};
 
 	const handleTraitSelect = (trait: TraitOption) => {
 		setSelectedTrait(trait);
 		setCurrentStep('attributes');
-		updateURL(selectedRace, selectedClass, trait, null);
+		updateURL(selectedRace, selectedClass, trait, null, null);
 	};
 
 	const handleAttributesConfirm = (attributes: StatBlock) => {
 		setSelectedAttributes(attributes);
 		setCurrentStep('skills');
-		updateURL(selectedRace, selectedClass, selectedTrait, attributes);
+		updateURL(selectedRace, selectedClass, selectedTrait, attributes, selectedSkills);
 	};
 
 	const handleSkillsSelect = (skills: Skill[]) => {
 		setSelectedSkills(skills);
 		setCurrentStep('character');
+		updateURL(selectedRace, selectedClass, selectedTrait, selectedAttributes, skills);
 	};
 
 	const generateCharacterId = () =>
@@ -460,7 +504,7 @@ export const useCharacterCreation = () => {
 				setSelectedSkills([]);
 				setCharacterName('');
 				setCustomStory('');
-				updateURL(null, null, null, null);
+				updateURL(null, null, null, null, null);
 			} else if (previousStep === 'location') {
 				setSelectedLocation(null);
 				setSelectedRace(null);
@@ -478,7 +522,7 @@ export const useCharacterCreation = () => {
 				setSelectedSkills([]);
 				setCharacterName('');
 				setCustomStory('');
-				updateURL(null, null, null, null);
+				updateURL(null, null, null, null, null);
 			} else if (previousStep === 'class') {
 				setSelectedClass(null);
 				setSelectedTrait(null);
@@ -486,23 +530,25 @@ export const useCharacterCreation = () => {
 				setSelectedSkills([]);
 				setCharacterName('');
 				setCustomStory('');
-				updateURL(selectedRace, null, null, null);
+				updateURL(selectedRace, null, null, null, null);
 			} else if (previousStep === 'trait') {
 				setSelectedTrait(null);
 				setSelectedAttributes(null);
 				setSelectedSkills([]);
 				setCharacterName('');
 				setCustomStory('');
-				updateURL(selectedRace, selectedClass, null, null);
+				updateURL(selectedRace, selectedClass, null, null, null);
 			} else if (previousStep === 'attributes') {
 				setSelectedAttributes(null);
 				setSelectedSkills([]);
 				setCharacterName('');
 				setCustomStory('');
+				updateURL(selectedRace, selectedClass, selectedTrait, null, selectedSkills);
 			} else if (previousStep === 'skills') {
 				setSelectedSkills([]);
 				setCharacterName('');
 				setCustomStory('');
+				updateURL(selectedRace, selectedClass, selectedTrait, selectedAttributes, null);
 			}
 		}
 	};
