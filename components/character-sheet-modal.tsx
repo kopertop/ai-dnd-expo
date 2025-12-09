@@ -16,15 +16,15 @@ import {
 
 import { PortraitSelector } from '@/components/portrait-selector';
 import { ThemedView } from '@/components/themed-view';
-import { SKILL_LIST } from '@/constants/skills';
+import { SKILL_DESCRIPTIONS, SKILL_LIST } from '@/constants/skills';
 import { getSpellsForClass } from '@/constants/spells';
-import { STAT_KEYS } from '@/constants/stats';
+import { ATTRIBUTE_DESCRIPTIONS, STAT_KEYS } from '@/constants/stats';
 import { useUpdateCharacter } from '@/hooks/api/use-character-queries';
 import { useAudio } from '@/hooks/use-audio-player';
 import { useGameState } from '@/hooks/use-game-state';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import styles from '@/styles/character-sheet-modal.styles';
-import { GearSlot } from '@/types/stats';
+import { GearSlot, StatKey } from '@/types/stats';
 
 interface CharacterSheetModalProps {
 	visible: boolean;
@@ -33,7 +33,8 @@ interface CharacterSheetModalProps {
 }
 
 export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visible, onClose, allowClose = true }) => {
-	const [tooltipSkill, setTooltipSkill] = useState<string | null>(null);
+	const [infoSkill, setInfoSkill] = useState<string | null>(null);
+	const [infoAttribute, setInfoAttribute] = useState<StatKey | null>(null);
 	const [activeSlot, setActiveSlot] = useState<GearSlot | null>(null);
 	const { isMobile } = useScreenSize();
 	const { togglePlayPause, isPlaying } = useAudio();
@@ -212,8 +213,17 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 									{STAT_KEYS.map(key => (
 										<View
 											key={key}
-											style={isMobile ? styles.statBoxMobile : styles.statBox}
+											style={[
+												isMobile ? styles.statBoxMobile : styles.statBox,
+												{ position: 'relative' },
+											]}
 										>
+											<TouchableOpacity
+												style={styles.infoButton}
+												onPress={() => setInfoAttribute(infoAttribute === key ? null : key)}
+											>
+												<Text style={styles.infoButtonText}>?</Text>
+											</TouchableOpacity>
 											<Text style={styles.statLabel}>{key}</Text>
 											<Text style={styles.statValue}>{stats[key]}</Text>
 										</View>
@@ -639,50 +649,96 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 								<View style={styles.skillsGrid}>
 									{SKILL_LIST.filter(skill => skills.includes(skill.id)).map(
 										skill => (
-											<Pressable
+											<View
 												key={String(skill.id)}
-												onPress={() =>
-													setTooltipSkill(
-														tooltipSkill === skill.id ? null : skill.id,
-													)
-												}
-												onHoverIn={() =>
-													Platform.OS === 'web' &&
-													setTooltipSkill(skill.id as string)
-												}
-												onHoverOut={() =>
-													Platform.OS === 'web' && setTooltipSkill(null)
-												}
-												style={styles.skillIconCard}
+												style={[styles.skillIconCard, { position: 'relative' }]}
 											>
+												<TouchableOpacity
+													style={styles.skillInfoButton}
+													onPress={() => setInfoSkill(infoSkill === skill.id ? null : skill.id)}
+												>
+													<Text style={styles.infoButtonText}>?</Text>
+												</TouchableOpacity>
 												<Image
 													source={skill.image as ImageSourcePropType}
 													style={styles.skillIconFlat}
 												/>
-												{tooltipSkill === skill.id && (
-													<View
-														style={[styles.tooltipOverlay, { pointerEvents: 'none' }]}
-													>
-														<View style={styles.tooltipOverIconBg} />
-														<View style={styles.tooltipOverIconLabel}>
-															<Text
-																style={styles.tooltipText}
-																numberOfLines={2}
-																adjustsFontSizeToFit
-																minimumFontScale={0.7}
-															>
-																{skill.name}
-															</Text>
-														</View>
-													</View>
-												)}
-											</Pressable>
+											</View>
 										),
 									)}
 								</View>
 							</View>
 						</View>
 					</ScrollView>
+					{/* Attribute Info Modal */}
+					<Modal
+						visible={infoAttribute !== null}
+						transparent
+						animationType="fade"
+						onRequestClose={() => setInfoAttribute(null)}
+					>
+						<TouchableOpacity
+							style={styles.modalOverlay}
+							activeOpacity={1}
+							onPress={() => setInfoAttribute(null)}
+						>
+							<View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+								{infoAttribute && (
+									<>
+										<View style={styles.modalHeader}>
+											<Text style={styles.modalTitle}>{infoAttribute}</Text>
+											<TouchableOpacity
+												style={styles.modalCloseButton}
+												onPress={() => setInfoAttribute(null)}
+											>
+												<Text style={styles.modalCloseText}>✕</Text>
+											</TouchableOpacity>
+										</View>
+										<Text style={styles.modalDescription}>
+											{ATTRIBUTE_DESCRIPTIONS[infoAttribute]}
+										</Text>
+									</>
+								)}
+							</View>
+						</TouchableOpacity>
+					</Modal>
+					{/* Skill Info Modal */}
+					<Modal
+						visible={infoSkill !== null}
+						transparent
+						animationType="fade"
+						onRequestClose={() => setInfoSkill(null)}
+					>
+						<TouchableOpacity
+							style={styles.modalOverlay}
+							activeOpacity={1}
+							onPress={() => setInfoSkill(null)}
+						>
+							<View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+								{infoSkill && (() => {
+									const skill = SKILL_LIST.find(s => s.id === infoSkill);
+									if (!skill) return null;
+									return (
+										<>
+											<View style={styles.modalHeader}>
+												<Text style={styles.modalTitle}>{skill.name}</Text>
+												<TouchableOpacity
+													style={styles.modalCloseButton}
+													onPress={() => setInfoSkill(null)}
+												>
+													<Text style={styles.modalCloseText}>✕</Text>
+												</TouchableOpacity>
+											</View>
+											<Text style={styles.modalDescription}>
+												{SKILL_DESCRIPTIONS[skill.id] || 'No description available.'}
+											</Text>
+											<Text style={styles.modalSubtext}>Uses: {skill.ability}</Text>
+										</>
+									);
+								})()}
+							</View>
+						</TouchableOpacity>
+					</Modal>
 					{/* Button row - only show if allowClose is true (not in long rest mode) */}
 					{allowClose && (
 						<View style={isMobile ? styles.buttonRowMobile : styles.buttonRow}>

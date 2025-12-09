@@ -11,17 +11,17 @@ import {
 	Text,
 	TextInput,
 	TouchableOpacity,
-	View,
+	View
 } from 'react-native';
 
 import { PortraitSelector } from '@/components/portrait-selector';
 import { CLASSES } from '@/constants/classes';
-import { SKILL_LIST } from '@/constants/skills';
-import { STAT_KEYS } from '@/constants/stats';
+import { SKILL_DESCRIPTIONS, SKILL_LIST } from '@/constants/skills';
+import { ATTRIBUTE_DESCRIPTIONS, STAT_KEYS } from '@/constants/stats';
 import { useUpdateCharacter } from '@/hooks/api/use-character-queries';
 import { Character } from '@/types/character';
 import { CHARACTER_IMAGE_OPTIONS } from '@/types/character-figure';
-import { GEAR_SLOTS, GearSlot } from '@/types/stats';
+import { GEAR_SLOTS, GearSlot, StatKey } from '@/types/stats';
 import {
 	calculateAC,
 	calculatePassivePerception,
@@ -72,6 +72,8 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 	onRandomizeBackground,
 }) => {
 	const [sheetCharacter, setSheetCharacter] = useState<Character>(character);
+	const [infoAttribute, setInfoAttribute] = useState<StatKey | null>(null);
+	const [infoSkill, setInfoSkill] = useState<string | null>(null);
 	const [activeSlot, setActiveSlot] = useState<GearSlot | null>(null);
 	const [notesDraft, setNotesDraft] = useState(character.description ?? '');
 
@@ -277,6 +279,7 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 	};
 
 	return (
+		<>
 		<ScrollView contentContainerStyle={styles.sheet} showsVerticalScrollIndicator={false}>
 			<View style={styles.banner}>
 				<View style={styles.portraitFrame}>
@@ -352,7 +355,13 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 						<Text style={styles.blockHeading}>Abilities</Text>
 						<View style={styles.abilitiesGrid}>
 							{STAT_KEYS.map(key => (
-								<View key={key} style={styles.abilityCircle}>
+								<View key={key} style={[styles.abilityCircle, { position: 'relative' }]}>
+									<TouchableOpacity
+										style={styles.infoButton}
+										onPress={() => setInfoAttribute(infoAttribute === key ? null : key)}
+									>
+										<Text style={styles.infoButtonText}>?</Text>
+									</TouchableOpacity>
 									<Text style={styles.abilityKey}>{key}</Text>
 									<Text style={styles.abilityScore}>
 										{sheetCharacter.stats?.[key] ?? 10}
@@ -375,8 +384,15 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 									style={[
 										styles.skillIconTile,
 										skill.isProficient && styles.skillIconTileActive,
+										{ position: 'relative' },
 									]}
 								>
+									<TouchableOpacity
+										style={styles.skillInfoButton}
+										onPress={() => setInfoSkill(infoSkill === skill.id ? null : skill.id)}
+									>
+										<Text style={styles.infoButtonText}>?</Text>
+									</TouchableOpacity>
 									{skill.image ? (
 										<Image
 											source={skill.image as ImageSourcePropType}
@@ -610,6 +626,76 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 				</View>
 			</View>
 		</ScrollView>
+		{/* Attribute Info Modal */}
+		<Modal
+			visible={infoAttribute !== null}
+			transparent
+			animationType="fade"
+			onRequestClose={() => setInfoAttribute(null)}
+		>
+			<TouchableOpacity
+				style={styles.modalOverlay}
+				activeOpacity={1}
+				onPress={() => setInfoAttribute(null)}
+			>
+				<View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+					{infoAttribute && (
+						<>
+							<View style={styles.modalHeader}>
+								<Text style={styles.modalTitle}>{infoAttribute}</Text>
+								<TouchableOpacity
+									style={styles.modalCloseButton}
+									onPress={() => setInfoAttribute(null)}
+								>
+									<Text style={styles.modalCloseText}>✕</Text>
+								</TouchableOpacity>
+							</View>
+							<Text style={styles.modalDescription}>
+								{ATTRIBUTE_DESCRIPTIONS[infoAttribute]}
+							</Text>
+						</>
+					)}
+				</View>
+			</TouchableOpacity>
+		</Modal>
+		{/* Skill Info Modal */}
+		<Modal
+			visible={infoSkill !== null}
+			transparent
+			animationType="fade"
+			onRequestClose={() => setInfoSkill(null)}
+		>
+			<TouchableOpacity
+				style={styles.modalOverlay}
+				activeOpacity={1}
+				onPress={() => setInfoSkill(null)}
+			>
+				<View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+					{infoSkill && (() => {
+						const skill = SKILL_LIST.find(s => s.id === infoSkill);
+						if (!skill) return null;
+						return (
+							<>
+								<View style={styles.modalHeader}>
+									<Text style={styles.modalTitle}>{skill.name}</Text>
+									<TouchableOpacity
+										style={styles.modalCloseButton}
+										onPress={() => setInfoSkill(null)}
+									>
+										<Text style={styles.modalCloseText}>✕</Text>
+									</TouchableOpacity>
+								</View>
+								<Text style={styles.modalDescription}>
+									{SKILL_DESCRIPTIONS[skill.id] || 'No description available.'}
+								</Text>
+								<Text style={styles.modalSubtext}>Uses: {skill.ability}</Text>
+							</>
+						);
+					})()}
+				</View>
+			</TouchableOpacity>
+		</Modal>
+	</>
 	);
 };
 
@@ -1046,6 +1132,89 @@ const styles = StyleSheet.create({
 		fontFamily: baseFont,
 	},
 	inventoryList: { gap: 12 },
+	infoButton: {
+		position: 'absolute',
+		top: 4,
+		right: 4,
+		width: 20,
+		height: 20,
+		borderRadius: 10,
+		backgroundColor: 'rgba(59, 47, 27, 0.2)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		borderWidth: 1,
+		borderColor: '#3B2F1B',
+		zIndex: 10,
+	},
+	infoButtonText: {
+		color: '#3B2F1B',
+		fontSize: 14,
+		fontWeight: 'bold',
+	},
+	skillInfoButton: {
+		position: 'absolute',
+		top: 4,
+		right: 4,
+		width: 20,
+		height: 20,
+		borderRadius: 10,
+		backgroundColor: 'rgba(59, 47, 27, 0.2)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		borderWidth: 1,
+		borderColor: '#3B2F1B',
+		zIndex: 10,
+	},
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0, 0, 0, 0.5)',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalContent: {
+		backgroundColor: '#F9F6EF',
+		borderRadius: 12,
+		padding: 20,
+		margin: 20,
+		maxWidth: 400,
+		borderWidth: 2,
+		borderColor: '#C9B037',
+	},
+	modalHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginBottom: 12,
+	},
+	modalTitle: {
+		fontSize: 24,
+		fontWeight: 'bold',
+		color: '#3B2F1B',
+	},
+	modalCloseButton: {
+		width: 32,
+		height: 32,
+		borderRadius: 16,
+		backgroundColor: '#D4BC8B',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalCloseText: {
+		fontSize: 18,
+		color: '#3B2F1B',
+		fontWeight: 'bold',
+	},
+	modalDescription: {
+		fontSize: 16,
+		color: '#3B2F1B',
+		lineHeight: 24,
+	},
+	modalSubtext: {
+		fontSize: 14,
+		color: '#8B7355',
+		marginTop: 8,
+		fontStyle: 'italic',
+	},
 	inventoryRow: {
 		flexDirection: 'row',
 		gap: 10,

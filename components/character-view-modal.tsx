@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
+import { SKILL_DESCRIPTIONS, SKILL_LIST } from '@/constants/skills';
+import { ATTRIBUTE_DESCRIPTIONS } from '@/constants/stats';
 import { Character } from '@/types/character';
 import { MapToken } from '@/types/multiplayer-map';
-import { STAT_KEYS } from '@/types/stats';
+import { STAT_KEYS, StatKey } from '@/types/stats';
 import { calculateAC } from '@/utils/combat-utils';
 
 interface CharacterViewModalProps {
@@ -28,6 +30,9 @@ export const CharacterViewModal: React.FC<CharacterViewModalProps> = ({
 	showFullStats,
 	initiativeOrder,
 }) => {
+	const [infoAttribute, setInfoAttribute] = useState<StatKey | null>(null);
+	const [infoSkill, setInfoSkill] = useState<string | null>(null);
+
 	if (!visible) return null;
 
 	const entityId = character?.id || npcToken?.id;
@@ -153,7 +158,13 @@ export const CharacterViewModal: React.FC<CharacterViewModalProps> = ({
 								<ThemedText style={styles.sectionTitle}>Ability Scores</ThemedText>
 								<View style={styles.statsGrid}>
 									{STAT_KEYS.map(statKey => (
-										<View key={statKey} style={styles.statBox}>
+										<View key={statKey} style={[styles.statBox, { position: 'relative' }]}>
+											<TouchableOpacity
+												style={styles.infoButton}
+												onPress={() => setInfoAttribute(infoAttribute === statKey ? null : statKey)}
+											>
+												<ThemedText style={styles.infoButtonText}>?</ThemedText>
+											</TouchableOpacity>
 											<ThemedText style={styles.statBoxLabel}>{statKey}</ThemedText>
 											<ThemedText style={styles.statBoxValue}>{stats[statKey]}</ThemedText>
 											<ThemedText style={styles.statBoxModifier}>
@@ -171,11 +182,21 @@ export const CharacterViewModal: React.FC<CharacterViewModalProps> = ({
 							<View style={styles.section}>
 								<ThemedText style={styles.sectionTitle}>Skills</ThemedText>
 								<View style={styles.skillsContainer}>
-									{character.skills.map((skill, index) => (
-										<View key={index} style={styles.skillTag}>
-											<ThemedText style={styles.skillText}>{skill}</ThemedText>
-										</View>
-									))}
+									{character.skills.map((skillId, index) => {
+										const skill = SKILL_LIST.find(s => s.id === skillId);
+										if (!skill) return null;
+										return (
+											<View key={index} style={[styles.skillTag, { position: 'relative' }]}>
+												<TouchableOpacity
+													style={styles.skillInfoButton}
+													onPress={() => setInfoSkill(infoSkill === skill.id ? null : skill.id)}
+												>
+													<ThemedText style={styles.infoButtonText}>?</ThemedText>
+												</TouchableOpacity>
+												<ThemedText style={styles.skillText}>{skill.name}</ThemedText>
+											</View>
+										);
+									})}
 								</View>
 							</View>
 						)}
@@ -191,6 +212,75 @@ export const CharacterViewModal: React.FC<CharacterViewModalProps> = ({
 					</ScrollView>
 				</ThemedView>
 			</TouchableOpacity>
+			{/* Attribute Info Modal */}
+			<Modal
+				visible={infoAttribute !== null}
+				transparent
+				animationType="fade"
+				onRequestClose={() => setInfoAttribute(null)}
+			>
+				<TouchableOpacity
+					style={styles.modalOverlay}
+					activeOpacity={1}
+					onPress={() => setInfoAttribute(null)}
+				>
+					<ThemedView style={styles.modalContent} onStartShouldSetResponder={() => true}>
+						{infoAttribute && (
+							<>
+								<View style={styles.modalHeader}>
+									<ThemedText style={styles.modalTitle}>{infoAttribute}</ThemedText>
+									<TouchableOpacity
+										style={styles.modalCloseButton}
+										onPress={() => setInfoAttribute(null)}
+									>
+										<ThemedText style={styles.modalCloseText}>✕</ThemedText>
+									</TouchableOpacity>
+								</View>
+								<ThemedText style={styles.modalDescription}>
+									{ATTRIBUTE_DESCRIPTIONS[infoAttribute]}
+								</ThemedText>
+							</>
+						)}
+					</ThemedView>
+				</TouchableOpacity>
+			</Modal>
+			{/* Skill Info Modal */}
+			<Modal
+				visible={infoSkill !== null}
+				transparent
+				animationType="fade"
+				onRequestClose={() => setInfoSkill(null)}
+			>
+				<TouchableOpacity
+					style={styles.modalOverlay}
+					activeOpacity={1}
+					onPress={() => setInfoSkill(null)}
+				>
+					<ThemedView style={styles.modalContent} onStartShouldSetResponder={() => true}>
+						{infoSkill && (() => {
+							const skill = SKILL_LIST.find(s => s.id === infoSkill);
+							if (!skill) return null;
+							return (
+								<>
+									<View style={styles.modalHeader}>
+										<ThemedText style={styles.modalTitle}>{skill.name}</ThemedText>
+										<TouchableOpacity
+											style={styles.modalCloseButton}
+											onPress={() => setInfoSkill(null)}
+										>
+											<ThemedText style={styles.modalCloseText}>✕</ThemedText>
+										</TouchableOpacity>
+									</View>
+									<ThemedText style={styles.modalDescription}>
+										{SKILL_DESCRIPTIONS[skill.id] || 'No description available.'}
+									</ThemedText>
+									<ThemedText style={styles.modalSubtext}>Uses: {skill.ability}</ThemedText>
+								</>
+							);
+						})()}
+					</ThemedView>
+				</TouchableOpacity>
+			</Modal>
 		</Modal>
 	);
 };
@@ -332,6 +422,88 @@ const styles = StyleSheet.create({
 		color: '#6B5B3D',
 		fontStyle: 'italic',
 		textAlign: 'center',
+	},
+	infoButton: {
+		position: 'absolute',
+		top: 4,
+		right: 4,
+		width: 20,
+		height: 20,
+		borderRadius: 10,
+		backgroundColor: 'rgba(59, 47, 27, 0.2)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		borderWidth: 1,
+		borderColor: '#3B2F1B',
+	},
+	infoButtonText: {
+		color: '#3B2F1B',
+		fontSize: 14,
+		fontWeight: 'bold',
+	},
+	skillInfoButton: {
+		position: 'absolute',
+		top: 2,
+		right: 2,
+		width: 18,
+		height: 18,
+		borderRadius: 9,
+		backgroundColor: 'rgba(59, 47, 27, 0.2)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		borderWidth: 1,
+		borderColor: '#3B2F1B',
+		zIndex: 10,
+	},
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0, 0, 0, 0.5)',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalContent: {
+		backgroundColor: '#F9F6EF',
+		borderRadius: 12,
+		padding: 20,
+		margin: 20,
+		maxWidth: 400,
+		borderWidth: 2,
+		borderColor: '#C9B037',
+	},
+	modalHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginBottom: 12,
+	},
+	modalTitle: {
+		fontSize: 24,
+		fontWeight: 'bold',
+		color: '#3B2F1B',
+	},
+	modalCloseButton: {
+		width: 32,
+		height: 32,
+		borderRadius: 16,
+		backgroundColor: '#D4BC8B',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalCloseText: {
+		fontSize: 18,
+		color: '#3B2F1B',
+		fontWeight: 'bold',
+	},
+	modalDescription: {
+		fontSize: 16,
+		color: '#3B2F1B',
+		lineHeight: 24,
+	},
+	modalSubtext: {
+		fontSize: 14,
+		color: '#8B7355',
+		marginTop: 8,
+		fontStyle: 'italic',
 	},
 });
 

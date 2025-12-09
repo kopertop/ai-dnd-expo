@@ -1,23 +1,27 @@
-import React, { useState } from 'react';
-import { Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Image, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { StyleSheet } from 'react-native';
+
 import {
-	CARD_GAP,
-	cardGridStyles,
-	getCardsPerRow,
-	getContainerWidth,
-	SCREEN_WIDTH,
+    CARD_GAP,
+    cardGridStyles,
+    getCardsPerRow,
+    getContainerWidth,
+    SCREEN_WIDTH,
 } from '../styles/card-grid.styles';
 import { newGameStyles } from '../styles/new-game.styles';
 
-import { SKILL_LIST } from '@/constants/skills';
+import { SKILL_DESCRIPTIONS, SKILL_LIST } from '@/constants/skills';
 import { Skill } from '@/types/skill';
+import { StatBlock } from '@/types/stats';
 
 interface SkillChooserProps {
 	onSelect: (skills: Skill[]) => void;
 	initialSkills?: Skill[];
 	maxSkills?: number;
+	stats?: StatBlock | null; // Character stats for sorting suggested skills
 }
 
 const DEFAULT_MAX_SKILLS = 4;
@@ -26,8 +30,22 @@ export const SkillChooser: React.FC<SkillChooserProps> = ({
 	onSelect,
 	initialSkills = [],
 	maxSkills = DEFAULT_MAX_SKILLS,
+	stats,
 }) => {
 	const [selected, setSelected] = useState<string[]>(initialSkills.map(s => s.id));
+	const [infoSkill, setInfoSkill] = useState<string | null>(null);
+
+	// Sort skills to prioritize those based on higher stats
+	const sortedSkills = useMemo(() => {
+		if (!stats) return SKILL_LIST;
+
+		return [...SKILL_LIST].sort((a, b) => {
+			const aStat = stats[a.ability as keyof StatBlock] || 10;
+			const bStat = stats[b.ability as keyof StatBlock] || 10;
+			// Higher stat value = higher priority (appears first)
+			return bStat - aStat;
+		});
+	}, [stats]);
 
 	const width = SCREEN_WIDTH;
 	const cardsPerRow = getCardsPerRow(width);
@@ -60,7 +78,8 @@ export const SkillChooser: React.FC<SkillChooserProps> = ({
 		.map(id => SKILL_LIST.find(skill => skill.id === id))
 		.filter(Boolean) as Skill[];
 	const emptySlots = maxSkills - selectedSkills.length;
-	const unselectedSkills = SKILL_LIST.filter(skill => !selected.includes(skill.id));
+	// Use sorted skills for unselected, maintaining the suggested order
+	const unselectedSkills = sortedSkills.filter(skill => !selected.includes(skill.id));
 
 	return (
 		<SafeAreaView
@@ -184,10 +203,20 @@ export const SkillChooser: React.FC<SkillChooserProps> = ({
 										height: cardHeight,
 										borderColor: styles.card.borderColor,
 										borderWidth: styles.card.borderWidth,
+										position: 'relative',
 									},
 								]}
 								onPress={() => handleSelect(skill.id)}
 							>
+								<TouchableOpacity
+									style={skillChooserStyles.infoButton}
+									onPress={(e) => {
+										e.stopPropagation();
+										setInfoSkill(infoSkill === skill.id ? null : skill.id);
+									}}
+								>
+									<Text style={skillChooserStyles.infoButtonText}>?</Text>
+								</TouchableOpacity>
 								<View style={styles.imageWrapper}>
 									<Image
 										source={skill.image}
@@ -204,6 +233,115 @@ export const SkillChooser: React.FC<SkillChooserProps> = ({
 					</View>
 				</ScrollView>
 			</View>
+			{/* Skill Info Modal */}
+			<Modal
+				visible={infoSkill !== null}
+				transparent
+				animationType="fade"
+				onRequestClose={() => setInfoSkill(null)}
+			>
+				<TouchableOpacity
+					style={skillChooserStyles.modalOverlay}
+					activeOpacity={1}
+					onPress={() => setInfoSkill(null)}
+				>
+					<View style={skillChooserStyles.modalContent} onStartShouldSetResponder={() => true}>
+						{infoSkill && (() => {
+							const skill = SKILL_LIST.find(s => s.id === infoSkill);
+							if (!skill) return null;
+							return (
+								<>
+									<View style={skillChooserStyles.modalHeader}>
+										<Text style={skillChooserStyles.modalTitle}>{skill.name}</Text>
+										<TouchableOpacity
+											style={skillChooserStyles.modalCloseButton}
+											onPress={() => setInfoSkill(null)}
+										>
+											<Text style={skillChooserStyles.modalCloseText}>✕</Text>
+										</TouchableOpacity>
+									</View>
+									<Text style={skillChooserStyles.modalDescription}>
+										{SKILL_DESCRIPTIONS[skill.id] || 'No description available.'}
+									</Text>
+									<Text style={skillChooserStyles.modalSubtext}>Uses: {skill.ability}</Text>
+								</>
+							);
+						})()}
+					</View>
+				</TouchableOpacity>
+			</Modal>
 		</SafeAreaView>
 	);
 };
+
+const skillChooserStyles = StyleSheet.create({
+	infoButton: {
+		position: 'absolute',
+		top: 8,
+		right: 8,
+		width: 24,
+		height: 24,
+		borderRadius: 12,
+		backgroundColor: 'rgba(59, 47, 27, 0.8)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		borderWidth: 1,
+		borderColor: '#3B2F1B',
+		zIndex: 10,
+	},
+	infoButtonText: {
+		color: '#FFF8E1',
+		fontSize: 16,
+		fontWeight: 'bold',
+	},
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0, 0, 0, 0.5)',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalContent: {
+		backgroundColor: '#F9F6EF',
+		borderRadius: 12,
+		padding: 20,
+		margin: 20,
+		maxWidth: 400,
+		borderWidth: 2,
+		borderColor: '#C9B037',
+	},
+	modalHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginBottom: 12,
+	},
+	modalTitle: {
+		fontSize: 24,
+		fontWeight: 'bold',
+		color: '#3B2F1B',
+	},
+	modalCloseButton: {
+		width: 32,
+		height: 32,
+		borderRadius: 16,
+		backgroundColor: '#D4BC8B',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalCloseText: {
+		fontSize: 18,
+		color: '#3B2F1B',
+		fontWeight: 'bold',
+	},
+	modalDescription: {
+		fontSize: 16,
+		color: '#3B2F1B',
+		lineHeight: 24,
+	},
+	modalSubtext: {
+		fontSize: 14,
+		color: '#8B7355',
+		marginTop: 8,
+		fontStyle: 'italic',
+	},
+});

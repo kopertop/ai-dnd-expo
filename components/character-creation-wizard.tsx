@@ -199,6 +199,7 @@ export const CharacterCreationWizard: React.FC<CharacterCreationWizardProps> = (
 							onSelect={onSkillsSelect}
 							initialSkills={selectedSkills}
 							maxSkills={4}
+							stats={selectedAttributes}
 						/>
 					</View>
 				);
