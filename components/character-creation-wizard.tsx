@@ -1,10 +1,10 @@
 import React from 'react';
 import {
-    PanResponder,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+	PanResponder,
+	ScrollView,
+	Text,
+	TouchableOpacity,
+	View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 

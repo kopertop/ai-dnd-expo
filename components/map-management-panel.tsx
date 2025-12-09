@@ -1,12 +1,8 @@
-import {
-    useAllMaps,
-    useCloneMap,
-    useSwitchMap,
-} from '@/hooks/api/use-map-queries';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Image,
     ScrollView,
     StyleSheet,
     TextInput,
@@ -15,6 +11,14 @@ import {
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { LOCATIONS } from '@/constants/locations';
+import {
+    useAllMaps,
+    useCloneMap,
+    useSwitchMap,
+} from '@/hooks/api/use-map-queries';
+import { LocationOption } from '@/types/location-option';
+import { WorldOption } from '@/types/world-option';
 
 interface Map {
 	id: string;
@@ -23,6 +27,8 @@ interface Map {
 	description: string | null;
 	width: number;
 	height: number;
+	world?: string | null;
+	metadata?: Record<string, unknown>;
 }
 
 interface MapManagementPanelProps {
@@ -32,6 +38,8 @@ interface MapManagementPanelProps {
 	onMapCloned?: (mapId: string) => void;
 	onEditMap?: (mapId: string) => void;
 	onStartEncounter?: (mapId: string) => Promise<void>;
+	world?: WorldOption | null;
+	location?: LocationOption | null;
 }
 
 export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
@@ -41,15 +49,53 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 	onMapCloned,
 	onEditMap,
 	onStartEncounter,
+	world,
+	location,
 }) => {
 	const { data: mapsData, isLoading: loadingMaps, refetch } = useAllMaps();
-	const maps = mapsData?.maps || [];
+	const allMaps = mapsData?.maps || [];
 	const cloneMapMutation = useCloneMap();
 	const switchMapMutation = useSwitchMap(inviteCode);
 
 	const [searchQuery, setSearchQuery] = useState('');
 	const [cloningMapId, setCloningMapId] = useState<string | null>(null);
 	const [startingEncounterMapId, setStartingEncounterMapId] = useState<string | null>(null);
+
+	// Filter maps by world if provided
+	// World-agnostic maps (world = null) are shown for all worlds
+	const maps = React.useMemo(() => {
+		if (!world) return allMaps;
+
+		const worldId = world.id?.toLowerCase() || world.name?.toLowerCase();
+		return allMaps.filter(map => {
+			// Include world-agnostic maps (world is null/undefined)
+			if (!map.world) {
+				return true;
+			}
+
+			// Check world field (preferred), fallback to metadata.world or slug pattern
+			const mapWorld = map.world?.toLowerCase() ||
+				(map.metadata?.world as string)?.toLowerCase() ||
+				map.slug.split('_')[0]?.toLowerCase();
+			return mapWorld === worldId;
+		});
+	}, [allMaps, world]);
+
+	// Auto-select map when location is selected
+	React.useEffect(() => {
+		if (!world || !location || maps.length === 0) return;
+
+		const worldId = world.id?.toLowerCase() || world.name?.toLowerCase();
+		const locationId = location.id?.toLowerCase() || location.name?.toLowerCase();
+		const expectedSlug = `${worldId}_${locationId}`;
+
+		const matchingMap = maps.find(map => map.slug === expectedSlug);
+		if (matchingMap && matchingMap.id !== currentMapId) {
+			// Auto-select the matching map when location changes
+			onMapSelected(matchingMap.id);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [world?.id, world?.name, location?.id, location?.name, currentMapId]);
 
 	const handleCloneMap = useCallback(
 		async (sourceMap: Map) => {
@@ -60,7 +106,7 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 				const newName = `${sourceMap.name} (Copy)`;
 				const response = await cloneMapMutation.mutateAsync({
 					path: `/maps/${sourceMap.id}/clone`,
-					body: { name: newName }
+					body: { name: newName },
 				});
 				Alert.alert('Success', `Map "${newName}" created successfully`);
 				if (onMapCloned && response.map?.id) {
@@ -92,7 +138,7 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 				try {
 					await switchMapMutation.mutateAsync({
 						path: `/games/${inviteCode}/map`,
-						body: { mapId }
+						body: { mapId },
 					});
 					onMapSelected(mapId);
 					Alert.alert('Success', 'Map selected successfully');
@@ -110,6 +156,18 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 			map.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			(map.description && map.description.toLowerCase().includes(searchQuery.toLowerCase())),
 	), [maps, searchQuery]);
+
+	// Get location icon for map if available
+	const getMapIcon = (map: Map) => {
+		if (!map.metadata) return null;
+		const mapLocation = (map.metadata.location as string)?.toLowerCase();
+		if (!mapLocation) return null;
+
+		const locationOption = LOCATIONS.find(loc =>
+			(loc.id?.toLowerCase() || loc.name?.toLowerCase()) === mapLocation,
+		);
+		return locationOption?.image || null;
+	};
 
 	return (
 		<View style={styles.container}>
@@ -141,52 +199,60 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 					</ThemedText>
 				) : (
 					<ScrollView style={styles.mapsList} nestedScrollEnabled>
-						{filteredMaps.map(map => (
-							<View key={map.id} style={styles.mapCard}>
-								<View style={styles.mapCardHeader}>
-									<ThemedText style={styles.mapName}>{map.name}</ThemedText>
-									{map.id === currentMapId && (
-										<View style={styles.currentBadge}>
-											<ThemedText style={styles.currentBadgeText}>Current</ThemedText>
+						{filteredMaps.map(map => {
+							const mapIcon = getMapIcon(map);
+							return (
+								<View key={map.id} style={styles.mapCard}>
+									<View style={styles.mapCardHeader}>
+										{mapIcon && (
+											<Image source={mapIcon} style={styles.mapIcon} resizeMode="cover" />
+										)}
+										<View style={styles.mapCardHeaderText}>
+											<ThemedText style={styles.mapName}>{map.name}</ThemedText>
+											{map.id === currentMapId && (
+												<View style={styles.currentBadge}>
+													<ThemedText style={styles.currentBadgeText}>Current</ThemedText>
+												</View>
+											)}
 										</View>
+									</View>
+									{map.description && (
+										<ThemedText style={styles.mapDescription}>{map.description}</ThemedText>
 									)}
-								</View>
-								{map.description && (
-									<ThemedText style={styles.mapDescription}>{map.description}</ThemedText>
-								)}
-								<ThemedText style={styles.mapDetails}>
-									{map.width} × {map.height}
-								</ThemedText>
-								<View style={styles.mapCardActions}>
-									<TouchableOpacity
-										style={[styles.actionButton, styles.useButton, startingEncounterMapId === map.id && styles.disabledButton]}
-										onPress={() => handleStartEncounter(map.id)}
-										disabled={startingEncounterMapId === map.id}
-									>
-										<ThemedText style={styles.useButtonText}>
-											{startingEncounterMapId === map.id ? 'Starting...' : 'Start Encounter'}
-										</ThemedText>
-									</TouchableOpacity>
-									{onEditMap && (
+									<ThemedText style={styles.mapDetails}>
+										{map.width} × {map.height}
+									</ThemedText>
+									<View style={styles.mapCardActions}>
 										<TouchableOpacity
-											style={[styles.actionButton, styles.editButton]}
-											onPress={() => onEditMap(map.id)}
+											style={[styles.actionButton, styles.useButton, startingEncounterMapId === map.id && styles.disabledButton]}
+											onPress={() => handleStartEncounter(map.id)}
+											disabled={startingEncounterMapId === map.id}
 										>
-											<ThemedText style={styles.editButtonText}>Edit</ThemedText>
+											<ThemedText style={styles.useButtonText}>
+												{startingEncounterMapId === map.id ? 'Starting...' : 'Start Encounter'}
+											</ThemedText>
 										</TouchableOpacity>
-									)}
-									<TouchableOpacity
-										style={[styles.actionButton, styles.cloneButton]}
-										onPress={() => handleCloneMap(map)}
-										disabled={cloningMapId === map.id}
-									>
-										<ThemedText style={styles.cloneButtonText}>
-											{cloningMapId === map.id ? 'Cloning...' : 'Clone'}
-										</ThemedText>
-									</TouchableOpacity>
+										{onEditMap && (
+											<TouchableOpacity
+												style={[styles.actionButton, styles.editButton]}
+												onPress={() => onEditMap(map.id)}
+											>
+												<ThemedText style={styles.editButtonText}>Edit</ThemedText>
+											</TouchableOpacity>
+										)}
+										<TouchableOpacity
+											style={[styles.actionButton, styles.cloneButton]}
+											onPress={() => handleCloneMap(map)}
+											disabled={cloningMapId === map.id}
+										>
+											<ThemedText style={styles.cloneButtonText}>
+												{cloningMapId === map.id ? 'Cloning...' : 'Clone'}
+											</ThemedText>
+										</TouchableOpacity>
+									</View>
 								</View>
-							</View>
-						))}
+							);
+						})}
 					</ScrollView>
 				)}
 			</View>
@@ -250,6 +316,18 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		alignItems: 'center',
+		gap: 12,
+	},
+	mapCardHeaderText: {
+		flex: 1,
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+	},
+	mapIcon: {
+		width: 48,
+		height: 48,
+		borderRadius: 8,
 	},
 	mapName: {
 		fontSize: 16,

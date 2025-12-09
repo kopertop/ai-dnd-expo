@@ -2,29 +2,29 @@ import { apiService, authService } from 'expo-auth-template/frontend';
 
 import { API_BASE_URL } from '@/services/config/api-base-url';
 import {
-	ActivityLogListResponse,
-	CharacterListResponse,
-	CreateGameRequest,
-	DMActionRequest,
-	GameSessionResponse,
-	GameStateResponse,
-	JoinGameRequest,
-	MapGenerationRequest,
-	MapStateResponse,
-	MapStateUpdateRequest,
-	MapTerrainMutationRequest,
-	MapTokenListResponse,
-	MapTokenMutationResponse,
-	MapTokenUpsertRequest,
-	MapMoveResponse,
-	MovementValidationResponse,
-	MyGamesResponse,
-	NpcDefinitionListResponse,
-	NpcInstanceListResponse,
-	NpcInstanceUpdateRequest,
-	NpcPlacementRequest,
-	PlayerActionRequest,
-	PlayerPlacementRequest,
+    ActivityLogListResponse,
+    CharacterListResponse,
+    CreateGameRequest,
+    DMActionRequest,
+    GameSessionResponse,
+    GameStateResponse,
+    JoinGameRequest,
+    MapGenerationRequest,
+    MapMoveResponse,
+    MapStateResponse,
+    MapStateUpdateRequest,
+    MapTerrainMutationRequest,
+    MapTokenListResponse,
+    MapTokenMutationResponse,
+    MapTokenUpsertRequest,
+    MovementValidationResponse,
+    MyGamesResponse,
+    NpcDefinitionListResponse,
+    NpcInstanceListResponse,
+    NpcInstanceUpdateRequest,
+    NpcPlacementRequest,
+    PlayerActionRequest,
+    PlayerPlacementRequest,
 } from '@/types/api/multiplayer-api';
 import { Character } from '@/types/character';
 import type { CharacterActionResult } from '@/types/combat';
@@ -352,7 +352,7 @@ export class MultiplayerClient {
 	/**
 	 * Get all available maps in the system
 	 */
-	async getAllMaps(): Promise<{ maps: Array<{ id: string; slug: string; name: string; description: string | null; width: number; height: number }> }> {
+	async getAllMaps(): Promise<{ maps: Array<{ id: string; slug: string; name: string; description: string | null; width: number; height: number; world?: string | null; metadata?: Record<string, unknown> }> }> {
 		return apiService.fetchApi('/maps', {
 			method: 'GET',
 		});

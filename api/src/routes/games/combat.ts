@@ -8,14 +8,14 @@ import { createId, deserializeCharacter, isHostUser } from '@/api/src/utils/game
 import { createDatabase } from '@/api/src/utils/repository';
 import type { Character } from '@/types/character';
 import type {
-    CharacterActionResult,
+	CharacterActionResult,
 } from '@/types/combat';
 import {
-    calculatePassivePerception,
-    calculateProficiencyBonus,
-    getAbilityModifier,
-    getAbilityScore,
-    isSkillProficient,
+	calculatePassivePerception,
+	calculateProficiencyBonus,
+	getAbilityModifier,
+	getAbilityScore,
+	isSkillProficient,
 } from '@/utils/combat-utils';
 
 const combat = new Hono<GamesContext>();

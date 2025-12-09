@@ -10,6 +10,10 @@ import {
 } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
 import { Character } from '@/types/character';
+import {
+	addStartingEquipmentToCharacter,
+	needsStartingEquipment,
+} from '@/utils/starting-equipment';
 
 type Variables = {
 	user: User | null;
@@ -177,6 +181,66 @@ characters.delete('/:id', async (c) => {
 
 	await db.deleteCharacter(characterId);
 	return c.json({ ok: true });
+});
+
+/**
+ * Add starting equipment to a character
+ * POST /api/characters/:id/add-starting-equipment
+ *
+ * Adds starting equipment to a level 1 character that has no equipment.
+ * User must own the character.
+ *
+ * @returns Object with updated character
+ */
+characters.post('/:id/add-starting-equipment', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const characterId = c.req.param('id');
+	const db = createDatabase(c.env);
+	const existing = await db.getCharacterById(characterId);
+
+	if (!existing) {
+		return c.json({ error: 'Character not found' }, 404);
+	}
+
+	if (
+		existing.player_id !== user.id
+		&& existing.player_email !== user.email
+		&& !user.isAdmin
+	) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	const character = deserializeCharacter(existing);
+
+	// Check if character needs starting equipment
+	if (!needsStartingEquipment(character)) {
+		return c.json(
+			{
+				error: 'Character does not need starting equipment. Only level 1 characters with no equipment can receive starting equipment.',
+			},
+			400,
+		);
+	}
+
+	// Add starting equipment
+	const updatedCharacter = addStartingEquipmentToCharacter(
+		character,
+		character.class.toLowerCase(),
+		character.race.toLowerCase(),
+	);
+
+	const serializedUpdate = serializeCharacter(
+		updatedCharacter,
+		existing.player_id || user.id,
+		existing.player_email || user.email,
+	);
+	await db.updateCharacter(characterId, serializedUpdate);
+	const updated = await db.getCharacterById(characterId);
+	return c.json({ character: updated ? deserializeCharacter(updated) : updatedCharacter });
 });
 
 export default characters;

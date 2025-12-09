@@ -17,7 +17,18 @@ maps.get('/', async (c) => {
 	const db = createDatabase(c.env);
 	try {
 		const mapsList = await db.listMaps();
-		return c.json({ maps: mapsList });
+		// Include metadata in response for filtering and icons
+		const mapsWithMetadata = mapsList.map(map => ({
+			id: map.id,
+			slug: map.slug,
+			name: map.name,
+			description: map.description,
+			width: map.width,
+			height: map.height,
+			world: map.world, // Include world field
+			metadata: map.metadata ? JSON.parse(map.metadata) : {},
+		}));
+		return c.json({ maps: mapsWithMetadata });
 	} catch (error) {
 		console.error('Failed to list maps:', error);
 		return c.json({ error: 'Failed to list maps' }, 500);

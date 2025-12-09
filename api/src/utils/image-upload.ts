@@ -64,7 +64,7 @@ export const getPublicUrl = (key: string, accountId: string = 'pub'): string => 
 export const uploadImageToR2 = async (
 	bucket: R2Bucket,
 	file: File,
-	key: string
+	key: string,
 ): Promise<ImageUploadResult> => {
 	await bucket.put(key, file, {
 		httpMetadata: {

@@ -27,20 +27,20 @@ import { ThemedView } from '@/components/themed-view';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import { useCastSpell, useDealDamage, useHealCharacter, usePerformAction, useRollPerceptionCheck } from '@/hooks/api/use-character-queries';
 import {
-    useDmRollDice,
-    useStopGame,
-    useSubmitDMAction,
+	useDmRollDice,
+	useStopGame,
+	useSubmitDMAction,
 } from '@/hooks/api/use-game-queries';
 import {
-    useAllMaps,
-    useDeleteMapToken,
-    useMapState,
-    useMoveToken,
-    useMutateTerrain,
-    usePlaceNpc,
-    usePlacePlayerToken,
-    useSaveMapToken,
-    useSwitchMap,
+	useAllMaps,
+	useDeleteMapToken,
+	useMapState,
+	useMoveToken,
+	useMutateTerrain,
+	usePlaceNpc,
+	usePlacePlayerToken,
+	useSaveMapToken,
+	useSwitchMap,
 } from '@/hooks/api/use-map-queries';
 import { useEndTurn, useInterruptTurn, useNextTurn, useResumeTurn, useStartTurn, useUpdateTurnState } from '@/hooks/api/use-turn-queries';
 import { usePollingGameState } from '@/hooks/use-polling-game-state';

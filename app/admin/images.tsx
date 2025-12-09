@@ -25,7 +25,7 @@ const AdminImagesScreen: React.FC = () => {
 		'/admin/images',
 		{
 			enabled: isAdmin,
-		}
+		},
 	);
 
 	const deleteImageMutation = useDeleteImage();

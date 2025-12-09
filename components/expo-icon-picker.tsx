@@ -140,7 +140,7 @@ export const ExpoIconPicker: React.FC<ExpoIconPickerProps> = ({ value = '', onCh
 
 		return all.filter(icon =>
 			icon.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			icon.name.toLowerCase().includes(searchQuery.toLowerCase())
+			icon.name.toLowerCase().includes(searchQuery.toLowerCase()),
 		);
 	}, [searchQuery, uploadedIconOptions]);
 

@@ -16,6 +16,8 @@ import { Skill } from '@/types/skill';
 import { StatBlock } from '@/types/stats';
 import { TraitOption } from '@/types/trait-option';
 import { WorldOption } from '@/types/world-option';
+import { generateStartingEquipment } from '@/utils/starting-equipment';
+import { addIconsToInventoryItems } from '@/utils/add-equipment-icons';
 
 type WizardStep = 'world' | 'location' | 'race' | 'class' | 'trait' | 'attributes' | 'skills' | 'character';
 
@@ -107,7 +109,7 @@ export const useCharacterCreation = () => {
 		classOption: ClassOption | null,
 		trait: TraitOption | null,
 		attributes?: StatBlock | null,
-		skills?: Skill[] | null
+		skills?: Skill[] | null,
 	) => {
 		if (!isCharacterMode) return; // Only update URL for character mode
 		if (isRestoringFromURL.current) return; // Don't update URL while restoring from URL
@@ -124,7 +126,7 @@ export const useCharacterCreation = () => {
 		// Get current URL to preserve existing query params
 		const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
 		const queryParams = new URLSearchParams();
-		
+
 		// Parse existing query params from current URL if available
 		if (currentUrl) {
 			try {
@@ -204,56 +206,56 @@ export const useCharacterCreation = () => {
 								setSelectedTrait(trait);
 							}
 
-									// Check for attributes in query string
-									const attrsParam = params.attrs;
-									if (attrsParam) {
-										const attrValues = (Array.isArray(attrsParam) ? attrsParam[0] : attrsParam).split(',');
-										if (attrValues.length === 6) {
-											const attributes: StatBlock = {
-												STR: parseInt(attrValues[0], 10),
-												DEX: parseInt(attrValues[1], 10),
-												CON: parseInt(attrValues[2], 10),
-												INT: parseInt(attrValues[3], 10),
-												WIS: parseInt(attrValues[4], 10),
-												CHA: parseInt(attrValues[5], 10),
-											};
-											// Only update if attributes are different
-											if (!selectedAttributes ||
+							// Check for attributes in query string
+							const attrsParam = params.attrs;
+							if (attrsParam) {
+								const attrValues = (Array.isArray(attrsParam) ? attrsParam[0] : attrsParam).split(',');
+								if (attrValues.length === 6) {
+									const attributes: StatBlock = {
+										STR: parseInt(attrValues[0], 10),
+										DEX: parseInt(attrValues[1], 10),
+										CON: parseInt(attrValues[2], 10),
+										INT: parseInt(attrValues[3], 10),
+										WIS: parseInt(attrValues[4], 10),
+										CHA: parseInt(attrValues[5], 10),
+									};
+									// Only update if attributes are different
+									if (!selectedAttributes ||
 												selectedAttributes.STR !== attributes.STR ||
 												selectedAttributes.DEX !== attributes.DEX ||
 												selectedAttributes.CON !== attributes.CON ||
 												selectedAttributes.INT !== attributes.INT ||
 												selectedAttributes.WIS !== attributes.WIS ||
 												selectedAttributes.CHA !== attributes.CHA) {
-												setSelectedAttributes(attributes);
-											}
+										setSelectedAttributes(attributes);
+									}
 
-											// Check for skills in query string
-											const skillsParam = params.skills;
-											if (skillsParam) {
-												const skillIds = (Array.isArray(skillsParam) ? skillsParam[0] : skillsParam).split(',');
-												if (skillIds.length > 0) {
-													const restoredSkills = skillIds
-														.map(id => SKILL_LIST.find(s => s.id === id))
-														.filter(Boolean) as Skill[];
-													if (restoredSkills.length > 0) {
-														setSelectedSkills(restoredSkills);
-													}
-													setCurrentStep('character');
-													lastRestoredState.current = stateKey;
-													return;
-												}
+									// Check for skills in query string
+									const skillsParam = params.skills;
+									if (skillsParam) {
+										const skillIds = (Array.isArray(skillsParam) ? skillsParam[0] : skillsParam).split(',');
+										if (skillIds.length > 0) {
+											const restoredSkills = skillIds
+												.map(id => SKILL_LIST.find(s => s.id === id))
+												.filter(Boolean) as Skill[];
+											if (restoredSkills.length > 0) {
+												setSelectedSkills(restoredSkills);
 											}
-
-											setCurrentStep('skills');
+											setCurrentStep('character');
 											lastRestoredState.current = stateKey;
 											return;
 										}
 									}
 
-									setCurrentStep('attributes');
+									setCurrentStep('skills');
 									lastRestoredState.current = stateKey;
-									return; // Early return to prevent step reset
+									return;
+								}
+							}
+
+							setCurrentStep('attributes');
+							lastRestoredState.current = stateKey;
+							return; // Early return to prevent step reset
 						} else {
 							setCurrentStep('trait');
 							lastRestoredState.current = stateKey;
@@ -337,35 +339,54 @@ export const useCharacterCreation = () => {
 	const generateCharacterId = () =>
 		`character-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-	const buildCharacterPayload = (): Character => ({
-		id: generateCharacterId(),
-		level: 1,
-		race: selectedRace?.name ?? 'Unknown',
-		name: characterName.trim(),
-		class: selectedClass?.name ?? 'Adventurer',
-		trait: selectedTrait?.name,
-		icon: characterIcon || undefined,
-		description: customStory.trim(),
-		stats: selectedAttributes!,
-		skills: selectedSkills.map(skill => skill.id),
-		inventory: [],
-		equipped: {
-			helmet: null,
-			chest: null,
-			arms: null,
-			legs: null,
-			boots: null,
-			mainHand: null,
-			offHand: null,
-			accessory: null,
-		},
-		health: 10,
-		maxHealth: 10,
-		actionPoints: 3,
-		maxActionPoints: 3,
-		statusEffects: [],
-		preparedSpells: [],
-	});
+	const buildCharacterPayload = (): Character => {
+		const baseCharacter: Character = {
+			id: generateCharacterId(),
+			level: 1,
+			race: selectedRace?.name ?? 'Unknown',
+			name: characterName.trim(),
+			class: selectedClass?.name ?? 'Adventurer',
+			trait: selectedTrait?.name,
+			icon: characterIcon || undefined,
+			description: customStory.trim(),
+			stats: selectedAttributes!,
+			skills: selectedSkills.map(skill => skill.id),
+			inventory: [],
+			equipped: {
+				helmet: null,
+				chest: null,
+				arms: null,
+				legs: null,
+				boots: null,
+				mainHand: null,
+				offHand: null,
+				accessory: null,
+			},
+			health: 10,
+			maxHealth: 10,
+			actionPoints: 3,
+			maxActionPoints: 3,
+			statusEffects: [],
+			preparedSpells: [],
+		};
+
+		// Add starting equipment based on class and race
+		if (selectedClass && selectedRace) {
+			let { inventory, equipped } = generateStartingEquipment(
+				selectedClass.id,
+				selectedRace.id,
+			);
+			// Add icons to inventory items (frontend only)
+			inventory = addIconsToInventoryItems(inventory);
+			return {
+				...baseCharacter,
+				inventory,
+				equipped,
+			};
+		}
+
+		return baseCharacter;
+	};
 
 	const handleFinalizeCharacterWithData = async (data: {
 		name: string;
@@ -403,6 +424,24 @@ export const useCharacterCreation = () => {
 			}
 		}
 
+		// Generate starting equipment
+		let { inventory, equipped } = generateStartingEquipment(
+			selectedClass.id,
+			selectedRace.id,
+		);
+
+		// Add icons to inventory items (frontend only)
+		inventory = addIconsToInventoryItems(inventory);
+
+		// Debug: Log equipment generation
+		if (__DEV__) {
+			console.log('[Character Creation] Generated equipment:', {
+				inventoryCount: inventory.length,
+				equipped,
+				sampleInventory: inventory.slice(0, 3),
+			});
+		}
+
 		const characterPayload: Character = {
 			id: generateCharacterId(),
 			level: 1,
@@ -414,17 +453,8 @@ export const useCharacterCreation = () => {
 			description: description,
 			stats: data.stats,
 			skills: selectedSkills.map(skill => skill.id),
-			inventory: [],
-			equipped: {
-				helmet: null,
-				chest: null,
-				arms: null,
-				legs: null,
-				boots: null,
-				mainHand: null,
-				offHand: null,
-				accessory: null,
-			},
+			inventory,
+			equipped,
 			health: 10,
 			maxHealth: 10,
 			actionPoints: 3,
@@ -432,6 +462,17 @@ export const useCharacterCreation = () => {
 			statusEffects: [],
 			preparedSpells: [],
 		};
+
+		// Debug: Log final character payload
+		if (__DEV__) {
+			console.log('[Character Creation] Character payload:', {
+				id: characterPayload.id,
+				name: characterPayload.name,
+				inventoryCount: characterPayload.inventory.length,
+				equippedCount: Object.values(characterPayload.equipped).filter(v => v !== null).length,
+				equipped,
+			});
+		}
 
 		try {
 			if (isCharacterMode) {
@@ -450,26 +491,8 @@ export const useCharacterCreation = () => {
 				};
 
 				await save(gameState);
-				await addItem('rations', 2);
-				await addItem('tent', 1);
-				await addItem('healing_potion', 2);
-
-				if (selectedClass.id === 'fighter') {
-					await addItem('sword', 1);
-					await equipItem('sword');
-				}
-				if (selectedClass.id === 'wizard') {
-					await addItem('staff', 1);
-					await equipItem('staff');
-				}
-				if (selectedClass.id === 'rogue') {
-					await addItem('dagger', 1);
-					await equipItem('dagger');
-				}
-				if (selectedClass.id === 'cleric') {
-					await addItem('mace', 1);
-					await equipItem('mace');
-				}
+				// Starting equipment is now automatically included in characterPayload
+				// Additional items can be added here if needed
 
 				router.replace('/game');
 			}

@@ -14,36 +14,36 @@ export const IMAGE_BLANKS: ImageBlank[] = [
 		name: 'Dragonborn',
 		source: require('@/assets/images/characters/dragonborn/dragonborn-blank.png'),
 		filename: 'dragonborn-blank.png',
-		description: 'Base template for Dragonborn characters'
+		description: 'Base template for Dragonborn characters',
 	},
 	{
 		id: 'dwarf',
 		name: 'Dwarf',
 		source: require('@/assets/images/characters/dwarf/dwarf-blank.png'),
 		filename: 'dwarf-blank.png',
-		description: 'Base template for Dwarf characters'
+		description: 'Base template for Dwarf characters',
 	},
 	{
 		id: 'elf',
 		name: 'Elf',
 		source: require('@/assets/images/characters/elf/elf-blank.png'),
 		filename: 'elf-blank.png',
-		description: 'Base template for Elf characters'
+		description: 'Base template for Elf characters',
 	},
 	{
 		id: 'human',
 		name: 'Human',
 		source: require('@/assets/images/characters/human/human-blank.png'),
 		filename: 'human-blank.png',
-		description: 'Base template for Human characters'
+		description: 'Base template for Human characters',
 	},
 	{
 		id: 'tiefling',
 		name: 'Tiefling',
 		source: require('@/assets/images/characters/tiefling/tiefling-blank.png'),
 		filename: 'tiefling-blank.png',
-		description: 'Base template for Tiefling characters'
-	}
+		description: 'Base template for Tiefling characters',
+	},
 ];
 
 export const REFERENCE_IMAGE = {
@@ -51,5 +51,5 @@ export const REFERENCE_IMAGE = {
 	name: 'Goblin Example',
 	source: require('@/assets/images/characters/goblin/goblin-archer.png'),
 	filename: 'goblin-reference.png',
-	description: 'Example of ideal camera angle, lighting, and transparency'
+	description: 'Example of ideal camera angle, lighting, and transparency',
 };

@@ -11,10 +11,12 @@ import {
 	Text,
 	TextInput,
 	TouchableOpacity,
-	View
+	View,
 } from 'react-native';
 
+import { getEquipmentSpritesheet } from '@/components/equipment-spritesheet';
 import { PortraitSelector } from '@/components/portrait-selector';
+import { SpriteIcon } from '@/components/sprite-icon';
 import { CLASSES } from '@/constants/classes';
 import { SKILL_DESCRIPTIONS, SKILL_LIST } from '@/constants/skills';
 import { ATTRIBUTE_DESCRIPTIONS, STAT_KEYS } from '@/constants/stats';
@@ -121,6 +123,24 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 	const equippedLookup = sheetCharacter.equipped || {};
 	const inventory = (sheetCharacter.inventory || []) as InventoryEntry[];
 
+	// Debug: Log equipment data
+	useEffect(() => {
+		if (__DEV__) {
+			console.log('[Character Sheet] Equipment Debug:', {
+				equipped: equippedLookup,
+				inventoryCount: inventory.length,
+				inventoryItems: inventory.map(item => ({ id: item.id, name: item.name, slot: item.slot })),
+				equippedSlots: Object.entries(equippedLookup)
+					.filter(([_, value]) => value !== null)
+					.map(([slot, itemId]) => ({
+						slot,
+						itemId,
+						foundInInventory: inventory.find(item => item.id === itemId) !== undefined,
+					})),
+			});
+		}
+	}, [equippedLookup, inventory]);
+
 	const resolveEquippedItem = (slot: GearSlot) => {
 		const equippedEntry = (equippedLookup as Record<GearSlot, any>)[slot];
 		if (!equippedEntry) {
@@ -216,11 +236,36 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 			>
 				<Text style={styles.slotLabel}>{displayLabel}</Text>
 				{equippedItem?.icon ? (
-					<Image
-						source={equippedItem.icon as ImageSourcePropType}
-						style={styles.equipIcon}
-						resizeMode="contain"
-					/>
+					(() => {
+						const icon = equippedItem.icon;
+						// Check if it's a spritesheet reference object
+						if (
+							typeof icon === 'object' &&
+						'spritesheet' in icon &&
+						'x' in icon &&
+						'y' in icon &&
+						typeof icon.spritesheet === 'string'
+						) {
+							const spritesheet = getEquipmentSpritesheet();
+							if (spritesheet) {
+								return (
+									<SpriteIcon
+										spritesheet={spritesheet}
+										coordinates={{ x: icon.x, y: icon.y }}
+										size={32}
+									/>
+								);
+							}
+						}
+						// Otherwise treat as regular image source
+						return (
+							<Image
+								source={icon as ImageSourcePropType}
+								style={styles.equipIcon}
+								resizeMode="contain"
+							/>
+						);
+					})()
 				) : (
 					<Text style={styles.slotItem} numberOfLines={1}>
 						{equippedItem?.name || '—'}
@@ -280,175 +325,186 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 
 	return (
 		<>
-		<ScrollView contentContainerStyle={styles.sheet} showsVerticalScrollIndicator={false}>
-			<View style={styles.banner}>
-				<View style={styles.portraitFrame}>
-					<PortraitSelector
-						selectedImage={headerImage as any}
-						onSelect={handlePortraitSelect}
-						race={{ name: sheetCharacter.race }}
-						classOption={classDetails}
-						skills={sheetCharacter.skills || []}
-					/>
-				</View>
-				<View style={styles.bannerInfo}>
-					{editableName ? (
-						<View style={styles.nameInputRow}>
-							<TextInput
-								style={styles.nameInput}
-								value={sheetCharacter.name}
-								onChangeText={(text) => {
-									const updated = { ...sheetCharacter, name: text };
-									setSheetCharacter(updated);
-									onNameChange?.(text);
-									onCharacterUpdated?.(updated);
-								}}
-								placeholder="Character Name"
-								placeholderTextColor="#8a6c5a"
-							/>
-							{onRandomizeName && (
-								<TouchableOpacity
-									style={styles.randomizeButton}
-									onPress={onRandomizeName}
-								>
-									<Text style={styles.randomizeButtonText}>🎲</Text>
-								</TouchableOpacity>
-							)}
-						</View>
-					) : (
-						<Text style={styles.sheetTitle}>{sheetCharacter.name}</Text>
-					)}
-					<Text style={styles.sheetSubtitle}>
-						{sheetCharacter.class} • {sheetCharacter.race} • Level {sheetCharacter.level}
-					</Text>
-					{sheetCharacter.trait ? (
-						<View style={styles.traitPill}>
-							<Text style={styles.traitIcon}>
-								{sheetCharacter.trait.charAt(0).toUpperCase()}
-							</Text>
-							<Text style={styles.traitText}>{sheetCharacter.trait}</Text>
-						</View>
-					) : null}
-				</View>
-				<View style={styles.bannerStats}>
-					<View style={styles.bannerStat}>
-						<Text style={styles.bannerStatLabel}>AC</Text>
-						<Text style={styles.bannerStatValue}>{armorClass ?? '--'}</Text>
-					</View>
-					<View style={styles.bannerStat}>
-						<Text style={styles.bannerStatLabel}>Initiative</Text>
-						<Text style={styles.bannerStatValue}>
-							{initiative >= 0 ? '+' : ''}
-							{initiative}
-						</Text>
-					</View>
-					<View style={styles.bannerStat}>
-						<Text style={styles.bannerStatLabel}>Passive Perception</Text>
-						<Text style={styles.bannerStatValue}>{passivePerception}</Text>
-					</View>
-				</View>
-			</View>
-
-			<View style={styles.columns}>
-				<View style={styles.leftColumn}>
-					<View style={styles.block}>
-						<Text style={styles.blockHeading}>Abilities</Text>
-						<View style={styles.abilitiesGrid}>
-							{STAT_KEYS.map(key => (
-								<View key={key} style={[styles.abilityCircle, { position: 'relative' }]}>
-									<TouchableOpacity
-										style={styles.infoButton}
-										onPress={() => setInfoAttribute(infoAttribute === key ? null : key)}
-									>
-										<Text style={styles.infoButtonText}>?</Text>
-									</TouchableOpacity>
-									<Text style={styles.abilityKey}>{key}</Text>
-									<Text style={styles.abilityScore}>
-										{sheetCharacter.stats?.[key] ?? 10}
-									</Text>
-									<Text style={styles.abilityMod}>
-										{abilityMods[key] >= 0 ? '+' : ''}
-										{abilityMods[key]}
-									</Text>
-								</View>
-							))}
-						</View>
-					</View>
-
-					<View style={styles.block}>
-						<Text style={styles.blockHeading}>Skills & Proficiencies</Text>
-						<View style={styles.skillIconGrid}>
-							{skillEntries.map(skill => (
-								<View
-									key={skill.id}
-									style={[
-										styles.skillIconTile,
-										skill.isProficient && styles.skillIconTileActive,
-										{ position: 'relative' },
-									]}
-								>
-									<TouchableOpacity
-										style={styles.skillInfoButton}
-										onPress={() => setInfoSkill(infoSkill === skill.id ? null : skill.id)}
-									>
-										<Text style={styles.infoButtonText}>?</Text>
-									</TouchableOpacity>
-									{skill.image ? (
-										<Image
-											source={skill.image as ImageSourcePropType}
-											style={styles.skillIcon}
-											resizeMode="contain"
-										/>
-									) : (
-										<View style={styles.skillIconFallback}>
-											<Text style={styles.skillIconFallbackText}>
-												{skill.name.charAt(0)}
-											</Text>
-										</View>
-									)}
-									<Text style={styles.skillIconLabel} numberOfLines={1}>
-										{skill.name}
-									</Text>
-									<Text style={styles.skillIconMod}>
-										{skill.modifier >= 0 ? '+' : ''}
-										{skill.modifier}
-									</Text>
-								</View>
-							))}
-						</View>
-					</View>
-
-					<View style={styles.storyBlock}>
-						<Text style={styles.blockHeading}>Background / Goals / Notes</Text>
-						<TextInput
-							style={[styles.textArea, styles.fullWidthInput, { minHeight: storyBlockHeight }]}
-							multiline
-							placeholder="Tell this hero's story, goals, and notes..."
-							placeholderTextColor="#8a6c5a"
-							value={editableBackground ? (sheetCharacter.description ?? '') : notesDraft}
-							onChangeText={(text) => {
-								if (editableBackground) {
-									const updated = { ...sheetCharacter, description: text };
-									setSheetCharacter(updated);
-									onBackgroundChange?.(text);
-									onCharacterUpdated?.(updated);
-								} else {
-									setNotesDraft(text);
-								}
-							}}
-							textAlignVertical="top"
+			<ScrollView contentContainerStyle={styles.sheet} showsVerticalScrollIndicator={false}>
+				<View style={styles.banner}>
+					<View style={styles.portraitFrame}>
+						<PortraitSelector
+							selectedImage={headerImage as any}
+							onSelect={handlePortraitSelect}
+							race={{ name: sheetCharacter.race }}
+							classOption={classDetails}
+							skills={sheetCharacter.skills || []}
 						/>
-						<View style={styles.actionButtonsRow}>
-							{editableBackground && onRandomizeBackground ? (
-								<>
-									<Pressable
-										style={[styles.randomizeBackgroundButton, styles.actionButtonHalf]}
-										onPress={onRandomizeBackground}
+					</View>
+					<View style={styles.bannerInfo}>
+						{editableName ? (
+							<View style={styles.nameInputRow}>
+								<TextInput
+									style={styles.nameInput}
+									value={sheetCharacter.name}
+									onChangeText={(text) => {
+										const updated = { ...sheetCharacter, name: text };
+										setSheetCharacter(updated);
+										onNameChange?.(text);
+										onCharacterUpdated?.(updated);
+									}}
+									placeholder="Character Name"
+									placeholderTextColor="#8a6c5a"
+								/>
+								{onRandomizeName && (
+									<TouchableOpacity
+										style={styles.randomizeButton}
+										onPress={onRandomizeName}
 									>
-										<Text style={styles.randomizeBackgroundButtonText}>🎲 Randomize</Text>
-									</Pressable>
+										<Text style={styles.randomizeButtonText}>🎲</Text>
+									</TouchableOpacity>
+								)}
+							</View>
+						) : (
+							<Text style={styles.sheetTitle}>{sheetCharacter.name}</Text>
+						)}
+						<Text style={styles.sheetSubtitle}>
+							{sheetCharacter.class} • {sheetCharacter.race} • Level {sheetCharacter.level}
+						</Text>
+						{sheetCharacter.trait ? (
+							<View style={styles.traitPill}>
+								<Text style={styles.traitIcon}>
+									{sheetCharacter.trait.charAt(0).toUpperCase()}
+								</Text>
+								<Text style={styles.traitText}>{sheetCharacter.trait}</Text>
+							</View>
+						) : null}
+					</View>
+					<View style={styles.bannerStats}>
+						<View style={styles.bannerStat}>
+							<Text style={styles.bannerStatLabel}>AC</Text>
+							<Text style={styles.bannerStatValue}>{armorClass ?? '--'}</Text>
+						</View>
+						<View style={styles.bannerStat}>
+							<Text style={styles.bannerStatLabel}>Initiative</Text>
+							<Text style={styles.bannerStatValue}>
+								{initiative >= 0 ? '+' : ''}
+								{initiative}
+							</Text>
+						</View>
+						<View style={styles.bannerStat}>
+							<Text style={styles.bannerStatLabel}>Passive Perception</Text>
+							<Text style={styles.bannerStatValue}>{passivePerception}</Text>
+						</View>
+					</View>
+				</View>
+
+				<View style={styles.columns}>
+					<View style={styles.leftColumn}>
+						<View style={styles.block}>
+							<Text style={styles.blockHeading}>Abilities</Text>
+							<View style={styles.abilitiesGrid}>
+								{STAT_KEYS.map(key => (
+									<View key={key} style={[styles.abilityCircle, { position: 'relative' }]}>
+										<TouchableOpacity
+											style={styles.infoButton}
+											onPress={() => setInfoAttribute(infoAttribute === key ? null : key)}
+										>
+											<Text style={styles.infoButtonText}>?</Text>
+										</TouchableOpacity>
+										<Text style={styles.abilityKey}>{key}</Text>
+										<Text style={styles.abilityScore}>
+											{sheetCharacter.stats?.[key] ?? 10}
+										</Text>
+										<Text style={styles.abilityMod}>
+											{abilityMods[key] >= 0 ? '+' : ''}
+											{abilityMods[key]}
+										</Text>
+									</View>
+								))}
+							</View>
+						</View>
+
+						<View style={styles.block}>
+							<Text style={styles.blockHeading}>Skills & Proficiencies</Text>
+							<View style={styles.skillIconGrid}>
+								{skillEntries.map(skill => (
+									<View
+										key={skill.id}
+										style={[
+											styles.skillIconTile,
+											skill.isProficient && styles.skillIconTileActive,
+											{ position: 'relative' },
+										]}
+									>
+										<TouchableOpacity
+											style={styles.skillInfoButton}
+											onPress={() => setInfoSkill(infoSkill === skill.id ? null : skill.id)}
+										>
+											<Text style={styles.infoButtonText}>?</Text>
+										</TouchableOpacity>
+										{skill.image ? (
+											<Image
+												source={skill.image as ImageSourcePropType}
+												style={styles.skillIcon}
+												resizeMode="contain"
+											/>
+										) : (
+											<View style={styles.skillIconFallback}>
+												<Text style={styles.skillIconFallbackText}>
+													{skill.name.charAt(0)}
+												</Text>
+											</View>
+										)}
+										<Text style={styles.skillIconLabel} numberOfLines={1}>
+											{skill.name}
+										</Text>
+										<Text style={styles.skillIconMod}>
+											{skill.modifier >= 0 ? '+' : ''}
+											{skill.modifier}
+										</Text>
+									</View>
+								))}
+							</View>
+						</View>
+
+						<View style={styles.storyBlock}>
+							<Text style={styles.blockHeading}>Background / Goals / Notes</Text>
+							<TextInput
+								style={[styles.textArea, styles.fullWidthInput, { minHeight: storyBlockHeight }]}
+								multiline
+								placeholder="Tell this hero's story, goals, and notes..."
+								placeholderTextColor="#8a6c5a"
+								value={editableBackground ? (sheetCharacter.description ?? '') : notesDraft}
+								onChangeText={(text) => {
+									if (editableBackground) {
+										const updated = { ...sheetCharacter, description: text };
+										setSheetCharacter(updated);
+										onBackgroundChange?.(text);
+										onCharacterUpdated?.(updated);
+									} else {
+										setNotesDraft(text);
+									}
+								}}
+								textAlignVertical="top"
+							/>
+							<View style={styles.actionButtonsRow}>
+								{editableBackground && onRandomizeBackground ? (
+									<>
+										<Pressable
+											style={[styles.randomizeBackgroundButton, styles.actionButtonHalf]}
+											onPress={onRandomizeBackground}
+										>
+											<Text style={styles.randomizeBackgroundButtonText}>🎲 Randomize</Text>
+										</Pressable>
+										<Pressable
+											style={[styles.saveBackgroundButton, styles.actionButtonHalf, updateCharacter.isPending && styles.buttonDisabled]}
+											onPress={saveNotes}
+											disabled={updateCharacter.isPending}
+										>
+											<Text style={styles.saveBackgroundButtonText}>
+												{updateCharacter.isPending ? 'Saving...' : 'Save'}
+											</Text>
+										</Pressable>
+									</>
+								) : (
 									<Pressable
-										style={[styles.saveBackgroundButton, styles.actionButtonHalf, updateCharacter.isPending && styles.buttonDisabled]}
+										style={[styles.saveBackgroundButton, updateCharacter.isPending && styles.buttonDisabled]}
 										onPress={saveNotes}
 										disabled={updateCharacter.isPending}
 									>
@@ -456,246 +512,235 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 											{updateCharacter.isPending ? 'Saving...' : 'Save'}
 										</Text>
 									</Pressable>
-								</>
-							) : (
-								<Pressable
-									style={[styles.saveBackgroundButton, updateCharacter.isPending && styles.buttonDisabled]}
-									onPress={saveNotes}
-									disabled={updateCharacter.isPending}
-								>
-									<Text style={styles.saveBackgroundButtonText}>
-										{updateCharacter.isPending ? 'Saving...' : 'Save'}
+								)}
+							</View>
+						</View>
+					</View>
+
+					<View style={styles.rightColumn}>
+						<View style={styles.block}>
+							<Text style={styles.blockHeading}>Combat</Text>
+							<View style={styles.combatRow}>
+								<View style={styles.combatBox}>
+									<Text style={styles.combatLabel}>Hit Points</Text>
+									<Text style={styles.combatValue}>
+										{sheetCharacter.health} / {sheetCharacter.maxHealth}
 									</Text>
-								</Pressable>
+								</View>
+								<View style={styles.combatBox}>
+									<Text style={styles.combatLabel}>Action Points</Text>
+									<Text style={styles.combatValue}>
+										{sheetCharacter.actionPoints} / {sheetCharacter.maxActionPoints}
+									</Text>
+								</View>
+							</View>
+						</View>
+
+						<View style={styles.block}>
+							<Text style={styles.blockHeading}>Equipment</Text>
+							<View style={styles.paperDoll}>
+								<View style={styles.dollRow}>
+									<View style={styles.dollSpacer} />
+									{renderEquipmentTile('helmet')}
+									<View style={styles.dollSpacer} />
+								</View>
+								<View style={styles.dollRow}>
+									{renderEquipmentTile('mainHand')}
+									{renderEquipmentTile('chest', true)}
+									{renderEquipmentTile('offHand')}
+								</View>
+								<View style={styles.dollRow}>
+									{renderEquipmentTile('arms', false, 'arms-left')}
+									{renderEquipmentTile('legs')}
+									{renderEquipmentTile('arms', false, 'arms-right')}
+								</View>
+								<View style={styles.dollRow}>
+									<View style={styles.dollSpacer} />
+									{renderEquipmentTile('boots')}
+									<View style={styles.dollSpacer} />
+								</View>
+								<View style={styles.ringRow}>
+									{renderEquipmentTile('accessory', true, 'ring-1', 'Ring 1')}
+									{renderEquipmentTile('accessory', true, 'ring-2', 'Ring 2')}
+								</View>
+							</View>
+							<Modal visible={!!activeSlot} transparent animationType="fade">
+								<View style={styles.modalOverlay}>
+									<View style={styles.modalContent}>
+										<Text style={styles.modalTitle}>Choose {activeSlot}</Text>
+										<ScrollView style={styles.modalList}>
+											{slotOptions.length === 0 ? (
+												<Text style={styles.helperText}>No compatible gear in inventory.</Text>
+											) : (
+												slotOptions.map(item => (
+													<Pressable
+														key={item.id}
+														style={styles.modalItem}
+														onPress={() => activeSlot && handleEquip(activeSlot, item)}
+													>
+														<Text style={styles.modalItemName}>{item.name || 'Item'}</Text>
+														<Text style={styles.modalItemDetail}>{item.slot}</Text>
+														{item.damage && (
+															<Text style={styles.modalItemDetail}>
+																{item.damage} {item.damageType || ''}
+															</Text>
+														)}
+													</Pressable>
+												))
+											)}
+										</ScrollView>
+										<Pressable
+											style={[styles.actionButton, styles.secondaryButton]}
+											onPress={() => setActiveSlot(null)}
+										>
+											<Text style={styles.secondaryButtonText}>Close</Text>
+										</Pressable>
+									</View>
+								</View>
+							</Modal>
+						</View>
+
+						<View style={styles.block}>
+							<Text style={styles.blockHeading}>Attacks & Spells</Text>
+							{sheetCharacter.preparedSpells?.length ? (
+								<View style={styles.tagGrid}>
+									{sheetCharacter.preparedSpells.map(spell => (
+										<Text key={spell} style={styles.tag}>
+											{spell}
+										</Text>
+									))}
+								</View>
+							) : (
+								<Text style={styles.helperText}>No prepared spells yet.</Text>
+							)}
+						</View>
+
+						<View style={styles.block}>
+							<Text style={styles.blockHeading}>Inventory</Text>
+							{inventory.length === 0 ? (
+								<Text style={styles.helperText}>Pack is empty.</Text>
+							) : (
+								<View style={styles.inventoryList}>
+									{inventory.map(item => {
+										const equippedSlot = Object.entries(equippedLookup).find(
+											([, value]) => (typeof value === 'string' ? value : (value as any)?.id) === item.id,
+										)?.[0] as GearSlot | undefined;
+										const canEquip =
+										item.slot && item.slot !== 'none' && GEAR_SLOTS.includes(item.slot as GearSlot);
+										return (
+											<View key={item.id} style={styles.inventoryRow}>
+												<View style={{ flex: 1 }}>
+													<Text style={styles.inventoryName}>{item.name || 'Item'}</Text>
+													<Text style={styles.inventoryMeta}>
+														{item.slot || 'loot'}
+														{item.damage ? ` • ${item.damage}` : ''}
+													</Text>
+													{item.description ? (
+														<Text style={styles.inventoryDescription} numberOfLines={2}>
+															{item.description}
+														</Text>
+													) : null}
+												</View>
+												{canEquip ? (
+													<Pressable
+														style={[
+															styles.actionButton,
+															styles.smallButton,
+															updateCharacter.isPending && styles.buttonDisabled,
+														]}
+														disabled={updateCharacter.isPending}
+														onPress={() =>
+															equippedSlot
+																? handleUnequip(equippedSlot)
+																: handleEquip(item.slot as GearSlot, item)
+														}
+													>
+														<Text style={styles.actionButtonText}>
+															{equippedSlot ? 'Unequip' : 'Equip'}
+														</Text>
+													</Pressable>
+												) : (
+													<Text style={styles.helperText}>Not equippable</Text>
+												)}
+											</View>
+										);
+									})}
+								</View>
 							)}
 						</View>
 					</View>
 				</View>
-
-				<View style={styles.rightColumn}>
-					<View style={styles.block}>
-						<Text style={styles.blockHeading}>Combat</Text>
-						<View style={styles.combatRow}>
-							<View style={styles.combatBox}>
-								<Text style={styles.combatLabel}>Hit Points</Text>
-								<Text style={styles.combatValue}>
-									{sheetCharacter.health} / {sheetCharacter.maxHealth}
-								</Text>
-							</View>
-							<View style={styles.combatBox}>
-								<Text style={styles.combatLabel}>Action Points</Text>
-								<Text style={styles.combatValue}>
-									{sheetCharacter.actionPoints} / {sheetCharacter.maxActionPoints}
-								</Text>
-							</View>
-						</View>
-					</View>
-
-					<View style={styles.block}>
-						<Text style={styles.blockHeading}>Equipment</Text>
-						<View style={styles.paperDoll}>
-							<View style={styles.dollRow}>
-								<View style={styles.dollSpacer} />
-								{renderEquipmentTile('helmet')}
-								<View style={styles.dollSpacer} />
-							</View>
-							<View style={styles.dollRow}>
-								{renderEquipmentTile('mainHand')}
-								{renderEquipmentTile('chest', true)}
-								{renderEquipmentTile('offHand')}
-							</View>
-							<View style={styles.dollRow}>
-								{renderEquipmentTile('arms', false, 'arms-left')}
-								{renderEquipmentTile('legs')}
-								{renderEquipmentTile('arms', false, 'arms-right')}
-							</View>
-							<View style={styles.dollRow}>
-								<View style={styles.dollSpacer} />
-								{renderEquipmentTile('boots')}
-								<View style={styles.dollSpacer} />
-							</View>
-							<View style={styles.ringRow}>
-								{renderEquipmentTile('accessory', true, 'ring-1', 'Ring 1')}
-								{renderEquipmentTile('accessory', true, 'ring-2', 'Ring 2')}
-							</View>
-						</View>
-						<Modal visible={!!activeSlot} transparent animationType="fade">
-							<View style={styles.modalOverlay}>
-								<View style={styles.modalContent}>
-									<Text style={styles.modalTitle}>Choose {activeSlot}</Text>
-									<ScrollView style={styles.modalList}>
-										{slotOptions.length === 0 ? (
-											<Text style={styles.helperText}>No compatible gear in inventory.</Text>
-										) : (
-											slotOptions.map(item => (
-												<Pressable
-													key={item.id}
-													style={styles.modalItem}
-													onPress={() => activeSlot && handleEquip(activeSlot, item)}
-												>
-													<Text style={styles.modalItemName}>{item.name || 'Item'}</Text>
-													<Text style={styles.modalItemDetail}>{item.slot}</Text>
-													{item.damage && (
-														<Text style={styles.modalItemDetail}>
-															{item.damage} {item.damageType || ''}
-														</Text>
-													)}
-												</Pressable>
-											))
-										)}
-									</ScrollView>
-									<Pressable
-										style={[styles.actionButton, styles.secondaryButton]}
-										onPress={() => setActiveSlot(null)}
-									>
-										<Text style={styles.secondaryButtonText}>Close</Text>
-									</Pressable>
-								</View>
-							</View>
-						</Modal>
-					</View>
-
-					<View style={styles.block}>
-						<Text style={styles.blockHeading}>Attacks & Spells</Text>
-						{sheetCharacter.preparedSpells?.length ? (
-							<View style={styles.tagGrid}>
-								{sheetCharacter.preparedSpells.map(spell => (
-									<Text key={spell} style={styles.tag}>
-										{spell}
-									</Text>
-								))}
-							</View>
-						) : (
-							<Text style={styles.helperText}>No prepared spells yet.</Text>
-						)}
-					</View>
-
-					<View style={styles.block}>
-						<Text style={styles.blockHeading}>Inventory</Text>
-						{inventory.length === 0 ? (
-							<Text style={styles.helperText}>Pack is empty.</Text>
-						) : (
-							<View style={styles.inventoryList}>
-								{inventory.map(item => {
-									const equippedSlot = Object.entries(equippedLookup).find(
-										([, value]) => (typeof value === 'string' ? value : (value as any)?.id) === item.id,
-									)?.[0] as GearSlot | undefined;
-									const canEquip =
-										item.slot && item.slot !== 'none' && GEAR_SLOTS.includes(item.slot as GearSlot);
-									return (
-										<View key={item.id} style={styles.inventoryRow}>
-											<View style={{ flex: 1 }}>
-												<Text style={styles.inventoryName}>{item.name || 'Item'}</Text>
-												<Text style={styles.inventoryMeta}>
-													{item.slot || 'loot'}
-													{item.damage ? ` • ${item.damage}` : ''}
-												</Text>
-												{item.description ? (
-													<Text style={styles.inventoryDescription} numberOfLines={2}>
-														{item.description}
-													</Text>
-												) : null}
-											</View>
-											{canEquip ? (
-												<Pressable
-													style={[
-														styles.actionButton,
-														styles.smallButton,
-														updateCharacter.isPending && styles.buttonDisabled,
-													]}
-													disabled={updateCharacter.isPending}
-													onPress={() =>
-														equippedSlot
-															? handleUnequip(equippedSlot)
-															: handleEquip(item.slot as GearSlot, item)
-													}
-												>
-													<Text style={styles.actionButtonText}>
-														{equippedSlot ? 'Unequip' : 'Equip'}
-													</Text>
-												</Pressable>
-											) : (
-												<Text style={styles.helperText}>Not equippable</Text>
-											)}
-										</View>
-									);
-								})}
-							</View>
-						)}
-					</View>
-				</View>
-			</View>
-		</ScrollView>
-		{/* Attribute Info Modal */}
-		<Modal
-			visible={infoAttribute !== null}
-			transparent
-			animationType="fade"
-			onRequestClose={() => setInfoAttribute(null)}
-		>
-			<TouchableOpacity
-				style={styles.modalOverlay}
-				activeOpacity={1}
-				onPress={() => setInfoAttribute(null)}
+			</ScrollView>
+			{/* Attribute Info Modal */}
+			<Modal
+				visible={infoAttribute !== null}
+				transparent
+				animationType="fade"
+				onRequestClose={() => setInfoAttribute(null)}
 			>
-				<View style={styles.modalContent} onStartShouldSetResponder={() => true}>
-					{infoAttribute && (
-						<>
-							<View style={styles.modalHeader}>
-								<Text style={styles.modalTitle}>{infoAttribute}</Text>
-								<TouchableOpacity
-									style={styles.modalCloseButton}
-									onPress={() => setInfoAttribute(null)}
-								>
-									<Text style={styles.modalCloseText}>✕</Text>
-								</TouchableOpacity>
-							</View>
-							<Text style={styles.modalDescription}>
-								{ATTRIBUTE_DESCRIPTIONS[infoAttribute]}
-							</Text>
-						</>
-					)}
-				</View>
-			</TouchableOpacity>
-		</Modal>
-		{/* Skill Info Modal */}
-		<Modal
-			visible={infoSkill !== null}
-			transparent
-			animationType="fade"
-			onRequestClose={() => setInfoSkill(null)}
-		>
-			<TouchableOpacity
-				style={styles.modalOverlay}
-				activeOpacity={1}
-				onPress={() => setInfoSkill(null)}
-			>
-				<View style={styles.modalContent} onStartShouldSetResponder={() => true}>
-					{infoSkill && (() => {
-						const skill = SKILL_LIST.find(s => s.id === infoSkill);
-						if (!skill) return null;
-						return (
+				<TouchableOpacity
+					style={styles.modalOverlay}
+					activeOpacity={1}
+					onPress={() => setInfoAttribute(null)}
+				>
+					<View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+						{infoAttribute && (
 							<>
 								<View style={styles.modalHeader}>
-									<Text style={styles.modalTitle}>{skill.name}</Text>
+									<Text style={styles.modalTitle}>{infoAttribute}</Text>
 									<TouchableOpacity
 										style={styles.modalCloseButton}
-										onPress={() => setInfoSkill(null)}
+										onPress={() => setInfoAttribute(null)}
 									>
 										<Text style={styles.modalCloseText}>✕</Text>
 									</TouchableOpacity>
 								</View>
 								<Text style={styles.modalDescription}>
-									{SKILL_DESCRIPTIONS[skill.id] || 'No description available.'}
+									{ATTRIBUTE_DESCRIPTIONS[infoAttribute]}
 								</Text>
-								<Text style={styles.modalSubtext}>Uses: {skill.ability}</Text>
 							</>
-						);
-					})()}
-				</View>
-			</TouchableOpacity>
-		</Modal>
-	</>
+						)}
+					</View>
+				</TouchableOpacity>
+			</Modal>
+			{/* Skill Info Modal */}
+			<Modal
+				visible={infoSkill !== null}
+				transparent
+				animationType="fade"
+				onRequestClose={() => setInfoSkill(null)}
+			>
+				<TouchableOpacity
+					style={styles.modalOverlay}
+					activeOpacity={1}
+					onPress={() => setInfoSkill(null)}
+				>
+					<View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+						{infoSkill && (() => {
+							const skill = SKILL_LIST.find(s => s.id === infoSkill);
+							if (!skill) return null;
+							return (
+								<>
+									<View style={styles.modalHeader}>
+										<Text style={styles.modalTitle}>{skill.name}</Text>
+										<TouchableOpacity
+											style={styles.modalCloseButton}
+											onPress={() => setInfoSkill(null)}
+										>
+											<Text style={styles.modalCloseText}>✕</Text>
+										</TouchableOpacity>
+									</View>
+									<Text style={styles.modalDescription}>
+										{SKILL_DESCRIPTIONS[skill.id] || 'No description available.'}
+									</Text>
+									<Text style={styles.modalSubtext}>Uses: {skill.ability}</Text>
+								</>
+							);
+						})()}
+					</View>
+				</TouchableOpacity>
+			</Modal>
+		</>
 	);
 };
 

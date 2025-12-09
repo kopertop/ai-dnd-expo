@@ -13,6 +13,8 @@ import { Character } from '@/types/character';
 import { ClassOption } from '@/types/class-option';
 import { RaceOption } from '@/types/race-option';
 import { PartialStatBlock, StatBlock } from '@/types/stats';
+import { addIconsToInventoryItems } from '@/utils/add-equipment-icons';
+import { generateStartingEquipment } from '@/utils/starting-equipment';
 
 interface CharacterReviewProps {
 	name: string;
@@ -67,6 +69,14 @@ const createTempCharacter = (
 		}
 	}
 
+	// Generate starting equipment for preview
+	let { inventory, equipped } = generateStartingEquipment(
+		classOption.id,
+		race.id,
+	);
+	// Add icons to inventory items (frontend only)
+	inventory = addIconsToInventoryItems(inventory);
+
 	return {
 		id: 'temp-' + Date.now(), // Temporary ID
 		level: 1,
@@ -78,8 +88,8 @@ const createTempCharacter = (
 		description: description,
 		stats: finalStats,
 		skills: skills,
-		inventory: [],
-		equipped: {},
+		inventory,
+		equipped,
 		health: 10, // Default starting health
 		maxHealth: 10,
 		actionPoints: 3,

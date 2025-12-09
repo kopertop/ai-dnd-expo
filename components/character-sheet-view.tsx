@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import {
-    Image,
-    ImageSourcePropType,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+	Image,
+	ImageSourcePropType,
+	Modal,
+	ScrollView,
+	StyleSheet,
+	Text,
+	TouchableOpacity,
+	View,
 } from 'react-native';
 
+import { getEquipmentSpritesheet } from '@/components/equipment-spritesheet';
+import { SpriteIcon } from '@/components/sprite-icon';
 import { ThemedView } from '@/components/themed-view';
 import { SKILL_DESCRIPTIONS, SKILL_LIST } from '@/constants/skills';
 import { ATTRIBUTE_DESCRIPTIONS, STAT_KEYS } from '@/constants/stats';
@@ -282,10 +284,28 @@ export const CharacterSheetView: React.FC = () => {
 											!isCompatible && styles.inventoryItemIncompatible,
 										]}
 									>
-										<Image
-											source={item.icon as ImageSourcePropType}
-											style={styles.inventoryIcon}
-										/>
+										{item.icon ? (
+											typeof item.icon === 'object' &&
+											'spritesheet' in item.icon &&
+											'x' in item.icon &&
+											'y' in item.icon ? (
+													(() => {
+														const spritesheet = getEquipmentSpritesheet();
+														return spritesheet ? (
+															<SpriteIcon
+																spritesheet={spritesheet}
+																coordinates={{ x: item.icon.x, y: item.icon.y }}
+																size={40}
+															/>
+														) : null;
+													})()
+												) : (
+													<Image
+														source={item.icon as ImageSourcePropType}
+														style={styles.inventoryIcon}
+													/>
+												)
+										) : null}
 										{isEquipped && (
 											<View style={styles.equippedIndicator}>
 												<Text style={styles.equippedText}>E</Text>

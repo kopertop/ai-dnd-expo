@@ -1,15 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { Image, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 import { StyleSheet } from 'react-native';
 
 import {
-    CARD_GAP,
-    cardGridStyles,
-    getCardsPerRow,
-    getContainerWidth,
-    SCREEN_WIDTH,
+	CARD_GAP,
+	cardGridStyles,
+	getCardsPerRow,
+	getContainerWidth,
+	SCREEN_WIDTH,
 } from '../styles/card-grid.styles';
 import { newGameStyles } from '../styles/new-game.styles';
 

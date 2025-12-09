@@ -6,12 +6,12 @@ import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef } from 'react';
 import {
-    ActivityIndicator,
-    Image,
-    Platform,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+	ActivityIndicator,
+	Image,
+	Platform,
+	StyleSheet,
+	TouchableOpacity,
+	View,
 } from 'react-native';
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -290,17 +290,17 @@ const RootLayout: React.FC = () => {
 											headerTitleAlign: 'center',
 										}}
 									>
-									<Stack.Screen name="index" options={{ headerShown: false }} />
-									<Stack.Screen name="login" options={{ headerShown: false }} />
-									<Stack.Screen name="auth" options={{ headerShown: false }} />
-									<Stack.Screen name="auth/callback" options={{ headerShown: false }} />
-									<Stack.Screen name="auth/error" options={{ headerShown: false }} />
-									<Stack.Screen name="new-game" options={{ headerShown: false }} />
-									<Stack.Screen name="game" options={{ headerShown: false }} />
-									<Stack.Screen name="sql" options={{ headerShown: false }} />
-									<Stack.Screen name="admin" options={{ headerShown: false }} />
-									<Stack.Screen name="party-test" options={{ headerShown: true, title: 'PartyServer Test' }} />
-									<Stack.Screen name="+not-found" />
+										<Stack.Screen name="index" options={{ headerShown: false }} />
+										<Stack.Screen name="login" options={{ headerShown: false }} />
+										<Stack.Screen name="auth" options={{ headerShown: false }} />
+										<Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+										<Stack.Screen name="auth/error" options={{ headerShown: false }} />
+										<Stack.Screen name="new-game" options={{ headerShown: false }} />
+										<Stack.Screen name="game" options={{ headerShown: false }} />
+										<Stack.Screen name="sql" options={{ headerShown: false }} />
+										<Stack.Screen name="admin" options={{ headerShown: false }} />
+										<Stack.Screen name="party-test" options={{ headerShown: true, title: 'PartyServer Test' }} />
+										<Stack.Screen name="+not-found" />
 									</Stack>
 									<StatusBar style="auto" />
 									<GlobalHomeButton />

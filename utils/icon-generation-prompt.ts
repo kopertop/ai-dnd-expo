@@ -9,7 +9,7 @@ import { RaceOption } from '@/types/race-option';
 export function generateIconPrompt(
 	race: RaceOption,
 	classOption: ClassOption,
-	skills: string[]
+	skills: string[],
 ): string {
 	const skillNames = skills
 		.map(skillId => {

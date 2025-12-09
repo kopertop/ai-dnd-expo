@@ -76,6 +76,7 @@ export interface MapRow {
 	seed: string;
 	theme: string;
 	biome: string;
+	world: string | null; // World ID (null = world-agnostic)
 	is_generated: number;
 	created_at: number;
 	updated_at: number;
@@ -475,6 +476,13 @@ export class Database {
 		return result || null;
 	}
 
+	async getMapBySlug(slug: string): Promise<MapRow | null> {
+		const result = await this.db.prepare(
+			'SELECT * FROM maps WHERE slug = ?',
+		).bind(slug).first<MapRow>();
+		return result || null;
+	}
+
 	async getMapTiles(mapId: string): Promise<MapTileRow[]> {
 		const result = await this.db.prepare(
 			'SELECT * FROM map_tiles WHERE map_id = ? ORDER BY y ASC, x ASC',
@@ -487,9 +495,9 @@ export class Database {
 		await this.db.prepare(
 			`INSERT INTO maps (
 				id, slug, name, description, width, height, default_terrain, fog_of_war,
-				terrain_layers, metadata, generator_preset, seed, theme, biome, is_generated,
+				terrain_layers, metadata, generator_preset, seed, theme, biome, world, is_generated,
 				created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(id) DO UPDATE SET
 				slug = excluded.slug,
 				name = excluded.name,
@@ -504,6 +512,7 @@ export class Database {
 				seed = excluded.seed,
 				theme = excluded.theme,
 				biome = excluded.biome,
+				world = excluded.world,
 				is_generated = excluded.is_generated,
 				updated_at = excluded.updated_at`,
 		).bind(
@@ -521,6 +530,7 @@ export class Database {
 			map.seed,
 			map.theme,
 			map.biome,
+			map.world ?? null,
 			map.is_generated,
 			map.created_at ?? now,
 			map.updated_at ?? now,
@@ -597,6 +607,7 @@ export class Database {
 			seed: `${sourceMap.seed}_clone_${now}`,
 			theme: sourceMap.theme,
 			biome: sourceMap.biome,
+			world: sourceMap.world, // Preserve world when cloning
 			is_generated: sourceMap.is_generated,
 			created_at: now,
 			updated_at: now,
@@ -909,7 +920,7 @@ export class Database {
 				description = excluded.description,
 				image_type = excluded.image_type,
 				is_public = excluded.is_public,
-				updated_at = excluded.updated_at`
+				updated_at = excluded.updated_at`,
 		).bind(
 			image.id,
 			image.user_id,
@@ -921,7 +932,7 @@ export class Database {
 			image.image_type,
 			image.is_public,
 			image.created_at,
-			image.updated_at
+			image.updated_at,
 		).run();
 	}
 
@@ -933,7 +944,7 @@ export class Database {
 		userId?: string,
 		imageType?: 'npc' | 'character' | 'both',
 		limit: number = 50,
-		offset: number = 0
+		offset: number = 0,
 	): Promise<UploadedImageRow[]> {
 		let query = 'SELECT * FROM uploaded_images WHERE 1=1';
 		const params: any[] = [];

@@ -121,6 +121,7 @@ export const MapSchema = z.object({
 	seed: z.string().default('static'),
 	theme: z.string().default('neutral'),
 	biome: z.string().default('temperate'),
+	world: z.string().nullable().optional(), // World ID (null = world-agnostic)
 	is_generated: z.number().int().default(0),
 	created_at: z.number(),
 	updated_at: z.number(),

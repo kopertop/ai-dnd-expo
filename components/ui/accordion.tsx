@@ -28,7 +28,7 @@ export const Accordion: React.FC<AccordionProps> = ({
 					{title}
 				</ThemedText>
 				<ExpoIcon
-					icon={expanded ? "MaterialIcons:expand-less" : "MaterialIcons:expand-more"}
+					icon={expanded ? 'MaterialIcons:expand-less' : 'MaterialIcons:expand-more'}
 					size={24}
 					color="#6B5B3D"
 				/>

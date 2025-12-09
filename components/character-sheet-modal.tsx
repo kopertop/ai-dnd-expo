@@ -14,7 +14,9 @@ import {
 	View,
 } from 'react-native';
 
+import { getEquipmentSpritesheet } from '@/components/equipment-spritesheet';
 import { PortraitSelector } from '@/components/portrait-selector';
+import { SpriteIcon } from '@/components/sprite-icon';
 import { ThemedView } from '@/components/themed-view';
 import { SKILL_DESCRIPTIONS, SKILL_LIST } from '@/constants/skills';
 import { getSpellsForClass } from '@/constants/spells';
@@ -328,10 +330,28 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 														styles.inventoryItemIncompatible,
 													]}
 												>
-													<Image
-														source={item.icon as ImageSourcePropType}
-														style={styles.inventoryIconLarge}
-													/>
+													{item.icon ? (
+														typeof item.icon === 'object' &&
+														'spritesheet' in item.icon &&
+														'x' in item.icon &&
+														'y' in item.icon ? (
+																(() => {
+																	const spritesheet = getEquipmentSpritesheet();
+																	return spritesheet ? (
+																		<SpriteIcon
+																			spritesheet={spritesheet}
+																			coordinates={{ x: item.icon.x, y: item.icon.y }}
+																			size={48}
+																		/>
+																	) : null;
+																})()
+															) : (
+																<Image
+																	source={item.icon as ImageSourcePropType}
+																	style={styles.inventoryIconLarge}
+																/>
+															)
+													) : null}
 													{isEquipped && (
 														<View style={styles.equippedIndicator}>
 															<Text style={styles.equippedText}>

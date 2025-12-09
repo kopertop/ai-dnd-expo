@@ -2,11 +2,11 @@ import React, { useMemo, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ExpoIconPicker } from '@/components/expo-icon-picker';
 import { SearchableList, type SearchableListItem } from './searchable-list';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
+import { ExpoIconPicker } from '@/components/expo-icon-picker';
 import { useMyCharacters } from '@/hooks/api/use-character-queries';
 import { useNpcDefinitions } from '@/hooks/api/use-map-queries';
 import { Character } from '@/types/character';

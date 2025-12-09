@@ -4,20 +4,20 @@ import type { GamesContext } from './types';
 
 import { GameStateService } from '@/api/src/services/game-state';
 import {
-	buildMapState,
-	createId,
-	deserializeCharacter,
-	isHostUser,
-	resolveMapRow,
+    buildMapState,
+    createId,
+    deserializeCharacter,
+    isHostUser,
+    resolveMapRow,
 } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import { MapTokenRow } from '@/shared/workers/db';
 import { generateProceduralMap, MapGeneratorPreset } from '@/shared/workers/map-generator';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
+import { getCharacterSpeed } from '@/utils/character-utils';
 import { BLOCKED_COST, findPathWithCosts, getTerrainCost } from '@/utils/movement-calculator';
 import { mapStateFromDb } from '@/utils/schema-adapters';
-import { getCharacterSpeed } from '@/utils/character-utils';
 
 
 const map = new Hono<GamesContext>();
@@ -181,6 +181,7 @@ map.post('/:inviteCode/map/generate', async (c) => {
 
 	await db.saveMap({
 		...generated.map,
+		world: game.world || null, // Set world from game, or null for world-agnostic
 		created_at: Date.now(),
 		updated_at: Date.now(),
 	});

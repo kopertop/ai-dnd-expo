@@ -3,10 +3,10 @@ import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 
 import { websocketClient } from '@/services/api/websocket-client';
 import type {
-    ActivityLogListResponse,
-    GameSessionResponse,
-    GameStateResponse,
-    MyGamesResponse,
+	ActivityLogListResponse,
+	GameSessionResponse,
+	GameStateResponse,
+	MyGamesResponse,
 } from '@/types/api/multiplayer-api';
 import { Quest } from '@/types/quest';
 

@@ -193,7 +193,7 @@ export default defineConfig([
 	},
 	{
 		files: ['**/*.ts', '**/*.tsx'],
-		ignores: ['tests/**/*'],
+		ignores: ['tests/**/*', 'components/equipment-icons-frontend.ts'],
 		languageOptions: {
 			parserOptions: {
 				project: './tsconfig.json',
@@ -215,5 +215,66 @@ export default defineConfig([
 		files: ['tests/**/*.{ts,tsx}', '**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
 		ignores: ['**/vitest.setup.ts'],
 		rules: {},
+	},
+	{
+		// Backend-only rules: Prevent importing frontend-only equipment icon files
+		// This rule extends the global no-restricted-imports rule with backend-specific restrictions
+		files: ['api/**/*.{ts,tsx}', 'shared/**/*.{ts,tsx}'],
+		rules: {
+			'no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						{
+							name: 'uuid',
+							message:
+								'Please use the custom ID generator from "@/utils/id-generator" instead of uuid.',
+						},
+						{
+							name: '@/components/equipment-spritesheet',
+							message:
+								'equipment-spritesheet.ts is frontend-only and contains PNG requires. Backend code should not import this file.',
+						},
+						{
+							name: '@/components/equipment-icons-frontend',
+							message:
+								'equipment-icons-frontend.ts is frontend-only and contains PNG requires. Backend code should not import this file.',
+						},
+						{
+							name: '@/utils/add-equipment-icons',
+							message:
+								'add-equipment-icons.ts is frontend-only and contains PNG requires. Backend code should not import this file.',
+						},
+					],
+					patterns: [
+						{
+							group: ['uuid/*', '*/uuid'],
+							message: 'Please use the custom ID generator instead of uuid.',
+						},
+						{
+							group: [
+								'../**/components/*',
+								'../**/hooks/*',
+								'../**/services/*',
+								'../**/types/*',
+								'../**/constants/*',
+								'../**/utils/*',
+							],
+							message:
+								'Use @/ alias instead of relative imports (e.g., @/hooks/use-game-state instead of ../../hooks/use-game-state)',
+						},
+						{
+							group: [
+								'**/components/equipment-spritesheet',
+								'**/components/equipment-icons-frontend',
+								'**/utils/add-equipment-icons',
+							],
+							message:
+								'Equipment icon files are frontend-only and contain PNG requires. Backend code should not import these files.',
+						},
+					],
+				},
+			],
+		},
 	},
 ]);

@@ -65,6 +65,20 @@ core.post('/', async (c) => {
 		createdBy: questData.createdBy ?? (resolvedHostEmail || user.email || 'host'),
 	};
 
+	// Auto-load map based on world and startingArea
+	let resolvedMapId = currentMapId || null;
+	if (world && startingArea) {
+		// Normalize world and startingArea to match slug format (lowercase)
+		const normalizedWorld = world.toLowerCase();
+		const normalizedLocation = startingArea.toLowerCase();
+		const mapSlug = `${normalizedWorld}_${normalizedLocation}`;
+
+		const startingMap = await db.getMapBySlug(mapSlug);
+		if (startingMap) {
+			resolvedMapId = startingMap.id;
+		}
+	}
+
 	await db.createGame({
 		id: gameId,
 		invite_code: inviteCode,
@@ -75,7 +89,7 @@ core.post('/', async (c) => {
 		world,
 		starting_area: startingArea,
 		status: 'waiting',
-		current_map_id: currentMapId || null,
+		current_map_id: resolvedMapId,
 	});
 
 	if (hostCharacter) {

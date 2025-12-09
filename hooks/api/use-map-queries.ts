@@ -49,6 +49,8 @@ export function useAllMaps() {
 			description: string | null;
 			width: number;
 			height: number;
+			world?: string | null;
+			metadata?: Record<string, unknown>;
 		}>;
 	}>('/maps');
 }
