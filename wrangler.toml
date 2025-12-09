@@ -42,3 +42,7 @@ preview_id = "be5f833b304a489f9feae6d7573e865e"
 binding = "AUTH_SESSIONS"
 id = "da420984bd1d44ed982e99eab7ac54d9"
 preview_id = "1986f512835f470f95f4df8b48c6c51a"
+
+[[r2_buckets]]
+binding = "IMAGES_BUCKET"
+bucket_name = "ai-dnd-images"

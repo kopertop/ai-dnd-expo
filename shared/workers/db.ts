@@ -94,6 +94,20 @@ export interface MapTileRow {
 	metadata: string;
 }
 
+export interface UploadedImageRow {
+	id: string;
+	user_id: string;
+	filename: string;
+	r2_key: string;
+	public_url: string;
+	title: string | null;
+	description: string | null;
+	image_type: 'npc' | 'character' | 'both';
+	is_public: number;
+	created_at: number;
+	updated_at: number;
+}
+
 export interface NpcRow {
 	id: string;
 	slug: string;
@@ -881,5 +895,71 @@ export class Database {
 
 	async deleteActivityLogs(gameId: string): Promise<void> {
 		await this.db.prepare('DELETE FROM activity_logs WHERE game_id = ?').bind(gameId).run();
+	}
+
+	// Uploaded Image operations
+	async saveUploadedImage(image: UploadedImageRow): Promise<void> {
+		await this.db.prepare(
+			`INSERT INTO uploaded_images (
+				id, user_id, filename, r2_key, public_url, title, description,
+				image_type, is_public, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET
+				title = excluded.title,
+				description = excluded.description,
+				image_type = excluded.image_type,
+				is_public = excluded.is_public,
+				updated_at = excluded.updated_at`
+		).bind(
+			image.id,
+			image.user_id,
+			image.filename,
+			image.r2_key,
+			image.public_url,
+			image.title,
+			image.description,
+			image.image_type,
+			image.is_public,
+			image.created_at,
+			image.updated_at
+		).run();
+	}
+
+	async getUploadedImageById(id: string): Promise<UploadedImageRow | null> {
+		return await this.db.prepare('SELECT * FROM uploaded_images WHERE id = ?').bind(id).first<UploadedImageRow>();
+	}
+
+	async listUploadedImages(
+		userId?: string,
+		imageType?: 'npc' | 'character' | 'both',
+		limit: number = 50,
+		offset: number = 0
+	): Promise<UploadedImageRow[]> {
+		let query = 'SELECT * FROM uploaded_images WHERE 1=1';
+		const params: any[] = [];
+
+		if (userId) {
+			query += ' AND user_id = ?';
+			params.push(userId);
+		}
+
+		if (imageType) {
+			if (imageType === 'both') {
+				// No filter needed for 'both' as it means all types
+			} else {
+				query += ' AND (image_type = ? OR image_type = "both")';
+				params.push(imageType);
+			}
+		}
+
+		query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+		params.push(limit, offset);
+
+		const result = await this.db.prepare(query).bind(...params).all<UploadedImageRow>();
+		return result.results || [];
+	}
+
+	async deleteUploadedImage(id: string): Promise<void> {
+		await this.db.prepare('DELETE FROM uploaded_images WHERE id = ?').bind(id).run();
 	}
 }

@@ -8,6 +8,7 @@ import { GameRoom } from './partykit/server';
 import adminRoutes from './routes/admin';
 import characterRoutes from './routes/characters';
 import gameRoutes from './routes/games';
+import imageRoutes from './routes/images';
 import mapRoutes from './routes/maps';
 import meRoutes from './routes/me';
 import questRoutes from './routes/quests';
@@ -103,6 +104,7 @@ app.post('/api/auth/google/callback', async (c) => {
 
 // Mount API routes
 app.route('/api/games', gameRoutes);
+app.route('/api/images', imageRoutes);
 app.route('/api/characters', characterRoutes);
 app.route('/api/quests', questRoutes);
 app.route('/api/admin', adminRoutes);

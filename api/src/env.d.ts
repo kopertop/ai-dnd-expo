@@ -8,6 +8,7 @@ export interface CloudflareBindings {
 	// DB is aliased from DATABASE in code for expo-auth-template compatibility
 	QUESTS: KVNamespace;
 	AUTH_SESSIONS?: KVNamespace;
+	IMAGES_BUCKET: R2Bucket;
 	ASSETS?: Fetcher; // Worker with Assets binding
 
 	// Partykit runtime configuration

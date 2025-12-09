@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { CHARACTER_IMAGE_OPTIONS } from '@/types/character-figure';
 import { ExpoIcon } from '@/components/expo-icon';
+import { ImageUploadModal } from '@/components/image-upload-modal';
 import { ThemedText } from '@/components/themed-text';
+import { useUploadedImages } from '@/hooks/api/use-image-queries';
+import { CHARACTER_IMAGE_OPTIONS } from '@/types/character-figure';
 
 interface IconOption {
 	family: string;
@@ -82,10 +84,12 @@ const ALL_ICONS = Object.values(ICON_CATEGORIES).flat();
 
 export const ExpoIconPicker: React.FC<ExpoIconPickerProps> = ({ value = '', onChange, label = 'Icon' }) => {
 	const [pickerVisible, setPickerVisible] = useState(false);
+	const [uploadModalVisible, setUploadModalVisible] = useState(false);
 	const [imageUrl, setImageUrl] = useState('');
 	const [searchQuery, setSearchQuery] = useState('');
 
-	const isImageIcon = value && (value.startsWith('http') || value.startsWith('data:'));
+	// Fetch uploaded images
+	const { data: uploadedImages, refetch: refetchUploadedImages } = useUploadedImages('both');
 
 	const handleIconSelect = (iconValue: string) => {
 		onChange(iconValue);
@@ -105,12 +109,40 @@ export const ExpoIconPicker: React.FC<ExpoIconPickerProps> = ({ value = '', onCh
 		onChange('');
 	};
 
-	const filteredIcons = searchQuery
-		? ALL_ICONS.filter(icon =>
+	const handleUploadSuccess = (url: string) => {
+		refetchUploadedImages();
+		onChange(url);
+		setPickerVisible(false);
+	};
+
+	// Convert uploaded images to IconOption format
+	const uploadedIconOptions = useMemo(() => {
+		if (!uploadedImages) return [];
+		return uploadedImages.map((img) => ({
+			family: 'Uploaded',
+			name: img.id,
+			label: img.title || img.filename,
+			value: img.public_url,
+		}));
+	}, [uploadedImages]);
+
+	// Combine all categories including uploaded
+	const allCategories = useMemo(() => {
+		return {
+			...ICON_CATEGORIES,
+			...(uploadedIconOptions.length > 0 ? { 'Uploaded Images': uploadedIconOptions } : {}),
+		};
+	}, [uploadedIconOptions]);
+
+	const filteredIcons = useMemo(() => {
+		const all = [...ALL_ICONS, ...uploadedIconOptions];
+		if (!searchQuery) return all;
+
+		return all.filter(icon =>
 			icon.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			icon.name.toLowerCase().includes(searchQuery.toLowerCase()),
-		)
-		: ALL_ICONS;
+			icon.name.toLowerCase().includes(searchQuery.toLowerCase())
+		);
+	}, [searchQuery, uploadedIconOptions]);
 
 	const pickerContent = useMemo(
 		() => (
@@ -128,15 +160,28 @@ export const ExpoIconPicker: React.FC<ExpoIconPickerProps> = ({ value = '', onCh
 							<ThemedText style={styles.closeButtonText}>Close</ThemedText>
 						</TouchableOpacity>
 					</View>
-					<TextInput
-						style={styles.searchInput}
-						placeholder="Search icons..."
-						placeholderTextColor="#9C8A63"
-						value={searchQuery}
-						onChangeText={setSearchQuery}
-					/>
+
+					<View style={styles.searchRow}>
+						<TextInput
+							style={styles.searchInput}
+							placeholder="Search icons..."
+							placeholderTextColor="#9C8A63"
+							value={searchQuery}
+							onChangeText={setSearchQuery}
+						/>
+						<TouchableOpacity
+							style={styles.uploadButton}
+							onPress={() => {
+								setUploadModalVisible(true);
+								setPickerVisible(false);
+							}}
+						>
+							<ThemedText style={styles.uploadButtonText}>+ Upload</ThemedText>
+						</TouchableOpacity>
+					</View>
+
 					<ScrollView style={styles.iconScrollView}>
-						{Object.entries(ICON_CATEGORIES).map(([category, icons]) => {
+						{Object.entries(allCategories).map(([category, icons]) => {
 							const categoryIcons = searchQuery
 								? icons.filter(icon =>
 									icon.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -181,7 +226,7 @@ export const ExpoIconPicker: React.FC<ExpoIconPickerProps> = ({ value = '', onCh
 				</View>
 			</View>
 		),
-		[filteredIcons.length, handleIconSelect, searchQuery],
+		[allCategories, filteredIcons.length, handleIconSelect, searchQuery],
 	);
 
 	return (
@@ -224,6 +269,7 @@ export const ExpoIconPicker: React.FC<ExpoIconPickerProps> = ({ value = '', onCh
 					)}
 				</View>
 			</View>
+
 			{pickerVisible && (
 				<Modal
 					visible
@@ -237,6 +283,12 @@ export const ExpoIconPicker: React.FC<ExpoIconPickerProps> = ({ value = '', onCh
 					{pickerContent}
 				</Modal>
 			)}
+
+			<ImageUploadModal
+				visible={uploadModalVisible}
+				onClose={() => setUploadModalVisible(false)}
+				onUploadSuccess={handleUploadSuccess}
+			/>
 		</View>
 	);
 };
@@ -350,15 +402,30 @@ const styles = StyleSheet.create({
 		color: '#3B2F1B',
 		fontWeight: '600',
 	},
+	searchRow: {
+		flexDirection: 'row',
+		gap: 8,
+		marginBottom: 16,
+	},
 	searchInput: {
+		flex: 1,
 		borderWidth: 1,
 		borderColor: '#C9B037',
 		borderRadius: 8,
 		paddingHorizontal: 12,
 		paddingVertical: 8,
 		color: '#3B2F1B',
-		marginBottom: 16,
 		backgroundColor: '#FFFFFF',
+	},
+	uploadButton: {
+		backgroundColor: '#8B6914',
+		paddingHorizontal: 16,
+		justifyContent: 'center',
+		borderRadius: 8,
+	},
+	uploadButtonText: {
+		color: '#FFFFFF',
+		fontWeight: '600',
 	},
 	iconScrollView: {
 		flex: 1,
