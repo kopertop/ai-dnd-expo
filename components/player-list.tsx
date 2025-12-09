@@ -79,7 +79,7 @@ export const PlayerList: React.FC<PlayerListProps> = ({ players, characters }) =
 						>
 							<View style={styles.portraitWrapper}>
 								{portraitSource ? (
-									<Image source={portraitSource} style={styles.portraitImage} />
+									<Image source={portraitSource} style={styles.portraitImage} resizeMode="contain" />
 								) : (
 									<View
 										style={[

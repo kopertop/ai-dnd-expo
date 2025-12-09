@@ -72,18 +72,18 @@ images.post('/upload', async (c) => {
 			},
 		});
 
-		// Construct public URL
-		// NOTE: You need to configure a public domain for your R2 bucket in Cloudflare dashboard
-		// or set up a worker to serve the files. For now we use the r2.dev URL pattern
-		// which requires the bucket to be public.
-		// A better approach for production is a custom domain.
-		const accountId = 'pub-c637775971434c44917a153200925e0e'; // Replace with your actual R2 public ID
-		const publicUrl = `https://${accountId}.r2.dev/${key}`;
-
 		// Save metadata to database
 		const db = createDatabase(c.env);
 		const now = Date.now();
 		const imageId = createId('img');
+
+		// Construct public URL using the worker endpoint
+		// For local dev, use localhost:8787 (the worker port)
+		// For production, use the request origin
+		const requestUrl = new URL(c.req.url);
+		const isLocalDev = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
+		const origin = isLocalDev ? 'http://localhost:8787' : requestUrl.origin;
+		const publicUrl = `${origin}/api/images/${imageId}`;
 
 		const imageRecord = {
 			id: imageId,
@@ -105,6 +105,61 @@ images.post('/upload', async (c) => {
 	} catch (error) {
 		console.error('Failed to upload image:', error);
 		return c.json({ error: 'Failed to upload image' }, 500);
+	}
+});
+
+/**
+ * Serve an image from R2
+ * GET /api/images/:id
+ * This endpoint serves images from R2 storage, allowing them to be accessed
+ * through the worker instead of requiring public R2 bucket access.
+ * Note: This route must be defined after /upload to avoid route conflicts.
+ */
+images.get('/:id', async (c) => {
+	const imageId = c.req.param('id');
+	const db = createDatabase(c.env);
+
+	try {
+		const image = await db.getUploadedImageById(imageId);
+		if (!image) {
+			return c.json({ error: 'Image not found' }, 404);
+		}
+
+		// Check if image is public or user is the owner/admin
+		const user = c.get('user');
+		const isOwner = user && image.user_id === user.id;
+		const isAdmin = user && (user.role === 'admin' || user.is_admin === 1);
+
+		if (!image.is_public && !isOwner && !isAdmin) {
+			return c.json({ error: 'Forbidden' }, 403);
+		}
+
+		// Fetch image from R2
+		const bucket = c.env.IMAGES_BUCKET;
+		const object = await bucket.get(image.r2_key);
+
+		if (!object) {
+			return c.json({ error: 'Image not found in storage' }, 404);
+		}
+
+		// Get content type from object metadata or infer from filename
+		const contentType = object.httpMetadata?.contentType ||
+			(image.filename.endsWith('.png') ? 'image/png' :
+			 image.filename.endsWith('.jpg') || image.filename.endsWith('.jpeg') ? 'image/jpeg' :
+			 image.filename.endsWith('.webp') ? 'image/webp' :
+			 'image/jpeg');
+
+		// Return the image with appropriate headers
+		const body = await object.arrayBuffer();
+		return new Response(body, {
+			headers: {
+				'Content-Type': contentType,
+				'Cache-Control': 'public, max-age=31536000, immutable',
+			},
+		});
+	} catch (error) {
+		console.error('Failed to serve image:', error);
+		return c.json({ error: 'Failed to serve image' }, 500);
 	}
 });
 

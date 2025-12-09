@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import {
-	Image,
-	ImageSourcePropType,
-	Pressable,
-	ScrollView,
-	StyleSheet,
-	Text,
-	TouchableOpacity,
-	View,
+    Image,
+    ImageSourcePropType,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 import { ThemedView } from '@/components/themed-view';
@@ -31,7 +31,7 @@ export const CharacterSheetView: React.FC = () => {
 	const loading = updateCharacterMutation.isPending;
 	const error = updateCharacterMutation.error;
 	const errorMessage = error ? (error instanceof Error ? error.message : String(error)) : null;
-	
+
 	const equipItem = async (item: any, slot: GearSlot) => {
 		if (!playerCharacter) return;
 		const newEquipped = { ...equipped, [slot]: item.id };
@@ -44,7 +44,7 @@ export const CharacterSheetView: React.FC = () => {
 			// Error handling - could show alert if needed
 		}
 	};
-	
+
 	const unequipItem = async (slot: GearSlot) => {
 		if (!playerCharacter) return;
 		const newEquipped = { ...equipped };
@@ -111,7 +111,7 @@ export const CharacterSheetView: React.FC = () => {
 			? inventory.find((item: any) => item.id === equippedEntry)
 			: equippedEntry;
 	};
-	
+
 	const filteredInventory = activeSlot
 		? inventoryWithStatus.filter(entry => entry.item.slot === activeSlot)
 		: inventoryWithStatus;
@@ -131,6 +131,7 @@ export const CharacterSheetView: React.FC = () => {
 						<Image
 							source={portraitSource as ImageSourcePropType}
 							style={styles.portrait}
+							resizeMode="contain"
 						/>
 					</View>
 					<View style={styles.characterInfo}>
@@ -314,6 +315,11 @@ const styles = StyleSheet.create({
 	},
 	portraitContainer: {
 		marginRight: 16,
+		width: 80,
+		height: 80,
+		justifyContent: 'center',
+		alignItems: 'center',
+		backgroundColor: 'transparent',
 	},
 	portrait: {
 		width: 80,
@@ -321,6 +327,7 @@ const styles = StyleSheet.create({
 		borderRadius: 40,
 		borderWidth: 2,
 		borderColor: '#C9B037',
+		backgroundColor: 'transparent',
 	},
 	characterInfo: {
 		flex: 1,

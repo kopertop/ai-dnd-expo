@@ -21,6 +21,21 @@ interface PortraitSelectorProps {
 	onSelect: (image: ImageSourcePropType | { uri: string }, label?: string) => void;
 }
 
+/**
+ * Convert a string to title case, handling hyphens and underscores
+ * Removes file extensions (.png, .jpg, etc.)
+ * Example: "human-female-sorcerer.png" -> "Human Female Sorcerer"
+ */
+const toTitleCase = (str: string): string => {
+	// Remove file extension
+	const withoutExt = str.replace(/\.(png|jpg|jpeg|webp|gif|svg)$/i, '');
+
+	return withoutExt
+		.split(/[-_\s]+/)
+		.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+		.join(' ');
+};
+
 export const PortraitSelector: React.FC<PortraitSelectorProps> = ({ selectedImage, onSelect }) => {
 	const [pickerVisible, setPickerVisible] = useState(false);
 	const [uploadModalVisible, setUploadModalVisible] = useState(false);
@@ -36,7 +51,7 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({ selectedImag
 	const presetOptions: PortraitOption[] = useMemo(() => {
 		return CHARACTER_IMAGE_OPTIONS.map(opt => ({
 			id: opt.key,
-			label: opt.label,
+			label: opt.label ? toTitleCase(opt.label) : toTitleCase(opt.key),
 			source: opt.source,
 			type: 'preset',
 		}));
@@ -44,12 +59,15 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({ selectedImag
 
 	const uploadedOptions: PortraitOption[] = useMemo(() => {
 		if (!uploadedImages) return [];
-		return uploadedImages.map(img => ({
-			id: img.id,
-			label: img.title || img.filename,
-			source: { uri: img.public_url },
-			type: 'uploaded',
-		}));
+		return uploadedImages.map(img => {
+			const label = img.title || img.filename;
+			return {
+				id: img.id,
+				label: toTitleCase(label),
+				source: { uri: img.public_url },
+				type: 'uploaded',
+			};
+		});
 	}, [uploadedImages]);
 
 	const handleSelect = (option: PortraitOption) => {
@@ -91,17 +109,17 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({ selectedImag
 			<TouchableOpacity
 				style={styles.currentPortraitContainer}
 				onPress={() => setPickerVisible(true)}
+				activeOpacity={0.8}
 			>
-				{selectedImage ? (
-					<Image source={selectedImage} style={styles.currentPortrait} />
-				) : (
-					<View style={styles.placeholderPortrait}>
-						<ExpoIcon icon="MaterialIcons:person" size={64} color="#C9B037" />
-						<ThemedText style={styles.placeholderText}>Choose Portrait</ThemedText>
-					</View>
-				)}
-				<View style={styles.editBadge}>
-					<ExpoIcon icon="MaterialIcons:edit" size={16} color="#FFF" />
+				<View style={styles.portraitInnerContainer}>
+					{selectedImage ? (
+						<Image source={selectedImage} style={styles.currentPortrait} resizeMode="contain" />
+					) : (
+						<View style={styles.placeholderPortrait}>
+							<ExpoIcon icon="MaterialIcons:person" size={64} color="#C9B037" />
+							<ThemedText style={styles.placeholderText}>Choose Portrait</ThemedText>
+						</View>
+					)}
 				</View>
 			</TouchableOpacity>
 
@@ -151,7 +169,7 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({ selectedImag
 													<Image
 														source={option.source}
 														style={styles.gridImage}
-														resizeMode="cover"
+														resizeMode="contain"
 														onError={(e) => {
 															console.error('Image load error:', e.nativeEvent.error);
 														}}
@@ -178,7 +196,7 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({ selectedImag
 														</TouchableOpacity>
 													)}
 												</View>
-												<ThemedText numberOfLines={1} style={styles.gridLabel}>
+												<ThemedText style={styles.gridLabel}>
 													{option.label}
 												</ThemedText>
 											</TouchableOpacity>
@@ -196,8 +214,10 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({ selectedImag
 											style={styles.gridItem}
 											onPress={() => handleSelect(option)}
 										>
-											<Image source={option.source} style={styles.gridImage} />
-											<ThemedText numberOfLines={1} style={styles.gridLabel}>
+											<View style={styles.imageWrapper}>
+												<Image source={option.source} style={styles.gridImage} resizeMode="contain" />
+											</View>
+											<ThemedText style={styles.gridLabel}>
 												{option.label}
 											</ThemedText>
 										</TouchableOpacity>
@@ -237,28 +257,41 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({ selectedImag
 const styles = StyleSheet.create({
 	container: {
 		alignItems: 'center',
-		marginBottom: 24,
+		justifyContent: 'center',
+		width: '100%',
+		height: '100%',
+		marginBottom: 0,
 	},
 	currentPortraitContainer: {
 		position: 'relative',
+		width: '100%',
+		height: '100%',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	portraitInnerContainer: {
+		width: '100%',
+		height: '100%',
 		borderRadius: 12,
+		backgroundColor: '#F9F6EF',
+		justifyContent: 'center',
+		alignItems: 'center',
 		shadowColor: '#000',
 		shadowOffset: { width: 0, height: 4 },
 		shadowOpacity: 0.3,
 		shadowRadius: 5,
 		elevation: 6,
+		overflow: 'hidden',
+		position: 'relative',
 	},
 	currentPortrait: {
-		width: 140,
-		height: 140,
-		borderRadius: 12,
-		borderWidth: 3,
-		borderColor: '#C9B037',
-		backgroundColor: '#F9F6EF',
+		width: '100%',
+		height: '100%',
+		backgroundColor: 'transparent',
 	},
 	placeholderPortrait: {
-		width: 140,
-		height: 140,
+		width: '100%',
+		height: '100%',
 		borderRadius: 12,
 		borderWidth: 3,
 		borderColor: '#C9B037',
@@ -275,16 +308,22 @@ const styles = StyleSheet.create({
 	},
 	editBadge: {
 		position: 'absolute',
-		bottom: -8,
-		right: -8,
+		bottom: 4,
+		right: 4,
 		backgroundColor: '#8B2323',
-		width: 32,
-		height: 32,
-		borderRadius: 16,
+		width: 28,
+		height: 28,
+		borderRadius: 14,
 		alignItems: 'center',
 		justifyContent: 'center',
 		borderWidth: 2,
 		borderColor: '#FFF',
+		zIndex: 10,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.3,
+		shadowRadius: 3,
+		elevation: 5,
 	},
 	modalOverlay: {
 		flex: 1,
@@ -367,6 +406,9 @@ const styles = StyleSheet.create({
 		position: 'relative',
 		width: 100,
 		height: 100,
+		backgroundColor: 'transparent',
+		justifyContent: 'center',
+		alignItems: 'center',
 	},
 	deleteButton: {
 		position: 'absolute',
@@ -393,7 +435,7 @@ const styles = StyleSheet.create({
 		borderRadius: 8,
 		borderWidth: 2,
 		borderColor: '#E2D3B3',
-		backgroundColor: '#FFF',
+		backgroundColor: 'transparent',
 		marginBottom: 6,
 	},
 	gridLabel: {
@@ -401,5 +443,8 @@ const styles = StyleSheet.create({
 		color: '#3B2F1B',
 		textAlign: 'center',
 		width: '100%',
+		flexWrap: 'wrap',
+		flexShrink: 1,
+		lineHeight: 14,
 	},
 });

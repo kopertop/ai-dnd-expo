@@ -109,11 +109,13 @@ const AdminImagesScreen: React.FC = () => {
 				<ScrollView contentContainerStyle={styles.grid}>
 					{images.map((image) => (
 						<View key={image.id} style={styles.imageCard}>
-							<Image
-								source={{ uri: image.public_url }}
-								style={styles.image}
-								resizeMode="cover"
-							/>
+							<View style={styles.imageContainer}>
+								<Image
+									source={{ uri: image.public_url }}
+									style={styles.image}
+									resizeMode="contain"
+								/>
+							</View>
 							<View style={styles.imageInfo}>
 								<ThemedText style={styles.imageTitle} numberOfLines={1}>
 									{image.title || image.filename}
@@ -243,10 +245,18 @@ const styles = StyleSheet.create({
 		shadowRadius: 4,
 		elevation: 3,
 	},
-	image: {
+	imageContainer: {
 		width: '100%',
 		height: 200,
 		backgroundColor: '#F5E6D3',
+		justifyContent: 'center',
+		alignItems: 'center',
+		overflow: 'hidden',
+	},
+	image: {
+		width: '100%',
+		height: '100%',
+		backgroundColor: 'transparent',
 	},
 	imageInfo: {
 		padding: 12,

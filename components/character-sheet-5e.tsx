@@ -553,8 +553,11 @@ const styles = StyleSheet.create({
 		borderRadius: 14,
 		borderWidth: 1,
 		borderColor: '#cbb08a',
-		overflow: 'hidden',
+		overflow: 'visible',
 		backgroundColor: '#fffaf0',
+		justifyContent: 'center',
+		alignItems: 'center',
+		padding: 2,
 	},
 	portraitImage: { width: '100%', height: '100%' },
 	portraitFallback: {
