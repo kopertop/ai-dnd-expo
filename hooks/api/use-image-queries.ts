@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiService } from 'expo-auth-template/frontend';
+import { Platform } from 'react-native';
 
 export interface UploadedImage {
 	id: string;
@@ -49,14 +50,21 @@ export const useUploadImage = () => {
 
 			// Handle Expo ImagePicker asset vs web File
 			if ('uri' in params.file) {
-				// React Native / Expo
-				const uri = params.file.uri;
-				const name = uri.split('/').pop() || 'image.jpg';
-				const match = /\.(\w+)$/.exec(name);
-				const type = match ? `image/${match[1]}` : 'image/jpeg';
+				if (Platform.OS === 'web') {
+					// Web: fetch the blob from the blob: URI
+					const res = await fetch(params.file.uri);
+					const blob = await res.blob();
+					formData.append('file', blob, params.file.fileName || 'image.jpg');
+				} else {
+					// React Native / Expo
+					const uri = params.file.uri;
+					const name = uri.split('/').pop() || 'image.jpg';
+					const match = /\.(\w+)$/.exec(name);
+					const type = match ? `image/${match[1]}` : 'image/jpeg';
 
-				// @ts-ignore - React Native FormData expects an object with uri, name, type
-				formData.append('file', { uri, name, type });
+					// @ts-ignore - React Native FormData expects an object with uri, name, type
+					formData.append('file', { uri, name, type });
+				}
 			} else {
 				// Web
 				formData.append('file', params.file);
@@ -66,14 +74,10 @@ export const useUploadImage = () => {
 			if (params.description) formData.append('description', params.description);
 			formData.append('image_type', params.image_type);
 
+			console.log('FormData:', formData);
+
 			const response = await apiService.fetchApi<{ image: UploadedImage }>('/images/upload', {
 				method: 'POST',
-				// Content-Type header should be null/undefined for FormData
-				// so the browser/native networking can set the boundary
-				headers: {
-					// @ts-ignore - null is valid to remove the header
-					'Content-Type': null,
-				},
 				body: formData,
 			});
 

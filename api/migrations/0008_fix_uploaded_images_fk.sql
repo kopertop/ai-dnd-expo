@@ -1,5 +1,7 @@
--- Create uploaded_images table
-CREATE TABLE IF NOT EXISTS `uploaded_images` (
+-- Fix uploaded_images table foreign key
+DROP TABLE IF EXISTS `uploaded_images`;
+
+CREATE TABLE `uploaded_images` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
 	`filename` text NOT NULL,

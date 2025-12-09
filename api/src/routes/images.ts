@@ -43,8 +43,15 @@ images.post('/upload', async (c) => {
 	}
 
 	try {
-		const body = await c.req.parseBody();
-		const file = body['file'];
+		const body = await c.req.parseBody({
+			all: true,
+		});
+		console.log('Upload body keys:', Object.keys(body));
+		console.log('Upload body:', body);
+		console.log('File type:', typeof body['file']);
+		console.log('File is File instance:', body['file'] instanceof File);
+
+		const file = Array.isArray(body['file']) ? body['file'][0] : body['file'];
 		const title = body['title'] as string | undefined;
 		const description = body['description'] as string | undefined;
 		const imageType = (body['image_type'] as 'npc' | 'character' | 'both') || 'both';

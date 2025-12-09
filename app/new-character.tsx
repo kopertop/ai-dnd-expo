@@ -6,29 +6,26 @@ import {
 	Platform,
 	ScrollView,
 	Text,
-	TextInput,
 	TouchableOpacity,
-	View,
+	View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { newGameStyles } from '../styles/new-game.styles';
 
-import { AttributePicker } from '@/components/attribute-picker';
+import { CharacterReview } from '@/components/character-review';
 import { ClassChooser } from '@/components/class-chooser';
-import { ExpoIconPicker } from '@/components/expo-icon-picker';
 import { LocationChooser } from '@/components/location-chooser';
 import { RaceChooser } from '@/components/race-chooser';
 import { SkillChooser } from '@/components/skill-chooser';
 import { ThemedView } from '@/components/themed-view';
 import { TraitChooser } from '@/components/trait-chooser';
 import { WorldChooser } from '@/components/world-chooser';
-import { generateRandomBackground } from '@/constants/backgrounds';
 import { useGameState } from '@/hooks/use-game-state';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import { multiplayerClient } from '@/services/api/multiplayer-client';
-import { ClassOption } from '@/types/class-option';
 import { Character } from '@/types/character';
+import { ClassOption } from '@/types/class-option';
 import { LocationOption } from '@/types/location-option';
 import { RaceOption } from '@/types/race-option';
 import { Skill } from '@/types/skill';
@@ -177,13 +174,21 @@ const NewGameScreen: React.FC = () => {
 		preparedSpells: [],
 	});
 
-	const handleFinalizeCharacter = async () => {
+	const handleFinalizeCharacterWithData = async (data: {
+		name: string;
+		description: string;
+		stats: StatBlock;
+		icon?: any;
+	}) => {
 		if (!selectedRace || !selectedClass || !selectedTrait || !selectedAttributes) {
 			Alert.alert('Missing Info', 'Please complete all prior steps before continuing.');
 			return;
 		}
 
-		if (!characterName.trim() || !customStory.trim()) {
+		const name = data.name.trim();
+		const description = data.description.trim();
+
+		if (!name || !description) {
 			Alert.alert('Missing Info', 'Enter a name and background for your character.');
 			return;
 		}
@@ -193,8 +198,49 @@ const NewGameScreen: React.FC = () => {
 			return;
 		}
 
-		const characterPayload = buildCharacterPayload();
 		setIsSaving(true);
+
+		// Helper to resolve icon to string
+		let finalIcon = characterIcon;
+		if (data.icon) {
+			if (typeof data.icon === 'string') {
+				finalIcon = data.icon;
+			} else if (typeof data.icon === 'object' && data.icon.uri) {
+				finalIcon = data.icon.uri;
+			}
+			// If it's a number (require result), we might need to find the key from CHARACTER_IMAGE_OPTIONS
+			// But for now, if it's not a string, we fallback to default logic or empty
+		}
+
+		const characterPayload: Character = {
+			id: generateCharacterId(),
+			level: 1,
+			race: selectedRace?.name ?? 'Unknown',
+			name: name,
+			class: selectedClass?.name ?? 'Adventurer',
+			trait: selectedTrait?.name,
+			icon: finalIcon || undefined,
+			description: description,
+			stats: data.stats,
+			skills: selectedSkills.map(skill => skill.id),
+			inventory: [],
+			equipped: {
+				helmet: null,
+				chest: null,
+				arms: null,
+				legs: null,
+				boots: null,
+				mainHand: null,
+				offHand: null,
+				accessory: null,
+			},
+			health: 10,
+			maxHealth: 10,
+			actionPoints: 3,
+			maxActionPoints: 3,
+			statusEffects: [],
+			preparedSpells: [],
+		};
 
 		try {
 			if (isCharacterMode) {
@@ -247,6 +293,16 @@ const NewGameScreen: React.FC = () => {
 		} finally {
 			setIsSaving(false);
 		}
+	};
+
+	const handleFinalizeCharacter = async () => {
+		// Legacy handler - redirects to new handler with state
+		await handleFinalizeCharacterWithData({
+			name: characterName,
+			description: customStory,
+			stats: selectedAttributes!,
+			icon: characterIcon
+		});
 	};
 
 	// Add this function to handle going back a step
@@ -450,157 +506,51 @@ const NewGameScreen: React.FC = () => {
 						</View>
 					);
 				}
-				// Handler for generating a random background
-				const handleRandomBackground = (raceName: string, className: string) => {
-					const randomBg = generateRandomBackground(raceName, className);
-					setCustomStory(randomBg);
-				};
+
 				return (
-					<View style={{ flex: 1, flexDirection: 'column' }}>
-						{/* Header Section */}
-						<View
-							style={{
-								paddingHorizontal: isMobile ? 16 : 24,
-								paddingTop: isMobile ? 16 : 24,
-								paddingBottom: isMobile ? 8 : 12,
-							}}
-						>
-							<Text
-								style={isMobile ? newGameStyles.titleMobile : newGameStyles.title}
-							>
-								Finalize Your Character
-							</Text>
-						</View>
+					<CharacterReview
+						name={characterName}
+						description={customStory}
+						race={selectedRace}
+						classOption={selectedClass}
+						baseStats={selectedAttributes}
+						racialBonuses={selectedRace.stats}
+						skills={selectedSkills.map(s => s.id)}
+						onBack={handleBackNavigation}
+						onFinish={async (finalData) => {
+							// Update state with final values
+							setCharacterName(finalData.name);
+							setCustomStory(finalData.description);
+							setSelectedAttributes(finalData.stats);
+							// Handle icon if provided
+							if (finalData.icon) {
+								if (typeof finalData.icon === 'string') {
+									// It's a URI string (uploaded image) or a key
+									setCharacterIcon(finalData.icon);
+								} else if (typeof finalData.icon === 'object' && finalData.icon.uri) {
+									// Uploaded image object
+									setCharacterIcon(finalData.icon.uri);
+								} else {
+									// Resource ID (number) or other format - store as is if possible or map
+									// For now we might need to handle this carefully if backend expects string
+									// If it's a local require(), we can't easily serialize it to backend without mapping
+									// But CharacterReview passes what we gave it.
 
-						{/* Scrollable Content */}
-						<ScrollView
-							style={{ flex: 1 }}
-							contentContainerStyle={{
-								paddingHorizontal: isMobile ? 16 : 24,
-								paddingBottom: isMobile ? 20 : 24,
-								flexGrow: 1,
-							}}
-							keyboardShouldPersistTaps="handled"
-							showsVerticalScrollIndicator={true}
-						>
-							{/* Character Name Section */}
-							<View style={{ marginBottom: isMobile ? 16 : 24 }}>
-								<Text style={newGameStyles.label}>Character Name</Text>
-								<TextInput
-									style={[
-										newGameStyles.input,
-										isMobile && { fontSize: 16, paddingVertical: 12 },
-									]}
-									placeholder="Enter character name"
-									value={characterName}
-									onChangeText={setCharacterName}
-									maxLength={32}
-								/>
-							</View>
+									// If it's a preset from our list, we should try to find its key
+									// The PortraitSelector returns the source, but we might want the key for persistence
+									// Let's rely on the fact that for now we might be just saving locally or ensuring we get a valid value
+								}
+							}
 
-							{/* Icon Picker Section */}
-							<View style={{ marginBottom: isMobile ? 16 : 24 }}>
-								<ExpoIconPicker value={characterIcon} onChange={setCharacterIcon} label="Character Icon" />
-							</View>
-
-							{/* Background Section - Flexible */}
-							<View style={{ flex: 1, flexDirection: 'column' }}>
-								<Text style={newGameStyles.label}>Background / Description</Text>
-								<TouchableOpacity
-									style={[
-										newGameStyles.submitButton,
-										{
-											marginBottom: 10,
-											width: '100%',
-											paddingVertical: isMobile ? 14 : 10,
-										},
-									]}
-									onPress={() =>
-										handleRandomBackground(
-											selectedRace.name,
-											selectedClass.name,
-										)
-									}
-								>
-									<Text style={newGameStyles.submitButtonText}>
-										Generate Random Background
-									</Text>
-								</TouchableOpacity>
-								<TextInput
-									style={[
-										newGameStyles.input,
-										{
-											flex: 1,
-											minHeight: isMobile ? 200 : 150,
-											fontSize: 18,
-											padding: 16,
-											lineHeight: 26,
-											textAlignVertical: 'top',
-											borderWidth: 2,
-											borderRadius: 8,
-										},
-									]}
-									placeholder="Describe your character's background, goals, or story..."
-									value={customStory}
-									onChangeText={setCustomStory}
-									multiline
-									scrollEnabled={true}
-									maxLength={400}
-								/>
-							</View>
-						</ScrollView>
-						{/* Fixed Bottom Button */}
-						<View
-							style={{
-								backgroundColor: isMobile
-									? 'rgba(249, 246, 239, 0.98)'
-									: 'rgba(255,255,255,0.95)',
-								padding: isMobile ? 16 : 12,
-								borderTopWidth: isMobile ? 2 : 1,
-								borderTopColor: isMobile ? '#C9B037' : '#eee',
-								shadowColor: '#000',
-								shadowOffset: { width: 0, height: -2 },
-								shadowOpacity: 0.1,
-								shadowRadius: 4,
-								elevation: 8,
-							}}
-						>
-							<TouchableOpacity
-								style={[
-									characterName.trim() && customStory.trim()
-										? newGameStyles.submitButton
-										: newGameStyles.submitButtonDisabled,
-									{
-										width: '100%',
-										margin: 0,
-										borderRadius: 8,
-										paddingVertical: isMobile ? 16 : 12,
-										minHeight: isMobile ? 54 : 'auto',
-									},
-								]}
-								disabled={!(characterName.trim() && customStory.trim())}
-								onPress={async () => {
-									if (isSaving) {
-										return;
-									}
-									handleFinalizeCharacter().catch(() => undefined);
-								}}
-							>
-								<Text
-									style={[
-										newGameStyles.submitButtonText,
-										isMobile && { fontSize: 18 },
-									]}
-								>
-									{isSaving
-										? 'Saving...'
-										: isCharacterMode
-											? 'Save Character'
-											: 'Start Game'}
-								</Text>
-							</TouchableOpacity>
-						</View>
-					</View>
+							// Proceed to finalize
+							await handleFinalizeCharacterWithData({
+								name: finalData.name,
+								description: finalData.description,
+								stats: finalData.stats,
+								icon: finalData.icon
+							});
+						}}
+					/>
 				);
 			}
 			default:

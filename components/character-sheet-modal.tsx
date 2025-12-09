@@ -14,6 +14,7 @@ import {
 	View,
 } from 'react-native';
 
+import { PortraitSelector } from '@/components/portrait-selector';
 import { ThemedView } from '@/components/themed-view';
 import { SKILL_LIST } from '@/constants/skills';
 import { getSpellsForClass } from '@/constants/spells';
@@ -38,14 +39,14 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 	const { togglePlayPause, isPlaying } = useAudio();
 	const { playerCharacter, playerPortrait } = useGameState();
 	const updateCharacterMutation = useUpdateCharacter();
-	
+
 	// Inventory management - use character's inventory and equipped fields
 	const inventory = playerCharacter?.inventory || [];
 	const equipped = playerCharacter?.equipped || {};
 	const loading = updateCharacterMutation.isPending;
 	const error = updateCharacterMutation.error;
 	const errorMessage = error ? (error instanceof Error ? error.message : String(error)) : null;
-	
+
 	const equipItem = async (item: any, slot: GearSlot) => {
 		if (!playerCharacter) return;
 		const newEquipped = { ...equipped, [slot]: item.id };
@@ -58,7 +59,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 			Alert.alert('Error', 'Failed to equip item');
 		}
 	};
-	
+
 	const unequipItem = async (slot: GearSlot) => {
 		if (!playerCharacter) return;
 		const newEquipped = { ...equipped };
@@ -128,6 +129,26 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 		);
 	};
 
+	const handlePortraitChange = async (image: any) => {
+		if (!playerCharacter) return;
+
+		let iconValue = '';
+		if (typeof image === 'string') {
+			iconValue = image;
+		} else if (typeof image === 'object' && image.uri) {
+			iconValue = image.uri;
+		}
+
+		try {
+			await updateCharacterMutation.mutateAsync({
+				path: `/characters/${playerCharacter.id}`,
+				body: { icon: iconValue },
+			});
+		} catch (error) {
+			Alert.alert('Error', 'Failed to update character portrait');
+		}
+	};
+
 	// Use inventory with equipped status for display
 	// Map inventory items to include equipped status
 	const inventoryWithStatus = inventory.map((item: any) => {
@@ -157,7 +178,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 		mainHand: resolveEquippedItem('mainHand'),
 		offHand: resolveEquippedItem('offHand'),
 	};
-	
+
 	const filteredInventory = activeSlot
 		? inventoryWithStatus.filter(entry => entry.item.slot === activeSlot)
 		: inventoryWithStatus;
@@ -175,11 +196,9 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 							{/* Portrait & Stats */}
 							<View style={isMobile ? styles.mobileSection : styles.leftCol}>
 								<View style={styles.portraitBox}>
-									<Image
-										source={portraitSource as ImageSourcePropType}
-										style={
-											isMobile ? styles.portraitMobile : styles.portraitLarge
-										}
+									<PortraitSelector
+										selectedImage={portraitSource as ImageSourcePropType}
+										onSelect={handlePortraitChange}
 									/>
 								</View>
 								<Text style={styles.label}>Stats</Text>

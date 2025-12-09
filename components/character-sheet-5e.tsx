@@ -13,6 +13,7 @@ import {
 	View,
 } from 'react-native';
 
+import { PortraitSelector } from '@/components/portrait-selector';
 import { SKILL_LIST } from '@/constants/skills';
 import { STAT_KEYS } from '@/constants/stats';
 import { useUpdateCharacter } from '@/hooks/api/use-character-queries';
@@ -43,8 +44,12 @@ type InventoryEntry = {
 const abilityModifier = (score: number) => Math.floor((score - 10) / 2);
 
 const resolveCharacterImage = (icon?: string) => {
+	if (!icon) return undefined;
+	// Check if it's a preset key
 	const match = CHARACTER_IMAGE_OPTIONS.find(option => option.key === icon);
-	return match?.source;
+	if (match) return match.source;
+	// Otherwise assume it's a URI or already a resolved source
+	return { uri: icon };
 };
 
 export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
@@ -54,7 +59,6 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 	const [sheetCharacter, setSheetCharacter] = useState<Character>(character);
 	const [activeSlot, setActiveSlot] = useState<GearSlot | null>(null);
 	const [notesDraft, setNotesDraft] = useState(character.description ?? '');
-	const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
 	const queryClient = useQueryClient();
 	const updateCharacter = useUpdateCharacter();
@@ -228,18 +232,34 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 	const portraitFallback = sheetCharacter.name?.charAt(0)?.toUpperCase() || '?';
 	const storyBlockHeight = Math.max(20 * 18, 320);
 
+	const handlePortraitSelect = async (image: any, label?: string) => {
+		// image can be ImageSourcePropType (number) or { uri: string }
+		let iconValue = '';
+		if (typeof image === 'object' && image.uri) {
+			iconValue = image.uri;
+		} else if (typeof image === 'number') {
+			// It's a required asset (preset)
+			// Find the key from options
+			const match = CHARACTER_IMAGE_OPTIONS.find(opt => opt.source === image);
+			if (match) {
+				iconValue = match.key;
+			}
+		}
+
+		if (iconValue) {
+			await persistUpdate({ icon: iconValue });
+		}
+	};
+
 	return (
 		<ScrollView contentContainerStyle={styles.sheet} showsVerticalScrollIndicator={false}>
 			<View style={styles.banner}>
-				<Pressable style={styles.portraitFrame} onPress={() => setIconPickerOpen(true)}>
-					{headerImage ? (
-						<Image source={headerImage} style={styles.portraitImage} />
-					) : (
-						<View style={styles.portraitFallback}>
-							<Text style={styles.portraitFallbackText}>{portraitFallback}</Text>
-						</View>
-					)}
-				</Pressable>
+				<View style={styles.portraitFrame}>
+					<PortraitSelector
+						selectedImage={headerImage as any}
+						onSelect={handlePortraitSelect}
+					/>
+				</View>
 				<View style={styles.bannerInfo}>
 					<Text style={styles.sheetTitle}>{sheetCharacter.name}</Text>
 					<Text style={styles.sheetSubtitle}>
@@ -505,40 +525,6 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 					</View>
 				</View>
 			</View>
-
-			<Modal visible={iconPickerOpen} transparent animationType="fade" onRequestClose={() => setIconPickerOpen(false)}>
-				<View style={styles.modalOverlay}>
-					<View style={styles.modalContent}>
-						<Text style={styles.modalTitle}>Choose Portrait</Text>
-						<ScrollView style={styles.modalList}>
-							{CHARACTER_IMAGE_OPTIONS.map(option => (
-								<Pressable
-									key={option.key}
-									style={[
-										styles.modalItem,
-										sheetCharacter.icon === option.key && styles.modalItemActive,
-									]}
-									onPress={async () => {
-										await persistUpdate({ icon: option.key });
-										setIconPickerOpen(false);
-									}}
-								>
-									<View style={styles.iconRow}>
-										<Image source={option.source} style={styles.iconThumb} />
-										<Text style={styles.modalItemName}>{option.label}</Text>
-									</View>
-								</Pressable>
-							))}
-						</ScrollView>
-						<Pressable
-							style={[styles.actionButton, styles.secondaryButton]}
-							onPress={() => setIconPickerOpen(false)}
-						>
-							<Text style={styles.secondaryButtonText}>Close</Text>
-						</Pressable>
-					</View>
-				</View>
-			</Modal>
 		</ScrollView>
 	);
 };

@@ -3,17 +3,17 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
 	Animated,
 	Easing,
-	Image,
 	ScrollView,
 	StyleSheet,
 	Text,
 	TextInput,
 	TouchableOpacity,
-	View,
+	View
 } from 'react-native';
 
 import { newGameStyles } from '../styles/new-game.styles';
 
+import { PortraitSelector } from '@/components/portrait-selector';
 import { Colors } from '@/constants/colors';
 import { ABILITY_COLORS, SKILL_LIST } from '@/constants/skills';
 import { ClassOption } from '@/types/class-option';
@@ -51,6 +51,7 @@ interface CharacterReviewProps {
 		description: string;
 		stats: StatBlock;
 		skills: string[];
+		icon?: any; // Added icon field
 	}) => void;
 	skills: string[];
 }
@@ -69,6 +70,9 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 	const [editableStats, setEditableStats] = useState<StatBlock>({ ...baseStats });
 	const [name, setName] = useState(initialName);
 	const [description, setDescription] = useState(initialDescription);
+	// State for the selected portrait (default to race image)
+	const [selectedPortrait, setSelectedPortrait] = useState<any>(race.image);
+
 	const pointsUsed = getPointBuyTotal(editableStats);
 	const pointsRemaining = POINT_BUY_TOTAL - pointsUsed;
 	const [invalidFields, setInvalidFields] = useState<{
@@ -144,7 +148,7 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 		if (!descValid) pulseAnim('description');
 		if (!pointsValid) pulseAnim('points');
 		if (nameValid && descValid && pointsValid) {
-			onFinish({ name, description, stats: editableStats, skills });
+			onFinish({ name, description, stats: editableStats, skills, icon: selectedPortrait });
 		}
 	};
 
@@ -179,9 +183,10 @@ export const CharacterReview: React.FC<CharacterReviewProps> = ({
 			<View style={styles.centerWrapper}>
 				<View style={styles.sheetRow}>
 					<View style={styles.portraitCol}>
-						<View style={styles.portraitBox}>
-							{race.image && <Image source={race.image} style={styles.portrait} />}
-						</View>
+						<PortraitSelector
+							selectedImage={selectedPortrait}
+							onSelect={(image) => setSelectedPortrait(image)}
+						/>
 					</View>
 					<View style={styles.leftCol}>
 						<View style={styles.infoRow}>
