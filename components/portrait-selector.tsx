@@ -1,10 +1,12 @@
+import { useAuth } from 'expo-auth-template/frontend';
 import React, { useMemo, useState } from 'react';
 import { Image, ImageSourcePropType, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ExpoIcon } from '@/components/expo-icon';
 import { ImageUploadModal } from '@/components/image-upload-modal';
 import { ThemedText } from '@/components/themed-text';
-import { useUploadedImages } from '@/hooks/api/use-image-queries';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
+import { useDeleteImage, useUploadedImages } from '@/hooks/api/use-image-queries';
 import { CHARACTER_IMAGE_OPTIONS } from '@/types/character-figure';
 
 interface PortraitOption {
@@ -22,9 +24,14 @@ interface PortraitSelectorProps {
 export const PortraitSelector: React.FC<PortraitSelectorProps> = ({ selectedImage, onSelect }) => {
 	const [pickerVisible, setPickerVisible] = useState(false);
 	const [uploadModalVisible, setUploadModalVisible] = useState(false);
+	const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
 	// Fetch uploaded images
 	const { data: uploadedImages, refetch: refetchUploadedImages } = useUploadedImages('both');
+	const deleteImageMutation = useDeleteImage();
+	const { user } = useAuth();
+
+	const isAdmin = user?.role === 'admin' || user?.is_admin === 1;
 
 	const presetOptions: PortraitOption[] = useMemo(() => {
 		return CHARACTER_IMAGE_OPTIONS.map(opt => ({
@@ -48,6 +55,27 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({ selectedImag
 	const handleSelect = (option: PortraitOption) => {
 		onSelect(option.source, option.label);
 		setPickerVisible(false);
+	};
+
+	const handleDeleteImage = (imageId: string) => {
+		console.log('handleDeleteImage called with imageId:', imageId);
+		setConfirmDeleteId(imageId);
+	};
+
+	const performDelete = async () => {
+		if (!confirmDeleteId) return;
+
+		const imageId = confirmDeleteId;
+		console.log('Delete confirmed, deleting imageId:', imageId);
+		setConfirmDeleteId(null);
+		try {
+			console.log('Calling deleteImageMutation.mutateAsync...');
+			await deleteImageMutation.mutateAsync(imageId);
+			console.log('Delete successful, refetching...');
+			refetchUploadedImages();
+		} catch (error) {
+			console.error('Delete error:', error);
+		}
 	};
 
 	const handleUploadSuccess = (url: string) => {
@@ -119,7 +147,37 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({ selectedImag
 												style={styles.gridItem}
 												onPress={() => handleSelect(option)}
 											>
-												<Image source={option.source} style={styles.gridImage} />
+												<View style={styles.imageWrapper}>
+													<Image
+														source={option.source}
+														style={styles.gridImage}
+														resizeMode="cover"
+														onError={(e) => {
+															console.error('Image load error:', e.nativeEvent.error);
+														}}
+													/>
+													{isAdmin && option.type === 'uploaded' && (
+														<TouchableOpacity
+															style={styles.deleteButton}
+															onPress={(e) => {
+																if (e) {
+																	e.stopPropagation?.();
+																	e.preventDefault?.();
+																}
+																console.log('Delete button pressed in PortraitSelector for imageId:', option.id);
+																console.log('Event:', e);
+																handleDeleteImage(option.id);
+															}}
+															onPressIn={() => {
+																console.log('Delete button onPressIn in PortraitSelector for imageId:', option.id);
+															}}
+															activeOpacity={0.7}
+															hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+														>
+															<ExpoIcon icon="MaterialIcons:delete" size={16} color="#FFF" />
+														</TouchableOpacity>
+													)}
+												</View>
 												<ThemedText numberOfLines={1} style={styles.gridLabel}>
 													{option.label}
 												</ThemedText>
@@ -158,6 +216,19 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({ selectedImag
 					setPickerVisible(true); // Re-open picker when upload cancelled/closed
 				}}
 				onUploadSuccess={handleUploadSuccess}
+			/>
+
+			<ConfirmModal
+				visible={confirmDeleteId !== null}
+				title="Delete Image"
+				message="Are you sure you want to delete this image? This cannot be undone."
+				onConfirm={performDelete}
+				onCancel={() => {
+					console.log('Delete cancelled');
+					setConfirmDeleteId(null);
+				}}
+				confirmLabel="Delete"
+				cancelLabel="Cancel"
 			/>
 		</View>
 	);
@@ -291,6 +362,30 @@ const styles = StyleSheet.create({
 		width: 100,
 		alignItems: 'center',
 		marginBottom: 8,
+	},
+	imageWrapper: {
+		position: 'relative',
+		width: 100,
+		height: 100,
+	},
+	deleteButton: {
+		position: 'absolute',
+		top: -4,
+		right: -4,
+		backgroundColor: '#DC2626',
+		borderRadius: 12,
+		width: 28,
+		height: 28,
+		alignItems: 'center',
+		justifyContent: 'center',
+		borderWidth: 2,
+		borderColor: '#FFF',
+		zIndex: 1000,
+		elevation: 10,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.3,
+		shadowRadius: 3,
 	},
 	gridImage: {
 		width: 100,

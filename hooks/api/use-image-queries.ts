@@ -74,8 +74,6 @@ export const useUploadImage = () => {
 			if (params.description) formData.append('description', params.description);
 			formData.append('image_type', params.image_type);
 
-			console.log('FormData:', formData);
-
 			const response = await apiService.fetchApi<{ image: UploadedImage }>('/images/upload', {
 				method: 'POST',
 				body: formData,
@@ -94,14 +92,20 @@ export const useDeleteImage = () => {
 
 	return useMutation({
 		mutationFn: async (imageId: string) => {
-			await apiService.fetchApi(`/images/${imageId}`, {
+			console.log('useDeleteImage mutationFn called with imageId:', imageId);
+			console.log('Making DELETE request to /images/' + imageId);
+			const result = await apiService.fetchApi(`/images/${imageId}`, {
 				method: 'DELETE',
 			});
-
+			console.log('Delete request completed:', result);
 			return true;
 		},
 		onSuccess: () => {
+			console.log('Delete mutation succeeded, invalidating queries');
 			queryClient.invalidateQueries({ queryKey: ['uploaded-images'] });
+		},
+		onError: (error) => {
+			console.error('Delete mutation error:', error);
 		},
 	});
 };

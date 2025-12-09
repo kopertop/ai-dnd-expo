@@ -46,10 +46,6 @@ images.post('/upload', async (c) => {
 		const body = await c.req.parseBody({
 			all: true,
 		});
-		console.log('Upload body keys:', Object.keys(body));
-		console.log('Upload body:', body);
-		console.log('File type:', typeof body['file']);
-		console.log('File is File instance:', body['file'] instanceof File);
 
 		const file = Array.isArray(body['file']) ? body['file'][0] : body['file'];
 		const title = body['title'] as string | undefined;
@@ -131,8 +127,9 @@ images.delete('/:id', async (c) => {
 			return c.json({ error: 'Image not found' }, 404);
 		}
 
-		// Only owner can delete (admins could too if we had that role checked here)
-		if (image.user_id !== user.id) {
+		// Only owner or admin can delete
+		const isAdmin = user.role === 'admin' || user.is_admin === 1;
+		if (image.user_id !== user.id && !isAdmin) {
 			return c.json({ error: 'Forbidden' }, 403);
 		}
 
