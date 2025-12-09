@@ -58,3 +58,4 @@ export function getSpriteStyle(
 		backgroundSize: `${columns * tileWidth}px auto`,
 	};
 }
+

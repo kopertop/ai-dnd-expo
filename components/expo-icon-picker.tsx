@@ -183,7 +183,7 @@ export const ExpoIconPicker: React.FC<ExpoIconPickerProps> = ({ value = '', onCh
 					<ScrollView style={styles.iconScrollView}>
 						{Object.entries(allCategories).map(([category, icons]) => {
 							const categoryIcons = searchQuery
-								? icons.filter(icon =>
+								? icons.filter((icon: { label: string; name: string }) =>
 									icon.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
 									icon.name.toLowerCase().includes(searchQuery.toLowerCase()),
 								)
@@ -197,7 +197,7 @@ export const ExpoIconPicker: React.FC<ExpoIconPickerProps> = ({ value = '', onCh
 								<View key={category} style={styles.categorySection}>
 									<ThemedText style={styles.categoryTitle}>{category}</ThemedText>
 									<View style={styles.iconGrid}>
-										{categoryIcons.map((icon, index) => (
+										{categoryIcons.map((icon: IconOption, index: number) => (
 											<TouchableOpacity
 												key={`${icon.family}-${icon.name}-${index}`}
 												style={styles.iconButton}

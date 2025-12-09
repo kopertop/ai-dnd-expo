@@ -1,6 +1,6 @@
 import { Asset } from 'expo-asset';
 import * as Clipboard from 'expo-clipboard';
-import { File, Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
 import React, { useState } from 'react';
@@ -161,15 +161,17 @@ Produce the final image as:
 			}
 
 			// Define target path in document directory
-			const file = new File(Paths.document, filename);
+			const fileUri = `${FileSystem.documentDirectory}${filename}`;
 
 			// Copy file to document directory
-			const sourceFile = new File(localUri);
-			await sourceFile.copy(file);
+			await FileSystem.copyAsync({
+				from: localUri,
+				to: fileUri,
+			});
 
 			// Check if sharing is available
 			if (await Sharing.isAvailableAsync()) {
-				await Sharing.shareAsync(file.uri);
+				await Sharing.shareAsync(fileUri);
 			} else {
 				Alert.alert('Success', 'Image saved to documents folder');
 			}

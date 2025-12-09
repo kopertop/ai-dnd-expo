@@ -1210,31 +1210,11 @@ const styles = StyleSheet.create({
 		borderColor: '#3B2F1B',
 		zIndex: 10,
 	},
-	modalOverlay: {
-		flex: 1,
-		backgroundColor: 'rgba(0, 0, 0, 0.5)',
-		justifyContent: 'center',
-		alignItems: 'center',
-	},
-	modalContent: {
-		backgroundColor: '#F9F6EF',
-		borderRadius: 12,
-		padding: 20,
-		margin: 20,
-		maxWidth: 400,
-		borderWidth: 2,
-		borderColor: '#C9B037',
-	},
 	modalHeader: {
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		alignItems: 'center',
 		marginBottom: 12,
-	},
-	modalTitle: {
-		fontSize: 24,
-		fontWeight: 'bold',
-		color: '#3B2F1B',
 	},
 	modalCloseButton: {
 		width: 32,

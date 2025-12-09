@@ -38,6 +38,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 	const [infoSkill, setInfoSkill] = useState<string | null>(null);
 	const [infoAttribute, setInfoAttribute] = useState<StatKey | null>(null);
 	const [activeSlot, setActiveSlot] = useState<GearSlot | null>(null);
+	const [tooltipSkill, setTooltipSkill] = useState<string | null>(null);
 	const { isMobile } = useScreenSize();
 	const { togglePlayPause, isPlaying } = useAudio();
 	const { playerCharacter, playerPortrait } = useGameState();

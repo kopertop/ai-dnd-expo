@@ -16,8 +16,8 @@ import { Skill } from '@/types/skill';
 import { StatBlock } from '@/types/stats';
 import { TraitOption } from '@/types/trait-option';
 import { WorldOption } from '@/types/world-option';
-import { generateStartingEquipment } from '@/utils/starting-equipment';
 import { addIconsToInventoryItems } from '@/utils/add-equipment-icons';
+import { generateStartingEquipment } from '@/utils/starting-equipment';
 
 type WizardStep = 'world' | 'location' | 'race' | 'class' | 'trait' | 'attributes' | 'skills' | 'character';
 
@@ -171,7 +171,7 @@ export const useCharacterCreation = () => {
 		}
 
 		lastRestoredState.current = stateKey;
-		router.replace(fullPath);
+		router.replace(fullPath as any);
 	};
 
 	// Parse URL segments and query params to restore state when URL changes

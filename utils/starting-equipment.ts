@@ -49,7 +49,7 @@ function configToItems(config: StartingEquipmentConfig): {
 
 	for (const slot of slots) {
 		const item = config[slot];
-		if (item) {
+		if (item && !Array.isArray(item)) {
 			const itemId = generateItemId(item.id);
 			const fullItem: any = {
 				id: itemId,
@@ -168,3 +168,4 @@ export function needsStartingEquipment(character: Character): boolean {
 
 	return !hasEquippedItems && !hasInventoryItems;
 }
+

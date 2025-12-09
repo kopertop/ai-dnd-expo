@@ -2,8 +2,8 @@ import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
-	GameRow,
 	GamePlayerRow,
+	GameRow,
 	MapRow,
 	MapTileRow,
 	MapTokenRow,
@@ -50,6 +50,7 @@ class MockMapDatabase {
 			description: null,
 			width: 2,
 			height: 2,
+			world: null,
 			default_terrain: JSON.stringify({ type: 'grass' }),
 			fog_of_war: JSON.stringify({ enabled: false }),
 			terrain_layers: JSON.stringify([]),

@@ -721,10 +721,10 @@ const HostGameMapEditorScreen: React.FC = () => {
 	);
 
 	const handleUpdateCharacter = useCallback(
-		async (updates: Partial<Character>) => {
+		(characterId: string, updates: Partial<Character>) => {
 			if (!inviteCode) return;
 			// TODO: Implement character update for map editor context if needed
-			console.log('Update character not implemented in map editor yet', { updates });
+			console.log('Update character not implemented in map editor yet', { characterId, updates });
 		},
 		[inviteCode],
 	);

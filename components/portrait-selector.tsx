@@ -68,7 +68,7 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({
 
 	const uploadedOptions: PortraitOption[] = useMemo(() => {
 		if (!uploadedImages) return [];
-		return uploadedImages.map(img => {
+		return uploadedImages.map((img) => {
 			const label = img.title || img.filename;
 			return {
 				id: img.id,

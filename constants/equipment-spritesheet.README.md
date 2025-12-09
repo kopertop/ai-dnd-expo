@@ -61,3 +61,4 @@ item_longsword: 'https://example.com/icons/longsword.png',
 ## Current Icon Mappings
 
 All equipment items in `constants/starting-equipment.ts` are automatically mapped to icons via `getEquipmentIcon()`. The mappings are defined in `EQUIPMENT_ICONS` in this file.
+

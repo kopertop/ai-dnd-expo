@@ -3,6 +3,7 @@ import {
 	Image,
 	ImageSourcePropType,
 	Modal,
+	Pressable,
 	ScrollView,
 	StyleSheet,
 	Text,

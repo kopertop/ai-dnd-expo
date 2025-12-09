@@ -118,3 +118,4 @@ Create individual PNG files for each item in `assets/images/items/`:
 - All weapons are covered by the weapons spritesheet
 - Some items like "leather" variants already have icons
 - Goblin equipment could share sprites with regular equipment but with different colors/textures if desired
+

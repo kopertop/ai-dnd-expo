@@ -75,3 +75,4 @@ export function addIconsToInventoryItems(items: any[]): any[] {
 		return items;
 	}
 }
+

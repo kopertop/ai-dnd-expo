@@ -52,6 +52,7 @@ class MockMovementDatabase {
 			description: null,
 			width: 5,
 			height: 5,
+			world: null,
 			default_terrain: JSON.stringify({ type: 'grass' }),
 			fog_of_war: JSON.stringify({ enabled: false }),
 			terrain_layers: JSON.stringify([]),

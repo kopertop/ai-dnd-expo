@@ -1364,3 +1364,4 @@ export function getStartingEquipmentConfig(
 export function getNPCStartingEquipmentConfig(npcSlug: string): StartingEquipmentConfig | null {
 	return NPC_STARTING_EQUIPMENT[npcSlug] || null;
 }
+

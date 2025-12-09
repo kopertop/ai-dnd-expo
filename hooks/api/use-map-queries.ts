@@ -3,13 +3,13 @@ import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 
 import { websocketClient } from '@/services/api/websocket-client';
 import type {
-    MapMoveResponse,
-    MapStateResponse,
-    MapTokenListResponse,
-    MapTokenMutationResponse,
-    MovementValidationResponse,
-    NpcDefinitionListResponse,
-    NpcInstanceListResponse,
+	MapMoveResponse,
+	MapStateResponse,
+	MapTokenListResponse,
+	MapTokenMutationResponse,
+	MovementValidationResponse,
+	NpcDefinitionListResponse,
+	NpcInstanceListResponse,
 } from '@/types/api/multiplayer-api';
 import type { NpcDefinition } from '@/types/multiplayer-map';
 
@@ -18,7 +18,7 @@ import type { NpcDefinition } from '@/types/multiplayer-map';
  */
 export function useMapState(inviteCode: string | null | undefined) {
 	return useQueryApi<MapStateResponse>(
-		inviteCode ? `/games/${inviteCode}/map` : null,
+		inviteCode ? `/games/${inviteCode}/map` : '/games/null/map',
 		{
 			enabled: !!inviteCode,
 		},
@@ -30,7 +30,7 @@ export function useMapState(inviteCode: string | null | undefined) {
  */
 export function useMapTokens(inviteCode: string | null | undefined) {
 	return useQueryApi<MapTokenListResponse>(
-		inviteCode ? `/games/${inviteCode}/map/tokens` : null,
+		inviteCode ? `/games/${inviteCode}/map/tokens` : '/games/null/map/tokens',
 		{
 			enabled: !!inviteCode,
 		},
@@ -274,7 +274,7 @@ export function useMoveToken(inviteCode: string) {
  */
 export function useNpcDefinitions(inviteCode: string | null | undefined) {
 	return useQueryApi<NpcDefinitionListResponse>(
-		inviteCode ? `/games/${inviteCode}/npcs` : null,
+		inviteCode ? `/games/${inviteCode}/npcs` : '/games/null/npcs',
 		{
 			enabled: !!inviteCode,
 		},
@@ -289,7 +289,7 @@ export function useNpcDefinition(
 	npcId: string | null | undefined,
 ) {
 	return useQueryApi<NpcDefinition>(
-		inviteCode && npcId ? `/games/${inviteCode}/npcs/${npcId}` : null,
+		inviteCode && npcId ? `/games/${inviteCode}/npcs/${npcId}` : '/games/null/npcs/null',
 		{
 			enabled: !!inviteCode && !!npcId,
 		},
@@ -301,7 +301,7 @@ export function useNpcDefinition(
  */
 export function useNpcInstances(inviteCode: string | null | undefined) {
 	return useQueryApi<NpcInstanceListResponse>(
-		inviteCode ? `/games/${inviteCode}/npc-instances` : null,
+		inviteCode ? `/games/${inviteCode}/npc-instances` : '/games/null/npc-instances',
 		{
 			enabled: !!inviteCode,
 		},

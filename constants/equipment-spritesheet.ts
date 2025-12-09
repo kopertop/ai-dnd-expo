@@ -98,3 +98,4 @@ export function getEquipmentIcon(
 	const icons = getEquipmentIcons();
 	return icons?.[itemId];
 }
+

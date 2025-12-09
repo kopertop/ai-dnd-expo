@@ -32,9 +32,9 @@ export const useUploadedImages = (type?: 'npc' | 'character' | 'both') => {
 		queryKey: ['uploaded-images', type],
 		queryFn: async () => {
 			const queryParams = type ? `?type=${type}` : '';
-			const response = await apiService.fetchApi<{ images: UploadedImage[] }>(`/images${queryParams}`, {
+			const response = await apiService.fetchApi(`/images${queryParams}`, {
 				method: 'GET',
-			});
+			}) as { images: UploadedImage[] };
 
 			return response.images;
 		},
@@ -74,10 +74,10 @@ export const useUploadImage = () => {
 			if (params.description) formData.append('description', params.description);
 			formData.append('image_type', params.image_type);
 
-			const response = await apiService.fetchApi<{ image: UploadedImage }>('/images/upload', {
+			const response = await apiService.fetchApi('/images/upload', {
 				method: 'POST',
 				body: formData,
-			});
+			}) as { image: UploadedImage };
 
 			return response.image;
 		},

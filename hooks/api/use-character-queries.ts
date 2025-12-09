@@ -30,7 +30,7 @@ export function useAllCharacters() {
  */
 export function useGameCharacters(inviteCode: string | null | undefined) {
 	return useQueryApi<CharacterListResponse>(
-		inviteCode ? `/games/${inviteCode}/characters` : null,
+		inviteCode ? `/games/${inviteCode}/characters` : '/games/null/characters',
 		{
 			enabled: !!inviteCode,
 		},

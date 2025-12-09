@@ -19,7 +19,7 @@ export function useGameSession(
 ) {
 	// Don't make API call if inviteCode is falsy - pass empty string and disable query
 	return useQueryApi<GameSessionResponse>(
-		inviteCode ? `/games/${inviteCode}` : null,
+		inviteCode ? `/games/${inviteCode}` : '/games/null',
 		{
 			enabled: !!inviteCode, // Only enable when we have an invite code
 			refetchInterval: options?.refetchInterval,
@@ -50,7 +50,7 @@ export function useActivityLogs(
 	offset: number = 0,
 ) {
 	return useQueryApi<ActivityLogListResponse>(
-		inviteCode ? `/games/${inviteCode}/log?limit=${limit}&offset=${offset}` : null,
+		inviteCode ? `/games/${inviteCode}/log?limit=${limit}&offset=${offset}` : '/games/null/log',
 		{
 			enabled: !!inviteCode,
 		},
@@ -69,7 +69,7 @@ export function useCurrentTurn(inviteCode: string | null | undefined) {
 			startedAt: number;
 		} | null;
 	}>(
-		inviteCode ? `/games/${inviteCode}/turn` : null,
+		inviteCode ? `/games/${inviteCode}/turn` : '/games/null/turn',
 		{
 			enabled: !!inviteCode,
 		},
