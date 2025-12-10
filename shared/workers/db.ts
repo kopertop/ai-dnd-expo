@@ -647,8 +647,12 @@ export class Database {
 			y: number;
 			terrain_type: string;
 			elevation?: number;
+			movement_cost?: number;
 			is_blocked?: number;
+			is_difficult?: number;
 			has_fog?: number;
+			provides_cover?: number;
+			cover_type?: string | null;
 			feature_type?: string | null;
 			metadata?: string;
 		}>,
@@ -656,13 +660,17 @@ export class Database {
 		const statements = tiles.map(tile =>
 			this.db.prepare(
 				`INSERT INTO map_tiles (
-					id, map_id, x, y, terrain_type, elevation, is_blocked, has_fog, feature_type, metadata
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+					id, map_id, x, y, terrain_type, elevation, movement_cost, is_blocked, is_difficult, has_fog, provides_cover, cover_type, feature_type, metadata
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
 					terrain_type = excluded.terrain_type,
 					elevation = excluded.elevation,
+					movement_cost = excluded.movement_cost,
 					is_blocked = excluded.is_blocked,
+					is_difficult = excluded.is_difficult,
 					has_fog = excluded.has_fog,
+					provides_cover = excluded.provides_cover,
+					cover_type = excluded.cover_type,
 					feature_type = excluded.feature_type,
 					metadata = excluded.metadata`,
 			).bind(
@@ -672,8 +680,12 @@ export class Database {
 				tile.y,
 				tile.terrain_type,
 				tile.elevation ?? 0,
+				tile.movement_cost ?? 1.0,
 				tile.is_blocked ?? 0,
+				tile.is_difficult ?? 0,
 				tile.has_fog ?? 0,
+				tile.provides_cover ?? 0,
+				tile.cover_type ?? null,
 				tile.feature_type ?? null,
 				tile.metadata ?? '{}',
 			),

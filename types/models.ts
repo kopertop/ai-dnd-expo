@@ -136,9 +136,13 @@ export const MapTileSchema = z.object({
 	y: z.number().int(),
 	terrain_type: z.string(),
 	elevation: z.number().int().default(0),
+	movement_cost: z.number().default(1.0),
 	is_blocked: z.number().int().default(0),
+	is_difficult: z.number().int().default(0),
 	has_fog: z.number().int().default(0),
 	feature_type: z.string().nullable(),
+	provides_cover: z.number().int().default(0),
+	cover_type: z.string().nullable(),
 	metadata: z.string().default('{}'), // JSON string
 });
 

@@ -1,12 +1,13 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
-	PanResponder,
-	Platform,
-	StyleSheet,
-	Text,
-	TouchableOpacity,
-	View,
-	useWindowDimensions,
+    Image,
+    PanResponder,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+    useWindowDimensions,
 } from 'react-native';
 
 import { ExpoIcon } from '@/components/expo-icon';
@@ -247,22 +248,66 @@ const MapTile: React.FC<{
 	const isTrapTriggered = trapMetadata?.triggered === true;
 
 	// Check if tile is blocked - database is_blocked is converted to 'difficult' in the cell object
-	const isBlocked = cell?.difficult === true || cell?.blocked === true || cell?.isBlocked === true || cell?.is_blocked === true;
+	// Update: difficult now means difficult, blocked means impassible
+	const isBlocked = cell?.blocked === true || (cell?.movementCost || 0) >= 999;
+	const isDifficult = cell?.difficult === true || ((cell?.movementCost || 0) > 1 && (cell?.movementCost || 0) < 999);
 
 	// Check if tile has fog of war
 	const hasFog = cell?.fogged === true;
 	const fogOpacity = hasFog ? (isHost ? 0.1 : 0.9) : 0;
 
 	// Determine background color - blocked tiles are black (or water blue if water terrain)
+	// For VTT maps with background image, we want tiles to be transparent unless special
 	const getBackgroundColor = () => {
+		// If using background image, make default/empty tiles transparent
+		// Only color special tiles (blocked, difficult, etc) with some transparency
+		// Or keep current logic but add transparency?
+
+		// If map has background, we want tiles to be transparent by default so background shows
+		// We only overlay colors for semantic meaning (blocked, difficult, movement range)
+		// But we don't have access to map.background here directly without passing it down
+		// Let's assume if terrain is 'stone' (default) it might be transparent if we want
+
+		// Actually, let's keep current logic but maybe use RGBA for all colors if we want background to show through?
+		// User said "tiles should overlay with transparency"
+
 		if (isBlocked) {
 			const terrain = cell?.terrain?.trim().toLowerCase();
 			if (terrain === 'water') {
-				return '#7FD1F7'; // Water blue
+				return 'rgba(127, 209, 247, 0.5)'; // Water blue transparent
 			}
-			return '#000000'; // Black for all other blocked tiles
+			return 'rgba(0, 0, 0, 0.5)'; // Black transparent
 		}
-		return terrainColor(cell?.terrain);
+
+		if (isDifficult) {
+			return 'rgba(139, 69, 19, 0.3)'; // Brown transparent for difficult
+		}
+
+		// For standard terrain, if we have a background, we might want fully transparent?
+		// But we don't know if we have a background here easily.
+		// However, the terrainColor function returns solid colors.
+		// Let's convert them to RGBA? Or just leave as is for now and let the user paint transparency?
+		// The user said "Tiles overlay background with transparency (already supported)"
+		// If existing tiles are opaque, they will block the background.
+		// We should probably update terrainColor to return transparent colors or make the View transparent.
+
+		const color = terrainColor(cell?.terrain);
+
+		// If it's the default 'stone' or 'grass' and we are rendering over a background,
+		// we might want it transparent.
+		// For now, let's just apply a global opacity to the background color
+		// if it's not a special semantic tile.
+
+		// Actually, if we return a solid color, it blocks the image.
+		// We should convert hex to rgba with opacity.
+		if (color.startsWith('#')) {
+			const r = parseInt(color.slice(1, 3), 16);
+			const g = parseInt(color.slice(3, 5), 16);
+			const b = parseInt(color.slice(5, 7), 16);
+			return `rgba(${r}, ${g}, ${b}, 0.3)`; // 30% opacity for terrain overlay
+		}
+
+		return color;
 	};
 
 	// Determine border color - prioritize path, then hover, then trap, then default
@@ -428,6 +473,11 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 	const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 	const panStartRef = useRef({ x: 0, y: 0 });
 	const [hoveredTile, setHoveredTile] = useState<{ x: number; y: number } | null>(null);
+
+	// Load background image if present
+	// We don't need explicit loading state as React Native Image handles it,
+	// but we could add a loader if needed
+	const backgroundImage = map?.background;
 
 	const startDrag = (x: number, y: number) => {
 		if (!onTileDrag || !isEditable) {
@@ -952,6 +1002,21 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 						},
 					]}
 				>
+					{backgroundImage && (
+						<Image
+							source={{ uri: backgroundImage }}
+							style={[
+								StyleSheet.absoluteFill,
+								{
+									width: map.width * tileSize,
+									height: map.height * tileSize,
+									opacity: 1, // Full opacity for VTT maps
+									zIndex: 0, // Behind tiles
+								},
+							]}
+							resizeMode="stretch"
+						/>
+					)}
 					{normalizedTerrain.map((row, y) => (
 						<View key={`row-${y}`} style={styles.row}>
 							{row.map((cell, x) => {

@@ -4,15 +4,15 @@ import { useAuth } from 'expo-auth-template/frontend';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-	ActivityIndicator,
-	Alert,
-	Modal,
-	Platform,
-	ScrollView,
-	StyleSheet,
-	TextInput,
-	TouchableOpacity,
-	View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,15 +24,15 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useGameCharacters } from '@/hooks/api/use-character-queries';
 import {
-	useDeleteMapToken,
-	useGenerateMap,
-	useMapState,
-	useMutateTerrain,
-	useNpcDefinitions,
-	usePlaceNpc,
-	usePlacePlayerToken,
-	useSaveMapToken,
-	useUpdateMapState,
+    useDeleteMapToken,
+    useGenerateMap,
+    useMapState,
+    useMutateTerrain,
+    useNpcDefinitions,
+    usePlaceNpc,
+    usePlacePlayerToken,
+    useSaveMapToken,
+    useUpdateMapState,
 } from '@/hooks/api/use-map-queries';
 import { Character } from '@/types/character';
 import { MapToken, NpcDefinition } from '@/types/multiplayer-map';
@@ -401,7 +401,26 @@ const HostGameMapEditorScreen: React.FC = () => {
 							: editorMode === 'mountain'
 								? 'mountain'
 								: null;
-			const isBlocked = editorMode === 'tree' || editorMode === 'water' || editorMode === 'mountain';
+
+			// Determine properties based on editor mode
+			let isBlocked = false;
+			let isDifficult = false;
+			let movementCost = 1.0;
+			let providesCover = false;
+			let coverType: 'half' | 'three-quarters' | 'full' | null = null;
+
+			if (editorMode === 'water' || editorMode === 'mountain') {
+				isBlocked = true;
+				movementCost = 999;
+			} else if (editorMode === 'tree') {
+				isDifficult = true;
+				movementCost = 2.0;
+				providesCover = true;
+				coverType = 'half';
+			} else if (editorMode === 'road') {
+				movementCost = 0.5;
+			}
+
 			const metadata =
 				editorMode === 'road'
 					? { variant: 'stone' }
@@ -426,6 +445,10 @@ const HostGameMapEditorScreen: React.FC = () => {
 								terrainType,
 								featureType,
 								isBlocked,
+								isDifficult,
+								movementCost,
+								providesCover,
+								coverType,
 								metadata,
 							},
 						],
