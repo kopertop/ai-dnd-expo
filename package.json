@@ -23,7 +23,7 @@
 		"train:test": "python3.11 ai-training/test_deployed_model.py",
 		"clean": "rm -rf .expo  dist/ ios/ android/ build*.ipa",
 		"deploy": "run-s deploy:web deploy:api",
-		"deploy:web": "run-s build:web build:web:* && wrangler pages deploy",
+		"deploy:web": "run-s build:web build:web:* && wrangler pages deploy --branch main",
 		"deploy:api": "wrangler deploy --config wrangler.api.toml",
 		"start": "expo start",
 		"start:full": "./scripts/start-dev.sh",

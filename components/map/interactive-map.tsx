@@ -640,20 +640,44 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 
 				// Get map container bounds - try multiple selectors
 				let mapContainer: HTMLElement | null = null;
-				const wrapper = document.querySelector('[data-map-container]') as HTMLElement;
-				if (wrapper) {
-					mapContainer = wrapper;
-				} else {
-					// Fallback: find the wrapper by class or style
-					const allDivs = Array.from(document.querySelectorAll('div'));
-					mapContainer = allDivs.find(div => {
-						const style = window.getComputedStyle(div);
-						return style.position === 'relative' || style.position === 'absolute';
-					}) as HTMLElement || null;
+				// First try the grid container (most reliable)
+				const gridContainer = document.querySelector('[data-grid-container]') as HTMLElement;
+				if (gridContainer) {
+					const gridRect = gridContainer.getBoundingClientRect();
+					if (gridRect.width > 0 && gridRect.height > 0) {
+						mapContainer = gridContainer;
+					}
+				}
+				// Fallback to wrapper container
+				if (!mapContainer) {
+					const wrapper = document.querySelector('[data-map-container]') as HTMLElement;
+					if (wrapper) {
+						mapContainer = wrapper;
+					} else {
+						// Last resort: find the wrapper by class or style
+						const allDivs = Array.from(document.querySelectorAll('div'));
+						mapContainer = allDivs.find(div => {
+							const style = window.getComputedStyle(div);
+							return style.position === 'relative' || style.position === 'absolute';
+						}) as HTMLElement || null;
+					}
 				}
 
 				if (mapContainer) {
-					const rect = mapContainer.getBoundingClientRect();
+					let rect = mapContainer.getBoundingClientRect();
+
+					// If wrapper has zero dimensions, try to use grid container directly
+					if (rect.width === 0 || rect.height === 0) {
+						const gridContainer = document.querySelector('[data-grid-container]') as HTMLElement;
+						if (gridContainer) {
+							const gridRect = gridContainer.getBoundingClientRect();
+							if (gridRect.width > 0 && gridRect.height > 0) {
+								rect = gridRect;
+								mapContainer = gridContainer;
+							}
+						}
+					}
+
 					const isOutsideMap =
 							dropX < rect.left - 50 ||
 							dropX > rect.right + 50 ||
@@ -668,13 +692,18 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 					} else {
 						// Calculate tile coordinates from drop position
 						// Find the grid container (the actual map grid)
-						const gridContainer = mapContainer.querySelector('[style*="gridContainer"]') ||
-								mapContainer.querySelector('[style*="transform"]') as HTMLElement;
+						let gridContainer = mapContainer.querySelector('[data-grid-container]') as HTMLElement;
 
+						// If not found as child, try direct query
+						if (!gridContainer) {
+							gridContainer = document.querySelector('[data-grid-container]') as HTMLElement;
+						}
+
+						// Calculate relative position - use grid container if available, otherwise use map container
 						let relativeX = dropX - rect.left;
 						let relativeY = dropY - rect.top;
 
-						// Account for pan offset if the map is panned
+						// If we have a grid container, use its bounds for more accurate calculation
 						if (gridContainer) {
 							const gridRect = gridContainer.getBoundingClientRect();
 							relativeX = dropX - gridRect.left;
@@ -935,6 +964,7 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 	}, []);
 
 	const wrapperRef = useRef<View>(null);
+	const gridContainerRef = useRef<View>(null);
 
 	useEffect(() => {
 		if (Platform.OS === 'web' && wrapperRef.current) {
@@ -942,6 +972,16 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 			const domNode = element._nativeNode || element;
 			if (domNode && typeof domNode.setAttribute === 'function') {
 				domNode.setAttribute('data-map-container', 'true');
+			}
+		}
+	}, []);
+
+	useEffect(() => {
+		if (Platform.OS === 'web' && gridContainerRef.current) {
+			const element = gridContainerRef.current as any;
+			const domNode = element._nativeNode || element;
+			if (domNode && typeof domNode.setAttribute === 'function') {
+				domNode.setAttribute('data-grid-container', 'true');
 			}
 		}
 	}, []);
@@ -990,6 +1030,7 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 		>
 			<View style={styles.panSurface}>
 				<View
+					ref={gridContainerRef}
 					style={[
 						styles.gridContainer,
 						{

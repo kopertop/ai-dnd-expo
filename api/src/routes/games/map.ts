@@ -4,14 +4,16 @@ import type { GamesContext } from './types';
 
 import { GameStateService } from '@/api/src/services/game-state';
 import {
-    buildMapState,
-    createId,
-    deserializeCharacter,
-    isHostUser,
-    resolveMapRow,
+	buildMapState,
+	createId,
+	deserializeCharacter,
+	isHostUser,
+	resolveMapRow,
 } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
+import { MapAnalyzer } from '@/services/ai/map-analyzer';
+import { createOllamaProvider } from '@/services/ai/providers/ollama-provider';
 import { MapTokenRow } from '@/shared/workers/db';
 import { generateProceduralMap, MapGeneratorPreset } from '@/shared/workers/map-generator';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
@@ -911,6 +913,46 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 		const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
 		const key = `users/${user.id}/${timestamp}-${sanitizedFilename}`;
 
+		// Convert file to base64 for AI analysis
+		let base64Image = '';
+		try {
+			const buffer = await file.arrayBuffer();
+			const bytes = new Uint8Array(buffer);
+			const len = bytes.byteLength;
+			let binary = '';
+			for (let i = 0; i < len; i++) {
+				binary += String.fromCharCode(bytes[i]);
+			}
+			base64Image = btoa(binary);
+		} catch (e) {
+			console.warn('Failed to read file for AI analysis:', e);
+		}
+
+		// Perform AI analysis
+		let aiAnalysis = null;
+		if (base64Image) {
+			try {
+				// Use env vars from context if available
+				const ollamaUrl = (c.env as any).OLLAMA_BASE_URL || (c.env as any).EXPO_PUBLIC_OLLAMA_BASE_URL;
+				const ollamaKey = (c.env as any).OLLAMA_API_KEY || (c.env as any).EXPO_PUBLIC_OLLAMA_API_KEY;
+
+				const analyzer = new MapAnalyzer({
+					provider: createOllamaProvider({
+						baseUrl: ollamaUrl,
+						apiKey: ollamaKey,
+						defaultModel: 'llama3.2-vision', // Use vision model
+						timeout: 60000,
+					}),
+				});
+
+				console.log('Starting AI map analysis...');
+				aiAnalysis = await analyzer.analyze(base64Image);
+				console.log('AI Analysis result:', JSON.stringify(aiAnalysis, null, 2));
+			} catch (e) {
+				console.error('AI map analysis failed:', e);
+			}
+		}
+
 		const bucket = c.env.IMAGES_BUCKET;
 		await bucket.put(key, file, {
 			httpMetadata: {
@@ -974,19 +1016,71 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 		const tiles = [];
 		for (let y = 0; y < rows; y++) {
 			for (let x = 0; x < columns; x++) {
-				tiles.push({
-					x,
-					y,
-					terrain_type: 'stone', // Default terrain type, but will be overlay
+				let tileProps = {
+					terrain_type: 'stone',
 					elevation: 0,
 					movement_cost: 1.0,
 					is_blocked: 0,
 					is_difficult: 0,
 					has_fog: 0,
 					provides_cover: 0,
-					cover_type: null,
-					feature_type: null,
+					cover_type: null as string | null,
+					feature_type: null as string | null,
 					metadata: '{}',
+				};
+
+				// Apply AI analysis if available
+				if (aiAnalysis && aiAnalysis.regions) {
+					// Check if this tile is inside any region
+					// Convert tile coordinates to percentage bounds
+					// We check if the CENTER of the tile is within the region bounds
+					const tileCenterX = (x + 0.5) / columns;
+					const tileCenterY = (y + 0.5) / rows;
+
+					for (const region of aiAnalysis.regions) {
+						if (
+							tileCenterX >= region.bounds.x &&
+							tileCenterX <= region.bounds.x + region.bounds.width &&
+							tileCenterY >= region.bounds.y &&
+							tileCenterY <= region.bounds.y + region.bounds.height
+						) {
+							// Apply region properties
+							switch (region.type) {
+								case 'wall':
+									tileProps.is_blocked = 1;
+									tileProps.movement_cost = 999.0;
+									tileProps.terrain_type = 'wall';
+									break;
+								case 'tree':
+									tileProps.provides_cover = 1;
+									tileProps.cover_type = 'half';
+									tileProps.is_difficult = 1;
+									tileProps.movement_cost = 2.0;
+									break;
+								case 'water':
+									tileProps.is_blocked = 1; // Or high cost? Usually blocked for walking
+									tileProps.movement_cost = 999.0;
+									tileProps.terrain_type = 'water';
+									break;
+								case 'difficult':
+									tileProps.is_difficult = 1;
+									tileProps.movement_cost = 2.0;
+									break;
+								case 'door':
+									tileProps.feature_type = 'door';
+									break;
+								case 'road':
+									tileProps.movement_cost = 0.5; // Easier movement
+									break;
+							}
+						}
+					}
+				}
+
+				tiles.push({
+					x,
+					y,
+					...tileProps,
 				});
 			}
 		}

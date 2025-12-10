@@ -27,6 +27,7 @@ import {
     useDeleteMapToken,
     useGenerateMap,
     useMapState,
+    useMoveToken,
     useMutateTerrain,
     useNpcDefinitions,
     usePlaceNpc,
@@ -374,6 +375,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 	const placePlayerTokenMutation = usePlacePlayerToken(inviteCode || '');
 	const saveMapTokenMutation = useSaveMapToken(inviteCode || '');
 	const deleteMapTokenMutation = useDeleteMapToken(inviteCode || '');
+	const moveTokenMutation = useMoveToken(inviteCode || '');
 
 	const applyTerrainEdit = useCallback(
 		async (x: number, y: number) => {
@@ -866,6 +868,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 							<InteractiveMap
 								map={mapState}
 								isEditable
+								enableTokenDrag={true}
 								onTilePress={handleTilePress}
 								onTileDrag={handleTileDrag}
 								onTileDragEnd={handleTileDragEnd}
@@ -882,6 +885,25 @@ const HostGameMapEditorScreen: React.FC = () => {
 											Alert.alert('Success', `${token.label || 'NPC'} removed from map`);
 										} catch (error) {
 											Alert.alert('Error', error instanceof Error ? error.message : 'Failed to remove NPC');
+										}
+										return;
+									}
+
+									// Handle regular token movement (not deletion)
+									if (x >= 0 && y >= 0 && moveTokenMutation) {
+										try {
+											await moveTokenMutation.mutateAsync({
+												path: `/games/${inviteCode}/map/move`,
+												body: {
+													tokenId: token.id,
+													x,
+													y,
+													overrideValidation: true,
+												},
+											});
+										} catch (error) {
+											console.error('Failed to move token:', error);
+											Alert.alert('Error', error instanceof Error ? error.message : 'Failed to move token');
 										}
 									}
 								}}
