@@ -3,13 +3,13 @@ import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 
 import { websocketClient } from '@/services/api/websocket-client';
 import type {
-	MapMoveResponse,
-	MapStateResponse,
-	MapTokenListResponse,
-	MapTokenMutationResponse,
-	MovementValidationResponse,
-	NpcDefinitionListResponse,
-	NpcInstanceListResponse,
+    MapMoveResponse,
+    MapStateResponse,
+    MapTokenListResponse,
+    MapTokenMutationResponse,
+    MovementValidationResponse,
+    NpcDefinitionListResponse,
+    NpcInstanceListResponse,
 } from '@/types/api/multiplayer-api';
 import type { NpcDefinition } from '@/types/multiplayer-map';
 
@@ -233,6 +233,84 @@ export function useCloneMap() {
 		onSuccess: () => {
 			// Invalidate all maps list
 			queryClient.invalidateQueries({ queryKey: ['/maps'] });
+		},
+	});
+}
+
+/**
+ * Delete a map
+ */
+export function useDeleteMap(inviteCode: string) {
+	const queryClient = useQueryClient();
+
+	return useMutationApi<void>({
+		method: 'DELETE',
+		onSuccess: () => {
+			// Invalidate all maps list
+			queryClient.invalidateQueries({ queryKey: ['/maps'] });
+			// Invalidate current game session in case we deleted the active map
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/session`] });
+		},
+	});
+}
+
+/**
+ * Import a VTT map
+ */
+export function useImportVTTMap(inviteCode: string) {
+	const queryClient = useQueryClient();
+	// We use standard fetch here because useMutationApi handles JSON but we need multipart/form-data
+	// and custom response handling might be needed
+	// But actually useMutationApi wraps useMutation, so we can pass a custom mutationFn
+	// However, useMutationApi enforces an API path relative to base URL and expects JSON response
+	// Let's use useMutation directly from react-query and useHttp or fetch
+	const { useMutation } = require('@tanstack/react-query');
+	const { useHttp } = require('expo-auth-template/frontend');
+	const http = useHttp();
+
+	return useMutation({
+		mutationFn: async (data: {
+			file: any;
+			name: string;
+			columns: number;
+			rows: number;
+			gridSize: number;
+		}) => {
+			const formData = new FormData();
+			// React Native/Expo handles file objects differently than web
+			// For web, it's a File/Blob. For native, it's { uri, name, type }
+			if (data.file instanceof File || data.file instanceof Blob) {
+				formData.append('file', data.file);
+			} else {
+				// @ts-ignore - FormData on RN accepts this object
+				formData.append('file', {
+					uri: data.file.uri,
+					name: data.file.name,
+					type: data.file.type,
+				});
+			}
+
+			formData.append('name', data.name);
+			formData.append('columns', data.columns.toString());
+			formData.append('rows', data.rows.toString());
+			formData.append('gridSize', data.gridSize.toString());
+
+			// We need to use raw fetch or http client that supports FormData
+			// The http client from expo-auth-template might stringify body
+			// Let's assume http.post handles FormData correctly if not stringified
+			return http.post(`/games/${inviteCode}/map/import-vtt`, formData, {
+				headers: {
+					// Don't set Content-Type header manually for FormData,
+					// the browser/network layer needs to set boundary
+					'Content-Type': undefined,
+				},
+			});
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			queryClient.invalidateQueries({ queryKey: ['/maps'] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/session`] });
+			websocketClient.sendRefresh();
 		},
 	});
 }

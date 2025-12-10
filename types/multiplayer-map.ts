@@ -27,7 +27,11 @@ export const TerrainCellSchema = z.object({
 	terrain: z.string().default('stone'),
 	fogged: z.boolean().optional(),
 	elevation: z.number().optional(),
-	difficult: z.boolean().optional(),
+	blocked: z.boolean().optional(), // Impassible
+	difficult: z.boolean().optional(), // Difficult terrain
+	movementCost: z.number().default(1.0),
+	providesCover: z.boolean().optional(),
+	coverType: z.enum(['half', 'three-quarters', 'full']).nullable().optional(),
 	featureType: z.string().nullable().optional(),
 	metadata: z.record(z.unknown()).optional(),
 });
