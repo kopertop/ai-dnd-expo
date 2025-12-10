@@ -25,7 +25,7 @@ An open-source platform for playing Dungeons and Dragons online with AI assistan
 ### 🌐 Cross-Platform
 
 - **Mobile**: iOS and Android native apps
-- **Web**: Browser-based gameplay
+- **Web**: Browser-based gameplay (Progressive Web App)
 - **Universal**: Seamless experience across all platforms
 
 ## 🚀 Quick Start
@@ -41,8 +41,8 @@ An open-source platform for playing Dungeons and Dragons online with AI assistan
    Create a `.env` file in the root directory:
 
    ```env
-   # API routing (defaults to localhost dev)
-   EXPO_PUBLIC_API_BASE_URL=http://localhost:8787
+   # API routing (defaults to production API or localhost dev)
+   # EXPO_PUBLIC_API_BASE_URL=http://localhost:8787
 
    # Ollama Configuration (for web platform)
    EXPO_PUBLIC_OLLAMA_BASE_URL=http://localhost:11434
@@ -64,8 +64,9 @@ An open-source platform for playing Dungeons and Dragons online with AI assistan
 3. **Start the development server**
 
    ```bash
-   npx expo start
+   npm run dev
    ```
+   This will start both the Expo web server and the Cloudflare Worker API server locally.
 
 4. **Choose your platform**
    - Press `i` for iOS simulator
@@ -95,16 +96,21 @@ For web platform, you'll need:
 ### Prerequisites
 - Node.js 22+ (LTS)
 - Expo CLI
+- Wrangler CLI (for backend)
 - For mobile development: iOS Simulator (macOS) or Android Studio
 
 ### Available Scripts
 
-- `npm start` - Start Expo development server
+- `npm run dev` - Start Expo web + API Worker in parallel (recommended)
+- `npm run dev:web` - Start Expo development server only
+- `npm run dev:api` - Start API Worker development server only
 - `npm run android` - Run on Android emulator
 - `npm run ios` - Run on iOS simulator
-- `npm run web` - Run in web browser
 - `npm run lint` - Run ESLint
-- `npm run test` - Run tests (when implemented)
+- `npm run test` - Run tests
+- `npm run deploy` - Deploy both Web (Pages) and API (Worker)
+- `npm run deploy:web` - Deploy Web to Cloudflare Pages
+- `npm run deploy:api` - Deploy API to Cloudflare Workers
 
 ### Project Structure
 
@@ -112,14 +118,24 @@ For web platform, you'll need:
 ai-dnd-expo/
 ├── app/              # File-based routing (Expo Router)
 ├── components/       # Reusable UI components
-├── hooks/           # Custom React hooks
-├── constants/       # App constants and configuration
-├── assets/          # Static assets (images, fonts)
-├── services/        # API services and integrations
-├── types/           # TypeScript type definitions
-├── utils/           # Utility functions
-└── docs/            # Documentation
+├── hooks/            # Custom React hooks
+├── constants/        # App constants and configuration
+├── assets/           # Static assets (images, fonts)
+├── services/         # API services and integrations
+├── api/              # Cloudflare Worker API code
+├── functions/        # Cloudflare Pages Functions (Routing)
+├── types/            # TypeScript type definitions
+├── utils/            # Utility functions
+└── docs/             # Documentation
 ```
+
+### Backend Architecture
+
+The backend is split into two Cloudflare services deployed to `dnd.coredumped.org`:
+- **Pages**: Serves static web content.
+- **Worker**: Serves API at `/api/*`.
+
+Routing is handled by Pages Functions using Service Bindings for zero-latency communication.
 
 ## 🤖 AI Integration
 
@@ -165,6 +181,7 @@ We welcome contributions! Please see our [AI-INSTRUCTIONS.md](./AI-INSTRUCTIONS.
 - [AI Instructions](./AI-INSTRUCTIONS.md) - Guidelines for AI-assisted development
 - [Development TODO](./TODO.md) - Feature roadmap and tasks
 - [Claude Instructions](./CLAUDE.md) - Claude Code-specific guidance
+- [Deployment Guide](./DEPLOYMENT.md) - Full deployment documentation
 
 ## 🔧 Technology Stack
 
@@ -174,6 +191,8 @@ We welcome contributions! Please see our [AI-INSTRUCTIONS.md](./AI-INSTRUCTIONS.
 - **Styling**: React Native StyleSheet + Theming
 - **State Management**: React Context (expanding to Redux Toolkit)
 - **API Integration**: Axios + React Query
+- **Backend**: Cloudflare Pages + Workers (Hono)
+- **Database**: Cloudflare D1 (SQLite) + R2 (Storage)
 - **Voice**: Resemble.ai API
 - **Images**: Flux.dev API
 - **AI**: OpenAI/Anthropic APIs

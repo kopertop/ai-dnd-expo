@@ -23,6 +23,44 @@ const app = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
 // Apply CORS globally
 app.use('*', corsMiddleware);
 
+// Rate limiting middleware
+app.use('*', async (c, next) => {
+	const rateLimiter = c.env.API_RATE_LIMITER;
+	if (!rateLimiter) {
+		// Fail closed if the binding is missing so we don't silently ship without protection
+		console.error('API_RATE_LIMITER binding missing. Ensure wrangler.api.toml [[ratelimits]] is provisioned.');
+		return c.json({ error: 'Server misconfiguration: rate limiter unavailable' }, 500);
+	}
+
+	// Use user ID if authenticated, IP as fallback
+	// Note: user is not set yet in this middleware order (auth runs later),
+	// so we rely on IP for global rate limiting.
+	// For stricter user-based limits, we'd need to move this after auth or decode token here.
+	const key = c.req.header('CF-Connecting-IP') || 'anonymous';
+
+	try {
+		const { success, limit, remaining, reset } = await rateLimiter.limit({ key });
+
+		if (!success) {
+			return c.json({
+				error: 'Rate limit exceeded',
+				limit,
+				remaining: 0,
+				reset: new Date(reset * 1000).toISOString()
+			}, 429);
+		}
+
+		// Add rate limit headers
+		c.header('X-RateLimit-Limit', limit.toString());
+		c.header('X-RateLimit-Remaining', remaining.toString());
+		c.header('X-RateLimit-Reset', new Date(reset * 1000).toISOString());
+	} catch (e) {
+		console.error('Rate limiter error:', e);
+		// Fail open if rate limiter fails
+	}
+	await next();
+});
+
 // Attach PartyServer (Partykit-in-Worker) under /party/*
 app.use('/party/*', partyserverMiddleware({
 	options: {
@@ -111,97 +149,6 @@ app.route('/api/admin', adminRoutes);
 app.route('/api/maps', mapRoutes);
 // Note: /api/auth/exchange and /api/device-tokens routes removed - handled by expo-auth-template
 app.route('/api/me', meRoutes);
-
-/**
- * Get content-type based on file extension
- */
-function getContentType(path: string): string {
-	const ext = path.split('.').pop()?.toLowerCase();
-	const contentTypes: Record<string, string> = {
-		html: 'text/html',
-		css: 'text/css',
-		js: 'application/javascript',
-		json: 'application/json',
-		png: 'image/png',
-		jpg: 'image/jpeg',
-		jpeg: 'image/jpeg',
-		gif: 'image/gif',
-		svg: 'image/svg+xml',
-		ico: 'image/x-icon',
-		woff: 'font/woff',
-		woff2: 'font/woff2',
-		ttf: 'font/ttf',
-		otf: 'font/otf',
-		mp3: 'audio/mpeg',
-		mp4: 'video/mp4',
-		webm: 'video/webm',
-	};
-	return contentTypes[ext || ''] || 'application/octet-stream';
-}
-
-// Serve static assets for non-API routes (Worker with Assets)
-app.get('*', async (c) => {
-	// Check if this is an API route
-	if (c.req.path.startsWith('/api/')) {
-		return c.json({ error: 'Not found' }, 404);
-	}
-
-	// Try to serve from assets binding
-	const assets = c.env.ASSETS;
-	if (assets) {
-		try {
-			// Get the file from the assets binding
-			const url = new URL(c.req.url);
-			let path = url.pathname;
-
-			// Default to index.html for root or directory requests
-			if (path === '/' || !path.includes('.')) {
-				path = '/index.html';
-			}
-
-			// Remove leading slash for asset lookup
-			const assetPath = path.startsWith('/') ? path.slice(1) : path;
-
-			const asset = await assets.fetch(new Request(new URL(assetPath, c.req.url)));
-
-			if (asset.status === 200) {
-				// Create a new response with the asset body and proper headers
-				const contentType = asset.headers.get('Content-Type') || getContentType(path);
-
-				// Preserve all headers from the asset response
-				const headers = new Headers(asset.headers);
-				// Ensure Content-Type is set correctly
-				headers.set('Content-Type', contentType);
-
-				const response = new Response(asset.body, {
-					status: asset.status,
-					statusText: asset.statusText,
-					headers,
-				});
-				return response;
-			}
-		} catch (error) {
-			console.error('Error serving asset:', error);
-		}
-	}
-
-	// Fallback: return a simple HTML page
-	return c.html(`
-		<!DOCTYPE html>
-		<html>
-		<head>
-			<title>AI D&D</title>
-			<meta charset="utf-8">
-			<meta name="viewport" content="width=device-width, initial-scale=1">
-		</head>
-		<body>
-			<h1>AI D&D API</h1>
-			<p>API is running. Use the mobile app or web client to access the game.</p>
-			<p><a href="/health">Health Check</a></p>
-		</body>
-		</html>
-	`);
-});
 
 export default app;
 

@@ -1,6 +1,6 @@
 -- Seed starting location maps for all world × location combinations
 INSERT INTO `maps` (
-	id, slug, name, description, width, height, default_terrain, fog_of_war, terrain_layers, metadata, generator_preset, seed, theme, biome, world, is_generated, created_at, updated_at
+	id, slug, name, description, width, height, default_terrain, fog_of_war, terrain_layers, metadata, generator_preset, seed, theme, biome, is_generated, created_at, updated_at
 )
 VALUES
 	(
@@ -18,7 +18,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -38,7 +37,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -58,7 +56,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -78,7 +75,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -98,7 +94,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -118,7 +113,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -138,7 +132,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -158,7 +151,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -178,7 +170,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -198,7 +189,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -218,7 +208,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -238,7 +227,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -258,7 +246,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -278,7 +265,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -298,7 +284,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -318,7 +303,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -338,7 +322,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -358,7 +341,6 @@ VALUES
 		'static',
 		'medieval',
 		'temperate',
-		'faerun',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -378,7 +360,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -398,7 +379,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -418,7 +398,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -438,7 +417,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -458,7 +436,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -478,7 +455,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -498,7 +474,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -518,7 +493,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -538,7 +512,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -558,7 +531,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -578,7 +550,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -598,7 +569,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -618,7 +588,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -638,7 +607,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -658,7 +626,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -678,7 +645,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -698,7 +664,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -718,7 +683,6 @@ VALUES
 		'static',
 		'industrial',
 		'urban',
-		'eberron',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -738,7 +702,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -758,7 +721,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -778,7 +740,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -798,7 +759,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -818,7 +778,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -838,7 +797,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -858,7 +816,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -878,7 +835,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -898,7 +854,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -918,7 +873,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -938,7 +892,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -958,7 +911,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -978,7 +930,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -998,7 +949,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -1018,7 +968,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -1038,7 +987,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -1058,7 +1006,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -1078,7 +1025,6 @@ VALUES
 		'static',
 		'dark',
 		'underground',
-		'underdark',
 		false,
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER),
 		CAST(unixepoch('subsecond') * 1000 AS INTEGER)
@@ -1097,6 +1043,5 @@ ON CONFLICT(id) DO UPDATE SET
 	seed = excluded.seed,
 	theme = excluded.theme,
 	biome = excluded.biome,
-	world = excluded.world,
 	is_generated = excluded.is_generated,
 	updated_at = excluded.updated_at;
