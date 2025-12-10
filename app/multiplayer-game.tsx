@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Easing, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Easing, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharacterDMModal } from '@/components/character-dm-modal';
@@ -11,6 +11,7 @@ import { CharacterViewModal } from '@/components/character-view-modal';
 import { CombatResultModal } from '@/components/combat-result-modal';
 import { CommandPalette, type Command } from '@/components/command-palette';
 import { ConnectionStatusIndicator } from '@/components/connection-status-indicator';
+import { DiceRollOverlay } from '@/components/dice-roll-overlay';
 import { DMActionBanner } from '@/components/dm-action-banner';
 import { MapElementPicker, type MapElementType } from '@/components/map-element-picker';
 import { InteractiveMap } from '@/components/map/interactive-map';
@@ -23,10 +24,10 @@ import { PlayerCharacterList } from '@/components/player-character-list';
 import { SpellActionSelector } from '@/components/spell-action-selector';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { TokenDetailModal } from '@/components/token-detail-modal';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import { useCastSpell, useDealDamage, useHealCharacter, usePerformAction, useRollPerceptionCheck } from '@/hooks/api/use-character-queries';
 import {
+	useDmRollDice,
 	useStopGame,
 	useSubmitDMAction,
 } from '@/hooks/api/use-game-queries';
@@ -54,6 +55,13 @@ import { getCharacterSpeed } from '@/utils/character-utils';
 import { calculateMovementRange, isInMeleeRange, isInRangedRange } from '@/utils/movement-calculator';
 
 const MultiplayerGameScreen: React.FC = () => {
+	type ActionReplayRequest = {
+		path: string;
+		body: Record<string, unknown>;
+		actorId?: string | null;
+		source: 'perform' | 'cast';
+	};
+
 	const params = useLocalSearchParams<{ inviteCode: string; hostId?: string; playerId?: string }>();
 	const { inviteCode, hostId, playerId } = params;
 	const [gameState, setGameState] = useState<MultiplayerGameState | null>(null);
@@ -89,7 +97,24 @@ const MultiplayerGameScreen: React.FC = () => {
 	const [pendingActionTarget, setPendingActionTarget] = useState<{ targetId: string; label: string } | null>(null);
 	const [combatResult, setCombatResult] = useState<CharacterActionResult | null>(null);
 	const [showCombatResult, setShowCombatResult] = useState(false);
+	const [lastActionRequest, setLastActionRequest] = useState<ActionReplayRequest | null>(null);
+	const [isRerollingAction, setIsRerollingAction] = useState(false);
 	const [elementPlacementMode, setElementPlacementMode] = useState<MapElementType | null>(null);
+	const [showDmRollModal, setShowDmRollModal] = useState(false);
+	const [dmRollNumDice, setDmRollNumDice] = useState('1');
+	const [dmRollDieSize, setDmRollDieSize] = useState('20');
+	const [dmRollModifier, setDmRollModifier] = useState('0');
+	const [dmRollLabel, setDmRollLabel] = useState('');
+	const [diceOverlay, setDiceOverlay] = useState<{
+		id: string;
+		notation: string;
+		rolls: number[];
+		total: number;
+		breakdown: string;
+		speaker?: string;
+		label?: string;
+	} | null>(null);
+	const lastDiceMessageIdRef = useRef<string | null>(null);
 	const [showCharacterTurnSelector, setShowCharacterTurnSelector] = useState(false);
 	const [showNpcSelector, setShowNpcSelector] = useState(false);
 	const [npcPlacementMode, setNpcPlacementMode] = useState<{ npcId: string; npcName: string } | null>(null);
@@ -97,6 +122,7 @@ const MultiplayerGameScreen: React.FC = () => {
 	const isPlacingRef = useRef(false);
 	const [isPlacing, setIsPlacing] = useState(false);
 	const [tokenPositionOverrides, setTokenPositionOverrides] = useState<Record<string, { x: number; y: number }>>({});
+	const hasInitializedDiceMessageRef = useRef(false);
 	const { isMobile } = useScreenSize();
 	const insets = useSafeAreaInsets();
 	const dmOverlayPulse = useRef(new Animated.Value(0.5)).current;
@@ -160,6 +186,32 @@ const MultiplayerGameScreen: React.FC = () => {
 		() => effectiveGameState?.mapState || mapStateData || null,
 		[effectiveGameState?.mapState, mapStateData],
 	);
+	useEffect(() => {
+		// Avoid replaying historical DM rolls on initial sync; only react to new messages after we have initialized
+		const messages = effectiveGameState?.messages || [];
+		const latestDiceMessage = [...messages].reverse().find(m => m.diceRoll);
+		if (!wsIsConnected || !latestDiceMessage?.diceRoll) {
+			return;
+		}
+		if (!hasInitializedDiceMessageRef.current) {
+			// First sync: record the latest dice message so we only show overlays for subsequent rolls
+			lastDiceMessageIdRef.current = latestDiceMessage.id;
+			hasInitializedDiceMessageRef.current = true;
+			return;
+		}
+		if (latestDiceMessage.id !== lastDiceMessageIdRef.current) {
+			lastDiceMessageIdRef.current = latestDiceMessage.id;
+			setDiceOverlay({
+				id: latestDiceMessage.id,
+				notation: latestDiceMessage.diceRoll.notation,
+				rolls: latestDiceMessage.diceRoll.rolls,
+				total: latestDiceMessage.diceRoll.total,
+				breakdown: latestDiceMessage.diceRoll.breakdown,
+				speaker: latestDiceMessage.speaker,
+				label: latestDiceMessage.diceRoll.label,
+			});
+		}
+	}, [effectiveGameState?.messages, wsIsConnected]);
 	const queryClient = useQueryClient();
 	const mapQueryKey = useMemo(() => inviteCode ? [`/games/${inviteCode}/map`] : null, [inviteCode]);
 
@@ -233,6 +285,24 @@ const MultiplayerGameScreen: React.FC = () => {
 		}
 		return effectiveGameState?.characters.find(c => c.id === activeCharacterIdForMovement) ?? null;
 	}, [effectiveGameState?.characters, activeCharacterIdForMovement]);
+
+	const rerollActor = useMemo(() => {
+		if (!lastActionRequest?.actorId) {
+			return null;
+		}
+		return effectiveGameState?.characters.find(c => c.id === lastActionRequest.actorId) ?? null;
+	}, [effectiveGameState?.characters, lastActionRequest?.actorId]);
+
+	const canRerollCriticalMiss = useMemo(() => {
+		if (!combatResult || !rerollActor) {
+			return false;
+		}
+		if (!combatResult.attackRoll?.fumble) {
+			return false;
+		}
+		const skills = rerollActor.skills || [];
+		return skills.includes('reroll_critical_failure') || skills.includes('lucky');
+	}, [combatResult, rerollActor]);
 
 	const playerToken = useMemo(() => {
 		if (!mapState) {
@@ -410,6 +480,7 @@ const MultiplayerGameScreen: React.FC = () => {
 	const deleteMapTokenMutation = useDeleteMapToken(inviteCode || '');
 	const startTurnMutation = useStartTurn(inviteCode || '');
 	const castSpellMutation = useCastSpell(inviteCode || '');
+	const dmRollDiceMutation = useDmRollDice(inviteCode || null);
 
 	const handleSwitchMap = useCallback(
 		async (mapId: string) => {
@@ -742,6 +813,17 @@ const MultiplayerGameScreen: React.FC = () => {
 					category: 'Map',
 					action: () => {
 						setShowMapSwitcher(true);
+						setShowCommandPalette(false);
+					},
+				},
+				{
+					id: 'dm-roll-dice',
+					label: 'DM Roll Dice',
+					description: 'Roll custom dice and broadcast to all players',
+					keywords: ['roll', 'dice', 'dm', 'd20', 'd6'],
+					category: 'DM',
+					action: () => {
+						setShowDmRollModal(true);
 						setShowCommandPalette(false);
 					},
 				},
@@ -1142,10 +1224,17 @@ const MultiplayerGameScreen: React.FC = () => {
 
 	const handleTokenLongPress = useCallback(
 		(token: MapToken) => {
-			// Only show token detail modal on long press for host
+			// Only show character modal on long press for host
 			if (isHost) {
-				setSelectedToken(token);
-				setShowTokenModal(true);
+				// Check if it's a player or NPC token and open appropriate modal
+				if (token.type === 'player' || token.type === 'npc') {
+					// Use CharacterDMModal instead of TokenDetailModal
+					setSelectedCharacterForDM({
+						id: token.id,
+						type: token.type as 'player' | 'npc',
+					});
+					setShowCharacterDMModal(true);
+				}
 			}
 		},
 		[isHost],
@@ -1775,6 +1864,35 @@ const MultiplayerGameScreen: React.FC = () => {
 		setShowCombatResult(true);
 	}, []);
 
+	const handleRerollCombatAction = useCallback(async () => {
+		if (!lastActionRequest) {
+			return;
+		}
+		setIsRerollingAction(true);
+		try {
+			let response: { actionResult?: CharacterActionResult } | null = null;
+			if (lastActionRequest.source === 'cast') {
+				response = await castSpellMutation.mutateAsync({
+					path: lastActionRequest.path,
+					body: lastActionRequest.body,
+				});
+			} else {
+				response = await performActionMutation.mutateAsync({
+					path: lastActionRequest.path,
+					body: lastActionRequest.body,
+				});
+			}
+			if (response?.actionResult) {
+				presentCombatResult(response.actionResult);
+			}
+		} catch (error) {
+			console.error('Failed to re-roll action:', error);
+			Alert.alert('Error', error instanceof Error ? error.message : 'Failed to re-roll action');
+		} finally {
+			setIsRerollingAction(false);
+		}
+	}, [lastActionRequest, castSpellMutation, performActionMutation, presentCombatResult]);
+
 	const handlePlayerAction = useCallback(
 		async (action: PlayerAction, x: number, y: number) => {
 			if (!inviteCode || !mapState) return;
@@ -1943,15 +2061,33 @@ const MultiplayerGameScreen: React.FC = () => {
 							Alert.alert('No Target', 'Select a target to attack.');
 							break;
 						}
+
+						// Check if target is unconscious
+						const targetToken = mapState.tokens?.find(t => t.x === x && t.y === y);
+						const targetHp = targetToken?.hitPoints ?? 10; // Default to 10 if unknown
+						if (targetHp <= 0 && !isHost) {
+							Alert.alert('Invalid Target', 'Target is unconscious and cannot be attacked.');
+							break;
+						}
+
 						if (activeCharacterId) {
 							try {
-								const response = await performActionMutation.mutateAsync({
+								const attackStyle =
+									activeToken && isInMeleeRange({ x: activeToken.x, y: activeToken.y }, { x, y })
+										? 'melee'
+										: 'ranged';
+								const actionRequest: ActionReplayRequest = {
 									path: `/games/${inviteCode}/characters/${activeCharacterId}/actions`,
 									body: {
 										actionType: 'basic_attack',
 										targetId: targetInfo.targetId,
+										params: { attackType: attackStyle },
 									},
-								});
+									actorId: activeCharacterId,
+									source: 'perform',
+								};
+								setLastActionRequest(actionRequest);
+								const response = await performActionMutation.mutateAsync(actionRequest);
 								if (response.actionResult) {
 									presentCombatResult(response.actionResult);
 								}
@@ -2036,7 +2172,7 @@ const MultiplayerGameScreen: React.FC = () => {
 		>
 			<View style={[styles.mapContainer, isPausedForPlayers && styles.mapDimmed]}>
 				<DMActionBanner
-					visible={Boolean(gameState?.pausedTurn) && isHost}
+					visible={Boolean(effectiveGameState?.pausedTurn) && isHost}
 					message="DM is taking an action"
 				/>
 				{isHost && isMapEditMode && (
@@ -2061,7 +2197,7 @@ const MultiplayerGameScreen: React.FC = () => {
 				)}
 				{mapState ? (
 					<View pointerEvents={isPausedForPlayers ? 'none' : 'auto'}>
-							<InteractiveMap
+						<InteractiveMap
 							map={mapState}
 							// Allow drag/drop targets even outside map edit mode so DM can reposition tokens mid-encounter
 							isEditable={isHost}
@@ -2206,7 +2342,124 @@ const MultiplayerGameScreen: React.FC = () => {
 				onClose={() => {
 					setShowCombatResult(false);
 					setCombatResult(null);
+					setIsRerollingAction(false);
+					setLastActionRequest(null);
 				}}
+				canRerollCriticalMiss={canRerollCriticalMiss}
+				onRerollCriticalMiss={canRerollCriticalMiss ? handleRerollCombatAction : undefined}
+				isRerolling={isRerollingAction}
+			/>
+			<Modal
+				visible={showDmRollModal}
+				animationType="slide"
+				transparent
+				onRequestClose={() => setShowDmRollModal(false)}
+			>
+				<View style={styles.dmRollOverlay}>
+					<ThemedView style={styles.dmRollCard}>
+						<ThemedText style={styles.dmRollTitle}>Roll Dice (DM)</ThemedText>
+						<View style={styles.dmRollRow}>
+							<View style={styles.dmRollField}>
+								<ThemedText>Dice</ThemedText>
+								<TextInput
+									style={styles.dmRollInput}
+									value={dmRollNumDice}
+									onChangeText={setDmRollNumDice}
+									keyboardType="numeric"
+									placeholder="Count"
+									placeholderTextColor="#9B8B7A"
+								/>
+							</View>
+							<ThemedText style={styles.dmRollX}>d</ThemedText>
+							<View style={styles.dmRollField}>
+								<ThemedText>Sides</ThemedText>
+								<TextInput
+									style={styles.dmRollInput}
+									value={dmRollDieSize}
+									onChangeText={setDmRollDieSize}
+									keyboardType="numeric"
+									placeholder="Size"
+									placeholderTextColor="#9B8B7A"
+								/>
+							</View>
+							<ThemedText style={styles.dmRollX}>+</ThemedText>
+							<View style={styles.dmRollField}>
+								<ThemedText>Mod</ThemedText>
+								<TextInput
+									style={styles.dmRollInput}
+									value={dmRollModifier}
+									onChangeText={setDmRollModifier}
+									keyboardType="numeric"
+									placeholder="0"
+									placeholderTextColor="#9B8B7A"
+								/>
+							</View>
+						</View>
+						<View style={styles.dmRollFieldFull}>
+							<ThemedText>Label (optional)</ThemedText>
+							<TextInput
+								style={styles.dmRollInput}
+								value={dmRollLabel}
+								onChangeText={setDmRollLabel}
+								placeholder="e.g., Fireball damage"
+								placeholderTextColor="#9B8B7A"
+							/>
+						</View>
+						<View style={styles.dmRollActions}>
+							<TouchableOpacity
+								style={[styles.dmRollButton, styles.dmRollCancel]}
+								onPress={() => setShowDmRollModal(false)}
+							>
+								<ThemedText style={styles.dmRollButtonText}>Cancel</ThemedText>
+							</TouchableOpacity>
+							<TouchableOpacity
+								style={[styles.dmRollButton, styles.dmRollSubmit]}
+								onPress={async () => {
+									if (!inviteCode) return;
+									try {
+										const body = {
+											numDice: parseInt(dmRollNumDice, 10) || 1,
+											dieSize: parseInt(dmRollDieSize, 10) || 20,
+											modifier: Number(dmRollModifier) || 0,
+											label: dmRollLabel || undefined,
+										};
+										const result = await dmRollDiceMutation.mutateAsync({
+											path: `/games/${inviteCode}/dice/dm-roll`,
+											body,
+										});
+										if (result) {
+											setDiceOverlay({
+												id: `local-${Date.now()}`,
+												notation: result.notation,
+												rolls: result.rolls,
+												total: result.total,
+												breakdown: result.breakdown,
+												speaker: 'DM',
+												label: body.label,
+											});
+										}
+										setShowDmRollModal(false);
+									} catch (error) {
+										console.error('Failed to roll dice:', error);
+										Alert.alert('Error', 'Failed to roll dice');
+									}
+								}}
+							>
+								<ThemedText style={styles.dmRollButtonText}>Roll</ThemedText>
+							</TouchableOpacity>
+						</View>
+					</ThemedView>
+				</View>
+			</Modal>
+			<DiceRollOverlay
+				visible={!!diceOverlay}
+				notation={diceOverlay?.notation || ''}
+				rolls={diceOverlay?.rolls || []}
+				total={diceOverlay?.total || 0}
+				breakdown={diceOverlay?.breakdown || ''}
+				speaker={diceOverlay?.speaker}
+				label={diceOverlay?.label}
+				onClose={() => setDiceOverlay(null)}
 			/>
 			<View style={styles.statusBar}>
 				<ConnectionStatusIndicator onGameStateUpdate={handleGameStateUpdate} />
@@ -2267,7 +2520,7 @@ const MultiplayerGameScreen: React.FC = () => {
 					)}
 					{isHost && (
 						<>
-							{gameState?.pausedTurn && (
+							{effectiveGameState?.pausedTurn && (
 								<TouchableOpacity
 									style={[styles.lobbyButton, styles.resumeButton]}
 									onPress={async () => {
@@ -2287,7 +2540,7 @@ const MultiplayerGameScreen: React.FC = () => {
 									<ThemedText style={styles.lobbyButtonText}>Resume Turn</ThemedText>
 								</TouchableOpacity>
 							)}
-							{gameState?.activeTurn && gameState.activeTurn.type !== 'dm' && (
+							{effectiveGameState?.activeTurn && !effectiveGameState?.pausedTurn && (
 								<TouchableOpacity
 									style={[styles.lobbyButton, styles.interruptButton]}
 									onPress={async () => {
@@ -2333,7 +2586,7 @@ const MultiplayerGameScreen: React.FC = () => {
 									}
 								}}
 							>
-								<ThemedText style={styles.lobbyButtonText}>End Enconter</ThemedText>
+								<ThemedText style={styles.lobbyButtonText}>End Encounter</ThemedText>
 							</TouchableOpacity>
 							<ThemedText style={styles.hostBadge}>Host</ThemedText>
 						</>
@@ -2465,7 +2718,8 @@ const MultiplayerGameScreen: React.FC = () => {
 				</View>
 			</Modal>
 
-			{/* Token Detail Modal */}
+			{/* Token Detail Modal - REMOVED in favor of CharacterDMModal */}
+			{/*
 			<TokenDetailModal
 				visible={showTokenModal}
 				token={selectedToken}
@@ -2491,6 +2745,7 @@ const MultiplayerGameScreen: React.FC = () => {
 				} : undefined}
 				canEdit={isHost}
 			/>
+			*/}
 
 			{/* Tile Action Menu */}
 			{tileActionMenu && (
@@ -2645,13 +2900,17 @@ const MultiplayerGameScreen: React.FC = () => {
 								Alert.alert('No Target', 'Select a target before casting a spell.');
 								return;
 							}
-							const response = await castSpellMutation.mutateAsync({
+							const actionRequest: ActionReplayRequest = {
 								path: `/games/${inviteCode}/characters/${characterId}/cast-spell`,
 								body: {
 									spellName: action.name,
 									targetId: pendingActionTarget.targetId,
 								},
-							});
+								actorId: characterId,
+								source: 'cast',
+							};
+							setLastActionRequest(actionRequest);
+							const response = await castSpellMutation.mutateAsync(actionRequest);
 							if (response.actionResult) {
 								presentCombatResult(response.actionResult);
 							}
@@ -2661,13 +2920,35 @@ const MultiplayerGameScreen: React.FC = () => {
 									Alert.alert('No Target', 'Select a target to attack.');
 									return;
 								}
-								const response = await performActionMutation.mutateAsync({
+								const attackerToken = mapState?.tokens?.find(
+									t =>
+										(t.entityId === characterId || t.id === characterId) &&
+										(t.type === 'player' || t.type === 'npc'),
+								);
+								const targetToken = mapState?.tokens?.find(
+									t =>
+										t.id === pendingActionTarget.targetId ||
+										(t.entityId && t.entityId === pendingActionTarget.targetId),
+								);
+								const attackStyle =
+									attackerToken && targetToken && isInMeleeRange(
+										{ x: attackerToken.x, y: attackerToken.y },
+										{ x: targetToken.x, y: targetToken.y },
+									)
+										? 'melee'
+										: 'ranged';
+								const actionRequest: ActionReplayRequest = {
 									path: `/games/${inviteCode}/characters/${characterId}/actions`,
 									body: {
 										actionType: 'basic_attack',
 										targetId: pendingActionTarget.targetId,
+										params: { attackType: attackStyle },
 									},
-								});
+									actorId: characterId,
+									source: 'perform',
+								};
+								setLastActionRequest(actionRequest);
+								const response = await performActionMutation.mutateAsync(actionRequest);
 								if (response.actionResult) {
 									presentCombatResult(response.actionResult);
 								}
@@ -3412,6 +3693,74 @@ const styles = StyleSheet.create({
 		color: '#FFFFFF',
 		fontSize: 12,
 		fontWeight: '600',
+	},
+	dmRollOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0,0,0,0.45)',
+		alignItems: 'center',
+		justifyContent: 'center',
+		padding: 20,
+	},
+	dmRollCard: {
+		backgroundColor: '#FFF9EF',
+		borderRadius: 12,
+		padding: 18,
+		borderWidth: 1,
+		borderColor: '#C9B037',
+		width: '90%',
+		maxWidth: 520,
+	},
+	dmRollTitle: {
+		fontSize: 18,
+		fontWeight: '700',
+		color: '#3B2F1B',
+		marginBottom: 12,
+	},
+	dmRollRow: {
+		flexDirection: 'row',
+		alignItems: 'flex-end',
+		marginBottom: 12,
+		gap: 6,
+	},
+	dmRollField: {
+		flex: 1,
+	},
+	dmRollFieldFull: {
+		marginBottom: 12,
+	},
+	dmRollInput: {
+		borderWidth: 1,
+		borderColor: '#C9B037',
+		borderRadius: 8,
+		padding: 10,
+		marginTop: 4,
+		backgroundColor: '#FFF',
+		color: '#3B2F1B',
+	},
+	dmRollX: {
+		fontWeight: '700',
+		color: '#3B2F1B',
+		marginBottom: 8,
+	},
+	dmRollActions: {
+		flexDirection: 'row',
+		justifyContent: 'flex-end',
+		gap: 10,
+	},
+	dmRollButton: {
+		paddingVertical: 10,
+		paddingHorizontal: 14,
+		borderRadius: 8,
+	},
+	dmRollCancel: {
+		backgroundColor: '#E5E7EB',
+	},
+	dmRollSubmit: {
+		backgroundColor: '#4A6741',
+	},
+	dmRollButtonText: {
+		fontWeight: '700',
+		color: '#3B2F1B',
 	},
 });
 

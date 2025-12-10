@@ -2,7 +2,6 @@ import { type UseQueryOptions, useQueryClient } from '@tanstack/react-query';
 import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 
 import { websocketClient } from '@/services/api/websocket-client';
-
 import type {
 	ActivityLogListResponse,
 	GameSessionResponse,
@@ -20,7 +19,7 @@ export function useGameSession(
 ) {
 	// Don't make API call if inviteCode is falsy - pass empty string and disable query
 	return useQueryApi<GameSessionResponse>(
-		inviteCode ? `/games/${inviteCode}` : '',
+		inviteCode ? `/games/${inviteCode}` : '/games/null',
 		{
 			enabled: !!inviteCode, // Only enable when we have an invite code
 			refetchInterval: options?.refetchInterval,
@@ -51,7 +50,7 @@ export function useActivityLogs(
 	offset: number = 0,
 ) {
 	return useQueryApi<ActivityLogListResponse>(
-		inviteCode ? `/games/${inviteCode}/log?limit=${limit}&offset=${offset}` : '',
+		inviteCode ? `/games/${inviteCode}/log?limit=${limit}&offset=${offset}` : '/games/null/log',
 		{
 			enabled: !!inviteCode,
 		},
@@ -70,7 +69,7 @@ export function useCurrentTurn(inviteCode: string | null | undefined) {
 			startedAt: number;
 		} | null;
 	}>(
-		inviteCode ? `/games/${inviteCode}/turn` : '',
+		inviteCode ? `/games/${inviteCode}/turn` : '/games/null/turn',
 		{
 			enabled: !!inviteCode,
 		},
@@ -236,6 +235,23 @@ export function useClearActivityLogs(inviteCode: string) {
 		onSuccess: () => {
 			// Invalidate activity logs
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/log`] });
+		},
+	});
+}
+
+/**
+ * DM dice roll mutation
+ */
+export function useDmRollDice(inviteCode: string | null) {
+	const queryClient = useQueryClient();
+
+	return useMutationApi<{ notation: string; rolls: number[]; total: number; breakdown: string }>({
+		method: 'POST',
+		onSuccess: () => {
+			if (inviteCode) {
+				queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
+				queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/log`] });
+			}
 		},
 	});
 }

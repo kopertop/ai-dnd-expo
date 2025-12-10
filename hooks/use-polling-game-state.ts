@@ -27,7 +27,7 @@ export function usePollingGameState(options: UsePollingGameStateOptions) {
 
 	// The /state endpoint returns MultiplayerGameState directly (GameStateResponse)
 	const query = useQueryApi<GameStateResponse>(
-		enabled && inviteCode ? `/games/${inviteCode}/state` : '',
+		enabled && inviteCode ? `/games/${inviteCode}/state` : '/games/null/state',
 		{
 			enabled: enabled && !!inviteCode,
 			refetchInterval: enabled && inviteCode ? pollInterval : false,
@@ -50,4 +50,3 @@ export function usePollingGameState(options: UsePollingGameStateOptions) {
 		refresh: query.refetch,
 	};
 }
-

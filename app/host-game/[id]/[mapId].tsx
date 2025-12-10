@@ -4,35 +4,36 @@ import { useAuth } from 'expo-auth-template/frontend';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-	ActivityIndicator,
-	Alert,
-	Modal,
-	Platform,
-	ScrollView,
-	StyleSheet,
-	TextInput,
-	TouchableOpacity,
-	View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppFooter } from '@/components/app-footer';
+import { CharacterDMModal } from '@/components/character-dm-modal';
 import { InteractiveMap } from '@/components/map/interactive-map';
 import { TileActionMenu, type TileAction } from '@/components/map/tile-action-menu';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { TokenDetailModal } from '@/components/token-detail-modal';
 import { useGameCharacters } from '@/hooks/api/use-character-queries';
 import {
-	useDeleteMapToken,
-	useGenerateMap,
-	useMapState,
-	useMutateTerrain,
-	useNpcDefinitions,
-	usePlaceNpc,
-	usePlacePlayerToken,
-	useSaveMapToken,
-	useUpdateMapState,
+    useDeleteMapToken,
+    useGenerateMap,
+    useMapState,
+    useMoveToken,
+    useMutateTerrain,
+    useNpcDefinitions,
+    usePlaceNpc,
+    usePlacePlayerToken,
+    useSaveMapToken,
+    useUpdateMapState,
 } from '@/hooks/api/use-map-queries';
 import { Character } from '@/types/character';
 import { MapToken, NpcDefinition } from '@/types/multiplayer-map';
@@ -351,7 +352,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 	const terrainMutationsInFlight = useRef(0);
 	const [tileMenuVisible, setTileMenuVisible] = useState(false);
 	const [selectedTile, setSelectedTile] = useState<{ x: number; y: number } | null>(null);
-	const [tokenDetailVisible, setTokenDetailVisible] = useState(false);
+	const [showCharacterDMModal, setShowCharacterDMModal] = useState(false);
 	const [selectedToken, setSelectedToken] = useState<MapToken | null>(null);
 	const insets = useSafeAreaInsets();
 	const { user } = useAuth();
@@ -374,6 +375,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 	const placePlayerTokenMutation = usePlacePlayerToken(inviteCode || '');
 	const saveMapTokenMutation = useSaveMapToken(inviteCode || '');
 	const deleteMapTokenMutation = useDeleteMapToken(inviteCode || '');
+	const moveTokenMutation = useMoveToken(inviteCode || '');
 
 	const applyTerrainEdit = useCallback(
 		async (x: number, y: number) => {
@@ -401,7 +403,26 @@ const HostGameMapEditorScreen: React.FC = () => {
 							: editorMode === 'mountain'
 								? 'mountain'
 								: null;
-			const isBlocked = editorMode === 'tree' || editorMode === 'water' || editorMode === 'mountain';
+
+			// Determine properties based on editor mode
+			let isBlocked = false;
+			let isDifficult = false;
+			let movementCost = 1.0;
+			let providesCover = false;
+			let coverType: 'half' | 'three-quarters' | 'full' | null = null;
+
+			if (editorMode === 'water' || editorMode === 'mountain') {
+				isBlocked = true;
+				movementCost = 999;
+			} else if (editorMode === 'tree') {
+				isDifficult = true;
+				movementCost = 2.0;
+				providesCover = true;
+				coverType = 'half';
+			} else if (editorMode === 'road') {
+				movementCost = 0.5;
+			}
+
 			const metadata =
 				editorMode === 'road'
 					? { variant: 'stone' }
@@ -426,6 +447,10 @@ const HostGameMapEditorScreen: React.FC = () => {
 								terrainType,
 								featureType,
 								isBlocked,
+								isDifficult,
+								movementCost,
+								providesCover,
+								coverType,
 								metadata,
 							},
 						],
@@ -676,7 +701,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 
 	const handleTokenLongPress = useCallback((token: MapToken) => {
 		setSelectedToken(token);
-		setTokenDetailVisible(true);
+		setShowCharacterDMModal(true);
 	}, []);
 
 	const handleTokenMove = useCallback(() => {
@@ -692,7 +717,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 				await deleteMapTokenMutation.mutateAsync({
 					path: `/games/${inviteCode}/map/tokens/${selectedToken.id}`,
 				});
-				setTokenDetailVisible(false);
+				setShowCharacterDMModal(false);
 				setSelectedToken(null);
 			} catch (error) {
 				Alert.alert('Delete Failed', error instanceof Error ? error.message : 'Unable to delete token');
@@ -700,6 +725,34 @@ const HostGameMapEditorScreen: React.FC = () => {
 		};
 		void deleteToken();
 	}, [inviteCode, selectedToken, deleteMapTokenMutation]);
+
+	const handleCharacterDamage = useCallback(
+		async (characterId: string, amount: number) => {
+			if (!inviteCode) return;
+			// TODO: Implement damage handling for map editor context if needed
+			// For now, map editor is primarily for layout, but character interactions might be useful
+			console.log('Damage not implemented in map editor yet', { characterId, amount });
+		},
+		[inviteCode],
+	);
+
+	const handleCharacterHeal = useCallback(
+		async (characterId: string, amount: number) => {
+			if (!inviteCode) return;
+			// TODO: Implement heal handling for map editor context if needed
+			console.log('Heal not implemented in map editor yet', { characterId, amount });
+		},
+		[inviteCode],
+	);
+
+	const handleUpdateCharacter = useCallback(
+		(characterId: string, updates: Partial<Character>) => {
+			if (!inviteCode) return;
+			// TODO: Implement character update for map editor context if needed
+			console.log('Update character not implemented in map editor yet', { characterId, updates });
+		},
+		[inviteCode],
+	);
 
 	const getAvailableTileActions = useCallback((): TileAction[] => {
 		return ['placeNpc', 'placePlayer', 'changeTerrain'];
@@ -815,6 +868,7 @@ const HostGameMapEditorScreen: React.FC = () => {
 							<InteractiveMap
 								map={mapState}
 								isEditable
+								enableTokenDrag={true}
 								onTilePress={handleTilePress}
 								onTileDrag={handleTileDrag}
 								onTileDragEnd={handleTileDragEnd}
@@ -832,6 +886,25 @@ const HostGameMapEditorScreen: React.FC = () => {
 										} catch (error) {
 											Alert.alert('Error', error instanceof Error ? error.message : 'Failed to remove NPC');
 										}
+										return;
+									}
+
+									// Handle regular token movement (not deletion)
+									if (x >= 0 && y >= 0 && moveTokenMutation) {
+										try {
+											await moveTokenMutation.mutateAsync({
+												path: `/games/${inviteCode}/map/move`,
+												body: {
+													tokenId: token.id,
+													x,
+													y,
+													overrideValidation: true,
+												},
+											});
+										} catch (error) {
+											console.error('Failed to move token:', error);
+											Alert.alert('Error', error instanceof Error ? error.message : 'Failed to move token');
+										}
 									}
 								}}
 							/>
@@ -846,17 +919,30 @@ const HostGameMapEditorScreen: React.FC = () => {
 									setSelectedTile(null);
 								}}
 							/>
-							<TokenDetailModal
-								visible={tokenDetailVisible}
-								token={selectedToken}
-								canEdit={true}
-								onClose={() => {
-									setTokenDetailVisible(false);
-									setSelectedToken(null);
-								}}
-								onMove={handleTokenMove}
-								onDelete={handleTokenDelete}
-							/>
+							{/* Character DM Modal replaces TokenDetailModal */}
+							{selectedToken && (
+								<CharacterDMModal
+									gameId={inviteCode || ''}
+									visible={showCharacterDMModal}
+									character={
+										selectedToken.type === 'player'
+											? lobbyCharacters.find(c => c.id === selectedToken.entityId || c.id === selectedToken.id) || null
+											: null
+									}
+									npcToken={
+										selectedToken.type === 'npc'
+											? selectedToken
+											: null
+									}
+									onClose={() => {
+										setShowCharacterDMModal(false);
+										setSelectedToken(null);
+									}}
+									onDamage={handleCharacterDamage}
+									onHeal={handleCharacterHeal}
+									onUpdateCharacter={selectedToken.type === 'player' ? handleUpdateCharacter : undefined}
+								/>
+							)}
 						</>
 					) : (
 						<View style={styles.loadingContainer}>

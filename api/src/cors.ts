@@ -19,14 +19,28 @@ function getAllowedOrigin(origin: string | null): string {
 	) {
 		return origin;
 	}
-	console.log('origin', origin);
 
-	// For production, you might want to check against a whitelist
-	// For now, allow the origin if provided, otherwise fall back to '*'
-	return origin || '*';
+	// Check allowed production domains (explicit allowlist only)
+	if (origin) {
+		const allowedDomains = new Set<string>([
+			'https://dnd.coredumped.org',
+			'https://ai-dnd-web.pages.dev',
+		]);
+
+		// Exact matches only (no broad suffix matching)
+		if (allowedDomains.has(origin)) {
+			return origin;
+		}
+	}
+
+	console.log('Blocked origin:', origin);
+
+	// Fallback to null (block) or '*' if you want to allow public access without credentials
+	// Since we use cookies/auth, we should be strict
+	return '*';
 }
 
-export function corsHeaders(origin: string | null, preserveContentType = false): Record<string, string> {
+export function corsHeaders(origin: string | null): Record<string, string> {
 	const allowedOrigin = getAllowedOrigin(origin);
 
 	const headers: Record<string, string> = {
@@ -35,11 +49,8 @@ export function corsHeaders(origin: string | null, preserveContentType = false):
 		'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Auth-Provider, x-client-version',
 	};
 
-	// Only set Content-Type to JSON if we're not preserving the existing content-type
-	// (e.g., for static assets)
-	if (!preserveContentType) {
-		headers['Content-Type'] = 'application/json';
-	}
+	// Always set Content-Type to JSON for API responses unless overridden later
+	headers['Content-Type'] = 'application/json';
 
 	// Browsers reject credentialed requests when origin is '*'
 	if (allowedOrigin !== '*') {
@@ -54,11 +65,8 @@ export function corsHeaders(origin: string | null, preserveContentType = false):
  */
 export async function corsMiddleware(c: Context, next: Next) {
 	const origin = c.req.header('Origin') || c.req.header('referer') || null;
-	
-	// Check if this is a static asset route (non-API route)
-	const isStaticAsset = !c.req.path.startsWith('/api/');
-	
-	const headers = corsHeaders(origin, isStaticAsset);
+
+	const headers = corsHeaders(origin);
 
 	if (c.req.method === 'OPTIONS') {
 		return new Response(null, { status: 204, headers });
@@ -66,14 +74,12 @@ export async function corsMiddleware(c: Context, next: Next) {
 
 	await next();
 
-	// Add CORS headers to response, but preserve existing Content-Type for static assets
+	// Add CORS headers to response
 	Object.entries(headers).forEach(([key, value]) => {
-		// Don't override Content-Type if it's already set (for static assets)
+		// Don't override Content-Type if it's already set
 		if (key === 'Content-Type' && c.res.headers.get('Content-Type')) {
 			return;
 		}
 		c.header(key, value);
 	});
 }
-
-

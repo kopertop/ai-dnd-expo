@@ -6,6 +6,7 @@ import { SearchableList, type SearchableListItem } from './searchable-list';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
+import { ExpoIconPicker } from '@/components/expo-icon-picker';
 import { useMyCharacters } from '@/hooks/api/use-character-queries';
 import { useNpcDefinitions } from '@/hooks/api/use-map-queries';
 import { Character } from '@/types/character';
@@ -195,15 +196,13 @@ export const NpcSelector: React.FC<NpcSelectorProps> = ({
 							/>
 
 							<ThemedText style={styles.label}>Icon (vector or URL)</ThemedText>
-							<TextInput
-								style={styles.input}
-								value={customNpc.icon}
-								onChangeText={(text) => setCustomNpc({ ...customNpc, icon: text })}
-								placeholder="MaterialIcons:dragon or https://example.com/dragon.png"
-								placeholderTextColor="#999"
-								autoCapitalize="none"
-								autoCorrect={false}
-							/>
+							<View style={{ marginBottom: 16 }}>
+								<ExpoIconPicker
+									value={customNpc.icon}
+									onChange={(icon) => setCustomNpc({ ...customNpc, icon })}
+									label=""
+								/>
+							</View>
 
 							<ThemedText style={styles.label}>Alignment</ThemedText>
 							<View style={styles.alignmentRow}>

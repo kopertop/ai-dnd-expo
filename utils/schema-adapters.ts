@@ -68,7 +68,11 @@ const applyTileOverrides = (grid: TerrainCell[][], tiles?: MapTileRow[]) => {
 			terrain: tile.terrain_type,
 			elevation: tile.elevation ?? cell.elevation ?? 0,
 			fogged: Boolean(tile.has_fog),
-			difficult: Boolean(tile.is_blocked),
+			blocked: Boolean(tile.is_blocked), // Truly impassible
+			difficult: Boolean(tile.is_difficult), // Difficult terrain
+			movementCost: tile.movement_cost ?? 1.0,
+			providesCover: Boolean(tile.provides_cover),
+			coverType: tile.cover_type as any,
 			featureType: tile.feature_type,
 			metadata: parseJson<Record<string, unknown>>(tile.metadata, {}),
 		};

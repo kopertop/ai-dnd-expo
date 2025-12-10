@@ -1,10 +1,10 @@
 import type { Connection, ConnectionContext } from 'partyserver';
 import { Server } from 'partyserver';
 
-import { GameStateService } from '@/api/src/services/game-state';
-import { createDatabase } from '@/api/src/utils/repository';
-import { createId } from '@/api/src/utils/games-utils';
 import type { CloudflareBindings } from '@/api/src/env';
+import { GameStateService } from '@/api/src/services/game-state';
+import { createId } from '@/api/src/utils/games-utils';
+import { createDatabase } from '@/api/src/utils/repository';
 import type { CharacterRow, GamePlayerRow, GameRow, MapTokenRow } from '@/shared/workers/db';
 import { Database } from '@/shared/workers/db';
 
@@ -120,7 +120,26 @@ export class GameRoom extends Server<CloudflareBindings> {
 		connection.send(JSON.stringify({ type: 'error', message: 'Unknown message type' }));
 	}
 
-	async onRequest(_request: Request) {
+	async onRequest(request: Request) {
+		// Allow internal POST to trigger broadcast to all connected clients (e.g., after DM dice roll)
+		if (request.method === 'POST') {
+			const secretHeader = request.headers.get('x-party-secret') || request.headers.get('authorization')?.replace('Bearer ', '').trim();
+			if (this.env.PARTYKIT_SECRET && secretHeader !== this.env.PARTYKIT_SECRET) {
+				return new Response('Forbidden', { status: 403 });
+			}
+			try {
+				const game = await this.resolveGameByRoomName();
+				await this.broadcastState(game);
+				return new Response(JSON.stringify({ ok: true }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' },
+				});
+			} catch (error) {
+				console.error('PartyServer broadcastState failed', error);
+				return new Response(JSON.stringify({ ok: false }), { status: 500 });
+			}
+		}
+
 		return new Response('Not found', { status: 404 });
 	}
 
@@ -175,6 +194,12 @@ export class GameRoom extends Server<CloudflareBindings> {
 		const characterName = payload?.characterName || character?.name || 'Unknown adventurer';
 
 		if (!character) {
+			// If no payload is provided (e.g. initial connection) and character not found,
+			// do not create a default character to avoid "Unknown Adventurer" issues.
+			if (!payload) {
+				return;
+			}
+
 			const defaultCharacter: CharacterRow = {
 				id: characterId,
 				player_id: playerId,
@@ -248,6 +273,11 @@ export class GameRoom extends Server<CloudflareBindings> {
 	private async broadcastState(game: GameRow) {
 		const state = await this.stateService.getState(game);
 		this.broadcast(JSON.stringify({ type: 'state', state }));
+	}
+
+	private async resolveGameByRoomName(): Promise<GameRow> {
+		const inviteCode = parseInviteCode(this.name);
+		return this.resolveGame(inviteCode);
 	}
 
 	private resolveConnectionUser(connection: Connection): { playerId: string; email: string | null } | null {

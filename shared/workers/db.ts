@@ -76,6 +76,7 @@ export interface MapRow {
 	seed: string;
 	theme: string;
 	biome: string;
+	world: string | null; // World ID (null = world-agnostic)
 	is_generated: number;
 	created_at: number;
 	updated_at: number;
@@ -92,6 +93,20 @@ export interface MapTileRow {
 	has_fog: number;
 	feature_type: string | null;
 	metadata: string;
+}
+
+export interface UploadedImageRow {
+	id: string;
+	user_id: string;
+	filename: string;
+	r2_key: string;
+	public_url: string;
+	title: string | null;
+	description: string | null;
+	image_type: 'npc' | 'character' | 'both';
+	is_public: number;
+	created_at: number;
+	updated_at: number;
 }
 
 export interface NpcRow {
@@ -335,6 +350,13 @@ export class Database {
 		await this.db.prepare('DELETE FROM characters WHERE id = ?').bind(characterId).run();
 	}
 
+	async getAllCharacters(): Promise<CharacterRow[]> {
+		const result = await this.db.prepare(
+			'SELECT * FROM characters ORDER BY updated_at DESC',
+		).all<CharacterRow>();
+		return result.results || [];
+	}
+
 	// Game player operations
 	async addPlayerToGame(player: Omit<GamePlayerRow, 'id'>): Promise<string> {
 		const id = `gp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -454,6 +476,13 @@ export class Database {
 		return result || null;
 	}
 
+	async getMapBySlug(slug: string): Promise<MapRow | null> {
+		const result = await this.db.prepare(
+			'SELECT * FROM maps WHERE slug = ?',
+		).bind(slug).first<MapRow>();
+		return result || null;
+	}
+
 	async getMapTiles(mapId: string): Promise<MapTileRow[]> {
 		const result = await this.db.prepare(
 			'SELECT * FROM map_tiles WHERE map_id = ? ORDER BY y ASC, x ASC',
@@ -466,9 +495,9 @@ export class Database {
 		await this.db.prepare(
 			`INSERT INTO maps (
 				id, slug, name, description, width, height, default_terrain, fog_of_war,
-				terrain_layers, metadata, generator_preset, seed, theme, biome, is_generated,
+				terrain_layers, metadata, generator_preset, seed, theme, biome, world, is_generated,
 				created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(id) DO UPDATE SET
 				slug = excluded.slug,
 				name = excluded.name,
@@ -483,6 +512,7 @@ export class Database {
 				seed = excluded.seed,
 				theme = excluded.theme,
 				biome = excluded.biome,
+				world = excluded.world,
 				is_generated = excluded.is_generated,
 				updated_at = excluded.updated_at`,
 		).bind(
@@ -500,6 +530,7 @@ export class Database {
 			map.seed,
 			map.theme,
 			map.biome,
+			map.world ?? null,
 			map.is_generated,
 			map.created_at ?? now,
 			map.updated_at ?? now,
@@ -576,6 +607,7 @@ export class Database {
 			seed: `${sourceMap.seed}_clone_${now}`,
 			theme: sourceMap.theme,
 			biome: sourceMap.biome,
+			world: sourceMap.world, // Preserve world when cloning
 			is_generated: sourceMap.is_generated,
 			created_at: now,
 			updated_at: now,
@@ -615,8 +647,12 @@ export class Database {
 			y: number;
 			terrain_type: string;
 			elevation?: number;
+			movement_cost?: number;
 			is_blocked?: number;
+			is_difficult?: number;
 			has_fog?: number;
+			provides_cover?: number;
+			cover_type?: string | null;
 			feature_type?: string | null;
 			metadata?: string;
 		}>,
@@ -624,13 +660,17 @@ export class Database {
 		const statements = tiles.map(tile =>
 			this.db.prepare(
 				`INSERT INTO map_tiles (
-					id, map_id, x, y, terrain_type, elevation, is_blocked, has_fog, feature_type, metadata
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+					id, map_id, x, y, terrain_type, elevation, movement_cost, is_blocked, is_difficult, has_fog, provides_cover, cover_type, feature_type, metadata
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
 					terrain_type = excluded.terrain_type,
 					elevation = excluded.elevation,
+					movement_cost = excluded.movement_cost,
 					is_blocked = excluded.is_blocked,
+					is_difficult = excluded.is_difficult,
 					has_fog = excluded.has_fog,
+					provides_cover = excluded.provides_cover,
+					cover_type = excluded.cover_type,
 					feature_type = excluded.feature_type,
 					metadata = excluded.metadata`,
 			).bind(
@@ -640,8 +680,12 @@ export class Database {
 				tile.y,
 				tile.terrain_type,
 				tile.elevation ?? 0,
+				tile.movement_cost ?? 1.0,
 				tile.is_blocked ?? 0,
+				tile.is_difficult ?? 0,
 				tile.has_fog ?? 0,
+				tile.provides_cover ?? 0,
+				tile.cover_type ?? null,
 				tile.feature_type ?? null,
 				tile.metadata ?? '{}',
 			),
@@ -874,5 +918,71 @@ export class Database {
 
 	async deleteActivityLogs(gameId: string): Promise<void> {
 		await this.db.prepare('DELETE FROM activity_logs WHERE game_id = ?').bind(gameId).run();
+	}
+
+	// Uploaded Image operations
+	async saveUploadedImage(image: UploadedImageRow): Promise<void> {
+		await this.db.prepare(
+			`INSERT INTO uploaded_images (
+				id, user_id, filename, r2_key, public_url, title, description,
+				image_type, is_public, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET
+				title = excluded.title,
+				description = excluded.description,
+				image_type = excluded.image_type,
+				is_public = excluded.is_public,
+				updated_at = excluded.updated_at`,
+		).bind(
+			image.id,
+			image.user_id,
+			image.filename,
+			image.r2_key,
+			image.public_url,
+			image.title,
+			image.description,
+			image.image_type,
+			image.is_public,
+			image.created_at,
+			image.updated_at,
+		).run();
+	}
+
+	async getUploadedImageById(id: string): Promise<UploadedImageRow | null> {
+		return await this.db.prepare('SELECT * FROM uploaded_images WHERE id = ?').bind(id).first<UploadedImageRow>();
+	}
+
+	async listUploadedImages(
+		userId?: string,
+		imageType?: 'npc' | 'character' | 'both',
+		limit: number = 50,
+		offset: number = 0,
+	): Promise<UploadedImageRow[]> {
+		let query = 'SELECT * FROM uploaded_images WHERE 1=1';
+		const params: any[] = [];
+
+		if (userId) {
+			query += ' AND user_id = ?';
+			params.push(userId);
+		}
+
+		if (imageType) {
+			if (imageType === 'both') {
+				// No filter needed for 'both' as it means all types
+			} else {
+				query += ' AND (image_type = ? OR image_type = "both")';
+				params.push(imageType);
+			}
+		}
+
+		query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+		params.push(limit, offset);
+
+		const result = await this.db.prepare(query).bind(...params).all<UploadedImageRow>();
+		return result.results || [];
+	}
+
+	async deleteUploadedImage(id: string): Promise<void> {
+		await this.db.prepare('DELETE FROM uploaded_images WHERE id = ?').bind(id).run();
 	}
 }

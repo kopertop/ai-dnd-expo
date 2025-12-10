@@ -1,20 +1,34 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from 'expo-auth-template/frontend';
 import { Stack, router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { AppFooter } from '@/components/app-footer';
+import { CharacterList } from '@/components/character-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useMyCharacters } from '@/hooks/api/use-character-queries';
+import { useUserInfo } from '@/hooks/api/use-auth-queries';
+import { useAllCharacters, useMyCharacters } from '@/hooks/api/use-character-queries';
 
 const IndexScreen: React.FC = () => {
 	const [hasSavedGame, setHasSavedGame] = useState(false);
 	const [loading, setLoading] = useState(true);
-	const { user } = useAuth();
-	const { data: charactersData, isLoading: charactersLoading } = useMyCharacters();
-	const characters = Array.isArray(charactersData) ? charactersData : (charactersData?.characters || []);
+	const [activeTab, setActiveTab] = useState('my');
+	const { data: userInfo } = useUserInfo();
+
+	const { data: myCharactersData, isLoading: myCharactersLoading } = useMyCharacters();
+	const myCharacters = Array.isArray(myCharactersData) ? myCharactersData : (myCharactersData?.characters || []);
+	const sortedMyCharacters = useMemo(
+		() => [...myCharacters].sort((a, b) => a.name.localeCompare(b.name)),
+		[myCharacters],
+	);
+
+	const { data: allCharactersData, isLoading: allCharactersLoading } = useAllCharacters();
+	const allCharacters = Array.isArray(allCharactersData) ? allCharactersData : (allCharactersData?.characters || []);
+	const sortedAllCharacters = useMemo(
+		() => [...allCharacters].sort((a, b) => a.name.localeCompare(b.name)),
+		[allCharacters],
+	);
 
 	useEffect(() => {
 		const checkSavedGame = async () => {
@@ -68,30 +82,38 @@ const IndexScreen: React.FC = () => {
 				)}
 				<View style={styles.section}>
 					<View style={styles.sectionHeader}>
-						<ThemedText type="subtitle">My Characters</ThemedText>
+						{userInfo?.is_admin ? (
+							<View style={styles.tabs}>
+								<TouchableOpacity
+									style={[styles.tab, activeTab === 'my' && styles.activeTab]}
+									onPress={() => setActiveTab('my')}
+								>
+									<ThemedText style={[styles.tabLabel, activeTab === 'my' && styles.activeTabLabel]}>My Characters</ThemedText>
+								</TouchableOpacity>
+								<TouchableOpacity
+									style={[styles.tab, activeTab === 'all' && styles.activeTab]}
+									onPress={() => setActiveTab('all')}
+								>
+									<ThemedText style={[styles.tabLabel, activeTab === 'all' && styles.activeTabLabel]}>All Characters</ThemedText>
+								</TouchableOpacity>
+							</View>
+						) : (
+							<ThemedText type="subtitle">My Characters</ThemedText>
+						)}
 						<TouchableOpacity
-							style={styles.manageBtn}
-							onPress={() => router.push('/characters' as never)}
+							style={styles.addBtn}
+							onPress={() => router.push({ pathname: '/new-character', params: { mode: 'character' } } as never)}
 						>
-							<ThemedText style={styles.manageLabel}>Manage</ThemedText>
+							<ThemedText style={styles.addLabel}>+ New Character</ThemedText>
 						</TouchableOpacity>
 					</View>
-					{charactersLoading && (
-						<ThemedText style={styles.sectionHint}>Loading your roster...</ThemedText>
+
+					{activeTab === 'my' && (
+						<CharacterList characters={sortedMyCharacters} isLoading={myCharactersLoading} />
 					)}
-					{!charactersLoading && characters.length === 0 && (
-						<ThemedText style={styles.sectionHint}>
-							Create heroes to reuse when you join DM-hosted games.
-						</ThemedText>
+					{activeTab === 'all' && (
+						<CharacterList characters={sortedAllCharacters} isLoading={allCharactersLoading} />
 					)}
-					{characters.slice(0, 3).map(character => (
-						<View key={character.id} style={styles.characterCard}>
-							<ThemedText style={styles.characterName}>{character.name}</ThemedText>
-							<ThemedText style={styles.characterMeta}>
-								{character.race} {character.class} • Level {character.level}
-							</ThemedText>
-						</View>
-					))}
 				</View>
 			</ScrollView>
 			<AppFooter />
@@ -160,28 +182,35 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'space-between',
 	},
-	manageBtn: {
-		paddingHorizontal: 12,
-		paddingVertical: 6,
-		borderRadius: 6,
-		backgroundColor: 'rgba(0,0,0,0.05)',
+	tabs: {
+		flexDirection: 'row',
+		backgroundColor: '#E6D5B8',
+		borderRadius: 8,
+		padding: 4,
 	},
-	manageLabel: {
+	tab: {
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		borderRadius: 6,
+	},
+	activeTab: {
+		backgroundColor: '#fff',
+	},
+	tabLabel: {
 		color: '#3B2F1B',
 		fontWeight: '600',
 	},
-	sectionHint: {
-		color: '#6B5B3D',
+	activeTabLabel: {
+		color: '#8B6914',
 	},
-	characterCard: {
-		padding: 12,
+	addBtn: {
+		paddingHorizontal: 12,
+		paddingVertical: 8,
 		borderRadius: 8,
-		backgroundColor: 'rgba(255,255,255,0.6)',
+		backgroundColor: '#E6D5B8',
 	},
-	characterName: {
+	addLabel: {
+		color: '#3B2F1B',
 		fontWeight: '600',
-	},
-	characterMeta: {
-		color: '#6B5B3D',
 	},
 });

@@ -191,9 +191,9 @@ function seedMaps(db: BetterSqliteDatabase) {
 	const statement = db.prepare(
 		`INSERT INTO maps (
                         id, slug, name, description, width, height, default_terrain, fog_of_war,
-                        terrain_layers, metadata, generator_preset, seed, theme, biome, is_generated,
+                        terrain_layers, metadata, generator_preset, seed, theme, biome, world, is_generated,
                         created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                         slug = excluded.slug,
                         name = excluded.name,
@@ -208,6 +208,7 @@ function seedMaps(db: BetterSqliteDatabase) {
                         seed = excluded.seed,
                         theme = excluded.theme,
                         biome = excluded.biome,
+                        world = excluded.world,
                         is_generated = excluded.is_generated,
                         updated_at = excluded.updated_at`,
 	);
@@ -229,6 +230,7 @@ function seedMaps(db: BetterSqliteDatabase) {
 			map.slug,
 			map.theme,
 			map.biome,
+			null, // world (null for world-agnostic maps)
 			0,
 			now,
 			now,

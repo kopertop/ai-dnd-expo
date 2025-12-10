@@ -14,16 +14,19 @@ import {
 	View,
 } from 'react-native';
 
+import { getEquipmentSpritesheet } from '@/components/equipment-spritesheet';
+import { PortraitSelector } from '@/components/portrait-selector';
+import { SpriteIcon } from '@/components/sprite-icon';
 import { ThemedView } from '@/components/themed-view';
-import { SKILL_LIST } from '@/constants/skills';
+import { SKILL_DESCRIPTIONS, SKILL_LIST } from '@/constants/skills';
 import { getSpellsForClass } from '@/constants/spells';
-import { STAT_KEYS } from '@/constants/stats';
+import { ATTRIBUTE_DESCRIPTIONS, STAT_KEYS } from '@/constants/stats';
 import { useUpdateCharacter } from '@/hooks/api/use-character-queries';
 import { useAudio } from '@/hooks/use-audio-player';
 import { useGameState } from '@/hooks/use-game-state';
 import { useScreenSize } from '@/hooks/use-screen-size';
 import styles from '@/styles/character-sheet-modal.styles';
-import { GearSlot } from '@/types/stats';
+import { GearSlot, StatKey } from '@/types/stats';
 
 interface CharacterSheetModalProps {
 	visible: boolean;
@@ -32,20 +35,22 @@ interface CharacterSheetModalProps {
 }
 
 export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visible, onClose, allowClose = true }) => {
-	const [tooltipSkill, setTooltipSkill] = useState<string | null>(null);
+	const [infoSkill, setInfoSkill] = useState<string | null>(null);
+	const [infoAttribute, setInfoAttribute] = useState<StatKey | null>(null);
 	const [activeSlot, setActiveSlot] = useState<GearSlot | null>(null);
+	const [tooltipSkill, setTooltipSkill] = useState<string | null>(null);
 	const { isMobile } = useScreenSize();
 	const { togglePlayPause, isPlaying } = useAudio();
 	const { playerCharacter, playerPortrait } = useGameState();
 	const updateCharacterMutation = useUpdateCharacter();
-	
+
 	// Inventory management - use character's inventory and equipped fields
 	const inventory = playerCharacter?.inventory || [];
 	const equipped = playerCharacter?.equipped || {};
 	const loading = updateCharacterMutation.isPending;
 	const error = updateCharacterMutation.error;
 	const errorMessage = error ? (error instanceof Error ? error.message : String(error)) : null;
-	
+
 	const equipItem = async (item: any, slot: GearSlot) => {
 		if (!playerCharacter) return;
 		const newEquipped = { ...equipped, [slot]: item.id };
@@ -58,7 +63,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 			Alert.alert('Error', 'Failed to equip item');
 		}
 	};
-	
+
 	const unequipItem = async (slot: GearSlot) => {
 		if (!playerCharacter) return;
 		const newEquipped = { ...equipped };
@@ -128,6 +133,26 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 		);
 	};
 
+	const handlePortraitChange = async (image: any) => {
+		if (!playerCharacter) return;
+
+		let iconValue = '';
+		if (typeof image === 'string') {
+			iconValue = image;
+		} else if (typeof image === 'object' && image.uri) {
+			iconValue = image.uri;
+		}
+
+		try {
+			await updateCharacterMutation.mutateAsync({
+				path: `/characters/${playerCharacter.id}`,
+				body: { icon: iconValue },
+			});
+		} catch (error) {
+			Alert.alert('Error', 'Failed to update character portrait');
+		}
+	};
+
 	// Use inventory with equipped status for display
 	// Map inventory items to include equipped status
 	const inventoryWithStatus = inventory.map((item: any) => {
@@ -157,7 +182,7 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 		mainHand: resolveEquippedItem('mainHand'),
 		offHand: resolveEquippedItem('offHand'),
 	};
-	
+
 	const filteredInventory = activeSlot
 		? inventoryWithStatus.filter(entry => entry.item.slot === activeSlot)
 		: inventoryWithStatus;
@@ -175,11 +200,9 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 							{/* Portrait & Stats */}
 							<View style={isMobile ? styles.mobileSection : styles.leftCol}>
 								<View style={styles.portraitBox}>
-									<Image
-										source={portraitSource as ImageSourcePropType}
-										style={
-											isMobile ? styles.portraitMobile : styles.portraitLarge
-										}
+									<PortraitSelector
+										selectedImage={portraitSource as ImageSourcePropType}
+										onSelect={handlePortraitChange}
 									/>
 								</View>
 								<Text style={styles.label}>Stats</Text>
@@ -193,8 +216,17 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 									{STAT_KEYS.map(key => (
 										<View
 											key={key}
-											style={isMobile ? styles.statBoxMobile : styles.statBox}
+											style={[
+												isMobile ? styles.statBoxMobile : styles.statBox,
+												{ position: 'relative' },
+											]}
 										>
+											<TouchableOpacity
+												style={styles.infoButton}
+												onPress={() => setInfoAttribute(infoAttribute === key ? null : key)}
+											>
+												<Text style={styles.infoButtonText}>?</Text>
+											</TouchableOpacity>
 											<Text style={styles.statLabel}>{key}</Text>
 											<Text style={styles.statValue}>{stats[key]}</Text>
 										</View>
@@ -299,10 +331,28 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 														styles.inventoryItemIncompatible,
 													]}
 												>
-													<Image
-														source={item.icon as ImageSourcePropType}
-														style={styles.inventoryIconLarge}
-													/>
+													{item.icon ? (
+														typeof item.icon === 'object' &&
+														'spritesheet' in item.icon &&
+														'x' in item.icon &&
+														'y' in item.icon ? (
+																(() => {
+																	const spritesheet = getEquipmentSpritesheet();
+																	return spritesheet ? (
+																		<SpriteIcon
+																			spritesheet={spritesheet}
+																			coordinates={{ x: item.icon.x, y: item.icon.y }}
+																			size={48}
+																		/>
+																	) : null;
+																})()
+															) : (
+																<Image
+																	source={item.icon as ImageSourcePropType}
+																	style={styles.inventoryIconLarge}
+																/>
+															)
+													) : null}
 													{isEquipped && (
 														<View style={styles.equippedIndicator}>
 															<Text style={styles.equippedText}>
@@ -620,50 +670,96 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 								<View style={styles.skillsGrid}>
 									{SKILL_LIST.filter(skill => skills.includes(skill.id)).map(
 										skill => (
-											<Pressable
+											<View
 												key={String(skill.id)}
-												onPress={() =>
-													setTooltipSkill(
-														tooltipSkill === skill.id ? null : skill.id,
-													)
-												}
-												onHoverIn={() =>
-													Platform.OS === 'web' &&
-													setTooltipSkill(skill.id as string)
-												}
-												onHoverOut={() =>
-													Platform.OS === 'web' && setTooltipSkill(null)
-												}
-												style={styles.skillIconCard}
+												style={[styles.skillIconCard, { position: 'relative' }]}
 											>
+												<TouchableOpacity
+													style={styles.skillInfoButton}
+													onPress={() => setInfoSkill(infoSkill === skill.id ? null : skill.id)}
+												>
+													<Text style={styles.infoButtonText}>?</Text>
+												</TouchableOpacity>
 												<Image
 													source={skill.image as ImageSourcePropType}
 													style={styles.skillIconFlat}
 												/>
-												{tooltipSkill === skill.id && (
-													<View
-														style={[styles.tooltipOverlay, { pointerEvents: 'none' }]}
-													>
-														<View style={styles.tooltipOverIconBg} />
-														<View style={styles.tooltipOverIconLabel}>
-															<Text
-																style={styles.tooltipText}
-																numberOfLines={2}
-																adjustsFontSizeToFit
-																minimumFontScale={0.7}
-															>
-																{skill.name}
-															</Text>
-														</View>
-													</View>
-												)}
-											</Pressable>
+											</View>
 										),
 									)}
 								</View>
 							</View>
 						</View>
 					</ScrollView>
+					{/* Attribute Info Modal */}
+					<Modal
+						visible={infoAttribute !== null}
+						transparent
+						animationType="fade"
+						onRequestClose={() => setInfoAttribute(null)}
+					>
+						<TouchableOpacity
+							style={styles.modalOverlay}
+							activeOpacity={1}
+							onPress={() => setInfoAttribute(null)}
+						>
+							<View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+								{infoAttribute && (
+									<>
+										<View style={styles.modalHeader}>
+											<Text style={styles.modalTitle}>{infoAttribute}</Text>
+											<TouchableOpacity
+												style={styles.modalCloseButton}
+												onPress={() => setInfoAttribute(null)}
+											>
+												<Text style={styles.modalCloseText}>✕</Text>
+											</TouchableOpacity>
+										</View>
+										<Text style={styles.modalDescription}>
+											{ATTRIBUTE_DESCRIPTIONS[infoAttribute]}
+										</Text>
+									</>
+								)}
+							</View>
+						</TouchableOpacity>
+					</Modal>
+					{/* Skill Info Modal */}
+					<Modal
+						visible={infoSkill !== null}
+						transparent
+						animationType="fade"
+						onRequestClose={() => setInfoSkill(null)}
+					>
+						<TouchableOpacity
+							style={styles.modalOverlay}
+							activeOpacity={1}
+							onPress={() => setInfoSkill(null)}
+						>
+							<View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+								{infoSkill && (() => {
+									const skill = SKILL_LIST.find(s => s.id === infoSkill);
+									if (!skill) return null;
+									return (
+										<>
+											<View style={styles.modalHeader}>
+												<Text style={styles.modalTitle}>{skill.name}</Text>
+												<TouchableOpacity
+													style={styles.modalCloseButton}
+													onPress={() => setInfoSkill(null)}
+												>
+													<Text style={styles.modalCloseText}>✕</Text>
+												</TouchableOpacity>
+											</View>
+											<Text style={styles.modalDescription}>
+												{SKILL_DESCRIPTIONS[skill.id] || 'No description available.'}
+											</Text>
+											<Text style={styles.modalSubtext}>Uses: {skill.ability}</Text>
+										</>
+									);
+								})()}
+							</View>
+						</TouchableOpacity>
+					</Modal>
 					{/* Button row - only show if allowClose is true (not in long rest mode) */}
 					{allowClose && (
 						<View style={isMobile ? styles.buttonRowMobile : styles.buttonRow}>

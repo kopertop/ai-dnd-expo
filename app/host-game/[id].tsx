@@ -127,6 +127,18 @@ const HostGameLobbyScreen: React.FC = () => {
 
 	const handleLocationSelect = async (location: LocationOption) => {
 		setSelectedLocation(location);
+
+		// Auto-select the matching map if world is selected
+		if (selectedWorld) {
+			const worldId = selectedWorld.id?.toLowerCase() || selectedWorld.name?.toLowerCase();
+			const locationId = location.id?.toLowerCase() || location.name?.toLowerCase();
+			const expectedSlug = `${worldId}_${locationId}`;
+
+			// Try to find and select the matching map
+			// This will be handled by MapManagementPanel, but we can also set it here
+			// The MapManagementPanel effect will handle the actual selection
+		}
+
 		setCurrentStep('ready');
 	};
 
@@ -143,8 +155,8 @@ const HostGameLobbyScreen: React.FC = () => {
 				body: {
 					questId: selectedQuest.id,
 					quest: selectedQuest,
-					world: selectedWorld.name,
-					startingArea: selectedLocation.name,
+					world: selectedWorld.id || selectedWorld.name,
+					startingArea: selectedLocation.id || selectedLocation.name,
 					hostId,
 					hostEmail: hostEmail ?? undefined,
 				},
@@ -461,6 +473,8 @@ const HostGameLobbyScreen: React.FC = () => {
 										<MapManagementPanel
 											inviteCode={inviteCode}
 											currentMapId={currentMapId}
+											world={selectedWorld}
+											location={selectedLocation}
 											onMapSelected={async (mapId) => {
 												try {
 													await switchMapMutation.mutateAsync({

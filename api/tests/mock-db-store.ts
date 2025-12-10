@@ -37,6 +37,7 @@ const createDefaultStore = (): DataStore => {
 				description: null,
 				width: 10,
 				height: 10,
+				world: null,
 				default_terrain: JSON.stringify({ type: 'stone' }),
 				fog_of_war: JSON.stringify({ enabled: false }),
 				terrain_layers: JSON.stringify([]),

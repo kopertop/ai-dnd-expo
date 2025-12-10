@@ -19,6 +19,7 @@ import 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useUserInfo } from '@/hooks/api/use-auth-queries';
 import { AudioProvider, useAudio } from '@/hooks/use-audio-player';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { InputModeProvider } from '@/hooks/use-input-mode';
@@ -65,6 +66,7 @@ const GlobalHomeButton: React.FC = () => (
 
 const UserMenu: React.FC = () => {
 	const { user, signOut } = useAuth();
+	const { data: userInfo } = useUserInfo();
 	const [isMenuVisible, setMenuVisible] = React.useState(false);
 
 	useEffect(() => {
@@ -77,6 +79,7 @@ const UserMenu: React.FC = () => {
 		return null;
 	}
 
+	const isAdmin = userInfo?.is_admin === true;
 	const displayName = user.name || user.email;
 	const avatarSource = user.picture ? { uri: user.picture } : null;
 
@@ -86,6 +89,11 @@ const UserMenu: React.FC = () => {
 		} finally {
 			setMenuVisible(false);
 		}
+	};
+
+	const handleAdminPress = () => {
+		setMenuVisible(false);
+		router.push('/admin');
 	};
 
 	return (
@@ -109,6 +117,15 @@ const UserMenu: React.FC = () => {
 						<ThemedText style={styles.userNameText} numberOfLines={1}>
 							{displayName}
 						</ThemedText>
+						{isAdmin && (
+							<TouchableOpacity
+								style={styles.adminButton}
+								onPress={handleAdminPress}
+							>
+								<Feather name="settings" size={16} color="#8B6914" style={styles.adminIcon} />
+								<ThemedText style={styles.adminText}>Admin</ThemedText>
+							</TouchableOpacity>
+						)}
 						<TouchableOpacity
 							style={styles.signOutButton}
 							onPress={handleSignOut}
@@ -281,6 +298,7 @@ const RootLayout: React.FC = () => {
 										<Stack.Screen name="new-game" options={{ headerShown: false }} />
 										<Stack.Screen name="game" options={{ headerShown: false }} />
 										<Stack.Screen name="sql" options={{ headerShown: false }} />
+										<Stack.Screen name="admin" options={{ headerShown: false }} />
 										<Stack.Screen name="party-test" options={{ headerShown: true, title: 'PartyServer Test' }} />
 										<Stack.Screen name="+not-found" />
 									</Stack>
@@ -378,6 +396,24 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 		marginBottom: 12,
 		maxWidth: 180,
+	},
+	adminButton: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		paddingVertical: 8,
+		paddingHorizontal: 4,
+		marginBottom: 8,
+		borderTopWidth: 1,
+		borderTopColor: '#E2D3B3',
+		borderBottomWidth: 1,
+		borderBottomColor: '#E2D3B3',
+	},
+	adminIcon: {
+		marginRight: 8,
+	},
+	adminText: {
+		color: '#8B6914',
+		fontWeight: '600',
 	},
 	signOutButton: {
 		paddingVertical: 6,

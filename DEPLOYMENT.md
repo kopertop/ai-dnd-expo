@@ -4,13 +4,21 @@ This document outlines the deployment process for the AI D&D Platform.
 
 ## 🚀 Overview
 
-The project uses **Expo Application Services (EAS)** for building and deploying the app, with **GitHub Actions** for automated CI/CD workflows.
+The project is deployed across two main components on Cloudflare:
+1. **Cloudflare Pages**: Serves the static web application (HTML, JS, CSS, assets) with optimal caching.
+2. **Cloudflare Workers API**: A dedicated Worker handling all API requests (`/api/*`), WebSockets, and database interactions.
+
+Both components are served under the same domain: `dnd.coredumped.org`.
+- `dnd.coredumped.org` -> Cloudflare Pages (Static Content)
+- `dnd.coredumped.org/api/*` -> Routed via Pages Service Bindings to the API Worker.
+
+The project uses **Expo Application Services (EAS)** for building mobile apps, and **GitHub Actions** for automated CI/CD workflows.
 
 ### Deployment Environments
 
 - **Development**: Local development builds and testing
 - **Staging**: Internal testing and QA environment
-- **Production**: Live app store releases
+- **Production**: Live app store releases and web deployment
 
 ## 🔧 Setup Requirements
 
@@ -26,7 +34,11 @@ The project uses **Expo Application Services (EAS)** for building and deploying 
    - Create account at [expo.dev](https://expo.dev)
    - Run `eas login` to authenticate
 
-3. **Environment Variables**
+3. **Cloudflare Account**
+   - Access to Cloudflare dashboard for Pages and Workers.
+   - `wrangler` CLI authenticated (`npx wrangler login`).
+
+4. **Environment Variables**
    - Copy `.env.example` to `.env` and configure
    - Set up GitHub Secrets for CI/CD (see below)
 
@@ -121,188 +133,81 @@ Use the deployment script for manual deployments:
 - Internal testing track for staging
 - Production track for releases
 
-### Web Builds
+### Web Builds (Cloudflare Pages + Workers)
 
-- Automatic deployment to Expo hosting
-- CDN distribution
-- PWA capabilities
+The web deployment consists of two parts:
 
-## 🔄 Over-the-Air Updates
+1. **Static Content (Pages)**: Built via `expo export --platform web`. Deployed to Cloudflare Pages.
+2. **API (Worker)**: Deployed to Cloudflare Workers using `wrangler.api.toml`.
 
-### EAS Update
-
-- Instant updates for JavaScript/TypeScript changes
-- No app store review required
-- Automatic rollback on errors
-
-### Update Channels
-
-- `staging`: Updates for staging builds
-- `production`: Updates for production builds
-
-### Publishing Updates
+#### Web Deployment Commands
 
 ```bash
-# Staging update
-eas update --branch staging --message "Feature update"
-
-# Production update
-eas update --branch production --message "Bug fix"
-```
-
-## 🔐 Environment Configuration
-
-### Environment Files
-
-- `.env.development`: Development configuration
-- `.env.staging`: Staging configuration
-- `.env.production`: Production configuration
-
-### Environment Variables
-
-- `EXPO_PUBLIC_*`: Client-side variables
-- Server-side secrets managed securely
-- Feature flags for gradual rollouts
-
-## 🧪 Testing Strategy
-
-### Pre-deployment Testing
-
-1. **Unit Tests**: Automated via Jest
-2. **Type Checking**: TypeScript compilation
-3. **Linting**: ESLint validation
-4. **Integration Tests**: API and component testing
-
-### Post-deployment Testing
-
-1. **Smoke Tests**: Basic functionality
-2. **Regression Tests**: Critical user flows
-3. **Performance Tests**: Load and response times
-4. **Device Tests**: Multiple devices and OS versions
-
-## 📊 Monitoring & Analytics
-
-### Build Monitoring
-
-- EAS Build dashboard
-- GitHub Actions logs
-- Slack/Discord notifications
-
-### App Performance
-
-- Crash reporting (Sentry)
-- Performance metrics
-- User analytics
-
-## 🚨 Emergency Procedures
-
-### Rollback Process
-
-1. **Immediate**: Publish previous working update
-2. **Critical**: Revert to previous app store version
-3. **Communication**: Notify team and users
-
-### Hotfix Deployment
-
-1. Create hotfix branch from main
-2. Make minimal necessary changes
-3. Fast-track through CI/CD
-4. Monitor deployment closely
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-1. **Build Failures**
-   - Check EAS Build logs
-   - Verify environment variables
-   - Ensure all dependencies are listed
-
-2. **Update Failures**
-   - Check compatibility with build
-   - Verify branch configuration
-   - Test locally first
-
-3. **App Store Rejections**
-   - Review App Store guidelines
-   - Check app metadata
-   - Ensure proper permissions
-
-### Debug Commands
-
-```bash
-# Check build status
-eas build:list
-
-# View update history
-eas update:list
-
-# Check project configuration
-eas config
-
-# View build logs
-eas build:view [BUILD_ID]
-```
-
-## 📋 Deployment Checklist
-
-### Pre-deployment
-
-- [ ] All tests passing
-- [ ] Environment variables configured
-- [ ] Build profiles tested
-- [ ] App store metadata updated
-- [ ] Release notes prepared
-
-### During Deployment
-
-- [ ] Monitor build progress
-- [ ] Check for errors/warnings
-- [ ] Verify successful completion
-- [ ] Test deployment in staging
-
-### Post-deployment
-
-- [ ] Verify app functionality
-- [ ] Monitor crash reports
-- [ ] Check performance metrics
-- [ ] Gather user feedback
-
-## 🪩 Partykit + Cloudflare Worker Deployment
-
-The realtime backend now runs through Partykit rooms hosted on our Cloudflare Worker. Deployments require both the Worker bundle and the Partykit server entrypoint.
-
-### Required bindings
-
-- `R2_SQL` — SQL-compatible binding backed by R2 (libSQL). Falls back to `DATABASE` locally.
-- `DATABASE` — legacy D1 binding kept for migration safety.
-- `PARTYKIT_HOST` / `PARTYKIT_PUBLIC_URL` — host used for websocket upgrades (e.g., `localhost:1999` locally or `<subdomain>.partykit.dev`).
-- `PARTYKIT_SECRET` — optional shared secret for room auth handshakes.
-
-### Local development
-
-```bash
-# Run worker with Partykit routing enabled
-wrangler dev --config wrangler.api.toml
-
-# Run Partykit rooms side-by-side
-bunx partykit dev api/src/partykit/server.ts --host 0.0.0.0 --port 1999
-```
-
-### Production deployment
-
-```bash
-# Build Expo web bundle + worker
+# Deploy everything (Web + API)
 bun run deploy
 
-# Deploy worker (includes websocket upgrade routing)
-wrangler deploy --config wrangler.toml
+# Deploy Web only (Pages)
+bun run deploy:web
 
-# Deploy Partykit server (Cloudflare worker target)
-bunx partykit deploy api/src/partykit/server.ts --host $PARTYKIT_HOST
+# Deploy API only (Worker)
+bun run deploy:api
 ```
 
-After deploy, verify `/api/games/:inviteCode/ws` returns a websocket URL pointing at the new Partykit host and that websocket upgrades at `/party/*` succeed.
+## 🌐 Web Architecture & Routing
+
+We use a split architecture to optimize performance and security:
+
+- **Static Content**: Served by Cloudflare Pages (`wrangler.toml`). This ensures long-term caching for assets and fast delivery of HTML/JS/CSS.
+- **API**: Served by a Cloudflare Worker (`wrangler.api.toml`). Handles all dynamic logic, DB access, and WebSockets.
+
+### Routing Strategy
+
+All traffic goes to `dnd.coredumped.org`.
+- Requests starting with `/api/*` are intercepted by a Cloudflare Pages Function (`functions/api/[[path]].ts`).
+- This function uses **Service Bindings** to forward the request directly to the API Worker (`ai-dnd-api`).
+- Partykit/WebSocket endpoints are served at `/party/*` and routed to the same Worker (see `wrangler.api.toml` routes).
+- All forwarding stays inside Cloudflare's network (no extra HTTP hop).
+
+### Local Development
+
+To develop locally with the full stack (Web + API):
+
+```bash
+# Start both Web (Expo) and API (Wrangler) in dev mode
+bun run dev
+
+# Or run individually:
+bun run dev:api  # Starts API worker at http://localhost:8787
+bun run dev:web  # Starts Expo web at http://localhost:8081
+```
+
+### First-Time Rollout Checklist (split deployment)
+1. **Deploy API first** so the service binding target exists:
+   ```bash
+   bun run deploy:api
+   ```
+2. **Deploy Web (Pages)**:
+   ```bash
+   bun run deploy:web
+   ```
+3. **Verify Service Binding**: In Cloudflare Pages → Functions → Service Bindings, ensure `API_WORKER` points to `ai-dnd-api`.
+4. **Verify Routes**: In `wrangler.api.toml`, routes cover both `/api/*` and `/party/*` on `dnd.coredumped.org`.
+
+## 🛡️ Denial of Wallet (DoW) Protection
+
+To prevent abuse and unexpected costs, we implement several layers of protection:
+
+1. **Rate Limiting**:
+   - Configured in `wrangler.api.toml` via `[[ratelimits]]`. Namespace IDs are self-assigned positive integers (e.g., `namespace_id = 1001`); no dashboard setup needed.
+   - Default limit: 1000 requests per minute per IP (see middleware in `api/src/index.ts`). Tighten per-endpoint as needed.
+
+2. **Worker Limits** (`wrangler.api.toml`):
+   - `cpu_ms = 50`: Caps CPU time per request.
+   - `subrequests = 1000`: Limits internal subrequests.
+   - `memory_mb = 128`: Limits memory usage.
+
+3. **Request Size Limits**:
+   - API rejects requests larger than 10MB to prevent memory exhaustion.
 
 ## 🤝 Team Workflow
 
@@ -323,9 +228,9 @@ After deploy, verify `/api/games/:inviteCode/ws` returns a websocket URL pointin
 
 - [Expo Documentation](https://docs.expo.dev/)
 - [EAS Build Documentation](https://docs.expo.dev/build/introduction/)
-- [EAS Update Documentation](https://docs.expo.dev/eas-update/)
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
+- [Cloudflare Pages Docs](https://developers.cloudflare.com/pages/)
+- [Cloudflare Workers Docs](https://developers.cloudflare.com/workers/)
 
 ---
 
-_Last updated: [Date]_ | _Next review: [Date]_
+_Last updated: 2025-05-20_

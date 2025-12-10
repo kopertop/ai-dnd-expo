@@ -8,7 +8,7 @@ export interface CloudflareBindings {
 	// DB is aliased from DATABASE in code for expo-auth-template compatibility
 	QUESTS: KVNamespace;
 	AUTH_SESSIONS?: KVNamespace;
-	ASSETS?: Fetcher; // Worker with Assets binding
+	IMAGES_BUCKET: R2Bucket;
 
 	// Partykit runtime configuration
 	PARTYKIT_HOST?: string;
@@ -25,6 +25,8 @@ export interface CloudflareBindings {
 	AUTH_URL?: string;
 	GOOGLE_CLIENT_ID?: string;
 	GOOGLE_CLIENT_SECRET?: string;
+
+	API_RATE_LIMITER?: any; // RateLimit binding
 }
 
 declare global {

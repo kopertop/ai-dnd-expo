@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
 
-import { isAdmin as sharedIsAdmin } from '../../../shared/workers/admin';
-import type { CloudflareBindings } from '../env';
-
+import type { CloudflareBindings } from '@/api/src/env';
+import { deserializeCharacter } from '@/api/src/utils/games-utils';
+import { createDatabase } from '@/api/src/utils/repository';
+import { isAdmin as sharedIsAdmin } from '@/shared/workers/admin';
 import { Quest } from '@/types/quest';
 
 type Variables = {
@@ -22,6 +23,29 @@ admin.use('*', async (c, next) => {
 	}
 
 	await next();
+});
+
+admin.get('/characters', async (c) => {
+	const db = createDatabase(c.env);
+	const characterRows = await db.getAllCharacters();
+	const characters = characterRows.map(deserializeCharacter);
+	return c.json({ characters });
+});
+
+admin.get('/images', async (c) => {
+	const db = createDatabase(c.env);
+	const imageType = c.req.query('type') as 'npc' | 'character' | 'both' | undefined;
+	const limit = parseInt(c.req.query('limit') || '100', 10);
+	const offset = parseInt(c.req.query('offset') || '0', 10);
+
+	try {
+		// Get all images (no user filter for admin)
+		const result = await db.listUploadedImages(undefined, imageType, limit, offset);
+		return c.json({ images: result });
+	} catch (error) {
+		console.error('Failed to list images:', error);
+		return c.json({ error: 'Failed to list images' }, 500);
+	}
 });
 
 admin.post('/quests', async (c) => {
@@ -129,5 +153,4 @@ admin.post('/sql/query', async (c) => {
 });
 
 export default admin;
-
 

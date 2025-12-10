@@ -294,6 +294,7 @@ npcs.patch('/:inviteCode/npcs/:tokenId', async (c) => {
 		isFriendly?: boolean;
 		metadata?: Record<string, unknown>;
 		name?: string;
+		icon?: string;
 	};
 
 	const token = await db.getMapTokenById(tokenId);
@@ -310,6 +311,7 @@ npcs.patch('/:inviteCode/npcs/:tokenId', async (c) => {
 	const tokenMetadata = JSON.parse(token.metadata || '{}');
 	const actionPoints = typeof payload.actionPoints === 'number' ? payload.actionPoints : (tokenMetadata.actionPoints ?? 3);
 	const maxActionPoints = typeof payload.maxActionPoints === 'number' ? payload.maxActionPoints : (tokenMetadata.maxActionPoints ?? 3);
+	const nextIcon = payload.icon ?? (payload.metadata?.icon as string | undefined);
 
 	const newStatus = typeof payload.isFriendly === 'boolean'
 		? (payload.isFriendly ? 'friendly' : 'hostile')
@@ -326,6 +328,7 @@ npcs.patch('/:inviteCode/npcs/:tokenId', async (c) => {
 			actionPoints,
 			maxActionPoints,
 			...(payload.metadata ?? {}),
+			...(nextIcon ? { icon: nextIcon } : {}),
 		}),
 	});
 

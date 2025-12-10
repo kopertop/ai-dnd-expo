@@ -7,8 +7,9 @@
 import { GoogleSigninButton, useAuth } from 'expo-auth-template/frontend';
 import { router } from 'expo-router';
 import React, { useEffect } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 
+import { ApiStatusIndicator } from '@/components/api-status-indicator';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_BASE_URL } from '@/services/config/api-base-url';
@@ -63,7 +64,7 @@ const LoginScreen: React.FC = () => {
 					</ThemedText>
 				</ThemedView>
 			)}
-			<Text>API_BASE_URL: {API_BASE_URL}</Text>
+			<ApiStatusIndicator />
 		</ThemedView>
 	);
 };

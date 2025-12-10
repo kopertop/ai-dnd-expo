@@ -75,7 +75,53 @@ export const calculateProficiencyBonus = (level?: number): number => {
 
 export const calculateAC = (character: CombatCharacter): number => {
 	const dexScore = getStatValue(character.stats, 'DEX') ?? 10;
-	return BASE_AC + getAbilityModifier(dexScore);
+	const dexMod = getAbilityModifier(dexScore);
+
+	let armorAC = BASE_AC;
+	let shieldBonus = 0;
+	let isArmored = false;
+
+	// Check for equipped armor and shield
+	// cast to any to access inventory/equipped safely as they might not exist on all partial types
+	const charAny = character as any;
+	if (charAny.equipped && Array.isArray(charAny.inventory)) {
+		const chestId = charAny.equipped.chest;
+		const offHandId = charAny.equipped.offHand;
+
+		if (chestId) {
+			const armor = charAny.inventory.find((i: any) => i.id === chestId);
+			if (armor && typeof armor.armorClass === 'number') {
+				armorAC = armor.armorClass;
+				isArmored = true;
+			}
+		}
+
+		if (offHandId) {
+			const shield = charAny.inventory.find((i: any) => i.id === offHandId);
+			if (shield) {
+				if (typeof shield.armorClass === 'number') {
+					shieldBonus = shield.armorClass;
+				} else if (shield.type === 'shield' || shield.name?.toLowerCase().includes('shield')) {
+					shieldBonus = 2; // Default shield bonus
+				}
+			}
+		}
+	}
+
+	let appliedDexMod = dexMod;
+	if (isArmored) {
+		// Heuristic for armor type based on base AC since we don't have explicit type
+		if (armorAC >= 16) {
+			// Heavy Armor: No DEX bonus
+			appliedDexMod = 0;
+		} else if (armorAC >= 13) {
+			// Medium Armor: Max +2 DEX
+			appliedDexMod = Math.min(dexMod, 2);
+		}
+		// Light Armor: Full DEX (default)
+	}
+
+	return armorAC + appliedDexMod + shieldBonus;
 };
 
 const getSpellcastingAbilityKey = (character: CombatCharacter): StatKey => {

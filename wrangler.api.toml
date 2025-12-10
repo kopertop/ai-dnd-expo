@@ -1,18 +1,28 @@
-# Separate Wrangler config for API/Workers tests (mirrors main wrangler.toml)
-name = "ai-dnd-app-api-tests"
+name = "ai-dnd-api"
 main = "api/src/index.ts"
 compatibility_date = "2025-03-01"
 compatibility_flags = ["nodejs_compat"]
 
-[assets]
-directory = "./dist"
-binding = "ASSETS"
+# Custom domain routing for API
+[[routes]]
+pattern = "dnd.coredumped.org/api/*"
+zone_name = "coredumped.org"
+
+# Route Partykit/WebSocket traffic
+[[routes]]
+pattern = "dnd.coredumped.org/party/*"
+zone_name = "coredumped.org"
 
 [observability]
 enabled = true
 
 [placement]
 mode = "smart"
+
+[limits]
+cpu_ms = 50
+subrequests = 1000
+memory_mb = 128
 
 [durable_objects]
 bindings = [
@@ -28,6 +38,7 @@ binding = "DATABASE"
 database_name = "ai-dnd-db"
 database_id = "1384cd1b-b374-488c-b51f-143a071799e1"
 migrations_dir = "api/migrations"
+# Note: DB binding is aliased from DATABASE in code (api/src/index.ts) for expo-auth-template compatibility
 
 [[kv_namespaces]]
 binding = "QUESTS"
@@ -38,3 +49,13 @@ preview_id = "be5f833b304a489f9feae6d7573e865e"
 binding = "AUTH_SESSIONS"
 id = "da420984bd1d44ed982e99eab7ac54d9"
 preview_id = "1986f512835f470f95f4df8b48c6c51a"
+
+[[r2_buckets]]
+binding = "IMAGES_BUCKET"
+bucket_name = "ai-dnd-images"
+
+# Rate limiting
+[[ratelimits]]
+name = "API_RATE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 1000, period = 60 }

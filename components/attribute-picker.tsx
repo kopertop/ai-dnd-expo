@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { CARD_GAP, cardGridStyles, SCREEN_WIDTH } from '../styles/card-grid.styles';
 import { newGameStyles } from '../styles/new-game.styles';
 
 import { Colors } from '@/constants/colors';
+import { ATTRIBUTE_DESCRIPTIONS } from '@/constants/stats';
 import { ClassOption } from '@/types/class-option';
 import { STAT_KEYS, StatBlock, StatKey } from '@/types/stats';
 
@@ -78,6 +79,7 @@ export const AttributePicker: React.FC<AttributePickerProps> = ({
 		}
 		return adjustStatsToBudget(s, classOption, POINT_BUY_TOTAL);
 	});
+	const [infoAttribute, setInfoAttribute] = useState<StatKey | null>(null);
 
 	const pointsUsed = getPointBuyTotal(stats);
 	const pointsRemaining = POINT_BUY_TOTAL - pointsUsed;
@@ -130,6 +132,7 @@ export const AttributePicker: React.FC<AttributePickerProps> = ({
 						justifyContent: 'center',
 						width: containerWidth,
 						alignSelf: 'center',
+						overflow: 'visible',
 					}}
 				>
 					{STAT_KEYS.map(key => (
@@ -146,11 +149,18 @@ export const AttributePicker: React.FC<AttributePickerProps> = ({
 									marginBottom: CARD_GAP,
 									alignItems: 'center',
 									justifyContent: 'center',
+									position: 'relative',
 								},
 								isPrimary(key) && textStyles.primaryStatBox,
 								!isPrimary(key) && isSecondary(key) && textStyles.secondaryStatBox,
 							]}
 						>
+							<TouchableOpacity
+								style={textStyles.infoButton}
+								onPress={() => setInfoAttribute(infoAttribute === key ? null : key)}
+							>
+								<Text style={textStyles.infoButtonText}>?</Text>
+							</TouchableOpacity>
 							<Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 8 }}>
 								{key}
 							</Text>
@@ -209,6 +219,38 @@ export const AttributePicker: React.FC<AttributePickerProps> = ({
 					))}
 				</View>
 			</ScrollView>
+			{/* Info Modal */}
+			<Modal
+				visible={infoAttribute !== null}
+				transparent
+				animationType="fade"
+				onRequestClose={() => setInfoAttribute(null)}
+			>
+				<TouchableOpacity
+					style={textStyles.modalOverlay}
+					activeOpacity={1}
+					onPress={() => setInfoAttribute(null)}
+				>
+					<View style={textStyles.modalContent} onStartShouldSetResponder={() => true}>
+						{infoAttribute && (
+							<>
+								<View style={textStyles.modalHeader}>
+									<Text style={textStyles.modalTitle}>{infoAttribute}</Text>
+									<TouchableOpacity
+										style={textStyles.modalCloseButton}
+										onPress={() => setInfoAttribute(null)}
+									>
+										<Text style={textStyles.modalCloseText}>✕</Text>
+									</TouchableOpacity>
+								</View>
+								<Text style={textStyles.modalDescription}>
+									{ATTRIBUTE_DESCRIPTIONS[infoAttribute]}
+								</Text>
+							</>
+						)}
+					</View>
+				</TouchableOpacity>
+			</Modal>
 			{/* Sticky confirm button */}
 			<View
 				style={{
@@ -269,5 +311,67 @@ const textStyles = StyleSheet.create({
 	},
 	secondaryStatBox: {
 		borderColor: '#8B2323',
+	},
+	infoButton: {
+		position: 'absolute',
+		top: 8,
+		right: 8,
+		width: 24,
+		height: 24,
+		borderRadius: 12,
+		backgroundColor: 'rgba(59, 47, 27, 0.2)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		borderWidth: 1,
+		borderColor: '#3B2F1B',
+	},
+	infoButtonText: {
+		color: '#3B2F1B',
+		fontSize: 16,
+		fontWeight: 'bold',
+	},
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0, 0, 0, 0.5)',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalContent: {
+		backgroundColor: '#F9F6EF',
+		borderRadius: 12,
+		padding: 20,
+		margin: 20,
+		maxWidth: 400,
+		borderWidth: 2,
+		borderColor: '#C9B037',
+	},
+	modalHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginBottom: 12,
+	},
+	modalTitle: {
+		fontSize: 24,
+		fontWeight: 'bold',
+		color: '#3B2F1B',
+	},
+	modalCloseButton: {
+		width: 32,
+		height: 32,
+		borderRadius: 16,
+		backgroundColor: '#D4BC8B',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalCloseText: {
+		fontSize: 18,
+		color: '#3B2F1B',
+		fontWeight: 'bold',
+	},
+	modalDescription: {
+		fontSize: 16,
+		color: '#3B2F1B',
+		lineHeight: 24,
 	},
 });

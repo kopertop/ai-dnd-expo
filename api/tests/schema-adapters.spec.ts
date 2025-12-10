@@ -10,6 +10,7 @@ const baseMapRow = (): MapRow => ({
 	description: 'Starter area',
 	width: 2,
 	height: 2,
+	world: null,
 	default_terrain: JSON.stringify({ type: 'cobblestone', elevation: 0 }),
 	fog_of_war: JSON.stringify({ enabled: true, revealed: [[0, 1]] }),
 	terrain_layers: JSON.stringify([{ type: 'structures', items: ['fountain'] }]),

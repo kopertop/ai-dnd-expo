@@ -1,12 +1,13 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
-	PanResponder,
-	Platform,
-	StyleSheet,
-	Text,
-	TouchableOpacity,
-	View,
-	useWindowDimensions,
+    Image,
+    PanResponder,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+    useWindowDimensions,
 } from 'react-native';
 
 import { ExpoIcon } from '@/components/expo-icon';
@@ -32,6 +33,7 @@ interface InteractiveMapProps {
 	onTokenDragEnd?: (token: MapToken, x: number, y: number) => void;
 	highlightTokenId?: string;
 	tokenPositionOverrides?: Record<string, { x: number; y: number }>;
+	tokenHealthOverrides?: Record<string, { current: number; max: number }>;
 	reachableTiles?: Array<{ x: number; y: number; cost: number }>;
 	pathTiles?: Array<{ x: number; y: number }>;
 }
@@ -246,22 +248,66 @@ const MapTile: React.FC<{
 	const isTrapTriggered = trapMetadata?.triggered === true;
 
 	// Check if tile is blocked - database is_blocked is converted to 'difficult' in the cell object
-	const isBlocked = cell?.difficult === true || cell?.blocked === true || cell?.isBlocked === true || cell?.is_blocked === true;
-	
+	// Update: difficult now means difficult, blocked means impassible
+	const isBlocked = cell?.blocked === true || (cell?.movementCost || 0) >= 999;
+	const isDifficult = cell?.difficult === true || ((cell?.movementCost || 0) > 1 && (cell?.movementCost || 0) < 999);
+
 	// Check if tile has fog of war
 	const hasFog = cell?.fogged === true;
 	const fogOpacity = hasFog ? (isHost ? 0.1 : 0.9) : 0;
-	
+
 	// Determine background color - blocked tiles are black (or water blue if water terrain)
+	// For VTT maps with background image, we want tiles to be transparent unless special
 	const getBackgroundColor = () => {
+		// If using background image, make default/empty tiles transparent
+		// Only color special tiles (blocked, difficult, etc) with some transparency
+		// Or keep current logic but add transparency?
+
+		// If map has background, we want tiles to be transparent by default so background shows
+		// We only overlay colors for semantic meaning (blocked, difficult, movement range)
+		// But we don't have access to map.background here directly without passing it down
+		// Let's assume if terrain is 'stone' (default) it might be transparent if we want
+
+		// Actually, let's keep current logic but maybe use RGBA for all colors if we want background to show through?
+		// User said "tiles should overlay with transparency"
+
 		if (isBlocked) {
 			const terrain = cell?.terrain?.trim().toLowerCase();
 			if (terrain === 'water') {
-				return '#7FD1F7'; // Water blue
+				return 'rgba(127, 209, 247, 0.5)'; // Water blue transparent
 			}
-			return '#000000'; // Black for all other blocked tiles
+			return 'rgba(0, 0, 0, 0.5)'; // Black transparent
 		}
-		return terrainColor(cell?.terrain);
+
+		if (isDifficult) {
+			return 'rgba(139, 69, 19, 0.3)'; // Brown transparent for difficult
+		}
+
+		// For standard terrain, if we have a background, we might want fully transparent?
+		// But we don't know if we have a background here easily.
+		// However, the terrainColor function returns solid colors.
+		// Let's convert them to RGBA? Or just leave as is for now and let the user paint transparency?
+		// The user said "Tiles overlay background with transparency (already supported)"
+		// If existing tiles are opaque, they will block the background.
+		// We should probably update terrainColor to return transparent colors or make the View transparent.
+
+		const color = terrainColor(cell?.terrain);
+
+		// If it's the default 'stone' or 'grass' and we are rendering over a background,
+		// we might want it transparent.
+		// For now, let's just apply a global opacity to the background color
+		// if it's not a special semantic tile.
+
+		// Actually, if we return a solid color, it blocks the image.
+		// We should convert hex to rgba with opacity.
+		if (color.startsWith('#')) {
+			const r = parseInt(color.slice(1, 3), 16);
+			const g = parseInt(color.slice(3, 5), 16);
+			const b = parseInt(color.slice(5, 7), 16);
+			return `rgba(${r}, ${g}, ${b}, 0.3)`; // 30% opacity for terrain overlay
+		}
+
+		return color;
 	};
 
 	// Determine border color - prioritize path, then hover, then trap, then default
@@ -286,17 +332,17 @@ const MapTile: React.FC<{
 		const numWaves = Math.ceil(tileSize / waveSpacing) + 1;
 		const waveAmplitude = Math.max(1.5, Math.floor(tileSize / 12));
 		const pointsPerWave = Math.max(12, Math.floor(tileSize / 2));
-		
+
 		for (let wave = 0; wave < numWaves; wave++) {
 			const baseY = wave * waveSpacing;
 			const wavePoints = [];
-			
+
 			for (let i = 0; i <= pointsPerWave; i++) {
 				const x = (i / pointsPerWave) * tileSize;
 				const y = baseY + Math.sin((i / pointsPerWave) * Math.PI * 4) * waveAmplitude;
 				wavePoints.push({ x, y });
 			}
-			
+
 			// Create segments between wave points
 			for (let i = 0; i < wavePoints.length - 1; i++) {
 				const p1 = wavePoints[i];
@@ -304,7 +350,7 @@ const MapTile: React.FC<{
 				const width = p2.x - p1.x;
 				const height = Math.abs(p2.y - p1.y) + 1;
 				const top = Math.min(p1.y, p2.y);
-				
+
 				fogWavePattern.push(
 					<View
 						key={`fog-wave-${wave}-${i}`}
@@ -376,6 +422,7 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 	enableTokenDrag = false,
 	onTokenPreviewPosition,
 	tokenPositionOverrides,
+	tokenHealthOverrides,
 	onTilePress,
 	onTileDrag,
 	onTileDragEnd,
@@ -426,6 +473,11 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 	const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 	const panStartRef = useRef({ x: 0, y: 0 });
 	const [hoveredTile, setHoveredTile] = useState<{ x: number; y: number } | null>(null);
+
+	// Load background image if present
+	// We don't need explicit loading state as React Native Image handles it,
+	// but we could add a loader if needed
+	const backgroundImage = map?.background;
 
 	const startDrag = (x: number, y: number) => {
 		if (!onTileDrag || !isEditable) {
@@ -496,277 +548,341 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 	tileSize,
 	tokenPositionOverrides,
 }) => {
-		const tokenRef = useRef<View>(null);
-		const isDraggingRef = useRef(false);
-		const overridePos = tokenPositionOverrides?.[token.id];
-		const renderX = overridePos?.x ?? token.x;
-		const renderY = overridePos?.y ?? token.y;
+	const tokenRef = useRef<View>(null);
+	const isDraggingRef = useRef(false);
+	const overridePos = tokenPositionOverrides?.[token.id];
+	const renderX = overridePos?.x ?? token.x;
+	const renderY = overridePos?.y ?? token.y;
 
-		useEffect(() => {
-			if (Platform.OS !== 'web' || !tokenRef.current) {
-				return;
-			}
+	useEffect(() => {
+		if (Platform.OS !== 'web' || !tokenRef.current) {
+			return;
+		}
 
-			// If drag is disabled, ensure cleanup and return early
-			if (!enableTokenDrag || !onTokenDragEnd || !map) {
-				const timeoutId = setTimeout(() => {
-					const element = tokenRef.current as any;
-					if (!element) return;
-
-					let domNode: HTMLElement | null = null;
-					if (element._nativeNode) {
-						domNode = element._nativeNode;
-					} else if (element.nodeType === 1) {
-						domNode = element;
-					} else if (element.firstChild && element.firstChild.nodeType === 1) {
-						domNode = element.firstChild;
-					}
-
-					if (domNode && typeof domNode.setAttribute === 'function') {
-						domNode.removeAttribute('draggable');
-						domNode.style.cursor = '';
-						domNode.style.userSelect = '';
-					}
-				}, 0);
-
-				return () => clearTimeout(timeoutId);
-			}
-
-			const element = tokenRef.current as any;
-			if (!element) {
-				return;
-			}
-
-			let domNode: HTMLElement | null = null;
-
-			if (element._nativeNode) {
-				domNode = element._nativeNode;
-			} else if (element.nodeType === 1) {
-				domNode = element;
-			} else if (element.firstChild && element.firstChild.nodeType === 1) {
-				domNode = element.firstChild;
-			}
-
-			if (!domNode || typeof domNode.setAttribute !== 'function') {
-				return;
-			}
-
+		// If drag is disabled, ensure cleanup and return early
+		if (!enableTokenDrag || !onTokenDragEnd || !map) {
 			const timeoutId = setTimeout(() => {
-				domNode.setAttribute('draggable', 'true');
-				domNode.style.cursor = 'grab';
-				domNode.style.userSelect = 'none';
+				const element = tokenRef.current as any;
+				if (!element) return;
 
-				const handleDragStart = (e: DragEvent) => {
-					if (!e.dataTransfer) return;
-					e.stopPropagation();
-					e.dataTransfer.effectAllowed = 'move';
-					e.dataTransfer.setData('application/json', JSON.stringify(token));
-					if (domNode) {
-						domNode.style.opacity = '0.5';
+				let domNode: HTMLElement | null = null;
+				if (element._nativeNode) {
+					domNode = element._nativeNode;
+				} else if (element.nodeType === 1) {
+					domNode = element;
+				} else if (element.firstChild && element.firstChild.nodeType === 1) {
+					domNode = element.firstChild;
+				}
+
+				if (domNode && typeof domNode.setAttribute === 'function') {
+					domNode.removeAttribute('draggable');
+					domNode.style.cursor = '';
+					domNode.style.userSelect = '';
+				}
+			}, 0);
+
+			return () => clearTimeout(timeoutId);
+		}
+
+		const element = tokenRef.current as any;
+		if (!element) {
+			return;
+		}
+
+		let domNode: HTMLElement | null = null;
+
+		if (element._nativeNode) {
+			domNode = element._nativeNode;
+		} else if (element.nodeType === 1) {
+			domNode = element;
+		} else if (element.firstChild && element.firstChild.nodeType === 1) {
+			domNode = element.firstChild;
+		}
+
+		if (!domNode || typeof domNode.setAttribute !== 'function') {
+			return;
+		}
+
+		const timeoutId = setTimeout(() => {
+			domNode.setAttribute('draggable', 'true');
+			domNode.style.cursor = 'grab';
+			domNode.style.userSelect = 'none';
+
+			const handleDragStart = (e: DragEvent) => {
+				if (!e.dataTransfer) return;
+				e.stopPropagation();
+				e.dataTransfer.effectAllowed = 'move';
+				e.dataTransfer.setData('application/json', JSON.stringify(token));
+				if (domNode) {
+					domNode.style.opacity = '0.5';
+				}
+				// Set dragging flag to prevent long press
+				isDraggingRef.current = true;
+				console.log('Token drag started:', token.id);
+			};
+
+			const handleDragEnd = (e: DragEvent) => {
+				console.log('Token drag ended:', token.id, 'at', e.clientX, e.clientY);
+				if (domNode) {
+					domNode.style.opacity = '1';
+				}
+
+				// Clear dragging flag after a delay to prevent long press
+				setTimeout(() => {
+					isDraggingRef.current = false;
+				}, 200);
+
+				if (!onTokenDragEnd) return;
+
+				// Check if drop was outside map bounds
+				const dropX = e.clientX;
+				const dropY = e.clientY;
+
+				// Get map container bounds - try multiple selectors
+				let mapContainer: HTMLElement | null = null;
+				// First try the grid container (most reliable)
+				const gridContainer = document.querySelector('[data-grid-container]') as HTMLElement;
+				if (gridContainer) {
+					const gridRect = gridContainer.getBoundingClientRect();
+					if (gridRect.width > 0 && gridRect.height > 0) {
+						mapContainer = gridContainer;
 					}
-					// Set dragging flag to prevent long press
-					isDraggingRef.current = true;
-					console.log('Token drag started:', token.id);
-				};
-
-				const handleDragEnd = (e: DragEvent) => {
-					console.log('Token drag ended:', token.id, 'at', e.clientX, e.clientY);
-					if (domNode) {
-						domNode.style.opacity = '1';
-					}
-
-					// Clear dragging flag after a delay to prevent long press
-					setTimeout(() => {
-						isDraggingRef.current = false;
-					}, 200);
-
-					if (!onTokenDragEnd) return;
-
-					// Check if drop was outside map bounds
-					const dropX = e.clientX;
-					const dropY = e.clientY;
-
-					// Get map container bounds - try multiple selectors
-					let mapContainer: HTMLElement | null = null;
+				}
+				// Fallback to wrapper container
+				if (!mapContainer) {
 					const wrapper = document.querySelector('[data-map-container]') as HTMLElement;
 					if (wrapper) {
 						mapContainer = wrapper;
 					} else {
-						// Fallback: find the wrapper by class or style
+						// Last resort: find the wrapper by class or style
 						const allDivs = Array.from(document.querySelectorAll('div'));
 						mapContainer = allDivs.find(div => {
 							const style = window.getComputedStyle(div);
 							return style.position === 'relative' || style.position === 'absolute';
 						}) as HTMLElement || null;
 					}
+				}
 
-					if (mapContainer) {
-						const rect = mapContainer.getBoundingClientRect();
-						const isOutsideMap =
+				if (mapContainer) {
+					let rect = mapContainer.getBoundingClientRect();
+
+					// If wrapper has zero dimensions, try to use grid container directly
+					if (rect.width === 0 || rect.height === 0) {
+						const gridContainer = document.querySelector('[data-grid-container]') as HTMLElement;
+						if (gridContainer) {
+							const gridRect = gridContainer.getBoundingClientRect();
+							if (gridRect.width > 0 && gridRect.height > 0) {
+								rect = gridRect;
+								mapContainer = gridContainer;
+							}
+						}
+					}
+
+					const isOutsideMap =
 							dropX < rect.left - 50 ||
 							dropX > rect.right + 50 ||
 							dropY < rect.top - 50 ||
 							dropY > rect.bottom + 50;
 
-						console.log('Map bounds:', rect, 'Drop point:', dropX, dropY, 'Outside:', isOutsideMap);
+					console.log('Map bounds:', rect, 'Drop point:', dropX, dropY, 'Outside:', isOutsideMap);
 
-						if (isOutsideMap) {
-							console.log('Deleting token:', token.id);
-							onTokenDragEnd(token, -1, -1);
-						} else {
-							// Calculate tile coordinates from drop position
-							// Find the grid container (the actual map grid)
-							const gridContainer = mapContainer.querySelector('[style*="gridContainer"]') ||
-								mapContainer.querySelector('[style*="transform"]') as HTMLElement;
-
-							let relativeX = dropX - rect.left;
-							let relativeY = dropY - rect.top;
-
-							// Account for pan offset if the map is panned
-							if (gridContainer) {
-								const gridRect = gridContainer.getBoundingClientRect();
-								relativeX = dropX - gridRect.left;
-								relativeY = dropY - gridRect.top;
-							}
-
-							// Calculate tile coordinates
-							const tileX = Math.max(0, Math.min(map.width - 1, Math.floor(relativeX / tileSize)));
-							const tileY = Math.max(0, Math.min(map.height - 1, Math.floor(relativeY / tileSize)));
-
-							// Snap the DOM element immediately to the target tile for instant feedback
-							if (domNode) {
-								domNode.style.left = `${tileX * tileSize}px`;
-								domNode.style.top = `${tileY * tileSize}px`;
-							}
-
-							console.log('Moving token to tile:', tileX, tileY, 'from drop position:', dropX, dropY, 'relative:', relativeX, relativeY);
-							onTokenPreviewPosition?.(token, tileX, tileY);
-							onTokenDragEnd(token, tileX, tileY);
-						}
+					if (isOutsideMap) {
+						console.log('Deleting token:', token.id);
+						onTokenDragEnd(token, -1, -1);
 					} else {
-						// If we can't find the container, assume it's outside if dropped far from center
-						console.warn('Could not find map container, using fallback detection');
-						const windowCenterX = window.innerWidth / 2;
-						const windowCenterY = window.innerHeight / 2;
-						const distanceFromCenter = Math.sqrt(
-							Math.pow(dropX - windowCenterX, 2) +
-							Math.pow(dropY - windowCenterY, 2),
-						);
-						// If dropped more than 300px from center, consider it deleted
-						if (distanceFromCenter > 300) {
-							console.log('Deleting token (fallback):', token.id);
-							onTokenDragEnd(token, -1, -1);
-						} else {
-							// Try to calculate tile from center position as fallback
-							// This is a rough estimate - ideally we'd find the map container
-							const estimatedTileX = Math.floor((dropX - windowCenterX + 200) / tileSize);
-							const estimatedTileY = Math.floor((dropY - windowCenterY + 200) / tileSize);
-							if (domNode) {
-								domNode.style.left = `${estimatedTileX * tileSize}px`;
-								domNode.style.top = `${estimatedTileY * tileSize}px`;
-							}
-							console.log('Moving token to estimated tile (fallback):', estimatedTileX, estimatedTileY);
-							onTokenPreviewPosition?.(token, estimatedTileX, estimatedTileY);
-							onTokenDragEnd(token, estimatedTileX, estimatedTileY);
+						// Calculate tile coordinates from drop position
+						// Find the grid container (the actual map grid)
+						let gridContainer = mapContainer.querySelector('[data-grid-container]') as HTMLElement;
+
+						// If not found as child, try direct query
+						if (!gridContainer) {
+							gridContainer = document.querySelector('[data-grid-container]') as HTMLElement;
 						}
+
+						// Calculate relative position - use grid container if available, otherwise use map container
+						let relativeX = dropX - rect.left;
+						let relativeY = dropY - rect.top;
+
+						// If we have a grid container, use its bounds for more accurate calculation
+						if (gridContainer) {
+							const gridRect = gridContainer.getBoundingClientRect();
+							relativeX = dropX - gridRect.left;
+							relativeY = dropY - gridRect.top;
+						}
+
+						// Calculate tile coordinates
+						const tileX = Math.max(0, Math.min(map.width - 1, Math.floor(relativeX / tileSize)));
+						const tileY = Math.max(0, Math.min(map.height - 1, Math.floor(relativeY / tileSize)));
+
+						// Snap the DOM element immediately to the target tile for instant feedback
+						if (domNode) {
+							domNode.style.left = `${tileX * tileSize}px`;
+							domNode.style.top = `${tileY * tileSize}px`;
+						}
+
+						console.log('Moving token to tile:', tileX, tileY, 'from drop position:', dropX, dropY, 'relative:', relativeX, relativeY);
+						onTokenPreviewPosition?.(token, tileX, tileY);
+						onTokenDragEnd(token, tileX, tileY);
 					}
-				};
+				} else {
+					// If we can't find the container, assume it's outside if dropped far from center
+					console.warn('Could not find map container, using fallback detection');
+					const windowCenterX = window.innerWidth / 2;
+					const windowCenterY = window.innerHeight / 2;
+					const distanceFromCenter = Math.sqrt(
+						Math.pow(dropX - windowCenterX, 2) +
+							Math.pow(dropY - windowCenterY, 2),
+					);
+						// If dropped more than 300px from center, consider it deleted
+					if (distanceFromCenter > 300) {
+						console.log('Deleting token (fallback):', token.id);
+						onTokenDragEnd(token, -1, -1);
+					} else {
+						// Try to calculate tile from center position as fallback
+						// This is a rough estimate - ideally we'd find the map container
+						const estimatedTileX = Math.floor((dropX - windowCenterX + 200) / tileSize);
+						const estimatedTileY = Math.floor((dropY - windowCenterY + 200) / tileSize);
+						if (domNode) {
+							domNode.style.left = `${estimatedTileX * tileSize}px`;
+							domNode.style.top = `${estimatedTileY * tileSize}px`;
+						}
+						console.log('Moving token to estimated tile (fallback):', estimatedTileX, estimatedTileY);
+						onTokenPreviewPosition?.(token, estimatedTileX, estimatedTileY);
+						onTokenDragEnd(token, estimatedTileX, estimatedTileY);
+					}
+				}
+			};
 
-				domNode.addEventListener('dragstart', handleDragStart);
-				domNode.addEventListener('dragend', handleDragEnd);
+			domNode.addEventListener('dragstart', handleDragStart);
+			domNode.addEventListener('dragend', handleDragEnd);
 
-				return () => {
-					domNode?.removeEventListener('dragstart', handleDragStart);
-					domNode?.removeEventListener('dragend', handleDragEnd);
-					domNode.removeAttribute('draggable');
-					domNode.style.cursor = '';
-					domNode.style.userSelect = '';
-				};
-			}, 0);
+			return () => {
+				domNode?.removeEventListener('dragstart', handleDragStart);
+				domNode?.removeEventListener('dragend', handleDragEnd);
+				domNode.removeAttribute('draggable');
+				domNode.style.cursor = '';
+				domNode.style.userSelect = '';
+			};
+		}, 0);
 
-			return () => clearTimeout(timeoutId);
-		}, [token, onTokenDragEnd, map, enableTokenDrag, tileSize]);
+		return () => clearTimeout(timeoutId);
+	}, [token, onTokenDragEnd, map, enableTokenDrag, tileSize]);
 
-		// Prevent long press when dragging
-		const handleLongPress = () => {
-			if (!isDraggingRef.current && onTokenLongPress) {
-				onTokenLongPress(token);
-			}
-		};
+	// Prevent long press when dragging
+	const handleLongPress = () => {
+		if (!isDraggingRef.current && onTokenLongPress) {
+			onTokenLongPress(token);
+		}
+	};
 
-		return (
-			<TouchableOpacity
-				ref={tokenRef}
-				style={[
-					styles.token,
-					{
-						left: renderX * tileSize,
-						top: renderY * tileSize,
-						width: tileSize,
-						height: tileSize,
-						borderColor:
+	return (
+		<TouchableOpacity
+			ref={tokenRef}
+			style={[
+				styles.token,
+				{
+					left: renderX * tileSize,
+					top: renderY * tileSize,
+					width: tileSize,
+					height: tileSize,
+					borderColor:
 							token.id === highlightTokenId
 								? '#FFD447'
 								: token.color || '#3B2F1B',
-					},
-				]}
-				onPress={() => {
-					console.log('[MapToken] Token pressed:', { tokenId: token.id, x: token.x, y: token.y, hasOnTokenPress: !!onTokenPress });
-					onTokenPress?.(token);
-				}}
-				onLongPress={handleLongPress}
-				disabled={!onTokenPress && !onTokenLongPress}
-			>
-				{renderTokenContent(token, tileSize)}
-			</TouchableOpacity>
-		);
-	};
+				},
+			]}
+			onPress={() => {
+				console.log('[MapToken] Token pressed:', { tokenId: token.id, x: token.x, y: token.y, hasOnTokenPress: !!onTokenPress });
+				onTokenPress?.(token);
+			}}
+			onLongPress={handleLongPress}
+			disabled={!onTokenPress && !onTokenLongPress}
+		>
+			{renderTokenContent(token, tileSize)}
+		</TouchableOpacity>
+	);
+};
 
 	const renderTokenContent = (token: MapToken, tokenTileSize: number) => {
-		const icon = token.icon || token.metadata?.icon || token.metadata?.image;
-
-		let color = token.color;
-		if (!color) {
+		let parsedMetadata: any = undefined;
+		if (token.metadata) {
 			try {
-				if (token.metadata) {
-					const metadata = typeof token.metadata === 'string' ? JSON.parse(token.metadata) : token.metadata;
-					if (metadata.tags?.includes('friendly')) {
-						color = '#4CAF50';
-					} else if (metadata.tags?.includes('hostile')) {
-						color = '#F44336';
-					} else if (metadata.tags?.includes('neutral')) {
-						color = '#2196F3';
-					} else {
-						color = '#1F130A';
-					}
-				}
+				parsedMetadata = typeof token.metadata === 'string' ? JSON.parse(token.metadata) : token.metadata;
 			} catch (error) {
 				console.error('Failed to parse token metadata:', error, token.metadata);
 			}
 		}
-		console.log('[MapTokenComponent] icon', token, icon, color);
+
+		// Check for 0 HP (unconscious/dead)
+		const isUnconscious = token.hitPoints !== undefined && token.hitPoints <= 0;
+
+		const icon = token.icon || parsedMetadata?.icon || parsedMetadata?.image;
+
+		let color = token.color;
+		if (!color && parsedMetadata) {
+			if (parsedMetadata.tags?.includes('friendly')) {
+				color = '#4CAF50';
+			} else if (parsedMetadata.tags?.includes('hostile')) {
+				color = '#F44336';
+			} else if (parsedMetadata.tags?.includes('neutral')) {
+				color = '#2196F3';
+			} else {
+				color = '#1F130A';
+			}
+		} else if (!color) {
+			color = '#1F130A';
+		}
 
 		// Calculate icon size based on tile size (70% of tile size, minimum 16px)
 		const iconSize = Math.max(16, Math.floor(tokenTileSize * 0.7));
 		const labelFontSize = Math.max(10, Math.floor(tokenTileSize * 0.4));
 
-		// If icon exists, render it using ExpoIcon
-		if (typeof icon === 'string' && icon.trim().length > 0) {
-			return (
-				<ExpoIcon
-					icon={icon.trim()}
-					size={iconSize}
-					color="#1F130A"
-					style={{ color }}
-				/>
-			);
-		}
+		const content = (() => {
+			// If icon exists, render it using ExpoIcon
+			if (typeof icon === 'string' && icon.trim().length > 0) {
+				return (
+					<ExpoIcon
+						icon={icon.trim()}
+						size={iconSize}
+						color="#1F130A"
+						style={{ color, opacity: isUnconscious ? 0.5 : 1 }}
+					/>
+				);
+			}
 
-		// Fallback to initials only if no icon is available
+			// Fallback to initials only if no icon is available
+			return (
+				<Text style={[styles.tokenLabel, { fontSize: labelFontSize, opacity: isUnconscious ? 0.5 : 1 }]} numberOfLines={1}>
+					{token.label?.slice(0, 2).toUpperCase() || 'T'}
+				</Text>
+			);
+		})();
+
 		return (
-			<Text style={[styles.tokenLabel, { fontSize: labelFontSize }]} numberOfLines={1}>
-				{token.label?.slice(0, 2).toUpperCase() || 'T'}
-			</Text>
+			<View style={{ alignItems: 'center', justifyContent: 'center' }}>
+				{content}
+				{isUnconscious && (
+					<View style={StyleSheet.absoluteFill} pointerEvents="none">
+						<View style={{
+							flex: 1,
+							alignItems: 'center',
+							justifyContent: 'center',
+							backgroundColor: 'rgba(0,0,0,0.3)',
+							borderRadius: 4,
+						}}>
+							<Text style={{
+								fontSize: iconSize * 1.5,
+								color: '#FF0000',
+								opacity: 0.5,
+								fontWeight: 'bold',
+								textShadowColor: 'rgba(0, 0, 0, 0.75)',
+								textShadowOffset: { width: 1, height: 1 },
+								textShadowRadius: 2,
+							}}>❌</Text>
+						</View>
+					</View>
+				)}
+			</View>
 		);
 	};
 
@@ -848,6 +964,7 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 	}, []);
 
 	const wrapperRef = useRef<View>(null);
+	const gridContainerRef = useRef<View>(null);
 
 	useEffect(() => {
 		if (Platform.OS === 'web' && wrapperRef.current) {
@@ -855,6 +972,16 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 			const domNode = element._nativeNode || element;
 			if (domNode && typeof domNode.setAttribute === 'function') {
 				domNode.setAttribute('data-map-container', 'true');
+			}
+		}
+	}, []);
+
+	useEffect(() => {
+		if (Platform.OS === 'web' && gridContainerRef.current) {
+			const element = gridContainerRef.current as any;
+			const domNode = element._nativeNode || element;
+			if (domNode && typeof domNode.setAttribute === 'function') {
+				domNode.setAttribute('data-grid-container', 'true');
 			}
 		}
 	}, []);
@@ -903,6 +1030,7 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 		>
 			<View style={styles.panSurface}>
 				<View
+					ref={gridContainerRef}
 					style={[
 						styles.gridContainer,
 						{
@@ -915,6 +1043,21 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 						},
 					]}
 				>
+					{backgroundImage && (
+						<Image
+							source={{ uri: backgroundImage }}
+							style={[
+								StyleSheet.absoluteFill,
+								{
+									width: map.width * tileSize,
+									height: map.height * tileSize,
+									opacity: 1, // Full opacity for VTT maps
+									zIndex: 0, // Behind tiles
+								},
+							]}
+							resizeMode="stretch"
+						/>
+					)}
 					{normalizedTerrain.map((row, y) => (
 						<View key={`row-${y}`} style={styles.row}>
 							{row.map((cell, x) => {

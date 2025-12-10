@@ -67,6 +67,9 @@ export class GameStateService {
 		if (!turn) {
 			return turn;
 		}
+		// When resetting turn usage (e.g., resuming or starting new turn),
+		// we MUST include the fields required by activeTurn schema:
+		// movementUsed, majorActionUsed, minorActionUsed
 		return {
 			...turn,
 			movementUsed: 0,
@@ -560,13 +563,54 @@ export class GameStateService {
 			entry => entry.entityId === currentTurn.entityId,
 		);
 
-		if (currentIndex === -1) {
-			throw new Error('Current turn entity not found in initiative order');
+		// Find next alive entity
+		let nextIndex = currentIndex;
+		let nextEntity = null;
+		let attempts = 0;
+		const totalEntities = state.initiativeOrder.length;
+
+		// Prepare HP lookup maps
+		const playerHpMap = new Map(state.characters.map(c => [c.id, c.health]));
+		const npcHpMap = new Map(state.mapState?.tokens
+			.filter(t => t.type === 'npc')
+			.map(t => [t.id, t.hitPoints ?? 0]) || []);
+
+		// Loop until we find a living entity or have checked everyone
+		while (attempts < totalEntities) {
+			// Move to next entity (wrap around if at end)
+			// If currentIndex was -1 (e.g. DM turn), we start at 0
+			if (attempts === 0 && currentIndex === -1) {
+				nextIndex = 0;
+			} else {
+				nextIndex = (nextIndex + 1) % totalEntities;
+			}
+
+			const candidate = state.initiativeOrder[nextIndex];
+			let hp = 0;
+
+			if (candidate.type === 'player') {
+				hp = playerHpMap.get(candidate.entityId) ?? 0;
+			} else {
+				// NPC - look up in map tokens
+				// Use entityId which maps to token.id for NPCs
+				hp = npcHpMap.get(candidate.entityId) ?? 0;
+			}
+
+			if (hp > 0) {
+				nextEntity = candidate;
+				break;
+			}
+
+			attempts++;
 		}
 
-		// Move to next entity (wrap around if at end)
-		const nextIndex = (currentIndex + 1) % state.initiativeOrder.length;
-		const nextEntity = state.initiativeOrder[nextIndex];
+		if (!nextEntity) {
+			// Everyone is dead? Fallback to the very next person to avoid getting stuck
+			// or maybe end the encounter?
+			// For now, let's just pick the immediate next one even if dead to allow DM intervention
+			const fallbackIndex = (currentIndex + 1) % totalEntities;
+			nextEntity = state.initiativeOrder[fallbackIndex];
+		}
 
 		const characters = state.characters ?? [];
 		const activeTurn = this.buildActiveTurn(
@@ -598,11 +642,20 @@ export class GameStateService {
 			throw new Error('Game not started');
 		}
 
-		const characters = state.characters ?? [];
-		
+		// Fetch fresh characters from DB to ensure we have latest inventory/stats
+		// This avoids using potentially stale character data from state_data
+		const memberships = await this.db.getGamePlayers(game.id);
+		const characterRows = await Promise.all(
+			memberships.map(async m => {
+				const row = await this.db.getCharacterById(m.character_id);
+				return row ? this.deserializeCharacter(row) : null;
+			}),
+		);
+		const dbCharacters = characterRows.filter((c): c is Character => Boolean(c));
+
 		// Restore all characters to full health/AP (long rest)
-		const restoredCharacters = this.restoreAllCharactersToFull(characters);
-		
+		const restoredCharacters = this.restoreAllCharactersToFull(dbCharacters);
+
 		// Update characters in database
 		for (const character of restoredCharacters) {
 			await this.db.updateCharacter(character.id, {
@@ -610,12 +663,13 @@ export class GameStateService {
 				action_points: character.maxActionPoints,
 			});
 		}
-		
+
 		// Clear active turn and initiative order to end encounter
 		const updatedState: MultiplayerGameState = {
 			...state,
 			characters: restoredCharacters,
 			activeTurn: null,
+			pausedTurn: undefined,
 			initiativeOrder: undefined,
 			lastUpdated: Date.now(),
 		};

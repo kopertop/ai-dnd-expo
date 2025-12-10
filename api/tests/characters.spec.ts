@@ -206,6 +206,37 @@ describe('Characters API', () => {
 		expect(updateData.character.level).toBe(2);
 	});
 
+	it('fetches a single character when owned by the requester', async () => {
+		const createPayload = {
+			id: 'char-2a',
+			name: 'Single Fetch',
+			level: 3,
+			race: 'Dwarf',
+			class: 'Barbarian',
+			stats: { STR: 16 },
+			skills: ['athletics'],
+			inventory: [],
+			equipped: {},
+			health: 18,
+			maxHealth: 18,
+			actionPoints: 2,
+			maxActionPoints: 3,
+			statusEffects: [],
+		};
+
+		await fetchWithAuth('http://localhost/api/characters', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(createPayload),
+		});
+
+		const response = await fetchWithAuth('http://localhost/api/characters/char-2a');
+		expect(response.status).toBe(200);
+		const data = (await response.json()) as { character: { id: string; name: string } };
+		expect(data.character.id).toBe(createPayload.id);
+		expect(data.character.name).toBe(createPayload.name);
+	});
+
 	it('deletes a character', async () => {
 		// Create a character first
 		const createPayload = {
@@ -301,6 +332,88 @@ describe('Characters API', () => {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ name: 'Hacked Name' }),
+			}),
+			env as CloudflareBindings,
+		);
+
+		expect(response.status).toBe(403);
+	});
+
+	it('returns 403 when trying to fetch another user\'s character', async () => {
+		const createPayload = {
+			id: 'char-5',
+			name: 'Owner Locked',
+			level: 1,
+			race: 'Human',
+			class: 'Fighter',
+			stats: { STR: 12 },
+			skills: [],
+			inventory: [],
+			equipped: {},
+			health: 10,
+			maxHealth: 10,
+			actionPoints: 3,
+			maxActionPoints: 3,
+			statusEffects: [],
+		};
+
+		await fetchWithAuth('http://localhost/api/characters', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(createPayload),
+		});
+
+		const otherUser = { id: 'other-user-2', email: 'other2@example.com', name: 'Other User' };
+		const otherUserApp = new Hono<{ Bindings: CloudflareBindings; Variables: { user: typeof otherUser | null } }>();
+		otherUserApp.use('*', async (c, next) => {
+			c.set('user', otherUser);
+			await next();
+		});
+		otherUserApp.route('/api/characters', characterRoutes);
+
+		const response = await otherUserApp.fetch(
+			new Request('http://localhost/api/characters/char-5'),
+			env as CloudflareBindings,
+		);
+
+		expect(response.status).toBe(403);
+	});
+
+	it('returns 403 when trying to delete another user\'s character', async () => {
+		const createPayload = {
+			id: 'char-6',
+			name: 'Owner Delete Lock',
+			level: 1,
+			race: 'Halfling',
+			class: 'Rogue',
+			stats: { DEX: 16 },
+			skills: [],
+			inventory: [],
+			equipped: {},
+			health: 8,
+			maxHealth: 8,
+			actionPoints: 3,
+			maxActionPoints: 3,
+			statusEffects: [],
+		};
+
+		await fetchWithAuth('http://localhost/api/characters', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(createPayload),
+		});
+
+		const otherUser = { id: 'other-user-3', email: 'other3@example.com', name: 'Other User' };
+		const otherUserApp = new Hono<{ Bindings: CloudflareBindings; Variables: { user: typeof otherUser | null } }>();
+		otherUserApp.use('*', async (c, next) => {
+			c.set('user', otherUser);
+			await next();
+		});
+		otherUserApp.route('/api/characters', characterRoutes);
+
+		const response = await otherUserApp.fetch(
+			new Request('http://localhost/api/characters/char-6', {
+				method: 'DELETE',
 			}),
 			env as CloudflareBindings,
 		);

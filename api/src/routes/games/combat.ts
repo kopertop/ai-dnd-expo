@@ -6,6 +6,7 @@ import { GameStateService } from '@/api/src/services/game-state';
 import { handleBasicAttack, handleSpellCast } from '@/api/src/utils/combat-helpers';
 import { createId, deserializeCharacter, isHostUser } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
+import type { Character } from '@/types/character';
 import type {
 	CharacterActionResult,
 } from '@/types/combat';
@@ -29,7 +30,7 @@ const combat = new Hono<GamesContext>();
  * @param action - Either 'damage' or 'heal'
  * @returns Updated character or NPC data
  */
-combat.post('/:inviteCode/characters/:characterId/:action', async (c) => {
+combat.post('/:inviteCode/characters/:characterId/:action{damage|heal}', async (c) => {
 	const user = c.get('user');
 	if (!user) {
 		return c.json({ error: 'Unauthorized' }, 401);
@@ -224,15 +225,83 @@ combat.post('/:inviteCode/characters/:characterId/actions', async (c) => {
 	}
 
 	const characterRow = await db.getCharacterById(characterId);
+	let actingAsNpc = false;
+	let npcToken: Awaited<ReturnType<typeof db.getMapTokenById>> | null = null;
+	let npcDefinition: Awaited<ReturnType<typeof db.getNpcById>> | null = null;
+
 	if (!characterRow) {
-		return c.json({ error: 'Character not found' }, 404);
+		npcToken = await db.getMapTokenById(characterId);
+		if (npcToken && npcToken.token_type === 'npc' && npcToken.npc_id) {
+			if (!isHost) {
+				return c.json({ error: 'Forbidden' }, 403);
+			}
+			actingAsNpc = true;
+			npcDefinition = await db.getNpcById(npcToken.npc_id);
+		} else {
+			return c.json({ error: 'Character not found' }, 404);
+		}
 	}
 
-	const character = deserializeCharacter(characterRow);
+	// Check target status if applicable
+	if (body.targetId && !isHost) {
+		const targetRow = await db.getCharacterById(body.targetId);
+		let targetHp = 10;
+		let targetFound = false;
+
+		if (targetRow) {
+			targetHp = targetRow.health ?? targetRow.max_health ?? 10;
+			targetFound = true;
+		} else {
+			const targetToken = await db.getMapTokenById(body.targetId);
+			if (targetToken) {
+				targetHp = targetToken.hit_points ?? targetToken.max_hit_points ?? 10;
+				targetFound = true;
+			}
+		}
+
+		if (targetFound && targetHp <= 0) {
+			// Target is unconscious/dead
+			// Only allow specific actions (resurrection) - for now, block attacks
+			if (body.actionType === 'basic_attack') {
+				return c.json({ error: 'Target is unconscious' }, 400);
+			}
+
+			// For spells/items, we ideally want to check if it's a resurrection effect
+			// But for now we'll allow them to proceed (could be Revivify)
+			// The restriction "cannot take damage or healing from other sources"
+			// might need to be enforced in the effect handler or just rely on DM supervision for complex spell effects
+		}
+	}
+
+	const character: Character = actingAsNpc
+		? (() => {
+			const parsedStats =
+				(typeof npcDefinition?.stats === 'string' && npcDefinition.stats
+					? JSON.parse(npcDefinition.stats)
+					: {}) ?? {};
+			return {
+				id: npcToken!.id,
+				name: npcToken!.label || npcDefinition?.name || 'NPC',
+				level: 1,
+				race: npcDefinition?.role || 'NPC',
+				class: npcDefinition?.archetype || 'NPC',
+				stats: parsedStats,
+				skills: [],
+				inventory: [],
+				equipped: {},
+				health: npcToken!.hit_points ?? npcDefinition?.base_health ?? 10,
+				maxHealth: npcToken!.max_hit_points ?? npcDefinition?.base_health ?? 10,
+				actionPoints: 99,
+				maxActionPoints: 99,
+				statusEffects: [],
+				preparedSpells: [],
+			};
+		})()
+		: deserializeCharacter(characterRow!);
 
 	// Validate action points
 	const actionPointCost = body.actionType === 'cast_spell' ? 2 : body.actionType === 'basic_attack' ? 1 : 1;
-	if (character.actionPoints < actionPointCost) {
+	if (!actingAsNpc && character.actionPoints < actionPointCost) {
 		return c.json({ error: 'Not enough action points' }, 400);
 	}
 
@@ -276,8 +345,10 @@ combat.post('/:inviteCode/characters/:characterId/actions', async (c) => {
 			break;
 	}
 
-	const updatedActionPoints = character.actionPoints - actionPointCost;
-	await db.updateCharacter(characterId, { action_points: updatedActionPoints });
+	if (!actingAsNpc) {
+		const updatedActionPoints = character.actionPoints - actionPointCost;
+		await db.updateCharacter(characterId, { action_points: updatedActionPoints });
+	}
 
 	try {
 		let description: string;

@@ -10,13 +10,13 @@ import {
 	GameStateResponse,
 	JoinGameRequest,
 	MapGenerationRequest,
+	MapMoveResponse,
 	MapStateResponse,
 	MapStateUpdateRequest,
 	MapTerrainMutationRequest,
 	MapTokenListResponse,
 	MapTokenMutationResponse,
 	MapTokenUpsertRequest,
-	MapMoveResponse,
 	MovementValidationResponse,
 	MyGamesResponse,
 	NpcDefinitionListResponse,
@@ -352,7 +352,7 @@ export class MultiplayerClient {
 	/**
 	 * Get all available maps in the system
 	 */
-	async getAllMaps(): Promise<{ maps: Array<{ id: string; slug: string; name: string; description: string | null; width: number; height: number }> }> {
+	async getAllMaps(): Promise<{ maps: Array<{ id: string; slug: string; name: string; description: string | null; width: number; height: number; world?: string | null; metadata?: Record<string, unknown> }> }> {
 		return apiService.fetchApi('/maps', {
 			method: 'GET',
 		});

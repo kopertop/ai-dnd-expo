@@ -12,12 +12,14 @@ import {
 } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
+import { MapAnalyzer } from '@/services/ai/map-analyzer';
+import { createOllamaProvider } from '@/services/ai/providers/ollama-provider';
 import { MapTokenRow } from '@/shared/workers/db';
 import { generateProceduralMap, MapGeneratorPreset } from '@/shared/workers/map-generator';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
+import { getCharacterSpeed } from '@/utils/character-utils';
 import { BLOCKED_COST, findPathWithCosts, getTerrainCost } from '@/utils/movement-calculator';
 import { mapStateFromDb } from '@/utils/schema-adapters';
-import { getCharacterSpeed } from '@/utils/character-utils';
 
 
 const map = new Hono<GamesContext>();
@@ -181,6 +183,7 @@ map.post('/:inviteCode/map/generate', async (c) => {
 
 	await db.saveMap({
 		...generated.map,
+		world: game.world || null, // Set world from game, or null for world-agnostic
 		created_at: Date.now(),
 		updated_at: Date.now(),
 	});
@@ -225,8 +228,12 @@ map.post('/:inviteCode/map/terrain', async (c) => {
 			y: number;
 			terrainType: string;
 			elevation?: number;
+			movementCost?: number;
 			isBlocked?: boolean;
+			isDifficult?: boolean;
 			hasFog?: boolean;
+			providesCover?: boolean;
+			coverType?: 'half' | 'three-quarters' | 'full' | null;
 			featureType?: string | null;
 			metadata?: Record<string, unknown>;
 		}>;
@@ -244,8 +251,12 @@ map.post('/:inviteCode/map/terrain', async (c) => {
 			y: tile.y,
 			terrain_type: tile.terrainType,
 			elevation: tile.elevation ?? 0,
+			movement_cost: tile.movementCost ?? 1.0,
 			is_blocked: tile.isBlocked ? 1 : 0,
+			is_difficult: tile.isDifficult ? 1 : 0,
 			has_fog: tile.hasFog ? 1 : 0,
+			provides_cover: tile.providesCover ? 1 : 0,
+			cover_type: tile.coverType ?? null,
 			feature_type: tile.featureType ?? null,
 			metadata: JSON.stringify(tile.metadata ?? {}),
 		})),
@@ -852,6 +863,245 @@ map.delete('/:inviteCode/map/tokens/:tokenId', async (c) => {
 		}
 	}
 	return c.json({ tokens: mapState.tokens });
+});
+
+/**
+ * Import a VTT map file (image with grid config)
+ * POST /api/games/:inviteCode/map/import-vtt
+ */
+map.post('/:inviteCode/map/import-vtt', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const inviteCode = c.req.param('inviteCode');
+	const db = createDatabase(c.env);
+	const game = await db.getGameByInviteCode(inviteCode);
+
+	if (!game) {
+		return c.json({ error: 'Game not found' }, 404);
+	}
+
+	if (!isHostUser(game, user)) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+
+	try {
+		const body = await c.req.parseBody();
+		const file = Array.isArray(body['file']) ? body['file'][0] : body['file'];
+
+		if (!file || !(file instanceof File)) {
+			return c.json({ error: 'No file provided' }, 400);
+		}
+
+		// Validate grid config
+		const columns = parseInt(body['columns'] as string, 10);
+		const rows = parseInt(body['rows'] as string, 10);
+		const gridSize = parseInt(body['gridSize'] as string, 10) || 70;
+		const name = (body['name'] as string) || file.name.replace(/\.[^/.]+$/, '');
+
+		if (isNaN(columns) || columns <= 0 || isNaN(rows) || rows <= 0) {
+			return c.json({ error: 'Invalid grid dimensions' }, 400);
+		}
+
+		// Upload image to R2 (reuse logic from images route)
+		// We'll import these helpers or duplicate if needed since we can't easily cross-import from routes
+		// But we have generateImageKey from utils/images.ts if it exists, or just recreate logic
+		const timestamp = Date.now();
+		const extension = file.name.split('.').pop()?.toLowerCase() || 'png';
+		const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+		const key = `users/${user.id}/${timestamp}-${sanitizedFilename}`;
+
+		// Convert file to base64 for AI analysis
+		let base64Image = '';
+		try {
+			const buffer = await file.arrayBuffer();
+			const bytes = new Uint8Array(buffer);
+			const len = bytes.byteLength;
+			let binary = '';
+			for (let i = 0; i < len; i++) {
+				binary += String.fromCharCode(bytes[i]);
+			}
+			base64Image = btoa(binary);
+		} catch (e) {
+			console.warn('Failed to read file for AI analysis:', e);
+		}
+
+		// Perform AI analysis
+		let aiAnalysis = null;
+		if (base64Image) {
+			try {
+				// Use env vars from context if available
+				const ollamaUrl = (c.env as any).OLLAMA_BASE_URL || (c.env as any).EXPO_PUBLIC_OLLAMA_BASE_URL;
+				const ollamaKey = (c.env as any).OLLAMA_API_KEY || (c.env as any).EXPO_PUBLIC_OLLAMA_API_KEY;
+
+				const analyzer = new MapAnalyzer({
+					provider: createOllamaProvider({
+						baseUrl: ollamaUrl,
+						apiKey: ollamaKey,
+						defaultModel: 'llama3.2-vision', // Use vision model
+						timeout: 60000,
+					}),
+				});
+
+				console.log('Starting AI map analysis...');
+				aiAnalysis = await analyzer.analyze(base64Image);
+				console.log('AI Analysis result:', JSON.stringify(aiAnalysis, null, 2));
+			} catch (e) {
+				console.error('AI map analysis failed:', e);
+			}
+		}
+
+		const bucket = c.env.IMAGES_BUCKET;
+		await bucket.put(key, file, {
+			httpMetadata: {
+				contentType: file.type || 'image/png',
+			},
+		});
+
+		// Construct public URL
+		const requestUrl = new URL(c.req.url);
+		const isLocalDev = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
+		const origin = isLocalDev ? 'http://localhost:8787' : requestUrl.origin;
+
+		// We need to create an image record to serve it via the API
+		const imageId = createId('img');
+		const publicUrl = `${origin}/api/images/${imageId}`;
+
+		await db.saveUploadedImage({
+			id: imageId,
+			user_id: user.id,
+			filename: file.name,
+			r2_key: key,
+			public_url: publicUrl,
+			title: name,
+			description: 'Imported VTT map background',
+			image_type: 'both', // Could be used for anything
+			is_public: 1,
+			created_at: timestamp,
+			updated_at: timestamp,
+		});
+
+		// Create map record
+		const mapId = createId('map');
+
+		await db.saveMap({
+			id: mapId,
+			slug: `vtt-import-${timestamp}`,
+			name: name,
+			description: 'Imported from VTT file',
+			width: columns,
+			height: rows,
+			default_terrain: JSON.stringify({ type: 'stone' }),
+			fog_of_war: JSON.stringify({ enabled: false, grid: [] }),
+			terrain_layers: JSON.stringify([]),
+			metadata: JSON.stringify({
+				background: publicUrl,
+				vttFormat: 'image',
+				grid: { columns, rows, gridSize },
+			}),
+			generator_preset: 'static',
+			seed: 'vtt-import',
+			theme: 'neutral',
+			biome: 'temperate',
+			is_generated: 0,
+			created_at: timestamp,
+			updated_at: timestamp,
+			world: game.world_id || null,
+		});
+
+		// Create default tiles
+		// We generate a large array of tiles
+		const tiles = [];
+		for (let y = 0; y < rows; y++) {
+			for (let x = 0; x < columns; x++) {
+				let tileProps = {
+					terrain_type: 'stone',
+					elevation: 0,
+					movement_cost: 1.0,
+					is_blocked: 0,
+					is_difficult: 0,
+					has_fog: 0,
+					provides_cover: 0,
+					cover_type: null as string | null,
+					feature_type: null as string | null,
+					metadata: '{}',
+				};
+
+				// Apply AI analysis if available
+				if (aiAnalysis && aiAnalysis.regions) {
+					// Check if this tile is inside any region
+					// Convert tile coordinates to percentage bounds
+					// We check if the CENTER of the tile is within the region bounds
+					const tileCenterX = (x + 0.5) / columns;
+					const tileCenterY = (y + 0.5) / rows;
+
+					for (const region of aiAnalysis.regions) {
+						if (
+							tileCenterX >= region.bounds.x &&
+							tileCenterX <= region.bounds.x + region.bounds.width &&
+							tileCenterY >= region.bounds.y &&
+							tileCenterY <= region.bounds.y + region.bounds.height
+						) {
+							// Apply region properties
+							switch (region.type) {
+								case 'wall':
+									tileProps.is_blocked = 1;
+									tileProps.movement_cost = 999.0;
+									tileProps.terrain_type = 'wall';
+									break;
+								case 'tree':
+									tileProps.provides_cover = 1;
+									tileProps.cover_type = 'half';
+									tileProps.is_difficult = 1;
+									tileProps.movement_cost = 2.0;
+									break;
+								case 'water':
+									tileProps.is_blocked = 1; // Or high cost? Usually blocked for walking
+									tileProps.movement_cost = 999.0;
+									tileProps.terrain_type = 'water';
+									break;
+								case 'difficult':
+									tileProps.is_difficult = 1;
+									tileProps.movement_cost = 2.0;
+									break;
+								case 'door':
+									tileProps.feature_type = 'door';
+									break;
+								case 'road':
+									tileProps.movement_cost = 0.5; // Easier movement
+									break;
+							}
+						}
+					}
+				}
+
+				tiles.push({
+					x,
+					y,
+					...tileProps,
+				});
+			}
+		}
+
+		// Insert tiles in batches to avoid statement limit
+		const BATCH_SIZE = 100;
+		for (let i = 0; i < tiles.length; i += BATCH_SIZE) {
+			const batch = tiles.slice(i, i + BATCH_SIZE);
+			await db.upsertMapTiles(mapId, batch);
+		}
+
+		// Set as current map
+		await db.updateGameMap(game.id, mapId);
+		game.current_map_id = mapId;
+
+		const mapState = await buildMapState(db, game);
+		return c.json(mapState);
+	} catch (error) {
+		console.error('Failed to import VTT map:', error);
+		return c.json({ error: 'Failed to import VTT map' }, 500);
+	}
 });
 
 export default map;

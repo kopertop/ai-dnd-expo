@@ -4,13 +4,14 @@ title: Establish Playwright test workflow with local mocks for feature validatio
 status: To Do
 assignee: []
 created_date: '2025-11-25 01:30'
-updated_date: '2025-12-02 21:02'
+updated_date: '2025-12-05 03:22'
 labels:
   - testing
   - playwright
   - tdd
 dependencies: []
 priority: low
+ordinal: 2000
 ---
 
 ## Description

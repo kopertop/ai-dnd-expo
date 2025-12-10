@@ -4,11 +4,13 @@ title: Implement spell casting for players and NPCs with UI actions
 status: To Do
 assignee: []
 created_date: '2025-11-25 01:32'
+updated_date: '2025-12-05 03:22'
 labels:
   - feature
   - combat
   - spells
 dependencies: []
+ordinal: 3000
 ---
 
 ## Description

@@ -1,15 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { ExpoIconPicker } from './expo-icon-picker';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
+import { ATTRIBUTE_DESCRIPTIONS } from '@/constants/stats';
 import { STATUS_EFFECT_LIST, type StatusEffect } from '@/constants/status-effects';
 import { useUpdateNpcInstance } from '@/hooks/api/use-npc-queries';
+import { websocketClient } from '@/services/api/websocket-client';
 import { Character } from '@/types/character';
 import { MapToken } from '@/types/multiplayer-map';
-import { STAT_KEYS } from '@/types/stats';
+import { STAT_KEYS, StatKey } from '@/types/stats';
 import { calculateAC } from '@/utils/combat-utils';
 
 interface CharacterDMModalProps {
@@ -40,10 +43,28 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 	npcStats,
 }) => {
 	const updateNpcInstanceMutation = useUpdateNpcInstance(gameId);
+	const queryClient = useQueryClient();
 	const [actionAmount, setActionAmount] = useState('');
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [effectType, setEffectType] = useState<'damage' | 'heal' | null>(null);
-	const currentIcon = character?.icon || (npcToken?.metadata?.icon as string) || '';
+	const [infoAttribute, setInfoAttribute] = useState<StatKey | null>(null);
+	const npcMetadata = useMemo(() => {
+		if (!npcToken?.metadata) return {};
+		if (typeof npcToken.metadata === 'string') {
+			try {
+				return JSON.parse(npcToken.metadata);
+			} catch {
+				return {};
+			}
+		}
+		return npcToken.metadata as Record<string, unknown>;
+	}, [npcToken?.metadata]);
+	const currentIcon = character?.icon || (npcMetadata?.icon as string) || '';
+	const [localIcon, setLocalIcon] = useState(currentIcon);
+
+	useEffect(() => {
+		setLocalIcon(currentIcon);
+	}, [currentIcon]);
 
 	// Get current status effects from character or NPC
 	const currentStatusEffects = character?.statusEffects || npcToken?.statusEffects || [];
@@ -62,8 +83,7 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 
 	// Get stats - from character or NPC
 	const stats = character?.stats || npcStats || { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 };
-	const npcMetadata = npcToken?.metadata as { armorClass?: number } | undefined;
-	const armorClass = character ? calculateAC(character) : npcMetadata?.armorClass;
+	const armorClass = character ? calculateAC(character) : (npcMetadata?.armorClass as number | undefined);
 
 	// Trigger visual effect animation
 	useEffect(() => {
@@ -230,19 +250,36 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 		}
 	};
 
-	const handleIconChange = (nextIcon: string) => {
-		if (character && onUpdateCharacter) {
-			onUpdateCharacter(character.id, { icon: nextIcon });
-		} else if (npcToken) {
-			updateNpcInstanceMutation.mutateAsync({
-				path: `/games/${gameId}/npcs/${npcToken.id}`,
-				body: JSON.stringify({
-					metadata: {
-						...(npcToken.metadata || {}),
-						icon: nextIcon,
-					},
-				}),
-			});
+	const refreshMapState = () => {
+		queryClient.invalidateQueries({ queryKey: [`/games/${gameId}/map`] });
+		queryClient.invalidateQueries({ queryKey: [`/games/${gameId}/map/tokens`] });
+		queryClient.invalidateQueries({ queryKey: [`/games/${gameId}/state`] });
+		websocketClient.sendRefresh();
+	};
+
+	const handleIconChange = async (nextIcon: string) => {
+		if (isProcessing) return;
+		setIsProcessing(true);
+		try {
+			if (character && onUpdateCharacter) {
+				setLocalIcon(nextIcon);
+				await Promise.resolve(onUpdateCharacter(character.id, { icon: nextIcon }) as unknown);
+				refreshMapState();
+			} else if (npcToken) {
+				setLocalIcon(nextIcon);
+				await updateNpcInstanceMutation.mutateAsync({
+					path: `/games/${gameId}/npcs/${npcToken.id}`,
+					body: JSON.stringify({
+						metadata: {
+							...npcMetadata,
+							icon: nextIcon,
+						},
+					}),
+				});
+				refreshMapState();
+			}
+		} finally {
+			setIsProcessing(false);
 		}
 	};
 
@@ -286,7 +323,7 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 										<View style={{ width: '100%', marginBottom: 12 }}>
 											<ExpoIconPicker
 												label="Icon (vector or URL)"
-												value={currentIcon}
+												value={localIcon}
 												onChange={handleIconChange}
 											/>
 										</View>
@@ -447,7 +484,13 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 								<ThemedText style={styles.sectionTitle}>Ability Scores</ThemedText>
 								<View style={styles.statsGrid}>
 									{STAT_KEYS.map(statKey => (
-										<View key={statKey} style={styles.statBox}>
+										<View key={statKey} style={[styles.statBox, { position: 'relative' }]}>
+											<TouchableOpacity
+												style={styles.infoButton}
+												onPress={() => setInfoAttribute(infoAttribute === statKey ? null : statKey)}
+											>
+												<ThemedText style={styles.infoButtonText}>?</ThemedText>
+											</TouchableOpacity>
 											<ThemedText style={styles.statBoxLabel}>{statKey}</ThemedText>
 											<ThemedText style={styles.statBoxValue}>{stats[statKey]}</ThemedText>
 											<ThemedText style={styles.statBoxModifier}>
@@ -562,6 +605,38 @@ export const CharacterDMModal: React.FC<CharacterDMModalProps> = ({
 					</ScrollView>
 				</ThemedView>
 			</View>
+			{/* Attribute Info Modal */}
+			<Modal
+				visible={infoAttribute !== null}
+				transparent
+				animationType="fade"
+				onRequestClose={() => setInfoAttribute(null)}
+			>
+				<TouchableOpacity
+					style={styles.modalOverlay}
+					activeOpacity={1}
+					onPress={() => setInfoAttribute(null)}
+				>
+					<ThemedView style={styles.modalContent} onStartShouldSetResponder={() => true}>
+						{infoAttribute && (
+							<>
+								<View style={styles.modalHeader}>
+									<ThemedText style={styles.modalTitle}>{infoAttribute}</ThemedText>
+									<TouchableOpacity
+										style={styles.modalCloseButton}
+										onPress={() => setInfoAttribute(null)}
+									>
+										<ThemedText style={styles.modalCloseText}>✕</ThemedText>
+									</TouchableOpacity>
+								</View>
+								<ThemedText style={styles.modalDescription}>
+									{ATTRIBUTE_DESCRIPTIONS[infoAttribute]}
+								</ThemedText>
+							</>
+						)}
+					</ThemedView>
+				</TouchableOpacity>
+			</Modal>
 		</Modal>
 	);
 };
@@ -825,5 +900,68 @@ const styles = StyleSheet.create({
 		fontSize: 11,
 		color: '#FFFFFF',
 		fontWeight: '600',
+	},
+	infoButton: {
+		position: 'absolute',
+		top: 4,
+		right: 4,
+		width: 20,
+		height: 20,
+		borderRadius: 10,
+		backgroundColor: 'rgba(59, 47, 27, 0.2)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		borderWidth: 1,
+		borderColor: '#3B2F1B',
+		zIndex: 10,
+	},
+	infoButtonText: {
+		color: '#3B2F1B',
+		fontSize: 14,
+		fontWeight: 'bold',
+	},
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0, 0, 0, 0.5)',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalContent: {
+		backgroundColor: '#F9F6EF',
+		borderRadius: 12,
+		padding: 20,
+		margin: 20,
+		maxWidth: 400,
+		borderWidth: 2,
+		borderColor: '#C9B037',
+	},
+	modalHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginBottom: 12,
+	},
+	modalTitle: {
+		fontSize: 24,
+		fontWeight: 'bold',
+		color: '#3B2F1B',
+	},
+	modalCloseButton: {
+		width: 32,
+		height: 32,
+		borderRadius: 16,
+		backgroundColor: '#D4BC8B',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalCloseText: {
+		fontSize: 18,
+		color: '#3B2F1B',
+		fontWeight: 'bold',
+	},
+	modalDescription: {
+		fontSize: 16,
+		color: '#3B2F1B',
+		lineHeight: 24,
 	},
 });

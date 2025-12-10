@@ -28,24 +28,37 @@ export const TERRAIN_COSTS: Record<string, number> = {
 
 const normalizeTerrain = (terrain?: string) => terrain?.trim().toLowerCase() ?? 'default';
 
-const isBlockedCell = (terrain?: string, difficult?: boolean) => {
-	// If difficult is true, it means is_blocked from database - treat as blocked
-	if (difficult === true) {
+const isBlockedCell = (cell?: { terrain?: string; difficult?: boolean; blocked?: boolean }) => {
+	// If blocked is true, it means is_blocked from database - impassible
+	if (cell?.blocked === true) {
 		return true;
 	}
-	
-	const normalized = normalizeTerrain(terrain);
+
+	// Legacy support: difficult used to mean blocked in some contexts, but now we have specific flags
+	// We'll rely on blocked flag or terrain type check
+
+	const normalized = normalizeTerrain(cell?.terrain);
 	return normalized === 'water' || normalized === 'mountain' || normalized === 'impassible' || normalized === 'impassable';
 };
 
-export const getTerrainCost = (cell?: { terrain?: string; difficult?: boolean }) => {
+export const getTerrainCost = (cell?: { terrain?: string; difficult?: boolean; blocked?: boolean; movementCost?: number }) => {
 	if (!cell) {
 		return TERRAIN_COSTS.default;
 	}
 
-	// Check if cell is blocked (either by terrain type or difficult flag from is_blocked)
-	if (isBlockedCell(cell.terrain, cell.difficult)) {
+	// Check if cell is blocked (either by blocked flag or terrain type)
+	if (isBlockedCell(cell)) {
 		return BLOCKED_COST;
+	}
+
+	// Use explicit movement cost if provided (takes precedence)
+	if (cell.movementCost !== undefined && cell.movementCost > 0) {
+		return cell.movementCost >= BLOCKED_COST ? BLOCKED_COST : cell.movementCost;
+	}
+
+	// If difficult flag is set but no explicit cost, default to 2.0
+	if (cell.difficult === true) {
+		return 2.0;
 	}
 
 	const normalized = normalizeTerrain(cell.terrain);

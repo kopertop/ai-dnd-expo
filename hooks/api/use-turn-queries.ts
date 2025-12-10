@@ -14,8 +14,10 @@ export function useStartTurn(inviteCode: string) {
 	return useMutationApi<GameStateResponse>({
 		method: 'POST',
 		onSuccess: () => {
-			// Invalidate all queries to ensure UI updates immediately
-			queryClient.invalidateQueries();
+			// Invalidate just the active game's state/map data
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			websocketClient.sendRefresh();
 		},
 	});
@@ -30,8 +32,10 @@ export function useEndTurn(inviteCode: string) {
 	return useMutationApi<GameStateResponse>({
 		method: 'POST',
 		onSuccess: () => {
-			// Invalidate all queries to ensure UI updates immediately
-			queryClient.invalidateQueries();
+			// Invalidate just the active game's state/map data
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			websocketClient.sendRefresh();
 		},
 	});
@@ -46,8 +50,9 @@ export function useUpdateTurnState(inviteCode: string) {
 	return useMutationApi<MultiplayerGameState>({
 		method: 'POST',
 		onSuccess: () => {
-			// Invalidate all queries to ensure UI updates immediately
-			queryClient.invalidateQueries();
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			websocketClient.sendRefresh();
 		},
 	});
@@ -65,8 +70,9 @@ export function useInterruptTurn(inviteCode: string) {
 	}>({
 		method: 'POST',
 		onSuccess: () => {
-			// Invalidate all queries to ensure UI updates immediately
-			queryClient.invalidateQueries();
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			websocketClient.sendRefresh();
 		},
 	});
@@ -83,8 +89,9 @@ export function useResumeTurn(inviteCode: string) {
 	}>({
 		method: 'POST',
 		onSuccess: () => {
-			// Invalidate all queries to ensure UI updates immediately
-			queryClient.invalidateQueries();
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			websocketClient.sendRefresh();
 		},
 	});
@@ -99,8 +106,9 @@ export function useNextTurn(inviteCode: string) {
 	return useMutationApi<GameStateResponse>({
 		method: 'POST',
 		onSuccess: () => {
-			// Invalidate all queries to ensure UI updates immediately
-			queryClient.invalidateQueries();
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/state`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			websocketClient.sendRefresh();
 		},
 	});

@@ -1,0 +1,40 @@
+# Separate Wrangler config for API/Workers tests (mirrors main wrangler.toml)
+name = "ai-dnd-app-api-tests"
+main = "api/src/index.ts"
+compatibility_date = "2025-03-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+
+[observability]
+enabled = true
+
+[placement]
+mode = "smart"
+
+[durable_objects]
+bindings = [
+  { name = "GameRoom", class_name = "GameRoom" },
+]
+
+[[migrations]]
+tag = "2025-12-03-gameroom"
+new_sqlite_classes = ["GameRoom"]
+
+[[d1_databases]]
+binding = "DATABASE"
+database_name = "ai-dnd-db"
+database_id = "1384cd1b-b374-488c-b51f-143a071799e1"
+migrations_dir = "api/migrations"
+
+[[kv_namespaces]]
+binding = "QUESTS"
+id = "171ccff48f13430e9ebeeb7ce2646e03"
+preview_id = "be5f833b304a489f9feae6d7573e865e"
+
+[[kv_namespaces]]
+binding = "AUTH_SESSIONS"
+id = "da420984bd1d44ed982e99eab7ac54d9"
+preview_id = "1986f512835f470f95f4df8b48c6c51a"

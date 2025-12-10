@@ -27,6 +27,17 @@ export const GameMessageSchema = z.object({
 	speaker: z.string().optional(),
 	role: z.enum(['user', 'assistant', 'system']).optional(),
 	characterId: z.string().optional(),
+	diceRoll: z
+		.object({
+			notation: z.string(),
+			rolls: z.array(z.number()),
+			total: z.number(),
+			breakdown: z.string(),
+			advantage: z.boolean().optional(),
+			disadvantage: z.boolean().optional(),
+			label: z.string().optional(),
+		})
+		.optional(),
 });
 
 export const MultiplayerGameStateSchema = GameStateSchema.extend({
@@ -101,4 +112,3 @@ export interface WebSocketConnection {
 	characterId: string;
 	ws: WebSocket;
 }
-
