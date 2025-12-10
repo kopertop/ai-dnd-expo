@@ -44,16 +44,16 @@ app.use('*', async (c, next) => {
 		if (!success) {
 			return c.json({
 				error: 'Rate limit exceeded',
-				limit,
+				limit: limit ?? 0,
 				remaining: 0,
-				reset: new Date(reset * 1000).toISOString()
+				reset: reset ? new Date(reset * 1000).toISOString() : new Date().toISOString()
 			}, 429);
 		}
 
 		// Add rate limit headers
-		c.header('X-RateLimit-Limit', limit.toString());
-		c.header('X-RateLimit-Remaining', remaining.toString());
-		c.header('X-RateLimit-Reset', new Date(reset * 1000).toISOString());
+		if (limit !== undefined) c.header('X-RateLimit-Limit', limit.toString());
+		if (remaining !== undefined) c.header('X-RateLimit-Remaining', remaining.toString());
+		if (reset !== undefined) c.header('X-RateLimit-Reset', new Date(reset * 1000).toISOString());
 	} catch (e) {
 		console.error('Rate limiter error:', e);
 		// Fail open if rate limiter fails
