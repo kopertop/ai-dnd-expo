@@ -9,7 +9,6 @@ export interface CloudflareBindings {
 	QUESTS: KVNamespace;
 	AUTH_SESSIONS?: KVNamespace;
 	IMAGES_BUCKET: R2Bucket;
-	ASSETS?: Fetcher; // Worker with Assets binding
 
 	// Partykit runtime configuration
 	PARTYKIT_HOST?: string;
@@ -26,6 +25,8 @@ export interface CloudflareBindings {
 	AUTH_URL?: string;
 	GOOGLE_CLIENT_ID?: string;
 	GOOGLE_CLIENT_SECRET?: string;
+
+	API_RATE_LIMITER?: any; // RateLimit binding
 }
 
 declare global {

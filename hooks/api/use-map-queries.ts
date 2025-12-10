@@ -1,5 +1,5 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiService, useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 
 import { websocketClient } from '@/services/api/websocket-client';
 import type {
@@ -64,6 +64,9 @@ export function useUpdateMapState(inviteCode: string) {
 	return useMutationApi<MapStateResponse>({
 		method: 'PATCH',
 		onSuccess: () => {
+			// Only invalidate if inviteCode is valid
+			if (!inviteCode) return;
+
 			// Invalidate map state and tokens
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
@@ -81,6 +84,9 @@ export function useGenerateMap(inviteCode: string) {
 	return useMutationApi<MapStateResponse>({
 		method: 'POST',
 		onSuccess: () => {
+			// Only invalidate if inviteCode is valid
+			if (!inviteCode) return;
+
 			// Invalidate map state and tokens
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
@@ -98,6 +104,9 @@ export function useMutateTerrain(inviteCode: string) {
 	return useMutationApi<MapStateResponse>({
 		method: 'POST',
 		onSuccess: () => {
+			// Only invalidate if inviteCode is valid
+			if (!inviteCode) return;
+
 			// Invalidate map state
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
 			websocketClient.sendRefresh();
@@ -114,6 +123,9 @@ export function usePlacePlayerToken(inviteCode: string) {
 	return useMutationApi<MapTokenMutationResponse>({
 		method: 'POST',
 		onSuccess: (data) => {
+			// Only invalidate if inviteCode is valid
+			if (!inviteCode) return;
+
 			// Invalidate map tokens and state
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
@@ -137,6 +149,9 @@ export function useSaveMapToken(inviteCode: string) {
 	return useMutationApi<MapTokenMutationResponse>({
 		method: 'POST',
 		onSuccess: (data) => {
+			// Only invalidate if inviteCode is valid
+			if (!inviteCode) return;
+
 			// Invalidate map tokens and map state
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
@@ -161,6 +176,9 @@ export function useDeleteMapToken(inviteCode: string) {
 	return useMutationApi<void>({
 		method: 'DELETE',
 		onSuccess: () => {
+			// Only invalidate if inviteCode is valid
+			if (!inviteCode) return;
+
 			// Invalidate map tokens and state
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
@@ -182,6 +200,9 @@ export function usePlaceMapElement(inviteCode: string) {
 	return useMutationApi<MapTokenMutationResponse>({
 		method: 'POST',
 		onSuccess: (data) => {
+			// Only invalidate if inviteCode is valid
+			if (!inviteCode) return;
+
 			// Invalidate map tokens and state
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
@@ -205,6 +226,9 @@ export function useSwitchMap(inviteCode: string) {
 	return useMutationApi<MapStateResponse>({
 		method: 'PATCH',
 		onSuccess: () => {
+			// Only invalidate if inviteCode is valid
+			if (!inviteCode) return;
+
 			// Invalidate map state and tokens
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
@@ -248,8 +272,10 @@ export function useDeleteMap(inviteCode: string) {
 		onSuccess: () => {
 			// Invalidate all maps list
 			queryClient.invalidateQueries({ queryKey: ['/maps'] });
-			// Invalidate current game session in case we deleted the active map
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/session`] });
+			// Only invalidate session if inviteCode is valid
+			if (inviteCode) {
+				queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/session`] });
+			}
 		},
 	});
 }
@@ -259,14 +285,6 @@ export function useDeleteMap(inviteCode: string) {
  */
 export function useImportVTTMap(inviteCode: string) {
 	const queryClient = useQueryClient();
-	// We use standard fetch here because useMutationApi handles JSON but we need multipart/form-data
-	// and custom response handling might be needed
-	// But actually useMutationApi wraps useMutation, so we can pass a custom mutationFn
-	// However, useMutationApi enforces an API path relative to base URL and expects JSON response
-	// Let's use useMutation directly from react-query and useHttp or fetch
-	const { useMutation } = require('@tanstack/react-query');
-	const { useHttp } = require('expo-auth-template/frontend');
-	const http = useHttp();
 
 	return useMutation({
 		mutationFn: async (data: {
@@ -295,21 +313,19 @@ export function useImportVTTMap(inviteCode: string) {
 			formData.append('rows', data.rows.toString());
 			formData.append('gridSize', data.gridSize.toString());
 
-			// We need to use raw fetch or http client that supports FormData
-			// The http client from expo-auth-template might stringify body
-			// Let's assume http.post handles FormData correctly if not stringified
-			return http.post(`/games/${inviteCode}/map/import-vtt`, formData, {
-				headers: {
-					// Don't set Content-Type header manually for FormData,
-					// the browser/network layer needs to set boundary
-					'Content-Type': undefined,
-				},
+			// Use apiService.fetchApi for FormData uploads
+			return apiService.fetchApi(`/games/${inviteCode}/map/import-vtt`, {
+				method: 'POST',
+				body: formData,
 			});
 		},
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+			// Only invalidate if inviteCode is valid
+			if (inviteCode) {
+				queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });
+				queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/session`] });
+			}
 			queryClient.invalidateQueries({ queryKey: ['/maps'] });
-			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/session`] });
 			websocketClient.sendRefresh();
 		},
 	});
@@ -333,7 +349,9 @@ export function useMoveToken(inviteCode: string) {
 	return useMutationApi<MapMoveResponse>({
 		method: 'POST',
 		onSuccess: (data) => {
+			// Only proceed if inviteCode and data are valid
 			if (!inviteCode || !data?.gameState) return;
+
 			queryClient.setQueryData([`/games/${inviteCode}/state`], data.gameState);
 			if (data.gameState.mapState) {
 				queryClient.setQueryData([`/games/${inviteCode}/map`], data.gameState.mapState);
@@ -395,6 +413,9 @@ export function usePlaceNpc(inviteCode: string) {
 	return useMutationApi<MapTokenMutationResponse>({
 		method: 'POST',
 		onSuccess: (data) => {
+			// Only invalidate if inviteCode is valid
+			if (!inviteCode) return;
+
 			// Invalidate NPC instances, tokens, map state, and character queries so NPCs show up immediately
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/npc-instances`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
@@ -421,6 +442,9 @@ export function useUpdateNpcInstance(inviteCode: string) {
 	return useMutationApi<void>({
 		method: 'PATCH',
 		onSuccess: () => {
+			// Only invalidate if inviteCode is valid
+			if (!inviteCode) return;
+
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/npc-instances`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map/tokens`] });
 			queryClient.invalidateQueries({ queryKey: [`/games/${inviteCode}/map`] });

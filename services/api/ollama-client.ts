@@ -1,6 +1,6 @@
 /**
  * Ollama Client for Web Platform
- * 
+ *
  * Provides a web-safe interface to Ollama API for AI inference
  * Supports streaming responses, tool command extraction, and offline caching
  */
@@ -8,6 +8,7 @@
 export interface OllamaMessage {
 	role: 'system' | 'user' | 'assistant';
 	content: string;
+	images?: string[]; // Base64 encoded images
 }
 
 export interface OllamaCompletionParams {
@@ -71,11 +72,11 @@ export class OllamaClient {
 		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
 		};
-		
+
 		if (this.apiKey) {
 			headers['Authorization'] = `Bearer ${this.apiKey}`;
 		}
-		
+
 		return headers;
 	}
 
@@ -94,6 +95,7 @@ export class OllamaClient {
 			messages: messages.map(msg => ({
 				role: msg.role,
 				content: msg.content,
+				images: msg.images,
 			})),
 			stream: false,
 			options: {
@@ -155,6 +157,7 @@ export class OllamaClient {
 			messages: messages.map(msg => ({
 				role: msg.role,
 				content: msg.content,
+				images: msg.images,
 			})),
 			stream: true,
 			options: {
