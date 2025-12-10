@@ -11,6 +11,14 @@ service = "ai-dnd-api"
 [env.preview]
 name = "ai-dnd-web-preview"
 
+[[env.preview.services]]
+binding = "API_WORKER"
+service = "ai-dnd-api"
+
 # Production environment configuration
 [env.production]
 name = "ai-dnd-web"
+
+[[env.production.services]]
+binding = "API_WORKER"
+service = "ai-dnd-api"
