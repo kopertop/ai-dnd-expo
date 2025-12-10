@@ -1,4 +1,3 @@
-import { Feather } from '@expo/vector-icons';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { authService, QueryProvider, SessionProvider, useAuth } from 'expo-auth-template/frontend';
 import { useFonts } from 'expo-font';
@@ -17,6 +16,7 @@ import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useUserInfo } from '@/hooks/api/use-auth-queries';
@@ -40,8 +40,8 @@ const AudioButton: React.FC = () => {
 			onPress={togglePlayPause}
 			style={styles.soundButton}
 		>
-			<Feather
-				name={isPlaying ? 'volume-2' : 'volume-x'}
+			<ExpoIcon
+				icon={isPlaying ? 'Feather:volume-2' : 'Feather:volume-x'}
 				size={28}
 				color={isPlaying ? '#4caf50' : '#f44336'}
 			/>
@@ -58,7 +58,11 @@ const GlobalHomeButton: React.FC = () => (
 				onPress={() => router.push('/')}
 				hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
 			>
-				<Feather name="home" size={20} color="#3B2F1B" />
+				<ExpoIcon
+					icon="FontAwesome:home"
+					size={20}
+					color="#3B2F1B"
+				/>
 			</TouchableOpacity>
 		</View>
 	</View>
@@ -108,7 +112,7 @@ const UserMenu: React.FC = () => {
 						<Image source={avatarSource} style={styles.avatarImage} />
 					) : (
 						<View style={styles.avatarFallback}>
-							<Feather name="user" size={20} color="#3B2F1B" />
+							<ExpoIcon icon="Feather:user" size={20} color="#3B2F1B" />
 						</View>
 					)}
 				</TouchableOpacity>
@@ -122,7 +126,7 @@ const UserMenu: React.FC = () => {
 								style={styles.adminButton}
 								onPress={handleAdminPress}
 							>
-								<Feather name="settings" size={16} color="#8B6914" style={styles.adminIcon} />
+								<ExpoIcon icon="Feather:settings" size={16} color="#8B6914" style={styles.adminIcon} />
 								<ThemedText style={styles.adminText}>Admin</ThemedText>
 							</TouchableOpacity>
 						)}
@@ -256,6 +260,14 @@ const RootLayout: React.FC = () => {
 	const colorScheme = useColorScheme();
 	const [loaded] = useFonts({
 		SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+		Ionicons: require('../assets/fonts/Ionicons.ttf'),
+		MaterialIcons: require('../assets/fonts/MaterialIcons.ttf'),
+		MaterialCommunityIcons: require('../assets/fonts/MaterialCommunityIcons.ttf'),
+		FontAwesome: require('../assets/fonts/FontAwesome.ttf'),
+		Feather: require('../assets/fonts/Feather.ttf'),
+		FontAwesome5Brands: require('../assets/fonts/FontAwesome5_Brands.ttf'),
+		FontAwesome5: require('../assets/fonts/FontAwesome5_Regular.ttf'),
+		FontAwesome5Solid: require('../assets/fonts/FontAwesome5_Solid.ttf'),
 	});
 
 	if (!loaded) {

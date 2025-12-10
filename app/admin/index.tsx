@@ -1,4 +1,4 @@
-import { Feather } from '@expo/vector-icons';
+import { ExpoIcon } from '@/components/expo-icon';
 import { Stack, router } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -82,7 +82,7 @@ const AdminPortalScreen: React.FC = () => {
 							activeOpacity={0.7}
 						>
 							<View style={styles.featureIconContainer}>
-								<Feather name={feature.icon} size={32} color="#8B6914" />
+								<ExpoIcon icon={`Feather:${feature.icon}`} size={32} color="#8B6914" />
 							</View>
 							<ThemedText type="subtitle" style={styles.featureTitle}>
 								{feature.title}

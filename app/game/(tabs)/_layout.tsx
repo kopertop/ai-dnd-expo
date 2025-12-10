@@ -1,9 +1,9 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { LayoutAnimation, Platform } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useGameState } from '@/hooks/use-game-state';
 
@@ -35,7 +35,7 @@ const AnimatedTabIcon: React.FC<{
 
 	return (
 		<Animated.View style={animatedStyle}>
-			<FontAwesome name={name as any} size={size} color={color} />
+			<ExpoIcon icon={`FontAwesome:${name}`} size={size} color={color} />
 		</Animated.View>
 	);
 };

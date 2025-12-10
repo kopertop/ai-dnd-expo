@@ -1,7 +1,7 @@
-import { FontAwesome } from '@expo/vector-icons';
 import React from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { Colors } from '@/constants/colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -135,7 +135,7 @@ export const VoiceStatusIndicator: React.FC<VoiceStatusIndicatorProps> = ({
 						},
 					]}
 				>
-					<FontAwesome name={config.icon as any} size={12} color={config.color} />
+					<ExpoIcon icon={`FontAwesome:${config.icon}`} size={12} color={config.color} />
 				</Animated.View>
 				{config.message && (
 					<Text style={styles.compactMessage} numberOfLines={1}>
@@ -157,7 +157,7 @@ export const VoiceStatusIndicator: React.FC<VoiceStatusIndicatorProps> = ({
 					},
 				]}
 			>
-				<FontAwesome name={config.icon as any} size={16} color={config.color} />
+				<ExpoIcon icon={`FontAwesome:${config.icon}`} size={16} color={config.color} />
 			</Animated.View>
 			{config.message && <Text style={styles.message}>{config.message}</Text>}
 		</View>

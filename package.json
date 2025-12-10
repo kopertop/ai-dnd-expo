@@ -57,6 +57,7 @@
 		"build:production": "eas build --profile production",
 		"build:web": "expo export --platform web -c -s",
 		"build:web:assets": "cp -r assets/* dist/assets/",
+		"build:web:redirects": "echo -e '/assets/*  /assets/:splat  200\n/*    /index.html   200' > dist/_redirects",
 		"db:migrate:dev": "wrangler d1 migrations apply DATABASE --local --config wrangler.api.toml",
 		"db:migrate:prod": "wrangler d1 migrations apply DATABASE --remote --config wrangler.api.toml",
 		"submit:staging": "./scripts/deploy.sh submit staging",

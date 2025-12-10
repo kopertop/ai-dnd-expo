@@ -1,17 +1,18 @@
-import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-	Alert,
-	Modal,
-	Platform,
-	ScrollView,
-	StyleSheet,
-	Text,
-	Switch as RNSwitch,
-	TouchableOpacity,
-	View,
+    Alert,
+    Modal,
+    Platform,
+    Switch as RNSwitch,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
+
+import { ExpoIcon } from '@/components/expo-icon';
 
 import { useSettingsStore } from '../stores/settings-store';
 
@@ -393,11 +394,11 @@ export const SettingsView: React.FC = () => {
 										style={styles.playButton}
 										onPress={() => handleVoicePreview(voice)}
 									>
-										<Feather
-											name={
+										<ExpoIcon
+											icon={
 												playingVoiceId === voice.identifier && isSpeaking
-													? 'pause-circle'
-													: 'play-circle'
+													? 'Feather:pause-circle'
+													: 'Feather:play-circle'
 											}
 											size={24}
 											color="#C9B037"

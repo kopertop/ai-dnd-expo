@@ -1,10 +1,10 @@
-import { FontAwesome } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { Animated, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { VoiceErrorHandler } from './voice-error-handler';
 import { VoiceStatus, VoiceStatusIndicator } from './voice-status-indicator';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { Colors } from '@/constants/colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
@@ -207,14 +207,14 @@ export const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
 							disabled={disabled}
 							activeOpacity={0.8}
 						>
-							<FontAwesome
-								name={
+							<ExpoIcon
+								icon={`FontAwesome:${
 									recognizing
 										? 'microphone'
 										: hasPermission
 											? 'microphone'
 											: 'microphone-slash'
-								}
+								}`}
 								size={20}
 								color={getMicIconColor()}
 							/>
@@ -232,8 +232,8 @@ export const VoiceChatInput: React.FC<VoiceChatInputProps> = ({
 					disabled={!message.trim() || disabled}
 					activeOpacity={0.8}
 				>
-					<FontAwesome
-						name="send"
+					<ExpoIcon
+						icon="FontAwesome:send"
 						size={20}
 						color={message.trim() && !disabled ? '#FFFFFF' : colors.text + '60'}
 					/>

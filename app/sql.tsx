@@ -1,18 +1,18 @@
-import { Feather } from '@expo/vector-icons';
 import { apiService } from 'expo-auth-template/frontend';
 import { Stack } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-	ActivityIndicator,
-	Alert,
-	ScrollView,
-	StyleSheet,
-	TextInput,
-	TouchableOpacity,
-	View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 import { AnimatedModal } from '@/components/animated-modal';
+import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useScreenSize } from '@/hooks/use-screen-size';
@@ -283,8 +283,8 @@ const SqlDebugScreen: React.FC = () => {
 																]}
 																onPress={() => handleRowViewPress(row)}
 															>
-																<Feather
-																	name="eye"
+																<ExpoIcon
+																	icon="Feather:eye"
 																	size={16}
 																	color="#8B6914"
 																/>
@@ -347,7 +347,7 @@ const SqlDebugScreen: React.FC = () => {
 							onPress={() => setCellModalVisible(false)}
 							style={styles.modalCloseButton}
 						>
-							<Feather name="x" size={24} color="#3B2F1B" />
+							<ExpoIcon icon="Feather:x" size={24} color="#3B2F1B" />
 						</TouchableOpacity>
 					</View>
 					<ScrollView style={styles.modalBody}>
@@ -381,7 +381,7 @@ const SqlDebugScreen: React.FC = () => {
 							onPress={() => setRowModalVisible(false)}
 							style={styles.modalCloseButton}
 						>
-							<Feather name="x" size={24} color="#3B2F1B" />
+							<ExpoIcon icon="Feather:x" size={24} color="#3B2F1B" />
 						</TouchableOpacity>
 					</View>
 					<ScrollView style={styles.modalBody}>

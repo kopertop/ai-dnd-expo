@@ -1,7 +1,7 @@
-import Feather from '@expo/vector-icons/Feather';
 import React from 'react';
 import { StyleProp, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
 
 interface RefreshButtonProps {
@@ -28,7 +28,7 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
 
 	return (
 		<TouchableOpacity style={buttonStyle} onPress={onPress} disabled={disabled}>
-			<Feather name="refresh-cw" size={iconSize} color={disabled ? '#666666' : '#FFFFFF'} />
+			<ExpoIcon icon="Feather:refresh-cw" size={iconSize} color={disabled ? '#666666' : '#FFFFFF'} />
 			{showLabel && (
 				<ThemedText style={styles.lobbyButtonText}>
 					Refresh

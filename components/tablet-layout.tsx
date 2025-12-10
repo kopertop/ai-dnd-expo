@@ -1,11 +1,12 @@
-import { FontAwesome } from '@expo/vector-icons';
 import React, { useEffect } from 'react';
 import { LayoutAnimation, StyleSheet, TouchableOpacity, View } from 'react-native';
+
+import { ExpoIcon } from '@/components/expo-icon';
 import Animated, {
-	useAnimatedStyle,
-	useSharedValue,
-	withSpring,
-	withTiming,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -73,7 +74,7 @@ const AnimatedControlButton: React.FC<{
 			activeOpacity={1}
 		>
 			<Animated.View style={[styles.controlButton, animatedStyle]}>
-				<FontAwesome name={icon as any} size={24} color="white" />
+				<ExpoIcon icon={`FontAwesome:${icon}`} size={24} color="white" />
 				<ThemedText style={styles.buttonText}>{label}</ThemedText>
 			</Animated.View>
 		</TouchableOpacity>

@@ -3,10 +3,10 @@
  * Integrates with DM system for recruiting companions in taverns
  */
 
-import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/colors';
@@ -269,7 +269,7 @@ export const TavernCompanionRecruitment: React.FC<TavernCompanionRecruitmentProp
 							style={styles.recruitButton}
 							onPress={() => handlePayCost(template)}
 						>
-							<Feather name="user-plus" size={20} color={colors.text} />
+							<ExpoIcon icon="Feather:user-plus" size={20} color={colors.text} />
 							<ThemedText style={styles.recruitButtonText}>
 								<Text>Recruit</Text>
 							</ThemedText>
@@ -293,7 +293,7 @@ export const TavernCompanionRecruitment: React.FC<TavernCompanionRecruitmentProp
 							</ThemedText>
 						</View>
 						<TouchableOpacity style={styles.closeButton} onPress={onClose}>
-							<Feather name="x" size={24} color={colors.text} />
+							<ExpoIcon icon="Feather:x" size={24} color={colors.text} />
 						</TouchableOpacity>
 					</View>
 
@@ -319,7 +319,7 @@ export const TavernCompanionRecruitment: React.FC<TavernCompanionRecruitmentProp
 							)
 						) : (
 							<View style={styles.emptyState}>
-								<Feather name="users" size={48} color={colors.text} />
+								<ExpoIcon icon="Feather:users" size={48} color={colors.text} />
 								<ThemedText style={styles.emptyStateText}>
 									<Text>No adventurers are looking for work today.</Text>
 								</ThemedText>

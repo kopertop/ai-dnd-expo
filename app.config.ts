@@ -28,6 +28,10 @@ const config: { expo: ExpoConfig } = {
 		experiments: {
 			typedRoutes: true,
 		},
+		assetBundlePatterns: [
+			'**/*',
+			'assets/**/*',
+		],
 		plugins: [
 			'expo-font',
 			'expo-web-browser',
@@ -69,6 +73,25 @@ const config: { expo: ExpoConfig } = {
 			favicon: './assets/images/favicon.png',
 			bundler: 'metro',
 			output: 'static',
+			// Cloudflare Pages configuration
+			baseUrl: '/',
+			// Ensure vector icons work on web
+			build: {
+				babel: {
+					include: ['@expo/vector-icons'],
+				},
+			},
+			// Add font preloading for better performance
+			preload: {
+				fonts: [
+					'Ionicons',
+					'MaterialIcons',
+					'MaterialCommunityIcons',
+					'FontAwesome',
+					'FontAwesome5',
+					'Feather',
+				],
+			},
 		},
 		extra: {
 			router: {},
