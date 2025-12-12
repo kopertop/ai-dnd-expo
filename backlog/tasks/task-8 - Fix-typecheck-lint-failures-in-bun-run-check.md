@@ -4,11 +4,12 @@ title: Fix typecheck/lint failures in bun run check
 status: Done
 assignee: []
 created_date: '2025-12-02 01:09'
-updated_date: '2025-12-02 01:19'
+updated_date: '2025-12-10 23:26'
 labels:
   - bug
   - tech-debt
 dependencies: []
+ordinal: 11000
 ---
 
 ## Description

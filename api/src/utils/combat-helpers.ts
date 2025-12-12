@@ -3,6 +3,13 @@ import type { BasicAttackOptions, SpellCastOptions } from '../routes/games/types
 
 import { deserializeCharacter } from './games-utils';
 
+import {
+	DamageType,
+	getCharacterResistances,
+	getDamageMultiplier,
+	getNpcResistances,
+	getNpcTokenResistances,
+} from '@/constants/damage-types';
 import { findSpellByName } from '@/constants/spells';
 import { parseDiceNotation, rollDiceLocal } from '@/services/dice-roller';
 import { Character } from '@/types/character';
@@ -122,25 +129,77 @@ export const resolveAttackTarget = async (db: Database, targetId: string): Promi
 };
 
 /**
+ * Calculate damage applying resistances/weaknesses/immunities
+ * @param baseDamage - Raw damage amount
+ * @param damageType - Type of damage
+ * @param target - Target to apply damage to
+ * @returns Final damage amount and multiplier applied
+ */
+export const calculateDamageWithResistances = (
+	baseDamage: number,
+	damageType: DamageType,
+	target: AttackTarget,
+): { damage: number; multiplier: number } => {
+	let resistances;
+	if (target.type === 'character') {
+		resistances = getCharacterResistances(target.character);
+	} else if (target.type === 'npc') {
+		// Prefer token metadata if available, otherwise definition
+		if (target.token.metadata) {
+			const tokenMeta =
+				typeof target.token.metadata === 'string'
+					? JSON.parse(target.token.metadata)
+					: target.token.metadata;
+			resistances = getNpcTokenResistances(tokenMeta);
+		} else if (target.npcDefinition) {
+			resistances = getNpcResistances(target.npcDefinition as any);
+		} else {
+			resistances = {};
+		}
+	} else {
+		resistances = {};
+	}
+
+	const multiplier = getDamageMultiplier(damageType, resistances);
+	const damage = Math.floor(baseDamage * multiplier);
+	return { damage, multiplier };
+};
+
+/**
  * Apply damage to a target (character or NPC token)
  * @param db - Database instance
  * @param target - Attack target to damage
  * @param damage - Amount of damage to apply
+ * @param damageType - Optional type of damage for resistance calculation
  * @returns Remaining health after damage
  */
-export const applyDamageToTarget = async (db: Database, target: AttackTarget, damage: number): Promise<number> => {
-	if (damage <= 0) {
-		return target.type === 'character' ? target.row.health : (target.token.hit_points ?? target.token.max_hit_points ?? 0);
+export const applyDamageToTarget = async (
+	db: Database,
+	target: AttackTarget,
+	damage: number,
+	damageType?: DamageType,
+): Promise<number> => {
+	let finalDamage = damage;
+
+	if (damageType) {
+		const result = calculateDamageWithResistances(damage, damageType, target);
+		finalDamage = result.damage;
+	}
+
+	if (finalDamage <= 0) {
+		return target.type === 'character'
+			? target.row.health
+			: target.token.hit_points ?? target.token.max_hit_points ?? 0;
 	}
 
 	if (target.type === 'character') {
-		const remainingHealth = Math.max(0, target.row.health - damage);
+		const remainingHealth = Math.max(0, target.row.health - finalDamage);
 		await db.updateCharacter(target.row.id, { health: remainingHealth });
 		return remainingHealth;
 	}
 
 	const currentHealth = target.token.hit_points ?? target.token.max_hit_points ?? 0;
-	const remainingHealth = Math.max(0, currentHealth - damage);
+	const remainingHealth = Math.max(0, currentHealth - finalDamage);
 	await db.updateMapToken(target.token.id, {
 		hit_points: remainingHealth,
 	});
@@ -281,7 +340,10 @@ export const handleBasicAttack = async ({
 	}
 
 	// Check if target is unconscious (0 HP)
-	const currentHealth = target.type === 'character' ? target.row.health : (target.token.hit_points ?? target.token.max_hit_points ?? 0);
+	const currentHealth =
+		target.type === 'character'
+			? target.row.health
+			: target.token.hit_points ?? target.token.max_hit_points ?? 0;
 	if (currentHealth <= 0) {
 		return { error: 'Target is unconscious and cannot be attacked', status: 400 };
 	}
@@ -298,15 +360,42 @@ export const handleBasicAttack = async ({
 	let damageRoll: DiceRollSummary | undefined;
 	let damageDealt = 0;
 	let remainingHealth =
-		target.type === 'character' ? target.row.health : (target.token.hit_points ?? target.token.max_hit_points ?? 0);
+		target.type === 'character'
+			? target.row.health
+			: target.token.hit_points ?? target.token.max_hit_points ?? 0;
+	let damageType: DamageType = 'bludgeoning'; // Default
+	let damageMultiplier: number | undefined;
 
 	if (hit) {
 		const abilityKey = attackStyle === 'ranged' ? 'DEX' : 'STR';
 		const abilityModifier = getAbilityModifier(getAbilityScore(attacker, abilityKey));
 		const damageDice = getDamageDice(attacker, attackStyle, params?.damageDice);
 		const criticalMode = critical ? { criticalMode: 'max' as const } : undefined;
+
+		// Determine damage type
+		if (attackStyle === 'ranged') {
+			damageType = 'piercing';
+		}
+
+		// Check equipped weapon for damage type override
+		const equipped = attacker.equipped || {};
+		const weaponId = equipped.mainHand || equipped.twoHand;
+		if (weaponId) {
+			const weapon = attacker.inventory.find(i => i.id === weaponId);
+			if (weapon && weapon.metadata && typeof weapon.metadata === 'object' && 'damageType' in weapon.metadata) {
+				const meta = weapon.metadata as any;
+				if (meta.damageType) {
+					damageType = meta.damageType as DamageType;
+				}
+			}
+		}
+
 		damageRoll = rollDamageDice(damageDice, abilityModifier, critical, criticalMode);
-		damageDealt = Math.max(0, damageRoll.total);
+		const rawDamage = Math.max(0, damageRoll.total);
+		const resistanceResult = calculateDamageWithResistances(rawDamage, damageType, target);
+		damageDealt = resistanceResult.damage;
+		damageMultiplier = resistanceResult.multiplier;
+
 		remainingHealth = await applyDamageToTarget(db, target, damageDealt);
 	}
 
@@ -316,10 +405,11 @@ export const handleBasicAttack = async ({
 		target: {
 			type: target.type,
 			id: target.type === 'character' ? target.row.id : target.token.id,
-			name: target.type === 'character' ? target.character.name : (target.token.label || 'Unknown'),
+			name: target.type === 'character' ? target.character.name : target.token.label || 'Unknown',
 			armorClass: target.armorClass,
 			remainingHealth,
-			maxHealth: target.type === 'character' ? target.row.max_health : (target.token.max_hit_points ?? 0),
+			maxHealth:
+				target.type === 'character' ? target.row.max_health : target.token.max_hit_points ?? 0,
 		},
 		attackRoll: {
 			notation: attackNotation,
@@ -335,6 +425,8 @@ export const handleBasicAttack = async ({
 		hit,
 		damageRoll,
 		damageDealt,
+		damageType,
+		damageMultiplier,
 	};
 
 	return { result };
@@ -379,12 +471,15 @@ export const handleSpellCast = async ({
 			// Allow healing spells and specific resurrection spells
 			const isHealing = spell.damageType === 'healing';
 			const isResurrection = ['revivify', 'raise dead', 'resurrection', 'true resurrection', 'reincarnate', 'spare the dying'].includes(spell.name.toLowerCase());
-			
+
 			if (!isHealing && !isResurrection) {
 				return { error: 'Target is unconscious and cannot be targeted by this spell', status: 400 };
 			}
 		}
 	}
+
+	// Extract damage type, defaulting to 'force' for magical damage if not specified
+	const damageType: DamageType = spell.damageType ?? 'force';
 
 	const result: SpellCastResult = {
 		type: 'spell',
@@ -432,11 +527,18 @@ export const handleSpellCast = async ({
 				}
 
 				const damageRoll = rollDamageDice(damageDice, damageModifier, critical);
-				const damageDealt = Math.max(0, damageRoll.total);
+				const rawDamage = Math.max(0, damageRoll.total);
+
+				// Calculate resistances/vulnerabilities/immunities
+				const resistanceResult = calculateDamageWithResistances(rawDamage, damageType, target);
+				const damageDealt = resistanceResult.damage;
+
 				const remainingHealth = await applyDamageToTarget(db, target, damageDealt);
 
 				result.damageRoll = damageRoll;
 				result.damageDealt = damageDealt;
+				result.damageType = damageType;
+				result.damageMultiplier = resistanceResult.multiplier;
 				if (result.target) {
 					result.target.remainingHealth = remainingHealth;
 				}
@@ -454,12 +556,19 @@ export const handleSpellCast = async ({
 					? params.damageDice.trim()
 					: spell.damageDice;
 			const damageRoll = rollDamageDice(damageDice, damageModifier, false);
-			const damageDealt = Math.max(0, damageRoll.total);
+			const rawDamage = Math.max(0, damageRoll.total);
+
+			// Calculate resistances/vulnerabilities/immunities
+			const resistanceResult = calculateDamageWithResistances(rawDamage, damageType, target);
+			const damageDealt = resistanceResult.damage;
+
 			const remainingHealth = await applyDamageToTarget(db, target, damageDealt);
 
 			result.hit = true;
 			result.damageRoll = damageRoll;
 			result.damageDealt = damageDealt;
+			result.damageType = damageType;
+			result.damageMultiplier = resistanceResult.multiplier;
 			if (result.target) {
 				result.target.remainingHealth = remainingHealth;
 			}
@@ -495,10 +604,14 @@ export const handleSpellCast = async ({
 						: spell.damageDice;
 
 				const damageRoll = rollDamageDice(damageDice, damageModifier, false);
-				let damageDealt = Math.max(0, damageRoll.total);
+				const rawDamage = Math.max(0, damageRoll.total);
+
+				// Apply resistances/vulnerabilities/immunities to base damage first
+				const resistanceResult = calculateDamageWithResistances(rawDamage, damageType, target);
+				let damageDealt = resistanceResult.damage;
 
 				if (success) {
-					// Half damage on save success for leveled spells
+					// Half damage on save success (after resistances are applied)
 					damageDealt = Math.floor(damageDealt / 2);
 				}
 
@@ -506,6 +619,8 @@ export const handleSpellCast = async ({
 
 				result.damageRoll = damageRoll;
 				result.damageDealt = damageDealt;
+				result.damageType = damageType;
+				result.damageMultiplier = resistanceResult.multiplier;
 				if (result.target) {
 					result.target.remainingHealth = remainingHealth;
 				}

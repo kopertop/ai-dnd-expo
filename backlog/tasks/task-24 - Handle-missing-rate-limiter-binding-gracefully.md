@@ -1,15 +1,17 @@
 ---
 id: task-24
 title: Handle missing rate limiter binding gracefully
-status: In Progress
+status: Done
 assignee: []
 created_date: '2025-12-10 18:13'
+updated_date: '2025-12-10 23:26'
 labels:
   - bugfix
   - api
   - rate-limiting
 dependencies: []
 priority: high
+ordinal: 13000
 ---
 
 ## Description

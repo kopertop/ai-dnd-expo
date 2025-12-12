@@ -4,9 +4,10 @@ title: Make DM token Delete remove token and linked entity
 status: Done
 assignee: []
 created_date: '2025-12-03 16:31'
-updated_date: '2025-12-03 16:44'
+updated_date: '2025-12-10 23:26'
 labels: []
 dependencies: []
+ordinal: 4000
 ---
 
 ## Description

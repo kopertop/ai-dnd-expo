@@ -3,19 +3,20 @@ import { Hono } from 'hono';
 import type { GamesContext } from './types';
 
 import { GameStateService } from '@/api/src/services/game-state';
-import { handleBasicAttack, handleSpellCast } from '@/api/src/utils/combat-helpers';
+import { calculateDamageWithResistances, handleBasicAttack, handleSpellCast, resolveAttackTarget } from '@/api/src/utils/combat-helpers';
 import { createId, deserializeCharacter, isHostUser } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
 import type { Character } from '@/types/character';
 import type {
-	CharacterActionResult,
+    CharacterActionResult,
 } from '@/types/combat';
+import type { DamageType } from '@/types/spell';
 import {
-	calculatePassivePerception,
-	calculateProficiencyBonus,
-	getAbilityModifier,
-	getAbilityScore,
-	isSkillProficient,
+    calculatePassivePerception,
+    calculateProficiencyBonus,
+    getAbilityModifier,
+    getAbilityScore,
+    isSkillProficient,
 } from '@/utils/combat-utils';
 
 const combat = new Hono<GamesContext>();
@@ -50,8 +51,9 @@ combat.post('/:inviteCode/characters/:characterId/:action{damage|heal}', async (
 
 	const characterId = c.req.param('characterId');
 	const action = c.req.param('action');
-	const body = (await c.req.json().catch(() => ({}))) as { amount?: number };
+	const body = (await c.req.json().catch(() => ({}))) as { amount?: number; damageType?: DamageType };
 	const amount = typeof body.amount === 'number' ? body.amount : 0;
+	const damageType = body.damageType;
 
 	// Check if this is a player character or an NPC token
 	let characterRow = await db.getCharacterById(characterId);
@@ -80,10 +82,21 @@ combat.post('/:inviteCode/characters/:characterId/:action{damage|heal}', async (
 		currentHealth = npcToken.hit_points ?? npcToken.max_hit_points ?? 10;
 		maxHealth = npcToken.max_hit_points ?? 10;
 
-		console.log(`[Damage/Heal] NPC ${characterId}: currentHealth=${currentHealth}, maxHealth=${maxHealth}, amount=${amount}, action=${action}`);
+		console.log(`[Damage/Heal] NPC ${characterId}: currentHealth=${currentHealth}, maxHealth=${maxHealth}, amount=${amount}, action=${action}, damageType=${damageType}`);
 
 		if (action === 'damage') {
-			const damageAmount = Math.max(0, amount);
+			let damageAmount = Math.max(0, amount);
+
+			// Apply resistances if damageType is provided
+			if (damageType) {
+				const target = await resolveAttackTarget(db, characterId);
+				if (target) {
+					const resistanceResult = calculateDamageWithResistances(damageAmount, damageType, target);
+					damageAmount = resistanceResult.damage;
+					console.log(`[Damage] NPC Resistance calculation: base=${amount}, multiplier=${resistanceResult.multiplier}, final=${damageAmount}`);
+				}
+			}
+
 			nextHealth = Math.max(0, currentHealth - damageAmount);
 			console.log(`[Damage] NPC Calculation: ${currentHealth} - ${damageAmount} = ${currentHealth - damageAmount}, clamped to ${nextHealth}`);
 			await db.updateMapToken(characterId, {
@@ -115,10 +128,21 @@ combat.post('/:inviteCode/characters/:characterId/:action{damage|heal}', async (
 				: (characterRow.max_health && typeof characterRow.max_health === 'number' ? characterRow.max_health : 10);
 		maxHealth = typeof characterRow.max_health === 'number' ? characterRow.max_health : 10;
 
-		console.log(`[Damage/Heal] Character ${characterId}: currentHealth=${currentHealth}, maxHealth=${maxHealth}, amount=${amount}, action=${action}`);
+		console.log(`[Damage/Heal] Character ${characterId}: currentHealth=${currentHealth}, maxHealth=${maxHealth}, amount=${amount}, action=${action}, damageType=${damageType}`);
 
 		if (action === 'damage') {
-			const damageAmount = Math.max(0, amount);
+			let damageAmount = Math.max(0, amount);
+
+			// Apply resistances if damageType is provided
+			if (damageType) {
+				const target = await resolveAttackTarget(db, characterId);
+				if (target) {
+					const resistanceResult = calculateDamageWithResistances(damageAmount, damageType, target);
+					damageAmount = resistanceResult.damage;
+					console.log(`[Damage] Character Resistance calculation: base=${amount}, multiplier=${resistanceResult.multiplier}, final=${damageAmount}`);
+				}
+			}
+
 			nextHealth = Math.max(0, currentHealth - damageAmount);
 			console.log(`[Damage] Calculation: ${currentHealth} - ${damageAmount} = ${currentHealth - damageAmount}, clamped to ${nextHealth}`);
 			console.log(`[Damage] Updating health: ${currentHealth} -> ${nextHealth}`);

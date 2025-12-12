@@ -2,6 +2,25 @@ import { z } from 'zod';
 
 import { GearSlotSchema, StatBlockSchema } from './stats';
 
+// Damage types matching types/spell.ts
+export const DamageTypeSchema = z.enum([
+	'fire',
+	'radiant',
+	'force',
+	'cold',
+	'lightning',
+	'acid',
+	'necrotic',
+	'poison',
+	'psychic',
+	'thunder',
+	'bludgeoning',
+	'piercing',
+	'slashing',
+	'healing',
+	'support',
+]);
+
 export const CharacterSchema = z.object({
 	id: z.string(),
 	level: z.number().int().default(1),
@@ -22,5 +41,8 @@ export const CharacterSchema = z.object({
 	maxActionPoints: z.number().int(),
 	statusEffects: z.array(z.string()).default([]),
 	preparedSpells: z.array(z.string()).default([]), // Array of spell IDs
+	weaknesses: z.array(DamageTypeSchema).optional(),
+	resistances: z.array(DamageTypeSchema).optional(),
+	immunities: z.array(DamageTypeSchema).optional(),
 });
 export type Character = z.infer<typeof CharacterSchema>;

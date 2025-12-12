@@ -1,4 +1,4 @@
-import type { SpellDefinition } from '@/types/spell';
+import type { DamageType, SpellDefinition } from '@/types/spell';
 
 export type CombatTargetSummary = {
 	type?: 'character' | 'npc';
@@ -34,6 +34,8 @@ export type BasicAttackResult = {
 	hit: boolean;
 	damageRoll?: DiceRollSummary;
 	damageDealt?: number;
+	damageType?: DamageType;
+	damageMultiplier?: number;
 };
 
 export type SpellCastResult = {
@@ -46,6 +48,8 @@ export type SpellCastResult = {
 	hit?: boolean;
 	damageRoll?: DiceRollSummary;
 	damageDealt?: number;
+	damageType?: DamageType;
+	damageMultiplier?: number;
 	saveDC?: number;
 	saveRoll?: DiceRollSummary;
 	saveResult?: 'success' | 'fail';
