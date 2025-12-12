@@ -53,3 +53,4 @@ export const REFERENCE_IMAGE = {
 	filename: 'goblin-reference.png',
 	description: 'Example of ideal camera angle, lighting, and transparency',
 };
+

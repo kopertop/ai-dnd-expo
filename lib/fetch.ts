@@ -1,10 +1,10 @@
 
 import { apiService } from 'expo-auth-template/frontend';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8787';
+import { buildApiUrl } from '@/services/config/api-base-url';
 
 export async function fetchAPI<T>(path: string, options: RequestInit = {}): Promise<T> {
-	const url = `${API_URL}${path}`;
+	const url = buildApiUrl(path);
 	const headers = {
 		'Content-Type': 'application/json',
 		...options.headers,
