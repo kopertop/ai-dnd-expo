@@ -4,7 +4,7 @@ title: Add DM "Roll Dice" action with broadcast animation
 status: Done
 assignee: []
 created_date: '2025-12-05 14:49'
-updated_date: '2025-12-05 15:01'
+updated_date: '2025-12-10 23:26'
 labels:
   - dm
   - dice
@@ -13,6 +13,7 @@ labels:
   - realtime
 dependencies: []
 priority: high
+ordinal: 3000
 ---
 
 ## Description

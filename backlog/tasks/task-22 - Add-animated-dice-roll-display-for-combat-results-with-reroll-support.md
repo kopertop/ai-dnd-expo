@@ -4,7 +4,7 @@ title: Add animated dice roll display for combat results with reroll support
 status: Done
 assignee: []
 created_date: '2025-12-05 14:32'
-updated_date: '2025-12-05 18:17'
+updated_date: '2025-12-10 23:26'
 labels:
   - frontend
   - combat
@@ -12,6 +12,7 @@ labels:
   - dice
 dependencies: []
 priority: medium
+ordinal: 2000
 ---
 
 ## Description

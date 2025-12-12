@@ -4,11 +4,12 @@ title: Fix failing automated test suite (`bun run test`)
 status: Done
 assignee: []
 created_date: '2025-12-02 01:26'
-updated_date: '2025-12-02 01:31'
+updated_date: '2025-12-10 23:26'
 labels:
   - bug
   - testing
 dependencies: []
+ordinal: 10000
 ---
 
 ## Description
