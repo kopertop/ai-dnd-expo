@@ -1,13 +1,13 @@
 import { Hono } from 'hono';
 
 import type { CloudflareBindings } from '@/api/src/env';
-import { createId } from '@/api/src/utils/games-utils';
-import { generateImageKey, validateImageFile } from '@/api/src/utils/image-upload';
+import { uploadImage, type ImageType } from '@/api/src/utils/image-upload';
 import { createDatabase } from '@/api/src/utils/repository';
+import { User } from '@/types/models';
 
 type Bindings = CloudflareBindings;
 
-const images = new Hono<{ Bindings: Bindings; Variables: { user: any } }>();
+const images = new Hono<{ Bindings: Bindings; Variables: { user: User } }>();
 
 /**
  * List uploaded images
@@ -48,64 +48,63 @@ images.post('/upload', async (c) => {
 			all: true,
 		});
 
-		const file = Array.isArray(body['file']) ? body['file'][0] : body['file'];
+		const fileInput = Array.isArray(body['file']) ? body['file'][0] : body['file'];
 		const title = body['title'] as string | undefined;
 		const description = body['description'] as string | undefined;
 		const imageType = (body['image_type'] as 'npc' | 'character' | 'both') || 'both';
+		const folder = body['folder'] as 'map' | 'character' | 'npc' | 'misc' | undefined;
 
-		if (!file || !(file instanceof File)) {
+		if (!fileInput || typeof fileInput === 'string') {
 			return c.json({ error: 'No file provided' }, 400);
 		}
 
-		// Validate file
-		const validationError = validateImageFile(file);
-		if (validationError) {
-			return c.json({ error: validationError }, 400);
+		// Determine image folder type
+		// Priority: explicit folder param > image_type mapping
+		let folderType: ImageType;
+		if (folder && (folder === 'map' || folder === 'character' || folder === 'npc' || folder === 'misc')) {
+			folderType = folder;
+		} else {
+			// Fallback to image_type mapping
+			if (imageType === 'character') {
+				folderType = 'character';
+			} else if (imageType === 'npc') {
+				folderType = 'npc';
+			} else {
+				folderType = 'misc';
+			}
 		}
 
-		// Generate key and upload to R2
-		const key = generateImageKey(user.id, file.name);
-		const bucket = c.env.IMAGES_BUCKET;
-
-		await bucket.put(key, file, {
-			httpMetadata: {
-				contentType: file.type,
-			},
-		});
-
-		// Save metadata to database
 		const db = createDatabase(c.env);
-		const now = Date.now();
-		const imageId = createId('img');
-
-		// Construct public URL using the worker endpoint
-		// For local dev, use localhost:8787 (the worker port)
-		// For production, use the request origin
 		const requestUrl = new URL(c.req.url);
-		const isLocalDev = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
-		const origin = isLocalDev ? 'http://localhost:8787' : requestUrl.origin;
-		const publicUrl = `${origin}/api/images/${imageId}`;
 
-		const imageRecord = {
-			id: imageId,
-			user_id: user.id,
-			filename: file.name,
-			r2_key: key,
-			public_url: publicUrl,
-			title: title || null,
-			description: description || null,
-			image_type: imageType,
-			is_public: 1,
-			created_at: now,
-			updated_at: now,
-		};
+		// Use unified upload function
+		const result = await uploadImage(
+			{
+				fileInput,
+				type: folderType,
+				userId: user.id,
+				isAdmin: user.is_admin || false,
+				title,
+				description,
+				imageType,
+			},
+			c.env.IMAGES_BUCKET,
+			c.env,
+			requestUrl,
+			db,
+		);
 
-		await db.saveUploadedImage(imageRecord);
+		// Return the image record (fetch from DB to get full record)
+		const imageRecord = await db.getUploadedImageById(result.id);
+		if (!imageRecord) {
+			return c.json({ error: 'Failed to retrieve uploaded image' }, 500);
+		}
 
 		return c.json({ image: imageRecord });
 	} catch (error) {
 		console.error('Failed to upload image:', error);
-		return c.json({ error: 'Failed to upload image' }, 500);
+		const errorMessage = error instanceof Error ? error.message : 'Failed to upload image';
+		return c.json({ error: errorMessage }, 400);
 	}
 });
 
@@ -129,7 +128,7 @@ images.get('/:id', async (c) => {
 		// Check if image is public or user is the owner/admin
 		const user = c.get('user');
 		const isOwner = user && image.user_id === user.id;
-		const isAdmin = user && (user.role === 'admin' || user.is_admin === 1);
+		const isAdmin = user && user.is_admin;
 
 		if (!image.is_public && !isOwner && !isAdmin) {
 			return c.json({ error: 'Forbidden' }, 403);
@@ -137,6 +136,9 @@ images.get('/:id', async (c) => {
 
 		// Fetch image from R2
 		const bucket = c.env.IMAGES_BUCKET;
+		if (!bucket) {
+			return c.json({ error: 'Image storage not available' }, 503);
+		}
 		const object = await bucket.get(image.r2_key);
 
 		if (!object) {
@@ -146,9 +148,9 @@ images.get('/:id', async (c) => {
 		// Get content type from object metadata or infer from filename
 		const contentType = object.httpMetadata?.contentType ||
 			(image.filename.endsWith('.png') ? 'image/png' :
-			 image.filename.endsWith('.jpg') || image.filename.endsWith('.jpeg') ? 'image/jpeg' :
-			 image.filename.endsWith('.webp') ? 'image/webp' :
-			 'image/jpeg');
+				image.filename.endsWith('.jpg') || image.filename.endsWith('.jpeg') ? 'image/jpeg' :
+					image.filename.endsWith('.webp') ? 'image/webp' :
+						'image/jpeg');
 
 		// Return the image with appropriate headers
 		const body = await object.arrayBuffer();
@@ -184,7 +186,7 @@ images.delete('/:id', async (c) => {
 		}
 
 		// Only owner or admin can delete
-		const isAdmin = user.role === 'admin' || user.is_admin === 1;
+		const isAdmin = user.is_admin;
 		if (image.user_id !== user.id && !isAdmin) {
 			return c.json({ error: 'Forbidden' }, 403);
 		}

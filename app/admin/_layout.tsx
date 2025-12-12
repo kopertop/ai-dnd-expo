@@ -3,7 +3,11 @@ import React from 'react';
 
 const AdminLayout: React.FC = () => {
 	return (
-		<Stack>
+		<Stack
+			screenOptions={{
+				headerTitleAlign: 'center',
+			}}
+		>
 			<Stack.Screen
 				name="index"
 				options={{
@@ -23,5 +27,6 @@ const AdminLayout: React.FC = () => {
 };
 
 export default AdminLayout;
+
 
 

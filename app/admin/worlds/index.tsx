@@ -1,10 +1,10 @@
 import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { fetchAPI } from '@/lib/fetch';
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { fetchAPI } from '@/lib/fetch';
 
 interface World {
 	id: string;
@@ -65,11 +65,7 @@ export default function WorldsListScreen() {
 			<Stack.Screen
 				options={{
 					title: 'Worlds',
-					headerRight: () => (
-						<TouchableOpacity onPress={() => router.push('/admin/worlds/create')}>
-							<ExpoIcon icon="Feather:plus" size={24} color="#3B2F1B" />
-						</TouchableOpacity>
-					),
+					headerRight: () => null,
 				}}
 			/>
 
@@ -78,17 +74,26 @@ export default function WorldsListScreen() {
 					<ActivityIndicator size="large" color="#8B6914" />
 				</View>
 			) : (
-				<FlatList
-					data={worlds}
-					keyExtractor={(item) => item.id}
-					renderItem={renderItem}
-					contentContainerStyle={styles.listContent}
-					ListEmptyComponent={
-						<View style={styles.center}>
-							<ThemedText>No worlds found.</ThemedText>
-						</View>
-					}
-				/>
+				<>
+					<FlatList
+						data={worlds}
+						keyExtractor={(item) => item.id}
+						renderItem={renderItem}
+						contentContainerStyle={styles.listContent}
+						ListEmptyComponent={
+							<View style={styles.center}>
+								<ThemedText>No worlds found.</ThemedText>
+							</View>
+						}
+					/>
+					<TouchableOpacity
+						style={styles.fab}
+						onPress={() => router.push('/admin/worlds/create')}
+						accessibilityLabel="Create World"
+					>
+						<ExpoIcon icon="Feather:plus" size={24} color="#FFF" />
+					</TouchableOpacity>
+				</>
 			)}
 		</ThemedView>
 	);
@@ -107,6 +112,7 @@ const styles = StyleSheet.create({
 	},
 	listContent: {
 		padding: 16,
+		paddingBottom: 96,
 	},
 	card: {
 		backgroundColor: '#FFF9EF',
@@ -161,5 +167,22 @@ const styles = StyleSheet.create({
 		fontSize: 10,
 		color: '#155724',
 		fontWeight: 'bold',
+	},
+	fab: {
+		position: 'absolute',
+		bottom: 24,
+		right: 24,
+		width: 56,
+		height: 56,
+		borderRadius: 28,
+		backgroundColor: '#8B6914',
+		alignItems: 'center',
+		justifyContent: 'center',
+		elevation: 4,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.25,
+		shadowRadius: 4,
+		zIndex: 100,
 	},
 });

@@ -8,6 +8,7 @@ export const UserSchema = z.object({
 	id: z.string().uuid(),
 	email: z.string().email(),
 	name: z.string(),
+	is_admin: z.boolean().optional(),
 	picture: z.string().url().optional(),
 	created_at: z.number(),
 	updated_at: z.number(),

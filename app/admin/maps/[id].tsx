@@ -1,24 +1,22 @@
-import { ExpoIcon } from '@/components/expo-icon';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { fetchAPI } from '@/lib/fetch';
-import { Stack, useLocalSearchParams, router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
 	ActivityIndicator,
 	Alert,
-	Dimensions,
 	Image,
-	PanResponder,
 	ScrollView,
 	StyleSheet,
 	TextInput,
 	TouchableOpacity,
 	View,
-	Platform,
 } from 'react-native';
 import Svg, { Line, Rect } from 'react-native-svg';
+
+import { ExpoIcon } from '@/components/expo-icon';
 import { ImageUploader } from '@/components/image-uploader';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { fetchAPI } from '@/lib/fetch';
 
 interface MapData {
 	id: string;
@@ -50,7 +48,7 @@ const TERRAIN_TYPES = [
 	{ id: 'difficult', color: 'rgba(255, 165, 0, 0.3)', label: 'Difficult' },
 ];
 
-export default function MapEditorScreen() {
+const MapEditorScreen: React.FC = () => {
 	const { id } = useLocalSearchParams<{ id: string }>();
 	const [map, setMap] = useState<MapData | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -103,7 +101,7 @@ export default function MapEditorScreen() {
 					x: t.x,
 					y: t.y,
 					image_url: t.image_url,
-					label: t.label
+					label: t.label,
 				}));
 				setObjects(loadedObjects);
 			}
@@ -139,11 +137,11 @@ export default function MapEditorScreen() {
 					y: obj.y,
 					image_url: obj.image_url,
 					label: obj.label || 'Object',
-					token_type: 'prop'
-				}))
+					token_type: 'prop',
+				})),
 			};
 
-			await fetchAPI(`/api/maps`, {
+			await fetchAPI('/api/maps', {
 				method: 'POST',
 				body: JSON.stringify(payload),
 			});
@@ -180,18 +178,18 @@ export default function MapEditorScreen() {
 				x: 0,
 				y: 0,
 				image_url: imageUrl,
-				label: 'Object'
-			}
+				label: 'Object',
+			},
 		]);
 		setActiveTool('object');
 		Alert.alert('Object Added', 'Object placed at (0,0). Saving will persist it.');
 	};
 
 	const tools: Tool[] = [
-		{ id: 'select', name: 'Select', icon: 'mouse-pointer' },
-		{ id: 'grid', name: 'Grid', icon: 'grid' },
-		{ id: 'terrain', name: 'Paint', icon: 'brush' },
-		{ id: 'object', name: 'Object', icon: 'box' },
+		{ id: 'select', name: 'Select', icon: 'Feather:mouse-pointer' },
+		{ id: 'grid', name: 'Grid', icon: 'Feather:grid' },
+		{ id: 'terrain', name: 'Paint', icon: 'Ionicons:brush' },
+		{ id: 'object', name: 'Object', icon: 'Feather:box' },
 	];
 
 	if (loading || !map) {
@@ -207,15 +205,7 @@ export default function MapEditorScreen() {
 			<Stack.Screen
 				options={{
 					title: map.name,
-					headerRight: () => (
-						<TouchableOpacity onPress={handleSave} disabled={saving}>
-							{saving ? (
-								<ActivityIndicator size="small" color="#3B2F1B" />
-							) : (
-								<ThemedText style={styles.headerBtn}>Save</ThemedText>
-							)}
-						</TouchableOpacity>
-					),
+					headerRight: () => null,
 				}}
 			/>
 
@@ -232,7 +222,7 @@ export default function MapEditorScreen() {
 							}}
 						>
 							<ExpoIcon
-								icon={`Feather:${tool.icon}` as any}
+								icon={tool.icon}
 								size={20}
 								color={activeTool === tool.id ? '#FFF' : '#3B2F1B'}
 							/>
@@ -275,6 +265,7 @@ export default function MapEditorScreen() {
 										<ImageUploader
 											value={map.background_image_url}
 											onChange={(url) => setMap({ ...map, background_image_url: url })}
+											folder="map"
 											placeholder="Upload Background"
 										/>
 									</View>
@@ -283,6 +274,7 @@ export default function MapEditorScreen() {
 										<ImageUploader
 											value={map.cover_image_url}
 											onChange={(url) => setMap({ ...map, cover_image_url: url })}
+											folder="map"
 											placeholder="Upload Cover Icon"
 										/>
 									</View>
@@ -362,7 +354,7 @@ export default function MapEditorScreen() {
 												key={type.id}
 												style={[
 													styles.terrainOption,
-													activeTerrain === type.id && styles.terrainOptionActive
+													activeTerrain === type.id && styles.terrainOptionActive,
 												]}
 												onPress={() => setActiveTerrain(type.id)}
 											>
@@ -382,6 +374,7 @@ export default function MapEditorScreen() {
 									<ThemedText style={styles.sectionTitle}>Add Object</ThemedText>
 									<ImageUploader
 										onChange={handleAddObject}
+										folder="map"
 										placeholder="Upload Object/Mini"
 									/>
 									<ThemedText style={styles.helperText}>
@@ -438,11 +431,23 @@ export default function MapEditorScreen() {
 					</View>
 				)}
 			</View>
+			<TouchableOpacity
+				style={[styles.fab, saving && styles.fabDisabled]}
+				onPress={handleSave}
+				disabled={saving}
+				accessibilityLabel="Save Map"
+			>
+				{saving ? (
+					<ActivityIndicator size="small" color="#FFF" />
+				) : (
+					<ExpoIcon icon="Feather:save" size={24} color="#FFF" />
+				)}
+			</TouchableOpacity>
 		</ThemedView>
 	);
-}
+};
 
-function EditorCanvas({
+const EditorCanvas = ({
 	map,
 	gridConfig,
 	activeTool,
@@ -456,7 +461,7 @@ function EditorCanvas({
 	tiles: Record<string, string>;
 	objects: any[];
 	onTileClick: (x: number, y: number) => void;
-}) {
+}) => {
 	const width = gridConfig.columns * gridConfig.size;
 	const height = gridConfig.rows * gridConfig.size;
 
@@ -474,7 +479,7 @@ function EditorCanvas({
 					y2={height + gridConfig.offsetY}
 					stroke="rgba(0,0,0,0.3)"
 					strokeWidth="1"
-				/>
+				/>,
 			);
 		}
 		// Horizontal lines
@@ -489,7 +494,7 @@ function EditorCanvas({
 					y2={y}
 					stroke="rgba(0,0,0,0.3)"
 					strokeWidth="1"
-				/>
+				/>,
 			);
 		}
 		return lines;
@@ -557,7 +562,7 @@ function EditorCanvas({
 						width: width, // Match grid dimensions so grid overlays correctly
 						height: height,
 						resizeMode: 'stretch', // Or 'cover'/'contain' depending on preference, 'stretch' ensures it fills the grid
-						opacity: 0.8
+						opacity: 0.8,
 					}}
 				/>
 			)}
@@ -584,7 +589,7 @@ function EditorCanvas({
 			))}
 		</TouchableOpacity>
 	);
-}
+};
 
 const styles = StyleSheet.create({
 	container: {
@@ -596,10 +601,25 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'center',
 	},
-	headerBtn: {
-		color: '#3B2F1B',
-		fontWeight: 'bold',
-		fontSize: 16,
+	fab: {
+		position: 'absolute',
+		bottom: 24,
+		right: 24,
+		width: 56,
+		height: 56,
+		borderRadius: 28,
+		backgroundColor: '#8B6914',
+		alignItems: 'center',
+		justifyContent: 'center',
+		elevation: 4,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.25,
+		shadowRadius: 4,
+		zIndex: 200,
+	},
+	fabDisabled: {
+		opacity: 0.7,
 	},
 	editorContainer: {
 		flex: 1,
@@ -735,3 +755,5 @@ const styles = StyleSheet.create({
 		backgroundColor: '#333',
 	},
 });
+
+export default MapEditorScreen;

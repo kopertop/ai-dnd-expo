@@ -55,7 +55,7 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({
 	const deleteImageMutation = useDeleteImage();
 	const { user } = useAuth();
 
-	const isAdmin = user?.role === 'admin' || user?.is_admin === 1;
+	const isAdmin = !!user?.is_admin;
 
 	const presetOptions: PortraitOption[] = useMemo(() => {
 		return CHARACTER_IMAGE_OPTIONS.map(opt => ({

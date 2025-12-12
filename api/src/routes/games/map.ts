@@ -4,11 +4,11 @@ import type { GamesContext } from './types';
 
 import { GameStateService } from '@/api/src/services/game-state';
 import {
-	buildMapState,
-	createId,
-	deserializeCharacter,
-	isHostUser,
-	resolveMapRow,
+    buildMapState,
+    createId,
+    deserializeCharacter,
+    isHostUser,
+    resolveMapRow,
 } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
@@ -905,15 +905,7 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 			return c.json({ error: 'Invalid grid dimensions' }, 400);
 		}
 
-		// Upload image to R2 (reuse logic from images route)
-		// We'll import these helpers or duplicate if needed since we can't easily cross-import from routes
-		// But we have generateImageKey from utils/images.ts if it exists, or just recreate logic
-		const timestamp = Date.now();
-		const extension = file.name.split('.').pop()?.toLowerCase() || 'png';
-		const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-		const key = `users/${user.id}/${timestamp}-${sanitizedFilename}`;
-
-		// Convert file to base64 for AI analysis
+		// Convert file to base64 for AI analysis (before upload)
 		let base64Image = '';
 		try {
 			const buffer = await file.arrayBuffer();
@@ -953,35 +945,32 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 			}
 		}
 
-		const bucket = c.env.IMAGES_BUCKET;
-		await bucket.put(key, file, {
-			httpMetadata: {
-				contentType: file.type || 'image/png',
-			},
-		});
-
-		// Construct public URL
+		// Upload image using unified upload function (organized in maps/ folder)
+		const { uploadImage } = await import('@/api/src/utils/image-upload');
 		const requestUrl = new URL(c.req.url);
-		const isLocalDev = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
-		const origin = isLocalDev ? 'http://localhost:8787' : requestUrl.origin;
+		const timestamp = Date.now();
 
-		// We need to create an image record to serve it via the API
-		const imageId = createId('img');
-		const publicUrl = `${origin}/api/images/${imageId}`;
-
-		await db.saveUploadedImage({
-			id: imageId,
-			user_id: user.id,
-			filename: file.name,
-			r2_key: key,
-			public_url: publicUrl,
-			title: name,
-			description: 'Imported VTT map background',
-			image_type: 'both', // Could be used for anything
-			is_public: 1,
-			created_at: timestamp,
-			updated_at: timestamp,
-		});
+		// #region agent log
+		fetch('http://127.0.0.1:7242/ingest/799f8550-6c36-4989-9097-d79cc79a5001',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'map.ts:953',message:'Map import calling uploadImage',data:{type:'map',userId:user.id,fileName:file.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+		// #endregion
+		const uploadResult = await uploadImage(
+			{
+				fileInput: file,
+				type: 'map', // Maps go in maps/ folder
+				userId: user.id,
+				isAdmin: user.is_admin || false,
+				title: name,
+				description: 'Imported VTT map background',
+				imageType: 'both',
+			},
+			c.env.IMAGES_BUCKET,
+			c.env,
+			requestUrl,
+			db,
+		);
+		// #region agent log
+		fetch('http://127.0.0.1:7242/ingest/799f8550-6c36-4989-9097-d79cc79a5001',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'map.ts:967',message:'Map import uploadResult',data:{key:uploadResult.key,publicUrl:uploadResult.publicUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+		// #endregion
 
 		// Create map record
 		const mapId = createId('map');
@@ -997,7 +986,7 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 			fog_of_war: JSON.stringify({ enabled: false, grid: [] }),
 			terrain_layers: JSON.stringify([]),
 			metadata: JSON.stringify({
-				background: publicUrl,
+				background: uploadResult.publicUrl,
 				vttFormat: 'image',
 				grid: { columns, rows, gridSize },
 			}),

@@ -83,7 +83,7 @@ const UserMenu: React.FC = () => {
 		return null;
 	}
 
-	const isAdmin = userInfo?.is_admin === true;
+	const isAdmin = !!userInfo?.is_admin;
 	const displayName = user.name || user.email;
 	const avatarSource = user.picture ? { uri: user.picture } : null;
 

@@ -9,6 +9,7 @@ export interface CloudflareBindings {
 	QUESTS: KVNamespace;
 	AUTH_SESSIONS?: KVNamespace;
 	IMAGES_BUCKET: R2Bucket;
+	R2_PUBLIC_URL?: string; // Public URL for R2 bucket (e.g., https://images.dnd.coredumped.org)
 
 	// Partykit runtime configuration
 	PARTYKIT_HOST?: string;

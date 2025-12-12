@@ -19,7 +19,7 @@ import { UploadedImage, useDeleteImage } from '@/hooks/api/use-image-queries';
 
 const AdminImagesScreen: React.FC = () => {
 	const { data: userInfo } = useUserInfo();
-	const isAdmin = userInfo?.is_admin === true;
+	const isAdmin = !!userInfo?.is_admin;
 
 	const { data: imagesData, isLoading, refetch } = useQueryApi<{ images: UploadedImage[] }>(
 		'/admin/images',
