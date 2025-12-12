@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
+import { Database } from 'shared/workers/db';
 
 import type { CloudflareBindings } from '../env';
 
 import { createDatabase } from '@/api/src/utils/repository';
-import { Database } from 'shared/workers/db';
 
 type Variables = {
 	user: { id: string; email: string; name?: string | null } | null;
@@ -110,13 +110,14 @@ maps.post('/', async (c) => {
 			seed: body.seed || 'static',
 			theme: body.theme || 'neutral',
 			biome: body.biome || 'temperate',
+			world: body.world ?? null,
 			world_id: body.world_id,
 			background_image_url: body.background_image_url,
 			cover_image_url: body.cover_image_url,
-			grid_columns: body.grid_columns,
-			grid_size: body.grid_size,
-			grid_offset_x: body.grid_offset_x,
-			grid_offset_y: body.grid_offset_y,
+			grid_columns: body.grid_columns ?? 0,
+			grid_size: body.grid_size ?? 64,
+			grid_offset_x: body.grid_offset_x ?? 0,
+			grid_offset_y: body.grid_offset_y ?? 0,
 			is_generated: body.is_generated ? 1 : 0,
 			created_at: body.created_at ?? now,
 			updated_at: now,

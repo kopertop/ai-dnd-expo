@@ -33,5 +33,3 @@ UPDATE `map_tiles`
 SET `movement_cost` = 0.5
 WHERE `is_blocked` = 0
   AND `terrain_type` IN ('road', 'path', 'gravel', 'floor');
-
-

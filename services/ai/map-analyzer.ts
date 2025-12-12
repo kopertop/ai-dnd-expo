@@ -104,9 +104,10 @@ Output ONLY valid JSON matching this schema:
 	private parseResponse(response: string): MapAnalysisResult {
 		try {
 			// Find JSON block if wrapped in markdown
-			const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/) ||
-                              response.match(/```\n([\s\S]*?)\n```/) ||
-                              [null, response];
+			const jsonMatch =
+				response.match(/```json\n([\s\S]*?)\n```/) ||
+				response.match(/```\n([\s\S]*?)\n```/) ||
+				[null, response];
 
 			const jsonStr = jsonMatch[1] || response;
 			const parsed = JSON.parse(jsonStr);
@@ -123,5 +124,3 @@ Output ONLY valid JSON matching this schema:
 		}
 	}
 }
-
-

@@ -264,6 +264,3 @@ export const uploadImage = async (
 		filename: fileName,
 	};
 };
-
-
-

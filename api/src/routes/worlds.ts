@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
 import { Database } from 'shared/workers/db';
-import { createDatabase } from '@/api/src/utils/repository';
+
 import type { CloudflareBindings } from '../env';
+
+import { createDatabase } from '@/api/src/utils/repository';
 
 type Variables = {
 	user: { id: string; email: string; name?: string | null } | null;

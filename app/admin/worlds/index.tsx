@@ -1,10 +1,11 @@
+import { Stack, router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
+
 import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { fetchAPI } from '@/lib/fetch';
-import { Stack, router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface World {
 	id: string;
@@ -15,7 +16,7 @@ interface World {
 	is_public: number;
 }
 
-export default function WorldsListScreen() {
+const WorldsListScreen: React.FC = () => {
 	const [worlds, setWorlds] = useState<World[]>([]);
 	const [loading, setLoading] = useState(true);
 
@@ -97,7 +98,7 @@ export default function WorldsListScreen() {
 			)}
 		</ThemedView>
 	);
-}
+};
 
 const styles = StyleSheet.create({
 	container: {
@@ -186,3 +187,5 @@ const styles = StyleSheet.create({
 		zIndex: 100,
 	},
 });
+
+export default WorldsListScreen;

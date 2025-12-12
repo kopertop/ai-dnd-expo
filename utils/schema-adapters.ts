@@ -5,7 +5,11 @@ type TerrainCell = {
 	terrain: string;
 	elevation: number;
 	fogged: boolean;
+	blocked?: boolean;
 	difficult?: boolean;
+	movementCost: number;
+	providesCover?: boolean;
+	coverType?: 'half' | 'three-quarters' | 'full' | null;
 	featureType?: string | null;
 	metadata?: Record<string, unknown>;
 };
@@ -44,6 +48,11 @@ const buildBaseTerrain = (map: MapRow): TerrainCell[][] => {
 			terrain: fallback.type ?? 'stone',
 			elevation: fallback.elevation ?? 0,
 			fogged: false,
+			blocked: false,
+			difficult: false,
+			movementCost: 1.0,
+			providesCover: false,
+			coverType: null,
 		})),
 	);
 };

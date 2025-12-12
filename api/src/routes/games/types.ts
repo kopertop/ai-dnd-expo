@@ -10,7 +10,7 @@ import type {
  * User variables available in route context
  */
 export type Variables = {
-	user: { id: string; email: string; name?: string | null } | null;
+	user: { id: string; email: string; name?: string | null; is_admin?: boolean } | null;
 };
 
 /**

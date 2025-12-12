@@ -1,20 +1,21 @@
-import { ExpoIcon } from '@/components/expo-icon';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { fetchAPI } from '@/lib/fetch';
 import { Picker } from '@react-native-picker/picker';
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Modal,
-    Pressable,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+	ActivityIndicator,
+	FlatList,
+	Modal,
+	Pressable,
+	StyleSheet,
+	TextInput,
+	TouchableOpacity,
+	View,
 } from 'react-native';
+
+import { ExpoIcon } from '@/components/expo-icon';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { fetchAPI } from '@/lib/fetch';
 
 interface MapItem {
 	id: string;
@@ -32,7 +33,7 @@ interface World {
 
 type WorldFilterValue = 'all' | 'unassigned' | string;
 
-export default function MapsListScreen() {
+const MapsListScreen: React.FC = () => {
 	const [maps, setMaps] = useState<MapItem[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [worlds, setWorlds] = useState<World[]>([]);
@@ -295,7 +296,7 @@ export default function MapsListScreen() {
 			)}
 		</ThemedView>
 	);
-}
+};
 
 const styles = StyleSheet.create({
 	container: {
@@ -500,3 +501,5 @@ const styles = StyleSheet.create({
 		zIndex: 100,
 	},
 });
+
+export default MapsListScreen;
