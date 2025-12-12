@@ -1,3 +1,7 @@
+import { ExpoIcon } from '@/components/expo-icon';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { fetchAPI } from '@/lib/fetch';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -10,11 +14,6 @@ import {
 	View,
 	Switch,
 } from 'react-native';
-
-import { ExpoIcon } from '@/components/expo-icon';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { fetchAPI } from '@/lib/fetch';
 import { ImageUploader } from '@/components/image-uploader';
 
 interface World {
@@ -26,7 +25,7 @@ interface World {
 	is_public: number;
 }
 
-const WorldEditScreen: React.FC = () => {
+export default function WorldEditScreen() {
 	const { id } = useLocalSearchParams<{ id: string }>();
 	const isNew = id === 'create';
 	const [loading, setLoading] = useState(!isNew);
@@ -72,7 +71,7 @@ const WorldEditScreen: React.FC = () => {
 				body: JSON.stringify(formData),
 			});
 			Alert.alert('Success', 'World saved successfully', [
-				{ text: 'OK', onPress: () => router.back() },
+				{ text: 'OK', onPress: () => router.back() }
 			]);
 		} catch (error: any) {
 			Alert.alert('Error', error.message || 'Failed to save world');
@@ -101,9 +100,9 @@ const WorldEditScreen: React.FC = () => {
 							Alert.alert('Error', error.message || 'Failed to delete world');
 							setSaving(false);
 						}
-					},
-				},
-			],
+					}
+				}
+			]
 		);
 	};
 
@@ -142,7 +141,7 @@ const WorldEditScreen: React.FC = () => {
 							setFormData(prev => ({
 								...prev,
 								name: text,
-								slug: isNew ? text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : prev.slug,
+								slug: isNew ? text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : prev.slug
 							}));
 						}}
 						placeholder="e.g. Faerun"
@@ -205,7 +204,7 @@ const WorldEditScreen: React.FC = () => {
 			</ScrollView>
 		</ThemedView>
 	);
-};
+}
 
 const styles = StyleSheet.create({
 	container: {
@@ -276,5 +275,3 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 	},
 });
-
-export default WorldEditScreen;

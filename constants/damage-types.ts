@@ -122,4 +122,3 @@ export function getDamageMultiplier(damageType: DamageType, resistances: Resista
 	}
 	return 1;
 }
-

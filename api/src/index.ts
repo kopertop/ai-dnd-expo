@@ -47,7 +47,7 @@ app.use('*', async (c, next) => {
 				error: 'Rate limit exceeded',
 				limit: limit ?? 0,
 				remaining: 0,
-				reset: reset ? new Date(reset * 1000).toISOString() : new Date().toISOString(),
+				reset: reset ? new Date(reset * 1000).toISOString() : new Date().toISOString()
 			}, 429);
 		}
 
@@ -80,23 +80,6 @@ app.use('*', async (c, next) => {
 
 	// Authenticate using expo-auth-template
 	const user = await useAuth(c.req.raw, envWithDB);
-
-	// Enhance user object with is_admin from database if user exists
-	if (user) {
-		try {
-			const db = resolveSqlBinding(c.env);
-			const userRecord = await db.prepare('SELECT is_admin FROM users WHERE id = ?')
-				.bind(user.id)
-				.first<{ is_admin: number | null }>();
-
-			if (userRecord) {
-				(user as any).is_admin = !!userRecord.is_admin;
-			}
-		} catch (error) {
-			// Log but don't fail - is_admin is optional
-			console.warn('Failed to fetch is_admin for user:', error);
-		}
-	}
 
 	// Set user in context
 	c.set('user', user);

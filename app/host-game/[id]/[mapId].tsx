@@ -4,15 +4,15 @@ import { useAuth } from 'expo-auth-template/frontend';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-	ActivityIndicator,
-	Alert,
-	Modal,
-	Platform,
-	ScrollView,
-	StyleSheet,
-	TextInput,
-	TouchableOpacity,
-	View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,16 +24,16 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useGameCharacters } from '@/hooks/api/use-character-queries';
 import {
-	useDeleteMapToken,
-	useGenerateMap,
-	useMapState,
-	useMoveToken,
-	useMutateTerrain,
-	useNpcDefinitions,
-	usePlaceNpc,
-	usePlacePlayerToken,
-	useSaveMapToken,
-	useUpdateMapState,
+    useDeleteMapToken,
+    useGenerateMap,
+    useMapState,
+    useMoveToken,
+    useMutateTerrain,
+    useNpcDefinitions,
+    usePlaceNpc,
+    usePlacePlayerToken,
+    useSaveMapToken,
+    useUpdateMapState,
 } from '@/hooks/api/use-map-queries';
 import { Character } from '@/types/character';
 import { MapToken, NpcDefinition } from '@/types/multiplayer-map';

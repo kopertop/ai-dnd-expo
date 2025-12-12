@@ -208,11 +208,6 @@ vi.mock('@expo/vector-icons', () => ({
 	SimpleLineIcons: vi.fn(() => null),
 }));
 
-// Mock character-figure types to avoid image imports
-vi.mock('@/types/character-figure', () => ({
-	CHARACTER_IMAGE_OPTIONS: [],
-}));
-
 // Ensure console methods are mocked for tests that assert on mocks
 console.warn = vi.fn(console.warn);
 console.error = vi.fn(console.error);

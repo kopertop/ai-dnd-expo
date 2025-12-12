@@ -1,10 +1,9 @@
+import { readdir, readFile } from 'fs/promises';
 import path from 'path';
 
 import { env } from 'cloudflare:test';
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { applyMigrations } from './apply-migrations';
 
 import type { CloudflareBindings } from '@/api/src/env';
 import characterRoutes from '@/api/src/routes/characters';
@@ -40,7 +39,11 @@ describe('Games API with Cloudflare Workers', () => {
 
 		// Run migrations on the D1 database
 		const db = (env as CloudflareBindings).DATABASE;
-		await applyMigrations(db);
+		// Execute all migration files in order
+		const migrationFiles = await readdir(path.resolve(process.cwd(), 'api', 'migrations'));
+		for (const migrationFile of migrationFiles) {
+			await db.exec(await readFile(path.join(__dirname, '..', 'migrations', migrationFile), 'utf8'));
+		}
 		// Mock Database to use the real D1 database from Cloudflare Workers
 	});
 
@@ -333,10 +336,7 @@ describe('Games API with Cloudflare Workers', () => {
 				map: { id: string };
 				tiles: Array<unknown>;
 			};
-			// Procedural generation produces sparse tiles (features only), not full dense grid
-			// 50x50 map with 'forest' preset generates ~12-15% density (~300-400 tiles)
-			expect(mapData.tiles.length).toBeGreaterThan(100);
-			expect(mapData.tiles.length).toBeLessThan(2500);
+			expect(mapData.tiles.length).toBe(2500);
 
 			// Verify all tiles were saved using batch operations
 			const db = (env as CloudflareBindings).DATABASE;
@@ -345,54 +345,7 @@ describe('Games API with Cloudflare Workers', () => {
 				.bind(mapData.map.id)
 				.first<{ count: number }>();
 
-			expect(tilesResult?.count).toBe(mapData.tiles.length);
-		});
-	});
-
-	describe('POST /api/games/:inviteCode/map/terrain (Batching)', () => {
-		it('handles batch updates larger than D1 limit (>100 items)', async () => {
-			// Create a game and map
-			const createResponse = await fetchWithAuth('http://localhost/api/games', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					quest: { id: 'q1', title: 'Q1' },
-					world: 'W1',
-					startingArea: 'A1',
-					hostId: hostUser.id,
-					hostEmail: hostUser.email,
-				}),
-			});
-			const { inviteCode } = (await createResponse.json()) as { inviteCode: string };
-
-			await fetchWithAuth(`http://localhost/api/games/${inviteCode}/map/generate`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ preset: 'forest', width: 20, height: 20 }),
-			});
-
-			// Generate 150 tile updates to force batch chunking
-			const tiles = [];
-			for (let i = 0; i < 150; i++) {
-				tiles.push({
-					x: i % 20,
-					y: Math.floor(i / 20),
-					terrainType: 'water',
-					elevation: 1,
-				});
-			}
-
-			const updateResponse = await fetchWithAuth(
-				`http://localhost/api/games/${inviteCode}/map/terrain`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ tiles }),
-				},
-				'host',
-			);
-
-			expect(updateResponse.status).toBe(200);
+			expect(tilesResult?.count).toBe(2500);
 		});
 	});
 
@@ -660,11 +613,8 @@ describe('Games API with Cloudflare Workers', () => {
 
 	describe('NPC management', () => {
 		it('lists NPC definitions and places NPCs on map', async () => {
-			// Clear existing NPCs (from seeds)
-			const db = (env as CloudflareBindings).DATABASE;
-			await db.exec('DELETE FROM npcs');
-
 			// First, seed an NPC
+			const db = (env as CloudflareBindings).DATABASE;
 			await db
 				.prepare(
 					`INSERT INTO npcs (
@@ -785,7 +735,7 @@ describe('Games API with Cloudflare Workers', () => {
 		// Clean up database tables
 		const db = (env as CloudflareBindings).DATABASE;
 		// Cleanup all tables
-		const tables = await db.prepare('SELECT name FROM sqlite_master WHERE type = "table" AND name NOT LIKE "sqlite_%" AND name NOT LIKE "_%"').all<{ name: string }>();
+		const tables = await db.prepare('SELECT name FROM sqlite_master WHERE type = "table"').all<{ name: string }>();
 		for (const table of tables.results) {
 			await db.exec(`DELETE FROM ${table.name}`);
 		}

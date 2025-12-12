@@ -1,13 +1,10 @@
 import { Hono } from 'hono';
 import { Database } from 'shared/workers/db';
-
+import { createDatabase } from '@/api/src/utils/repository';
 import type { CloudflareBindings } from '../env';
 
-import { createDatabase } from '@/api/src/utils/repository';
-import { User } from '@/types/models';
-
 type Variables = {
-	user: User | null;
+	user: { id: string; email: string; name?: string | null } | null;
 };
 
 const worlds = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
@@ -37,10 +34,6 @@ worlds.post('/', async (c) => {
 	const user = c.get('user');
 	if (!user) {
 		return c.json({ error: 'Unauthorized' }, 401);
-	}
-
-	if (!user.is_admin) {
-		return c.json({ error: 'Forbidden: Only admins can manage worlds' }, 403);
 	}
 
 	const body = await c.req.json();
@@ -77,10 +70,6 @@ worlds.delete('/:id', async (c) => {
 	const user = c.get('user');
 	if (!user) {
 		return c.json({ error: 'Unauthorized' }, 401);
-	}
-
-	if (!user.is_admin) {
-		return c.json({ error: 'Forbidden: Only admins can delete worlds' }, 403);
 	}
 
 	const id = c.req.param('id');

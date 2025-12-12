@@ -54,4 +54,3 @@ for (const font of requiredFonts) {
 }
 
 console.log(`\nDone! Copied ${copied} fonts to dist/assets/fonts and assets/fonts, skipped ${skipped} missing fonts.`);
-

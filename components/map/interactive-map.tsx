@@ -1,13 +1,13 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
-	Image,
-	PanResponder,
-	Platform,
-	StyleSheet,
-	Text,
-	TouchableOpacity,
-	View,
-	useWindowDimensions,
+    Image,
+    PanResponder,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+    useWindowDimensions,
 } from 'react-native';
 
 import { ExpoIcon } from '@/components/expo-icon';

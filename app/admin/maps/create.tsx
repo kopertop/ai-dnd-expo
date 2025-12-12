@@ -1,3 +1,7 @@
+import { ExpoIcon } from '@/components/expo-icon';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { fetchAPI } from '@/lib/fetch';
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -11,17 +15,12 @@ import {
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 
-import { ExpoIcon } from '@/components/expo-icon';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { fetchAPI } from '@/lib/fetch';
-
 interface World {
 	id: string;
 	name: string;
 }
 
-const CreateMapScreen: React.FC = () => {
+export default function CreateMapScreen() {
 	const [worlds, setWorlds] = useState<World[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
@@ -118,7 +117,7 @@ const CreateMapScreen: React.FC = () => {
 							setFormData(prev => ({
 								...prev,
 								name: text,
-								slug: text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+								slug: text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 							}));
 						}}
 						placeholder="e.g. The Red Tavern"
@@ -169,7 +168,7 @@ const CreateMapScreen: React.FC = () => {
 			</ScrollView>
 		</ThemedView>
 	);
-};
+}
 
 const styles = StyleSheet.create({
 	container: {
@@ -222,5 +221,3 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 	},
 });
-
-export default CreateMapScreen;

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import {
-	ScrollView,
-	StyleSheet,
-	Switch,
-	TextInput,
-	TouchableOpacity,
-	View,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';

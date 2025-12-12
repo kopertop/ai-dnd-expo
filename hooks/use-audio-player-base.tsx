@@ -1,10 +1,10 @@
 import React, {
-	createContext,
-	useCallback,
-	useContext,
-	useEffect,
-	useMemo,
-	useRef,
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
 } from 'react';
 
 import { useSettingsStore } from '../stores/settings-store';

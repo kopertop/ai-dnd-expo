@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
-import { Database } from 'shared/workers/db';
 
 import type { CloudflareBindings } from '../env';
 
 import { createDatabase } from '@/api/src/utils/repository';
+import { Database } from 'shared/workers/db';
 
 type Variables = {
 	user: { id: string; email: string; name?: string | null } | null;
@@ -58,6 +58,7 @@ maps.get('/:id', async (c) => {
 		// Also fetch map tokens (objects)
 		// Use listPropTokensForMap to only get template/prop tokens, NOT player tokens
 		const tokens = await db.listPropTokensForMap(id);
+		const tiles = await db.getMapTiles(id);
 
 		return c.json({
 			...map,
@@ -66,6 +67,7 @@ maps.get('/:id', async (c) => {
 			fog_of_war: map.fog_of_war ? JSON.parse(map.fog_of_war) : [],
 			default_terrain: map.default_terrain ? JSON.parse(map.default_terrain) : {},
 			tokens, // Return the tokens as well
+			tiles,
 		});
 	} catch (error) {
 		console.error('Failed to get map:', error);
@@ -110,18 +112,38 @@ maps.post('/', async (c) => {
 			seed: body.seed || 'static',
 			theme: body.theme || 'neutral',
 			biome: body.biome || 'temperate',
-			world: body.world ?? null,
 			world_id: body.world_id,
 			background_image_url: body.background_image_url,
 			cover_image_url: body.cover_image_url,
-			grid_columns: body.grid_columns ?? 0,
-			grid_size: body.grid_size ?? 64,
-			grid_offset_x: body.grid_offset_x ?? 0,
-			grid_offset_y: body.grid_offset_y ?? 0,
+			grid_columns: body.grid_columns,
+			grid_size: body.grid_size,
+			grid_offset_x: body.grid_offset_x,
+			grid_offset_y: body.grid_offset_y,
 			is_generated: body.is_generated ? 1 : 0,
 			created_at: body.created_at ?? now,
 			updated_at: now,
 		});
+
+		// Process tiles if provided
+		if (body.tiles && Array.isArray(body.tiles)) {
+			await db.replaceMapTiles(
+				id,
+				body.tiles.map((t: any) => ({
+					x: t.x,
+					y: t.y,
+					terrain_type: t.terrain_type || t.terrain,
+					elevation: t.elevation,
+					movement_cost: t.movement_cost,
+					is_blocked: t.is_blocked ? 1 : 0,
+					is_difficult: t.is_difficult ? 1 : 0,
+					has_fog: t.has_fog ? 1 : 0,
+					provides_cover: t.provides_cover ? 1 : 0,
+					cover_type: t.cover_type,
+					feature_type: t.feature_type,
+					metadata: JSON.stringify(t.metadata || {}),
+				}))
+			);
+		}
 
 		// Process tokens if provided in the body
 		if (body.tokens && Array.isArray(body.tokens)) {

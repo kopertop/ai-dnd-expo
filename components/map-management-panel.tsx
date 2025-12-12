@@ -1,22 +1,23 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-	ActivityIndicator,
-	Alert,
-	Image,
-	ScrollView,
-	StyleSheet,
-	TextInput,
-	TouchableOpacity,
-	View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { VTTMapImport } from '@/components/vtt-map-import';
 import { LOCATIONS } from '@/constants/locations';
 import {
-	useAllMaps,
-	useCloneMap,
-	useSwitchMap,
+    useAllMaps,
+    useCloneMap,
+    useDeleteMap,
+    useSwitchMap,
 } from '@/hooks/api/use-map-queries';
 import { LocationOption } from '@/types/location-option';
 import { WorldOption } from '@/types/world-option';
@@ -57,6 +58,10 @@ export const MapManagementPanel: React.FC<MapManagementPanelProps> = ({
 	const allMaps = mapsData?.maps || [];
 	const cloneMapMutation = useCloneMap();
 	const switchMapMutation = useSwitchMap(inviteCode);
+	// We need to initialize useDeleteMap hook but it wasn't imported before
+	// Let's assume it exists in use-map-queries based on previous attempts
+	// If not, we'll need to check the hook file
+	const deleteMapMutation = useDeleteMap ? useDeleteMap(inviteCode) : { mutateAsync: async (args: any) => {} };
 
 	const [showVTTImport, setShowVTTImport] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');

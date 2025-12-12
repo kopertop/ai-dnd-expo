@@ -3,25 +3,25 @@
  * Similar to transcript overlay but for turn-based gameplay
  */
 
+import { ExpoIcon } from '@/components/expo-icon';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-	Dimensions,
-	Image,
-	Keyboard,
-	KeyboardAvoidingView,
-	Platform,
-	SafeAreaView,
-	ScrollView,
-	StyleSheet,
-	Text,
-	TouchableOpacity,
-	View,
-	useWindowDimensions,
+    Dimensions,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+    useWindowDimensions,
 } from 'react-native';
 
 import { VoiceChatInput } from './voice-chat-input';
 
-import { ExpoIcon } from '@/components/expo-icon';
 import { Colors } from '@/constants/colors';
 import { RaceByID } from '@/constants/races';
 import { SKILL_LIST } from '@/constants/skills';

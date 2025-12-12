@@ -1,8 +1,8 @@
+import { ExpoIcon } from '@/components/expo-icon';
 import { Stack, router } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useUserInfo } from '@/hooks/api/use-auth-queries';
@@ -48,7 +48,7 @@ const adminFeatures: AdminFeature[] = [
 
 const AdminPortalScreen: React.FC = () => {
 	const { data: userInfo } = useUserInfo();
-	const isAdmin = !!userInfo?.is_admin;
+	const isAdmin = userInfo?.is_admin === true;
 
 	if (!isAdmin) {
 		return (

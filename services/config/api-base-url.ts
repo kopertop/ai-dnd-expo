@@ -33,7 +33,6 @@ const resolveApiBaseUrl = (): string => {
 	// PRIORITY 3: Check if we're in development mode
 	const isDev = process.env.NODE_ENV === 'development' || __DEV__;
 	if (isDev) {
-		console.log('** API_BASE_URL (development)', 'http://localhost:8787/api/');
 		return 'http://localhost:8787/api/';
 	}
 
@@ -63,5 +62,5 @@ export const buildApiUrl = (path: string): string => {
 		? API_BASE_URL.slice(0, -1)
 		: API_BASE_URL;
 
-	return `${normalizedBase}${path.replace(/^\/api/, '')}`;
+	return `${normalizedBase}${path}`;
 };

@@ -1,23 +1,12 @@
+import { readdir, readFile } from 'fs/promises';
 import path from 'path';
 
 import { env } from 'cloudflare:test';
 import { Hono } from 'hono';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { applyMigrations } from './apply-migrations';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { CloudflareBindings } from '@/api/src/env';
 import gameRoutes from '@/api/src/routes/games';
-
-vi.mock('partyserver', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('partyserver')>();
-	return {
-		...actual,
-		getServerByName: vi.fn().mockReturnValue({
-			fetch: vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }))),
-		}),
-	};
-});
 
 describe('DM dice roll API', () => {
 	let user: { id: string; email: string; name?: string | null };
@@ -32,10 +21,11 @@ describe('DM dice roll API', () => {
 		});
 		testApp.route('/api/games', gameRoutes);
 
-		// Run migrations on the D1 database
 		const db = (env as CloudflareBindings).DATABASE;
-		await applyMigrations(db);
-		// Mock Database to use the real D1 database from Cloudflare Workers
+		const migrationFiles = await readdir(path.resolve(process.cwd(), 'api', 'migrations'));
+		for (const migrationFile of migrationFiles) {
+			await db.exec(await readFile(path.join(__dirname, '..', 'migrations', migrationFile), 'utf8'));
+		}
 	});
 
 	const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
@@ -96,10 +86,8 @@ describe('DM dice roll API', () => {
 	});
 
 	afterEach(async () => {
-		// Wait a bit for pending IO
-		await new Promise(resolve => setTimeout(resolve, 1000));
 		const db = (env as CloudflareBindings).DATABASE;
-		const tables = await db.prepare('SELECT name FROM sqlite_master WHERE type = "table" AND name NOT LIKE "sqlite_%" AND name NOT LIKE "_%"').all<{ name: string }>();
+		const tables = await db.prepare('SELECT name FROM sqlite_master WHERE type = "table"').all<{ name: string }>();
 		for (const table of tables.results) {
 			await db.exec(`DELETE FROM ${table.name}`);
 		}

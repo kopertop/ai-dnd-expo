@@ -10,7 +10,6 @@ export interface GameRow {
 	quest_id: string;
 	quest_data: string; // JSON
 	world: string;
-	world_id?: string | null;
 	starting_area: string;
 	status: 'waiting' | 'active' | 'completed' | 'cancelled';
 	current_map_id: string | null;
@@ -78,13 +77,13 @@ export interface MapRow {
 	theme: string;
 	biome: string;
 	world: string | null; // Deprecated: Old string based world
-	world_id?: string | null; // FK to worlds table
-	background_image_url?: string | null;
-	cover_image_url?: string | null;
-	grid_columns?: number;
-	grid_size?: number;
-	grid_offset_x?: number;
-	grid_offset_y?: number;
+	world_id: string | null; // FK to worlds table
+	background_image_url: string | null;
+	cover_image_url: string | null;
+	grid_columns: number;
+	grid_size: number;
+	grid_offset_x: number;
+	grid_offset_y: number;
 	is_generated: number;
 	created_at: number;
 	updated_at: number;
@@ -97,12 +96,12 @@ export interface MapTileRow {
 	y: number;
 	terrain_type: string;
 	elevation: number;
-	movement_cost?: number | null;
+	movement_cost: number | null;
 	is_blocked: number;
-	is_difficult?: number;
+	is_difficult: number;
 	has_fog: number;
-	provides_cover?: number;
-	cover_type?: string | null;
+	provides_cover: number;
+	cover_type: string | null;
 	feature_type: string | null;
 	metadata: string;
 }
@@ -151,7 +150,7 @@ export interface MapTokenRow {
 	npc_id: string | null;
 	token_type: string;
 	label: string | null;
-	image_url?: string | null;
+	image_url: string | null;
 	x: number;
 	y: number;
 	facing: number;
@@ -594,47 +593,42 @@ export class Database {
 		}>,
 	) {
 		const deleteStatement = this.db.prepare('DELETE FROM map_tiles WHERE map_id = ?').bind(mapId);
-		await deleteStatement.run();
 
-		const BATCH_SIZE = 100;
-		for (let i = 0; i < tiles.length; i += BATCH_SIZE) {
-			const chunk = tiles.slice(i, i + BATCH_SIZE);
-			const insertStatements = chunk.map(tile =>
-				this.db.prepare(
-					`INSERT INTO map_tiles (
-						id, map_id, x, y, terrain_type, elevation, movement_cost, is_blocked, is_difficult, has_fog, provides_cover, cover_type, feature_type, metadata
-					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-					ON CONFLICT(id) DO UPDATE SET
-						terrain_type = excluded.terrain_type,
-						elevation = excluded.elevation,
-						movement_cost = excluded.movement_cost,
-						is_blocked = excluded.is_blocked,
-						is_difficult = excluded.is_difficult,
-						has_fog = excluded.has_fog,
-						provides_cover = excluded.provides_cover,
-						cover_type = excluded.cover_type,
-						feature_type = excluded.feature_type,
-						metadata = excluded.metadata`,
-				).bind(
-					`tile_${mapId}_${tile.x}_${tile.y}`,
-					mapId,
-					tile.x,
-					tile.y,
-					tile.terrain_type,
-					tile.elevation ?? 0,
-					tile.movement_cost ?? 1.0,
-					tile.is_blocked ?? 0,
-					tile.is_difficult ?? 0,
-					tile.has_fog ?? 0,
-					tile.provides_cover ?? 0,
-					tile.cover_type ?? null,
-					tile.feature_type ?? null,
-					tile.metadata ?? '{}',
-				),
-			);
+		const insertStatements = tiles.map(tile =>
+			this.db.prepare(
+				`INSERT INTO map_tiles (
+					id, map_id, x, y, terrain_type, elevation, movement_cost, is_blocked, is_difficult, has_fog, provides_cover, cover_type, feature_type, metadata
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				ON CONFLICT(id) DO UPDATE SET
+					terrain_type = excluded.terrain_type,
+					elevation = excluded.elevation,
+					movement_cost = excluded.movement_cost,
+					is_blocked = excluded.is_blocked,
+					is_difficult = excluded.is_difficult,
+					has_fog = excluded.has_fog,
+					provides_cover = excluded.provides_cover,
+					cover_type = excluded.cover_type,
+					feature_type = excluded.feature_type,
+					metadata = excluded.metadata`,
+			).bind(
+				`tile_${mapId}_${tile.x}_${tile.y}`,
+				mapId,
+				tile.x,
+				tile.y,
+				tile.terrain_type,
+				tile.elevation ?? 0,
+				tile.movement_cost ?? 1.0,
+				tile.is_blocked ?? 0,
+				tile.is_difficult ?? 0,
+				tile.has_fog ?? 0,
+				tile.provides_cover ?? 0,
+				tile.cover_type ?? null,
+				tile.feature_type ?? null,
+				tile.metadata ?? '{}',
+			),
+		);
 
-			await this.db.batch(insertStatements);
-		}
+		await this.db.batch([deleteStatement, ...insertStatements]);
 	}
 
 	async cloneMap(sourceMapId: string, newName: string, newSlug: string): Promise<MapRow> {
@@ -724,45 +718,41 @@ export class Database {
 			metadata?: string;
 		}>,
 	) {
-		const BATCH_SIZE = 100;
-		for (let i = 0; i < tiles.length; i += BATCH_SIZE) {
-			const chunk = tiles.slice(i, i + BATCH_SIZE);
-			const statements = chunk.map(tile =>
-				this.db.prepare(
-					`INSERT INTO map_tiles (
-						id, map_id, x, y, terrain_type, elevation, movement_cost, is_blocked, is_difficult, has_fog, provides_cover, cover_type, feature_type, metadata
-					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-					ON CONFLICT(id) DO UPDATE SET
-						terrain_type = excluded.terrain_type,
-						elevation = excluded.elevation,
-						movement_cost = excluded.movement_cost,
-						is_blocked = excluded.is_blocked,
-						is_difficult = excluded.is_difficult,
-						has_fog = excluded.has_fog,
-						provides_cover = excluded.provides_cover,
-						cover_type = excluded.cover_type,
-						feature_type = excluded.feature_type,
-						metadata = excluded.metadata`,
-				).bind(
-					`tile_${mapId}_${tile.x}_${tile.y}`,
-					mapId,
-					tile.x,
-					tile.y,
-					tile.terrain_type,
-					tile.elevation ?? 0,
-					tile.movement_cost ?? 1.0,
-					tile.is_blocked ?? 0,
-					tile.is_difficult ?? 0,
-					tile.has_fog ?? 0,
-					tile.provides_cover ?? 0,
-					tile.cover_type ?? null,
-					tile.feature_type ?? null,
-					tile.metadata ?? '{}',
-				),
-			);
+		const statements = tiles.map(tile =>
+			this.db.prepare(
+				`INSERT INTO map_tiles (
+					id, map_id, x, y, terrain_type, elevation, movement_cost, is_blocked, is_difficult, has_fog, provides_cover, cover_type, feature_type, metadata
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				ON CONFLICT(id) DO UPDATE SET
+					terrain_type = excluded.terrain_type,
+					elevation = excluded.elevation,
+					movement_cost = excluded.movement_cost,
+					is_blocked = excluded.is_blocked,
+					is_difficult = excluded.is_difficult,
+					has_fog = excluded.has_fog,
+					provides_cover = excluded.provides_cover,
+					cover_type = excluded.cover_type,
+					feature_type = excluded.feature_type,
+					metadata = excluded.metadata`,
+			).bind(
+				`tile_${mapId}_${tile.x}_${tile.y}`,
+				mapId,
+				tile.x,
+				tile.y,
+				tile.terrain_type,
+				tile.elevation ?? 0,
+				tile.movement_cost ?? 1.0,
+				tile.is_blocked ?? 0,
+				tile.is_difficult ?? 0,
+				tile.has_fog ?? 0,
+				tile.provides_cover ?? 0,
+				tile.cover_type ?? null,
+				tile.feature_type ?? null,
+				tile.metadata ?? '{}',
+			),
+		);
 
-			await this.db.batch(statements);
-		}
+		await this.db.batch(statements);
 	}
 
 	// NPC operations

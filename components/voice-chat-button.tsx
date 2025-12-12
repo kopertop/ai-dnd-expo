@@ -161,7 +161,7 @@ export const VoiceChatButton: React.FC<VoiceChatButtonProps> = ({
 	/**
 	 * Get appropriate icon based on state
 	 */
-	const getIconName = (): string => {
+	const getIconName = (): keyof typeof Feather.glyphMap => {
 		if (voiceRecognition.isListening) {
 			return 'mic';
 		}

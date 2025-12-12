@@ -8,11 +8,7 @@ const GameLayout: React.FC = () => {
 	const gameName = gameState?.gameWorld || 'D&D Adventure';
 
 	return (
-		<Stack
-			screenOptions={{
-				headerTitleAlign: 'center',
-			}}
-		>
+		<Stack>
 			<Stack.Screen
 				name="index"
 				options={{

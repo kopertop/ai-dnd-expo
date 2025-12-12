@@ -3,13 +3,13 @@ import { apiService, useMutationApi, useQueryApi } from 'expo-auth-template/fron
 
 import { websocketClient } from '@/services/api/websocket-client';
 import type {
-	MapMoveResponse,
-	MapStateResponse,
-	MapTokenListResponse,
-	MapTokenMutationResponse,
-	MovementValidationResponse,
-	NpcDefinitionListResponse,
-	NpcInstanceListResponse,
+    MapMoveResponse,
+    MapStateResponse,
+    MapTokenListResponse,
+    MapTokenMutationResponse,
+    MovementValidationResponse,
+    NpcDefinitionListResponse,
+    NpcInstanceListResponse,
 } from '@/types/api/multiplayer-api';
 import type { NpcDefinition } from '@/types/multiplayer-map';
 
@@ -293,7 +293,6 @@ export function useImportVTTMap(inviteCode: string) {
 			columns: number;
 			rows: number;
 			gridSize: number;
-			icon?: string;
 		}) => {
 			const formData = new FormData();
 			// React Native/Expo handles file objects differently than web
@@ -313,9 +312,6 @@ export function useImportVTTMap(inviteCode: string) {
 			formData.append('columns', data.columns.toString());
 			formData.append('rows', data.rows.toString());
 			formData.append('gridSize', data.gridSize.toString());
-			if (data.icon) {
-				formData.append('icon', data.icon);
-			}
 
 			// Use apiService.fetchApi for FormData uploads
 			return apiService.fetchApi(`/games/${inviteCode}/map/import-vtt`, {

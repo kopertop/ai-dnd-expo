@@ -1,21 +1,22 @@
-import * as DocumentPicker from 'expo-document-picker';
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
-
+import { StyleSheet, TouchableOpacity, View, ActivityIndicator, Image, Text, Platform } from 'react-native';
 import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
-import { uploadFile } from '@/lib/fetch';
+import * as DocumentPicker from 'expo-document-picker';
+import { fetchAPI, uploadFile } from '@/lib/fetch';
+import { MediaLibraryModal } from '@/components/media-library-modal';
 
 interface ImageUploaderProps {
 	value?: string | null;
 	onChange: (url: string) => void;
-	folder?: 'map' | 'character' | 'npc' | 'misc';
+	folder?: string;
 	placeholder?: string;
 }
 
-export const ImageUploader = ({ value, onChange, folder = 'misc', placeholder = 'Upload Image' }: ImageUploaderProps) => {
+export function ImageUploader({ value, onChange, folder = 'misc', placeholder = 'Upload Image' }: ImageUploaderProps) {
 	const [uploading, setUploading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [mediaModalVisible, setMediaModalVisible] = useState(false);
 
 	const pickImage = async () => {
 		try {
@@ -30,35 +31,18 @@ export const ImageUploader = ({ value, onChange, folder = 'misc', placeholder = 
 			setUploading(true);
 			const asset = result.assets[0];
 
-			// Prepare form data - use same approach as useUploadImage
+			// Prepare form data
 			const formData = new FormData();
+			// React Native's FormData expects { uri, name, type } for file fields
+			const file = {
+				uri: asset.uri,
+				name: asset.name,
+				type: asset.mimeType || 'image/jpeg',
+			} as any;
 
-			if (Platform.OS === 'web') {
-				// Web: fetch the blob from the blob: URI
-				const res = await fetch(asset.uri);
-				const blob = await res.blob();
-				formData.append('file', blob, asset.name || 'image.jpg');
-			} else {
-				// React Native / Expo
-				const uri = asset.uri;
-				const name = uri.split('/').pop() || asset.name || 'image.jpg';
-				const match = /\.(\w+)$/.exec(name);
-				const type = match ? `image/${match[1]}` : (asset.mimeType || 'image/jpeg');
-
-				// @ts-ignore - React Native FormData expects an object with uri, name, type
-				formData.append('file', { uri, name, type });
-			}
-
-			formData.append('title', asset.name || 'image');
-			// Map folder to image_type for the upload endpoint
-			// 'map' -> 'both' (maps are stored as 'both' type in DB but organized in maps/ folder)
-			// 'character' -> 'character'
-			// 'npc' -> 'npc'
-			// 'misc' -> 'both'
-			const imageType = folder === 'character' ? 'character' : folder === 'npc' ? 'npc' : 'both';
-			formData.append('image_type', imageType);
-			// Also pass folder type so backend can organize correctly
-			formData.append('folder', folder);
+			formData.append('file', file);
+			formData.append('title', asset.name);
+			formData.append('image_type', 'both');
 
 			// Upload using the helper which handles auth tokens
 			const response = await uploadFile<{ image: { public_url: string } }>('/api/images/upload', formData);
@@ -74,7 +58,7 @@ export const ImageUploader = ({ value, onChange, folder = 'misc', placeholder = 
 
 	return (
 		<View style={styles.container}>
-			<TouchableOpacity style={styles.uploadArea} onPress={pickImage} disabled={uploading}>
+			<TouchableOpacity style={styles.uploadArea} onPress={() => setMediaModalVisible(true)} disabled={uploading}>
 				{value ? (
 					<Image source={{ uri: value }} style={styles.preview} resizeMode="contain" />
 				) : (
@@ -83,7 +67,7 @@ export const ImageUploader = ({ value, onChange, folder = 'misc', placeholder = 
 							<ActivityIndicator color="#8B6914" />
 						) : (
 							<>
-								<ExpoIcon icon="Feather:upload-cloud" size={24} color="#8B6914" />
+								<ExpoIcon icon="Feather:image" size={24} color="#8B6914" />
 								<ThemedText style={styles.placeholderText}>{placeholder}</ThemedText>
 							</>
 						)}
@@ -91,16 +75,29 @@ export const ImageUploader = ({ value, onChange, folder = 'misc', placeholder = 
 				)}
 			</TouchableOpacity>
 
-			{value && (
-				<TouchableOpacity style={styles.changeButton} onPress={pickImage} disabled={uploading}>
-					<ThemedText style={styles.changeButtonText}>Change Image</ThemedText>
+			<View style={styles.actions}>
+				<TouchableOpacity style={styles.actionBtn} onPress={() => setMediaModalVisible(true)}>
+					<ThemedText style={styles.actionBtnText}>Select from Library</ThemedText>
 				</TouchableOpacity>
-			)}
+
+				<TouchableOpacity style={styles.actionBtn} onPress={pickImage} disabled={uploading}>
+					<ThemedText style={styles.actionBtnText}>Upload New File</ThemedText>
+				</TouchableOpacity>
+			</View>
 
 			{error && <ThemedText style={styles.errorText}>{error}</ThemedText>}
+
+			<MediaLibraryModal
+				visible={mediaModalVisible}
+				onClose={() => setMediaModalVisible(false)}
+				onSelect={(url) => {
+					onChange(url);
+					setMediaModalVisible(false);
+				}}
+			/>
 		</View>
 	);
-};
+}
 
 const styles = StyleSheet.create({
 	container: {
@@ -131,11 +128,16 @@ const styles = StyleSheet.create({
 		color: '#8B6914',
 		fontSize: 14,
 	},
-	changeButton: {
+	actions: {
+		flexDirection: 'row',
+		gap: 10,
 		marginTop: 8,
+		justifyContent: 'center',
+	},
+	actionBtn: {
 		alignItems: 'center',
 	},
-	changeButtonText: {
+	actionBtnText: {
 		color: '#6B5B3D',
 		fontSize: 14,
 		textDecorationLine: 'underline',
