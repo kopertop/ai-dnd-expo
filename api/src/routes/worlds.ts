@@ -3,7 +3,11 @@ import { Database } from 'shared/workers/db';
 import { createDatabase } from '@/api/src/utils/repository';
 import type { CloudflareBindings } from '../env';
 
-const worlds = new Hono<{ Bindings: CloudflareBindings }>();
+type Variables = {
+	user: { id: string; email: string; name?: string | null } | null;
+};
+
+const worlds = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
 
 // List all worlds
 worlds.get('/', async (c) => {
@@ -27,6 +31,11 @@ worlds.get('/:id', async (c) => {
 
 // Create or update a world
 worlds.post('/', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
 	const body = await c.req.json();
 	const db = createDatabase(c.env);
 
@@ -58,6 +67,11 @@ worlds.post('/', async (c) => {
 
 // Delete a world
 worlds.delete('/:id', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
 	const id = c.req.param('id');
 	const db = createDatabase(c.env);
 
