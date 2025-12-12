@@ -76,14 +76,7 @@ export interface MapRow {
 	seed: string;
 	theme: string;
 	biome: string;
-	world: string | null; // Deprecated: Old string based world
-	world_id: string | null; // FK to worlds table
-	background_image_url: string | null;
-	cover_image_url: string | null;
-	grid_columns: number;
-	grid_size: number;
-	grid_offset_x: number;
-	grid_offset_y: number;
+	world: string | null; // World ID (null = world-agnostic)
 	is_generated: number;
 	created_at: number;
 	updated_at: number;
@@ -146,7 +139,6 @@ export interface MapTokenRow {
 	npc_id: string | null;
 	token_type: string;
 	label: string | null;
-	image_url: string | null;
 	x: number;
 	y: number;
 	facing: number;
@@ -173,17 +165,6 @@ export interface ActivityLogRow {
 	actor_name: string | null;
 	data: string | null; // JSON
 	created_at: number;
-}
-
-export interface WorldRow {
-	id: string;
-	name: string;
-	slug: string;
-	description: string | null;
-	image_url: string | null;
-	is_public: number;
-	created_at: number;
-	updated_at: number;
 }
 
 export class Database {
@@ -514,10 +495,9 @@ export class Database {
 		await this.db.prepare(
 			`INSERT INTO maps (
 				id, slug, name, description, width, height, default_terrain, fog_of_war,
-				terrain_layers, metadata, generator_preset, seed, theme, biome, world, world_id, background_image_url, cover_image_url,
-				grid_columns, grid_size, grid_offset_x, grid_offset_y, is_generated,
+				terrain_layers, metadata, generator_preset, seed, theme, biome, world, is_generated,
 				created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(id) DO UPDATE SET
 				slug = excluded.slug,
 				name = excluded.name,
@@ -533,13 +513,6 @@ export class Database {
 				theme = excluded.theme,
 				biome = excluded.biome,
 				world = excluded.world,
-				world_id = excluded.world_id,
-				background_image_url = excluded.background_image_url,
-				cover_image_url = excluded.cover_image_url,
-				grid_columns = excluded.grid_columns,
-				grid_size = excluded.grid_size,
-				grid_offset_x = excluded.grid_offset_x,
-				grid_offset_y = excluded.grid_offset_y,
 				is_generated = excluded.is_generated,
 				updated_at = excluded.updated_at`,
 		).bind(
@@ -558,13 +531,6 @@ export class Database {
 			map.theme,
 			map.biome,
 			map.world ?? null,
-			map.world_id ?? null,
-			map.background_image_url ?? null,
-			map.cover_image_url ?? null,
-			map.grid_columns ?? 0,
-			map.grid_size ?? 64,
-			map.grid_offset_x ?? 0,
-			map.grid_offset_y ?? 0,
 			map.is_generated,
 			map.created_at ?? now,
 			map.updated_at ?? now,
@@ -642,13 +608,6 @@ export class Database {
 			theme: sourceMap.theme,
 			biome: sourceMap.biome,
 			world: sourceMap.world, // Preserve world when cloning
-			world_id: sourceMap.world_id,
-			background_image_url: sourceMap.background_image_url,
-			cover_image_url: sourceMap.cover_image_url,
-			grid_columns: sourceMap.grid_columns,
-			grid_size: sourceMap.grid_size,
-			grid_offset_x: sourceMap.grid_offset_x,
-			grid_offset_y: sourceMap.grid_offset_y,
 			is_generated: sourceMap.is_generated,
 			created_at: now,
 			updated_at: now,
@@ -823,13 +782,6 @@ export class Database {
 		return result.results || [];
 	}
 
-	async listPropTokensForMap(mapId: string): Promise<MapTokenRow[]> {
-		const result = await this.db.prepare(
-			'SELECT * FROM map_tokens WHERE map_id = ? AND game_id IS NULL ORDER BY updated_at DESC',
-		).bind(mapId).all<MapTokenRow>();
-		return result.results || [];
-	}
-
 	async getMapTokenById(tokenId: string): Promise<MapTokenRow | null> {
 		const result = await this.db.prepare(
 			'SELECT * FROM map_tokens WHERE id = ?',
@@ -841,9 +793,9 @@ export class Database {
 		const now = Date.now();
 		await this.db.prepare(
 			`INSERT INTO map_tokens (
-				id, game_id, map_id, character_id, npc_id, token_type, label, image_url, x, y, facing, color,
+				id, game_id, map_id, character_id, npc_id, token_type, label, x, y, facing, color,
 				status, is_visible, hit_points, max_hit_points, status_effects, metadata, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
 					game_id = excluded.game_id,
 					map_id = excluded.map_id,
@@ -851,7 +803,6 @@ export class Database {
 					npc_id = excluded.npc_id,
 					token_type = excluded.token_type,
 					label = excluded.label,
-					image_url = excluded.image_url,
 					x = excluded.x,
 					y = excluded.y,
 					facing = excluded.facing,
@@ -871,7 +822,6 @@ export class Database {
 			token.npc_id,
 			token.token_type,
 			token.label,
-			token.image_url ?? null,
 			token.x,
 			token.y,
 			token.facing,
@@ -886,12 +836,6 @@ export class Database {
 			now, // updated_at for INSERT
 			now, // updated_at for UPDATE SET
 		).run();
-	}
-
-	async deletePropTokensForMap(mapId: string): Promise<void> {
-		await this.db.prepare(
-			'DELETE FROM map_tokens WHERE map_id = ? AND token_type = ? AND game_id IS NULL',
-		).bind(mapId, 'prop').run();
 	}
 
 	async updateMapToken(tokenId: string, updates: Partial<MapTokenRow>): Promise<void> {
@@ -1040,49 +984,5 @@ export class Database {
 
 	async deleteUploadedImage(id: string): Promise<void> {
 		await this.db.prepare('DELETE FROM uploaded_images WHERE id = ?').bind(id).run();
-	}
-
-	// World operations
-	async listWorlds(): Promise<WorldRow[]> {
-		const result = await this.db.prepare(
-			'SELECT * FROM worlds ORDER BY name ASC',
-		).all<WorldRow>();
-		return result.results || [];
-	}
-
-	async getWorldById(id: string): Promise<WorldRow | null> {
-		const result = await this.db.prepare(
-			'SELECT * FROM worlds WHERE id = ?',
-		).bind(id).first<WorldRow>();
-		return result || null;
-	}
-
-	async saveWorld(world: Omit<WorldRow, 'created_at' | 'updated_at'> & Partial<Pick<WorldRow, 'created_at' | 'updated_at'>>): Promise<void> {
-		const now = Date.now();
-		await this.db.prepare(
-			`INSERT INTO worlds (
-				id, name, slug, description, image_url, is_public, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT(id) DO UPDATE SET
-				name = excluded.name,
-				slug = excluded.slug,
-				description = excluded.description,
-				image_url = excluded.image_url,
-				is_public = excluded.is_public,
-				updated_at = excluded.updated_at`,
-		).bind(
-			world.id,
-			world.name,
-			world.slug,
-			world.description ?? null,
-			world.image_url ?? null,
-			world.is_public,
-			world.created_at ?? now,
-			world.updated_at ?? now,
-		).run();
-	}
-
-	async deleteWorld(id: string): Promise<void> {
-		await this.db.prepare('DELETE FROM worlds WHERE id = ?').bind(id).run();
 	}
 }

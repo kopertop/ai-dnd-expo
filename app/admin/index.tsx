@@ -11,7 +11,7 @@ interface AdminFeature {
 	id: string;
 	title: string;
 	description: string;
-	icon: any; // Using any for icon name flexibility
+	icon: keyof typeof Feather.glyphMap;
 	route: string;
 }
 
@@ -29,20 +29,6 @@ const adminFeatures: AdminFeature[] = [
 		description: 'View and manage uploaded character and NPC images',
 		icon: 'image',
 		route: '/admin/images',
-	},
-	{
-		id: 'worlds',
-		title: 'World Manager',
-		description: 'Create and edit worlds (Faerun, Eberron, etc.)',
-		icon: 'globe',
-		route: '/admin/worlds',
-	},
-	{
-		id: 'maps',
-		title: 'Map Manager',
-		description: 'Create, edit, and configure VTT maps with grids and backgrounds',
-		icon: 'map',
-		route: '/admin/maps',
 	},
 ];
 
