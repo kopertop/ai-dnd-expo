@@ -1,17 +1,22 @@
+import { defineWorkersConfig } from '@cloudflare/vitest-pool-workers/config';
 import path from 'node:path';
-
-import { defineConfig } from 'vitest/config';
 
 const rootDir = path.resolve(__dirname, '.');
 
-export default defineConfig({
+export default defineWorkersConfig({
 	test: {
 		name: 'api',
 		include: ['api/tests/**/*.spec.ts'],
 		globals: true,
 		clearMocks: true,
 		restoreMocks: true,
-		environment: 'node',
+		poolOptions: {
+			workers: {
+				wrangler: { configPath: './wrangler.api.toml' },
+			},
+		},
+		fileParallelism: false,
+		maxConcurrency: 1,
 		setupFiles: ['./vitest.api.utils.ts'],
 	},
 	resolve: {
@@ -24,7 +29,6 @@ export default defineConfig({
 			'@/components': path.resolve(rootDir, 'components'),
 			'@/types': path.resolve(rootDir, 'types'),
 			'@/shared': path.resolve(rootDir, 'shared'),
-			'cloudflare:test': path.resolve(rootDir, 'api/tests/cloudflare-test-shim.ts'),
 		},
 	},
 });

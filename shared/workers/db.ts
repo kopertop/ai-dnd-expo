@@ -594,42 +594,47 @@ export class Database {
 		}>,
 	) {
 		const deleteStatement = this.db.prepare('DELETE FROM map_tiles WHERE map_id = ?').bind(mapId);
+		await deleteStatement.run();
 
-		const insertStatements = tiles.map(tile =>
-			this.db.prepare(
-				`INSERT INTO map_tiles (
-					id, map_id, x, y, terrain_type, elevation, movement_cost, is_blocked, is_difficult, has_fog, provides_cover, cover_type, feature_type, metadata
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-				ON CONFLICT(id) DO UPDATE SET
-					terrain_type = excluded.terrain_type,
-					elevation = excluded.elevation,
-					movement_cost = excluded.movement_cost,
-					is_blocked = excluded.is_blocked,
-					is_difficult = excluded.is_difficult,
-					has_fog = excluded.has_fog,
-					provides_cover = excluded.provides_cover,
-					cover_type = excluded.cover_type,
-					feature_type = excluded.feature_type,
-					metadata = excluded.metadata`,
-			).bind(
-				`tile_${mapId}_${tile.x}_${tile.y}`,
-				mapId,
-				tile.x,
-				tile.y,
-				tile.terrain_type,
-				tile.elevation ?? 0,
-				tile.movement_cost ?? 1.0,
-				tile.is_blocked ?? 0,
-				tile.is_difficult ?? 0,
-				tile.has_fog ?? 0,
-				tile.provides_cover ?? 0,
-				tile.cover_type ?? null,
-				tile.feature_type ?? null,
-				tile.metadata ?? '{}',
-			),
-		);
+		const BATCH_SIZE = 100;
+		for (let i = 0; i < tiles.length; i += BATCH_SIZE) {
+			const chunk = tiles.slice(i, i + BATCH_SIZE);
+			const insertStatements = chunk.map(tile =>
+				this.db.prepare(
+					`INSERT INTO map_tiles (
+						id, map_id, x, y, terrain_type, elevation, movement_cost, is_blocked, is_difficult, has_fog, provides_cover, cover_type, feature_type, metadata
+					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+					ON CONFLICT(id) DO UPDATE SET
+						terrain_type = excluded.terrain_type,
+						elevation = excluded.elevation,
+						movement_cost = excluded.movement_cost,
+						is_blocked = excluded.is_blocked,
+						is_difficult = excluded.is_difficult,
+						has_fog = excluded.has_fog,
+						provides_cover = excluded.provides_cover,
+						cover_type = excluded.cover_type,
+						feature_type = excluded.feature_type,
+						metadata = excluded.metadata`,
+				).bind(
+					`tile_${mapId}_${tile.x}_${tile.y}`,
+					mapId,
+					tile.x,
+					tile.y,
+					tile.terrain_type,
+					tile.elevation ?? 0,
+					tile.movement_cost ?? 1.0,
+					tile.is_blocked ?? 0,
+					tile.is_difficult ?? 0,
+					tile.has_fog ?? 0,
+					tile.provides_cover ?? 0,
+					tile.cover_type ?? null,
+					tile.feature_type ?? null,
+					tile.metadata ?? '{}',
+				),
+			);
 
-		await this.db.batch([deleteStatement, ...insertStatements]);
+			await this.db.batch(insertStatements);
+		}
 	}
 
 	async cloneMap(sourceMapId: string, newName: string, newSlug: string): Promise<MapRow> {
@@ -719,41 +724,45 @@ export class Database {
 			metadata?: string;
 		}>,
 	) {
-		const statements = tiles.map(tile =>
-			this.db.prepare(
-				`INSERT INTO map_tiles (
-					id, map_id, x, y, terrain_type, elevation, movement_cost, is_blocked, is_difficult, has_fog, provides_cover, cover_type, feature_type, metadata
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-				ON CONFLICT(id) DO UPDATE SET
-					terrain_type = excluded.terrain_type,
-					elevation = excluded.elevation,
-					movement_cost = excluded.movement_cost,
-					is_blocked = excluded.is_blocked,
-					is_difficult = excluded.is_difficult,
-					has_fog = excluded.has_fog,
-					provides_cover = excluded.provides_cover,
-					cover_type = excluded.cover_type,
-					feature_type = excluded.feature_type,
-					metadata = excluded.metadata`,
-			).bind(
-				`tile_${mapId}_${tile.x}_${tile.y}`,
-				mapId,
-				tile.x,
-				tile.y,
-				tile.terrain_type,
-				tile.elevation ?? 0,
-				tile.movement_cost ?? 1.0,
-				tile.is_blocked ?? 0,
-				tile.is_difficult ?? 0,
-				tile.has_fog ?? 0,
-				tile.provides_cover ?? 0,
-				tile.cover_type ?? null,
-				tile.feature_type ?? null,
-				tile.metadata ?? '{}',
-			),
-		);
+		const BATCH_SIZE = 100;
+		for (let i = 0; i < tiles.length; i += BATCH_SIZE) {
+			const chunk = tiles.slice(i, i + BATCH_SIZE);
+			const statements = chunk.map(tile =>
+				this.db.prepare(
+					`INSERT INTO map_tiles (
+						id, map_id, x, y, terrain_type, elevation, movement_cost, is_blocked, is_difficult, has_fog, provides_cover, cover_type, feature_type, metadata
+					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+					ON CONFLICT(id) DO UPDATE SET
+						terrain_type = excluded.terrain_type,
+						elevation = excluded.elevation,
+						movement_cost = excluded.movement_cost,
+						is_blocked = excluded.is_blocked,
+						is_difficult = excluded.is_difficult,
+						has_fog = excluded.has_fog,
+						provides_cover = excluded.provides_cover,
+						cover_type = excluded.cover_type,
+						feature_type = excluded.feature_type,
+						metadata = excluded.metadata`,
+				).bind(
+					`tile_${mapId}_${tile.x}_${tile.y}`,
+					mapId,
+					tile.x,
+					tile.y,
+					tile.terrain_type,
+					tile.elevation ?? 0,
+					tile.movement_cost ?? 1.0,
+					tile.is_blocked ?? 0,
+					tile.is_difficult ?? 0,
+					tile.has_fog ?? 0,
+					tile.provides_cover ?? 0,
+					tile.cover_type ?? null,
+					tile.feature_type ?? null,
+					tile.metadata ?? '{}',
+				),
+			);
 
-		await this.db.batch(statements);
+			await this.db.batch(statements);
+		}
 	}
 
 	// NPC operations

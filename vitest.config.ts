@@ -29,6 +29,11 @@ export default defineConfig({
 			'tests/unit/services/**',
 			'tests/e2e/**',
 		],
+		server: {
+			deps: {
+				inline: [/@expo\/vector-icons/],
+			},
+		},
 		coverage: {
 			provider: 'v8',
 			reporter: ['text', 'json', 'html'],
@@ -61,44 +66,28 @@ export default defineConfig({
 		},
 	},
 	resolve: {
-		alias: {
-			'@': rootDir,
-			'@/api': path.resolve(rootDir, 'api'),
-			'@/services': path.resolve(rootDir, 'services'),
-			'@/utils': path.resolve(rootDir, 'utils'),
-			'@/hooks': path.resolve(rootDir, 'hooks'),
-			'@/components': path.resolve(rootDir, 'components'),
-			'@/types': path.resolve(rootDir, 'types'),
-			'react-native': path.resolve(rootDir, 'tests/setup/react-native-mock.ts'),
-			'@expo/vector-icons$': path.resolve(rootDir, 'tests/setup/expo-vector-icons-mock.ts'),
-			'@expo/vector-icons/build/createIconSet': path.resolve(rootDir, 'tests/setup/expo-vector-icons-mock.ts'),
-			'@expo/vector-icons/MaterialIcons': path.resolve(
-				rootDir,
-				'tests/setup/expo-vector-icons-mock.ts',
-			),
-			'@expo/vector-icons/Feather': path.resolve(
-				rootDir,
-				'tests/setup/expo-vector-icons-mock.ts',
-			),
-			'@expo/vector-icons/FontAwesome': path.resolve(
-				rootDir,
-				'tests/setup/expo-vector-icons-mock.ts',
-			),
-			'@expo/vector-icons/FontAwesome5': path.resolve(
-				rootDir,
-				'tests/setup/expo-vector-icons-mock.ts',
-			),
-			'@expo/vector-icons/Ionicons': path.resolve(
-				rootDir,
-				'tests/setup/expo-vector-icons-mock.ts',
-			),
-			'@expo/vector-icons/MaterialCommunityIcons': path.resolve(
-				rootDir,
-				'tests/setup/expo-vector-icons-mock.ts',
-			),
-			'react-data-table-component$': path.resolve(rootDir, 'tests/setup/react-native-mock.ts'),
-			'@react-native-community/datetimepicker$': path.resolve(rootDir, 'tests/setup/react-native-mock.ts'),
-		},
+		alias: [
+			{ find: /^.+\.(png|jpg|jpeg|gif|webp)$/, replacement: path.resolve(rootDir, 'tests/setup/image-mock.ts') },
+			{ find: '@', replacement: rootDir },
+			{ find: '@/api', replacement: path.resolve(rootDir, 'api') },
+			{ find: '@/services', replacement: path.resolve(rootDir, 'services') },
+			{ find: '@/utils', replacement: path.resolve(rootDir, 'utils') },
+			{ find: '@/hooks', replacement: path.resolve(rootDir, 'hooks') },
+			{ find: '@/components', replacement: path.resolve(rootDir, 'components') },
+			{ find: '@/types', replacement: path.resolve(rootDir, 'types') },
+			{ find: 'react-native', replacement: path.resolve(rootDir, 'tests/setup/react-native-mock.ts') },
+			{ find: '@expo/vector-icons/build/createIconSet', replacement: path.resolve(rootDir, 'tests/setup/expo-vector-icons-mock.ts') },
+			{ find: '@expo/vector-icons/build/MaterialCommunityIcons', replacement: path.resolve(rootDir, 'tests/setup/expo-vector-icons-mock.ts') },
+			{ find: '@expo/vector-icons/MaterialIcons', replacement: path.resolve(rootDir, 'tests/setup/expo-vector-icons-mock.ts') },
+			{ find: '@expo/vector-icons/Feather', replacement: path.resolve(rootDir, 'tests/setup/expo-vector-icons-mock.ts') },
+			{ find: '@expo/vector-icons/FontAwesome', replacement: path.resolve(rootDir, 'tests/setup/expo-vector-icons-mock.ts') },
+			{ find: '@expo/vector-icons/FontAwesome5', replacement: path.resolve(rootDir, 'tests/setup/expo-vector-icons-mock.ts') },
+			{ find: '@expo/vector-icons/Ionicons', replacement: path.resolve(rootDir, 'tests/setup/expo-vector-icons-mock.ts') },
+			{ find: '@expo/vector-icons/MaterialCommunityIcons', replacement: path.resolve(rootDir, 'tests/setup/expo-vector-icons-mock.ts') },
+			{ find: '@expo/vector-icons$', replacement: path.resolve(rootDir, 'tests/setup/expo-vector-icons-mock.ts') },
+			{ find: 'react-data-table-component$', replacement: path.resolve(rootDir, 'tests/setup/react-native-mock.ts') },
+			{ find: '@react-native-community/datetimepicker$', replacement: path.resolve(rootDir, 'tests/setup/react-native-mock.ts') },
+		],
 	},
 	define: {
 		'__DEV__': false,
