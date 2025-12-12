@@ -58,11 +58,6 @@ export default function MapsListScreen() {
 			<Stack.Screen
 				options={{
 					title: 'Maps',
-					headerRight: () => (
-						<TouchableOpacity onPress={() => router.push('/admin/maps/create')}>
-							<ExpoIcon icon="Feather:plus" size={24} color="#3B2F1B" />
-						</TouchableOpacity>
-					),
 				}}
 			/>
 
@@ -71,17 +66,26 @@ export default function MapsListScreen() {
 					<ActivityIndicator size="large" color="#8B6914" />
 				</View>
 			) : (
-				<FlatList
-					data={maps}
-					keyExtractor={(item) => item.id}
-					renderItem={renderItem}
-					contentContainerStyle={styles.listContent}
-					ListEmptyComponent={
-						<View style={styles.center}>
-							<ThemedText>No maps found.</ThemedText>
-						</View>
-					}
-				/>
+				<>
+					<FlatList
+						data={maps}
+						keyExtractor={(item) => item.id}
+						renderItem={renderItem}
+						contentContainerStyle={styles.listContent}
+						ListEmptyComponent={
+							<View style={styles.center}>
+								<ThemedText>No maps found.</ThemedText>
+							</View>
+						}
+					/>
+					<TouchableOpacity
+						style={styles.fab}
+						onPress={() => router.push('/admin/maps/create')}
+						accessibilityLabel="Create Map"
+					>
+						<ExpoIcon icon="Feather:plus" size={24} color="#FFF" />
+					</TouchableOpacity>
+				</>
 			)}
 		</ThemedView>
 	);
@@ -137,5 +141,22 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 		color: '#6B5B3D',
 		marginTop: 4,
+	},
+	fab: {
+		position: 'absolute',
+		bottom: 24,
+		right: 24,
+		width: 56,
+		height: 56,
+		borderRadius: 28,
+		backgroundColor: '#8B6914',
+		alignItems: 'center',
+		justifyContent: 'center',
+		elevation: 4,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.25,
+		shadowRadius: 4,
+		zIndex: 100,
 	},
 });
