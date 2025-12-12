@@ -164,6 +164,7 @@ export interface UploadImageResult {
 	key: string;
 	publicUrl: string;
 	filename: string;
+	file: File;
 }
 
 /**
@@ -182,6 +183,9 @@ interface ImageRecord {
 	created_at: number;
 	updated_at: number;
 }
+
+// In-memory cache for dev mode when R2 upload fails/is skipped
+export const devImageCache = new Map<string, ArrayBuffer>();
 
 export const uploadImage = async (
 	params: UploadImageParams,
@@ -215,6 +219,7 @@ export const uploadImage = async (
 		if (!isLocalDev) {
 			throw new Error('R2 bucket not configured');
 		}
+		console.warn('R2 bucket not configured in local dev, skipping R2 upload');
 		// Continue - we'll use API endpoint for serving
 	} else {
 		try {
@@ -224,6 +229,7 @@ export const uploadImage = async (
 			if (!isLocalDev) {
 				throw error;
 			}
+			console.error('R2 upload failed in local dev (continuing):', error);
 			// Continue - we'll use API endpoint for serving
 		}
 	}
@@ -262,5 +268,6 @@ export const uploadImage = async (
 		key,
 		publicUrl,
 		filename: fileName,
+		file,
 	};
 };

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 
 import type { CloudflareBindings } from '@/api/src/env';
-import { uploadImage, type ImageType } from '@/api/src/utils/image-upload';
+import { devImageCache, uploadImage, type ImageType } from '@/api/src/utils/image-upload';
 import { createDatabase } from '@/api/src/utils/repository';
 import { User } from '@/types/models';
 
@@ -94,6 +94,15 @@ images.post('/upload', async (c) => {
 			db,
 		);
 
+		// Cache file content in memory for dev mode fallback
+		if (result.file) {
+			try {
+				devImageCache.set(result.id, await result.file.arrayBuffer());
+			} catch (e) {
+				console.warn('Failed to cache image for dev mode:', e);
+			}
+		}
+
 		// Return the image record (fetch from DB to get full record)
 		const imageRecord = await db.getUploadedImageById(result.id);
 		if (!imageRecord) {
@@ -136,24 +145,43 @@ images.get('/:id', async (c) => {
 
 		// Fetch image from R2
 		const bucket = c.env.IMAGES_BUCKET;
-		if (!bucket) {
-			return c.json({ error: 'Image storage not available' }, 503);
-		}
-		const object = await bucket.get(image.r2_key);
+		let object = null;
+		let body: ArrayBuffer | null = null;
+		let contentType = '';
 
-		if (!object) {
+		if (bucket) {
+			try {
+				object = await bucket.get(image.r2_key);
+			} catch (e) {
+				console.warn('Failed to fetch from R2:', e);
+			}
+		}
+
+		if (object) {
+			body = await object.arrayBuffer();
+			contentType = object.httpMetadata?.contentType || '';
+		} else {
+			// Fallback to dev cache
+			const cached = devImageCache.get(imageId);
+			if (cached) {
+				console.log(`Serving image ${imageId} from dev cache`);
+				body = cached;
+			}
+		}
+
+		if (!body) {
 			return c.json({ error: 'Image not found in storage' }, 404);
 		}
 
 		// Get content type from object metadata or infer from filename
-		const contentType = object.httpMetadata?.contentType ||
-			(image.filename.endsWith('.png') ? 'image/png' :
+		if (!contentType) {
+			contentType = image.filename.endsWith('.png') ? 'image/png' :
 				image.filename.endsWith('.jpg') || image.filename.endsWith('.jpeg') ? 'image/jpeg' :
 					image.filename.endsWith('.webp') ? 'image/webp' :
-						'image/jpeg');
+						'image/jpeg';
+		}
 
 		// Return the image with appropriate headers
-		const body = await object.arrayBuffer();
 		return new Response(body, {
 			headers: {
 				'Content-Type': contentType,

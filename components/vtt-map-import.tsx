@@ -14,6 +14,7 @@ import {
 	useWindowDimensions,
 } from 'react-native';
 
+import { ExpoIconPicker } from '@/components/expo-icon-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useImportVTTMap } from '@/hooks/api/use-map-queries';
@@ -33,6 +34,7 @@ export const VTTMapImport: React.FC<VTTMapImportProps> = ({
 }) => {
 	const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
 	const [name, setName] = useState('');
+	const [mapIcon, setMapIcon] = useState<string>('');
 	const [columns, setColumns] = useState('40');
 	const [rows, setRows] = useState('30');
 	const [gridSize, setGridSize] = useState('100');
@@ -174,6 +176,7 @@ export const VTTMapImport: React.FC<VTTMapImportProps> = ({
 				columns: parseInt(columns, 10),
 				rows: parseInt(rows, 10),
 				gridSize: parseInt(gridSize, 10),
+				icon: mapIcon,
 			});
 
 			onSuccess?.();
@@ -189,9 +192,44 @@ export const VTTMapImport: React.FC<VTTMapImportProps> = ({
 	const handleClose = () => {
 		setImage(null);
 		setName('');
+		setMapIcon('');
 		setImageDimensions(null);
 		onClose();
 	};
+
+	const GridOverlay = useMemo(() => {
+		if (!image || !columns || !rows) return null;
+		const numCols = parseInt(columns, 10);
+		const numRows = parseInt(rows, 10);
+		if (isNaN(numCols) || isNaN(numRows) || numCols <= 0 || numRows <= 0) return null;
+
+		return (
+			<View style={StyleSheet.absoluteFill} pointerEvents="none">
+				{/* Vertical lines */}
+				{Array.from({ length: numCols - 1 }).map((_, i) => (
+					<View
+						key={`v-${i}`}
+						style={[
+							styles.gridLine,
+							styles.gridLineVertical,
+							{ left: `${((i + 1) / numCols) * 100}%` },
+						]}
+					/>
+				))}
+				{/* Horizontal lines */}
+				{Array.from({ length: numRows - 1 }).map((_, i) => (
+					<View
+						key={`h-${i}`}
+						style={[
+							styles.gridLine,
+							styles.gridLineHorizontal,
+							{ top: `${((i + 1) / numRows) * 100}%` },
+						]}
+					/>
+				))}
+			</View>
+		);
+	}, [image, columns, rows]);
 
 	return (
 		<Modal visible={visible} animationType="slide" transparent>
@@ -209,11 +247,20 @@ export const VTTMapImport: React.FC<VTTMapImportProps> = ({
 							<ThemedText style={styles.label}>Map Image</ThemedText>
 							<TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
 								{image ? (
-									<Image
-										source={{ uri: image.uri }}
-										style={{ width: '100%', height: previewHeight }}
-										resizeMode="contain"
-									/>
+									<View style={{ width: '100%', height: previewHeight }}>
+										<Image
+											source={{ uri: image.uri }}
+											style={{ width: '100%', height: '100%' }}
+											resizeMode="contain" // Use contain to ensure whole image is visible
+										/>
+										{/* Overlay grid on top of image */}
+										{/* Note: resizeMode="contain" might leave gaps if aspect ratio doesn't match container.
+										    To align grid perfectly, we need the image to fill the view or the view to match image aspect.
+										    We calculated previewHeight based on image aspect, so 'cover' or 'stretch' in a sized container should work,
+										    or 'contain' in a perfectly sized container.
+										*/}
+										{GridOverlay}
+									</View>
 								) : (
 									<View style={[styles.imagePlaceholder, { height: 150 }]}>
 										<ThemedText>Tap to select map image</ThemedText>
@@ -236,6 +283,14 @@ export const VTTMapImport: React.FC<VTTMapImportProps> = ({
 								onChangeText={setName}
 								placeholder="Enter map name"
 								placeholderTextColor="#666"
+							/>
+						</View>
+
+						<View style={styles.section}>
+							<ExpoIconPicker
+								label="Map Icon"
+								value={mapIcon}
+								onChange={setMapIcon}
 							/>
 						</View>
 
@@ -416,5 +471,21 @@ const styles = StyleSheet.create({
 	importButtonText: {
 		color: '#FFF',
 		fontWeight: 'bold',
+	},
+	gridLine: {
+		position: 'absolute',
+		backgroundColor: 'rgba(255, 255, 255, 0.5)',
+		borderColor: 'rgba(0, 0, 0, 0.3)',
+		borderWidth: 0.5,
+	},
+	gridLineVertical: {
+		top: 0,
+		bottom: 0,
+		width: 1,
+	},
+	gridLineHorizontal: {
+		left: 0,
+		right: 0,
+		height: 1,
 	},
 });

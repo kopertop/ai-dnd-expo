@@ -7,6 +7,7 @@ import {
 	ScrollView,
 	StyleSheet,
 	TouchableOpacity,
+	useWindowDimensions,
 	View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,6 +40,9 @@ const HostGameLobbyScreen: React.FC = () => {
 	const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [currentMapId, setCurrentMapId] = useState<string | null>(null);
+
+	const { width: windowWidth } = useWindowDimensions();
+	const isSmallScreen = windowWidth < 768; // Tablet breakpoint
 
 	const insets = useSafeAreaInsets();
 	const { user } = useAuth();
@@ -447,8 +451,8 @@ const HostGameLobbyScreen: React.FC = () => {
 						{session && (
 							<>
 								<InviteCodeDisplay inviteCode={session.inviteCode} />
-								<View style={styles.hostWorkspace}>
-									<View style={styles.sidebar}>
+								<View style={[styles.hostWorkspace, isSmallScreen && styles.hostWorkspaceColumn]}>
+									<View style={[styles.sidebar, isSmallScreen && styles.sidebarFullWidth]}>
 										{charactersLoading && (
 											<ThemedText style={styles.loadingText}>
 												Refreshing character roster...
@@ -656,9 +660,15 @@ const styles = StyleSheet.create({
 		gap: 16,
 		marginTop: 20,
 	},
+	hostWorkspaceColumn: {
+		flexDirection: 'column',
+	},
 	sidebar: {
 		width: 300,
 		gap: 16,
+	},
+	sidebarFullWidth: {
+		width: '100%',
 	},
 	mapColumn: {
 		flex: 1,

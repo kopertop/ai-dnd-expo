@@ -293,6 +293,7 @@ export function useImportVTTMap(inviteCode: string) {
 			columns: number;
 			rows: number;
 			gridSize: number;
+			icon?: string;
 		}) => {
 			const formData = new FormData();
 			// React Native/Expo handles file objects differently than web
@@ -312,6 +313,9 @@ export function useImportVTTMap(inviteCode: string) {
 			formData.append('columns', data.columns.toString());
 			formData.append('rows', data.rows.toString());
 			formData.append('gridSize', data.gridSize.toString());
+			if (data.icon) {
+				formData.append('icon', data.icon);
+			}
 
 			// Use apiService.fetchApi for FormData uploads
 			return apiService.fetchApi(`/games/${inviteCode}/map/import-vtt`, {

@@ -900,6 +900,7 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 		const rows = parseInt(body['rows'] as string, 10);
 		const gridSize = parseInt(body['gridSize'] as string, 10) || 70;
 		const name = (body['name'] as string) || file.name.replace(/\.[^/.]+$/, '');
+		const icon = body['icon'] as string | undefined;
 
 		if (isNaN(columns) || columns <= 0 || isNaN(rows) || rows <= 0) {
 			return c.json({ error: 'Invalid grid dimensions' }, 400);
@@ -946,7 +947,7 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 		}
 
 		// Upload image using unified upload function (organized in maps/ folder)
-		const { uploadImage } = await import('@/api/src/utils/image-upload');
+		const { devImageCache, uploadImage } = await import('@/api/src/utils/image-upload');
 		const requestUrl = new URL(c.req.url);
 		const timestamp = Date.now();
 
@@ -968,6 +969,16 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 			requestUrl,
 			db,
 		);
+
+		// Cache file content in memory for dev mode fallback
+		if (uploadResult.file) {
+			try {
+				devImageCache.set(uploadResult.id, await uploadResult.file.arrayBuffer());
+			} catch (e) {
+				console.warn('Failed to cache image for dev mode:', e);
+			}
+		}
+
 		// #region agent log
 		fetch('http://127.0.0.1:7242/ingest/799f8550-6c36-4989-9097-d79cc79a5001',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'map.ts:967',message:'Map import uploadResult',data:{key:uploadResult.key,publicUrl:uploadResult.publicUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
 		// #endregion
@@ -989,6 +1000,7 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 				background: uploadResult.publicUrl,
 				vttFormat: 'image',
 				grid: { columns, rows, gridSize },
+				location: icon, // Store selected icon as location for MapManagementPanel compatibility
 			}),
 			generator_preset: 'static',
 			seed: 'vtt-import',
