@@ -470,4 +470,3 @@ const styles = StyleSheet.create({
 	},
 });
 
-

@@ -12,6 +12,7 @@ import imageRoutes from './routes/images';
 import mapRoutes from './routes/maps';
 import meRoutes from './routes/me';
 import questRoutes from './routes/quests';
+import worldRoutes from './routes/worlds';
 import { resolveSqlBinding } from './utils/repository';
 
 type Variables = {
@@ -46,7 +47,7 @@ app.use('*', async (c, next) => {
 				error: 'Rate limit exceeded',
 				limit: limit ?? 0,
 				remaining: 0,
-				reset: reset ? new Date(reset * 1000).toISOString() : new Date().toISOString()
+				reset: reset ? new Date(reset * 1000).toISOString() : new Date().toISOString(),
 			}, 429);
 		}
 
@@ -147,6 +148,7 @@ app.route('/api/characters', characterRoutes);
 app.route('/api/quests', questRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/maps', mapRoutes);
+app.route('/api/worlds', worldRoutes);
 // Note: /api/auth/exchange and /api/device-tokens routes removed - handled by expo-auth-template
 app.route('/api/me', meRoutes);
 

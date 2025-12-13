@@ -4,10 +4,11 @@ import type { CloudflareBindings } from '@/api/src/env';
 import { createId } from '@/api/src/utils/games-utils';
 import { generateImageKey, validateImageFile } from '@/api/src/utils/image-upload';
 import { createDatabase } from '@/api/src/utils/repository';
+import { User } from '@/types/models';
 
 type Bindings = CloudflareBindings;
 
-const images = new Hono<{ Bindings: Bindings; Variables: { user: any } }>();
+const images = new Hono<{ Bindings: Bindings; Variables: { user: User | null } }>();
 
 /**
  * List uploaded images
@@ -82,8 +83,8 @@ images.post('/upload', async (c) => {
 		// For local dev, use localhost:8787 (the worker port)
 		// For production, use the request origin
 		const requestUrl = new URL(c.req.url);
-		const isLocalDev = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
-		const origin = isLocalDev ? 'http://localhost:8787' : requestUrl.origin;
+		const isLocalDev = c.env.__DEV__ || requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
+		const origin = isLocalDev || c.env.__DEV__ ? 'http://localhost:8787' : requestUrl.origin;
 		const publicUrl = `${origin}/api/images/${imageId}`;
 
 		const imageRecord = {
@@ -129,7 +130,7 @@ images.get('/:id', async (c) => {
 		// Check if image is public or user is the owner/admin
 		const user = c.get('user');
 		const isOwner = user && image.user_id === user.id;
-		const isAdmin = user && (user.role === 'admin' || user.is_admin === 1);
+		const isAdmin = user && (user.role === 'admin' || user.is_admin);
 
 		if (!image.is_public && !isOwner && !isAdmin) {
 			return c.json({ error: 'Forbidden' }, 403);
@@ -146,9 +147,9 @@ images.get('/:id', async (c) => {
 		// Get content type from object metadata or infer from filename
 		const contentType = object.httpMetadata?.contentType ||
 			(image.filename.endsWith('.png') ? 'image/png' :
-			 image.filename.endsWith('.jpg') || image.filename.endsWith('.jpeg') ? 'image/jpeg' :
-			 image.filename.endsWith('.webp') ? 'image/webp' :
-			 'image/jpeg');
+				image.filename.endsWith('.jpg') || image.filename.endsWith('.jpeg') ? 'image/jpeg' :
+					image.filename.endsWith('.webp') ? 'image/webp' :
+						'image/jpeg');
 
 		// Return the image with appropriate headers
 		const body = await object.arrayBuffer();
@@ -184,7 +185,7 @@ images.delete('/:id', async (c) => {
 		}
 
 		// Only owner or admin can delete
-		const isAdmin = user.role === 'admin' || user.is_admin === 1;
+		const isAdmin = user.role === 'admin' || user.is_admin;
 		if (image.user_id !== user.id && !isAdmin) {
 			return c.json({ error: 'Forbidden' }, 403);
 		}

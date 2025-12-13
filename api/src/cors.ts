@@ -66,6 +66,10 @@ export function corsHeaders(origin: string | null): Record<string, string> {
 export async function corsMiddleware(c: Context, next: Next) {
 	const origin = c.req.header('Origin') || c.req.header('referer') || null;
 
+	if (origin?.startsWith('http://localhost')) {
+		c.env.__DEV__ = true;
+	}
+
 	const headers = corsHeaders(origin);
 
 	if (c.req.method === 'OPTIONS') {

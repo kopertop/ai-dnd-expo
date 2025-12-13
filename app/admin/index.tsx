@@ -1,8 +1,8 @@
-import { ExpoIcon } from '@/components/expo-icon';
 import { Stack, router } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useUserInfo } from '@/hooks/api/use-auth-queries';
@@ -11,7 +11,7 @@ interface AdminFeature {
 	id: string;
 	title: string;
 	description: string;
-	icon: keyof typeof Feather.glyphMap;
+	icon: any; // Using any for icon name flexibility
 	route: string;
 }
 
@@ -30,6 +30,20 @@ const adminFeatures: AdminFeature[] = [
 		icon: 'image',
 		route: '/admin/images',
 	},
+	{
+		id: 'worlds',
+		title: 'World Manager',
+		description: 'Create and edit worlds (Faerun, Eberron, etc.)',
+		icon: 'globe',
+		route: '/admin/worlds',
+	},
+	{
+		id: 'maps',
+		title: 'Map Manager',
+		description: 'Create, edit, and configure VTT maps with grids and backgrounds',
+		icon: 'map',
+		route: '/admin/maps',
+	},
 ];
 
 const AdminPortalScreen: React.FC = () => {
@@ -43,6 +57,7 @@ const AdminPortalScreen: React.FC = () => {
 					options={{
 						title: 'Admin Portal',
 						headerShown: true,
+						headerTitleAlign: 'center',
 					}}
 				/>
 				<View style={styles.center}>
@@ -61,6 +76,7 @@ const AdminPortalScreen: React.FC = () => {
 				options={{
 					title: 'Admin Portal',
 					headerShown: true,
+					headerTitleAlign: 'center',
 				}}
 			/>
 			<ScrollView contentContainerStyle={styles.content}>
@@ -177,9 +193,3 @@ const styles = StyleSheet.create({
 });
 
 export default AdminPortalScreen;
-
-
-
-
-
-

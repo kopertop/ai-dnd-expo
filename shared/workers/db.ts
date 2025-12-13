@@ -76,7 +76,14 @@ export interface MapRow {
 	seed: string;
 	theme: string;
 	biome: string;
-	world: string | null; // World ID (null = world-agnostic)
+	world: string | null; // Deprecated: Old string based world
+	world_id: string | null; // FK to worlds table
+	background_image_url: string | null;
+	cover_image_url: string | null;
+	grid_columns: number;
+	grid_size: number;
+	grid_offset_x: number;
+	grid_offset_y: number;
 	is_generated: number;
 	created_at: number;
 	updated_at: number;
@@ -89,8 +96,12 @@ export interface MapTileRow {
 	y: number;
 	terrain_type: string;
 	elevation: number;
+	movement_cost: number | null;
 	is_blocked: number;
+	is_difficult: number;
 	has_fog: number;
+	provides_cover: number;
+	cover_type: string | null;
 	feature_type: string | null;
 	metadata: string;
 }
@@ -139,6 +150,7 @@ export interface MapTokenRow {
 	npc_id: string | null;
 	token_type: string;
 	label: string | null;
+	image_url: string | null;
 	x: number;
 	y: number;
 	facing: number;
@@ -165,6 +177,17 @@ export interface ActivityLogRow {
 	actor_name: string | null;
 	data: string | null; // JSON
 	created_at: number;
+}
+
+export interface WorldRow {
+	id: string;
+	name: string;
+	slug: string;
+	description: string | null;
+	image_url: string | null;
+	is_public: number;
+	created_at: number;
+	updated_at: number;
 }
 
 export class Database {
@@ -417,8 +440,8 @@ export class Database {
 	async saveGameState(gameId: string, stateData: string): Promise<void> {
 		await this.db.prepare(
 			`INSERT INTO game_states (game_id, state_data, updated_at)
-			 VALUES (?, ?, ?)
-			 ON CONFLICT(game_id) DO UPDATE SET state_data = ?, updated_at = ?`,
+			VALUES (?, ?, ?)
+			ON CONFLICT(game_id) DO UPDATE SET state_data = ?, updated_at = ?`,
 		).bind(gameId, stateData, Date.now(), stateData, Date.now()).run();
 	}
 
@@ -443,7 +466,7 @@ export class Database {
 			const logEntries = updates.log_entries || '[]';
 			await this.db.prepare(
 				`INSERT INTO game_states (game_id, state_data, map_state, log_entries, state_version, updated_at)
-				 VALUES (?, ?, ?, ?, 1, ?)`,
+				VALUES (?, ?, ?, ?, 1, ?)`,
 			).bind(gameId, stateData, mapState, logEntries, now).run();
 			return;
 		}
@@ -456,8 +479,8 @@ export class Database {
 
 		await this.db.prepare(
 			`UPDATE game_states
-			 SET state_data = ?, map_state = ?, log_entries = ?, state_version = ?, updated_at = ?
-			 WHERE game_id = ?`,
+			SET state_data = ?, map_state = ?, log_entries = ?, state_version = ?, updated_at = ?
+			WHERE game_id = ?`,
 		).bind(stateData, mapState, logEntries, newVersion, now, gameId).run();
 	}
 
@@ -495,9 +518,10 @@ export class Database {
 		await this.db.prepare(
 			`INSERT INTO maps (
 				id, slug, name, description, width, height, default_terrain, fog_of_war,
-				terrain_layers, metadata, generator_preset, seed, theme, biome, world, is_generated,
+				terrain_layers, metadata, generator_preset, seed, theme, biome, world, world_id, background_image_url, cover_image_url,
+				grid_columns, grid_size, grid_offset_x, grid_offset_y, is_generated,
 				created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(id) DO UPDATE SET
 				slug = excluded.slug,
 				name = excluded.name,
@@ -513,6 +537,13 @@ export class Database {
 				theme = excluded.theme,
 				biome = excluded.biome,
 				world = excluded.world,
+				world_id = excluded.world_id,
+				background_image_url = excluded.background_image_url,
+				cover_image_url = excluded.cover_image_url,
+				grid_columns = excluded.grid_columns,
+				grid_size = excluded.grid_size,
+				grid_offset_x = excluded.grid_offset_x,
+				grid_offset_y = excluded.grid_offset_y,
 				is_generated = excluded.is_generated,
 				updated_at = excluded.updated_at`,
 		).bind(
@@ -522,15 +553,30 @@ export class Database {
 			map.description,
 			map.width,
 			map.height,
-			map.default_terrain,
-			map.fog_of_war,
-			map.terrain_layers,
-			map.metadata,
+			typeof map.default_terrain === 'object' && map.default_terrain !== null
+				? JSON.stringify(map.default_terrain)
+				: map.default_terrain,
+			typeof map.fog_of_war === 'object' && map.fog_of_war !== null
+				? JSON.stringify(map.fog_of_war)
+				: map.fog_of_war,
+			typeof map.terrain_layers === 'object' && map.terrain_layers !== null
+				? JSON.stringify(map.terrain_layers)
+				: map.terrain_layers,
+			typeof map.metadata === 'object' && map.metadata !== null
+				? JSON.stringify(map.metadata)
+				: map.metadata,
 			map.generator_preset,
 			map.seed,
 			map.theme,
 			map.biome,
 			map.world ?? null,
+			map.world_id ?? null,
+			map.background_image_url ?? null,
+			map.cover_image_url ?? null,
+			map.grid_columns ?? 0,
+			map.grid_size ?? 64,
+			map.grid_offset_x ?? 0,
+			map.grid_offset_y ?? 0,
 			map.is_generated,
 			map.created_at ?? now,
 			map.updated_at ?? now,
@@ -544,8 +590,12 @@ export class Database {
 			y: number;
 			terrain_type: string;
 			elevation?: number;
+			movement_cost?: number;
 			is_blocked?: number;
+			is_difficult?: number;
 			has_fog?: number;
+			provides_cover?: number;
+			cover_type?: string | null;
 			feature_type?: string | null;
 			metadata?: string;
 		}>,
@@ -555,13 +605,17 @@ export class Database {
 		const insertStatements = tiles.map(tile =>
 			this.db.prepare(
 				`INSERT INTO map_tiles (
-					id, map_id, x, y, terrain_type, elevation, is_blocked, has_fog, feature_type, metadata
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+					id, map_id, x, y, terrain_type, elevation, movement_cost, is_blocked, is_difficult, has_fog, provides_cover, cover_type, feature_type, metadata
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
 					terrain_type = excluded.terrain_type,
 					elevation = excluded.elevation,
+					movement_cost = excluded.movement_cost,
 					is_blocked = excluded.is_blocked,
+					is_difficult = excluded.is_difficult,
 					has_fog = excluded.has_fog,
+					provides_cover = excluded.provides_cover,
+					cover_type = excluded.cover_type,
 					feature_type = excluded.feature_type,
 					metadata = excluded.metadata`,
 			).bind(
@@ -571,8 +625,12 @@ export class Database {
 				tile.y,
 				tile.terrain_type,
 				tile.elevation ?? 0,
+				tile.movement_cost ?? 1.0,
 				tile.is_blocked ?? 0,
+				tile.is_difficult ?? 0,
 				tile.has_fog ?? 0,
+				tile.provides_cover ?? 0,
+				tile.cover_type ?? null,
 				tile.feature_type ?? null,
 				tile.metadata ?? '{}',
 			),
@@ -608,6 +666,13 @@ export class Database {
 			theme: sourceMap.theme,
 			biome: sourceMap.biome,
 			world: sourceMap.world, // Preserve world when cloning
+			world_id: sourceMap.world_id,
+			background_image_url: sourceMap.background_image_url,
+			cover_image_url: sourceMap.cover_image_url,
+			grid_columns: sourceMap.grid_columns,
+			grid_size: sourceMap.grid_size,
+			grid_offset_x: sourceMap.grid_offset_x,
+			grid_offset_y: sourceMap.grid_offset_y,
 			is_generated: sourceMap.is_generated,
 			created_at: now,
 			updated_at: now,
@@ -624,8 +689,12 @@ export class Database {
 					y: tile.y,
 					terrain_type: tile.terrain_type,
 					elevation: tile.elevation,
+					movement_cost: tile.movement_cost ?? undefined,
 					is_blocked: tile.is_blocked,
+					is_difficult: tile.is_difficult,
 					has_fog: tile.has_fog,
+					provides_cover: tile.provides_cover,
+					cover_type: tile.cover_type,
 					feature_type: tile.feature_type,
 					metadata: tile.metadata,
 				})),
@@ -782,6 +851,13 @@ export class Database {
 		return result.results || [];
 	}
 
+	async listPropTokensForMap(mapId: string): Promise<MapTokenRow[]> {
+		const result = await this.db.prepare(
+			'SELECT * FROM map_tokens WHERE map_id = ? AND game_id IS NULL ORDER BY updated_at DESC',
+		).bind(mapId).all<MapTokenRow>();
+		return result.results || [];
+	}
+
 	async getMapTokenById(tokenId: string): Promise<MapTokenRow | null> {
 		const result = await this.db.prepare(
 			'SELECT * FROM map_tokens WHERE id = ?',
@@ -793,9 +869,9 @@ export class Database {
 		const now = Date.now();
 		await this.db.prepare(
 			`INSERT INTO map_tokens (
-				id, game_id, map_id, character_id, npc_id, token_type, label, x, y, facing, color,
+				id, game_id, map_id, character_id, npc_id, token_type, label, image_url, x, y, facing, color,
 				status, is_visible, hit_points, max_hit_points, status_effects, metadata, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
 					game_id = excluded.game_id,
 					map_id = excluded.map_id,
@@ -803,6 +879,7 @@ export class Database {
 					npc_id = excluded.npc_id,
 					token_type = excluded.token_type,
 					label = excluded.label,
+					image_url = excluded.image_url,
 					x = excluded.x,
 					y = excluded.y,
 					facing = excluded.facing,
@@ -822,6 +899,7 @@ export class Database {
 			token.npc_id,
 			token.token_type,
 			token.label,
+			token.image_url ?? null,
 			token.x,
 			token.y,
 			token.facing,
@@ -836,6 +914,12 @@ export class Database {
 			now, // updated_at for INSERT
 			now, // updated_at for UPDATE SET
 		).run();
+	}
+
+	async deletePropTokensForMap(mapId: string): Promise<void> {
+		await this.db.prepare(
+			'DELETE FROM map_tokens WHERE map_id = ? AND token_type = ? AND game_id IS NULL',
+		).bind(mapId, 'prop').run();
 	}
 
 	async updateMapToken(tokenId: string, updates: Partial<MapTokenRow>): Promise<void> {
@@ -984,5 +1068,49 @@ export class Database {
 
 	async deleteUploadedImage(id: string): Promise<void> {
 		await this.db.prepare('DELETE FROM uploaded_images WHERE id = ?').bind(id).run();
+	}
+
+	// World operations
+	async listWorlds(): Promise<WorldRow[]> {
+		const result = await this.db.prepare(
+			'SELECT * FROM worlds ORDER BY name ASC',
+		).all<WorldRow>();
+		return result.results || [];
+	}
+
+	async getWorldById(id: string): Promise<WorldRow | null> {
+		const result = await this.db.prepare(
+			'SELECT * FROM worlds WHERE id = ?',
+		).bind(id).first<WorldRow>();
+		return result || null;
+	}
+
+	async saveWorld(world: Omit<WorldRow, 'created_at' | 'updated_at'> & Partial<Pick<WorldRow, 'created_at' | 'updated_at'>>): Promise<void> {
+		const now = Date.now();
+		await this.db.prepare(
+			`INSERT INTO worlds (
+				id, name, slug, description, image_url, is_public, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET
+				name = excluded.name,
+				slug = excluded.slug,
+				description = excluded.description,
+				image_url = excluded.image_url,
+				is_public = excluded.is_public,
+				updated_at = excluded.updated_at`,
+		).bind(
+			world.id,
+			world.name,
+			world.slug,
+			world.description ?? null,
+			world.image_url ?? null,
+			world.is_public,
+			world.created_at ?? now,
+			world.updated_at ?? now,
+		).run();
+	}
+
+	async deleteWorld(id: string): Promise<void> {
+		await this.db.prepare('DELETE FROM worlds WHERE id = ?').bind(id).run();
 	}
 }

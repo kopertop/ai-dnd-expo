@@ -419,7 +419,3 @@ const styles = StyleSheet.create({
 	},
 });
 
-
-
-
-

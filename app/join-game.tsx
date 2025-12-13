@@ -24,6 +24,7 @@ const JoinGameScreen: React.FC = () => {
 				options={{
 					title: 'Join Game',
 					headerShown: true,
+					headerTitleAlign: 'center',
 				}}
 			/>
 			<ScrollView

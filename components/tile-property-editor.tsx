@@ -270,7 +270,3 @@ const styles = StyleSheet.create({
 	},
 });
 
-
-
-
-

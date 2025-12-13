@@ -9,6 +9,7 @@ const AdminLayout: React.FC = () => {
 				options={{
 					headerShown: true,
 					title: 'Admin Portal',
+					headerTitleAlign: 'center',
 				}}
 			/>
 			<Stack.Screen
@@ -16,6 +17,7 @@ const AdminLayout: React.FC = () => {
 				options={{
 					headerShown: true,
 					title: 'Admin - Manage Images',
+					headerTitleAlign: 'center',
 				}}
 			/>
 		</Stack>
@@ -23,9 +25,3 @@ const AdminLayout: React.FC = () => {
 };
 
 export default AdminLayout;
-
-
-
-
-
-

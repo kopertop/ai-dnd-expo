@@ -54,8 +54,3 @@ export const REFERENCE_IMAGE = {
 	description: 'Example of ideal camera angle, lighting, and transparency',
 };
 
-
-
-
-
-
