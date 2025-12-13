@@ -165,34 +165,47 @@ class PreparedStatement {
 			return [] as T[];
 		}
 
+		if (normalized.startsWith('delete from uploaded_images')) {
+			if (normalized.includes('where id = ?')) {
+				const [id] = this.args as [string];
+				store.uploadedImages = store.uploadedImages.filter(img => img.id !== id);
+			}
+			return [] as T[];
+		}
+
 		if (normalized.includes('from uploaded_images')) {
 			let results = store.uploadedImages;
+			let argIndex = 0;
+
+			// Handle get by ID
+			if (normalized.includes('where id = ?')) {
+				const id = this.args[argIndex++] as string;
+				results = results.filter(img => img.id === id);
+				return results as unknown as T[];
+			}
 
 			// Handle user_id filter
 			if (normalized.includes('user_id = ?')) {
-				// We need to find which arg corresponds to user_id.
-				// In listUploadedImages, the order is params.push(userId) if userId exists.
-				// And then limit, offset.
-				// But we are in the shim, we receive `this.args`.
-				// If user_id is present, it's the first arg.
-				// But wait, listUploadedImages uses named parameters? No, `?` placeholders.
-				// The implementation in db.ts conditionally adds parameters.
-
-				// If the query has 'user_id = ?', then the first arg is user_id.
-				// Unless there are other filters before it?
-				// query = 'SELECT * FROM uploaded_images WHERE 1=1'
-				// if (userId) query += ' AND user_id = ?'
-				// So if user_id check is present, it's the first param.
-				const userId = this.args[0] as string;
+				const userId = this.args[argIndex++] as string;
 				results = results.filter(img => img.user_id === userId);
+			}
+
+			// Handle image_type filter
+			if (normalized.includes('image_type = ?')) {
+				const imageType = this.args[argIndex++] as string;
+				// The query uses (image_type = ? OR image_type = "both")
+				// We replicate the logic: match specific type OR both
+				results = results.filter(img => img.image_type === imageType || img.image_type === 'both');
 			}
 
 			// Handle sorting (mock always sorts by created_at desc)
 			results.sort((a, b) => b.created_at - a.created_at);
 
-			// Handle limit/offset
-			// The last two args are typically limit and offset.
-			if (this.args.length >= 2) {
+			// Handle limit/offset if present (last two args)
+			// Assuming limit and offset are always provided in the list query
+			if (this.args.length >= argIndex + 2) {
+				// The arguments might be separated by other params, but DB.ts pushes limit, offset at the end
+				// So we take from the end of args
 				const offset = this.args[this.args.length - 1] as number;
 				const limit = this.args[this.args.length - 2] as number;
 				results = results.slice(offset, offset + limit);

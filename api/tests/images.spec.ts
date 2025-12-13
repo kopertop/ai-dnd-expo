@@ -54,7 +54,6 @@ describe('Images API', () => {
         const data = await response.json() as { images: any[] };
 
         // 4. Assert only my image is present
-        // Currently this is expected to FAIL because the API returns all images
         expect(data.images).toHaveLength(1);
         expect(data.images[0].id).toBe('img-mine');
         expect(data.images.find((img: any) => img.id === 'img-other')).toBeUndefined();
