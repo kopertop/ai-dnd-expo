@@ -25,7 +25,7 @@ images.get('/', async (c) => {
 	const db = createDatabase(c.env);
 
 	try {
-		const result = await db.listUploadedImages(undefined, imageType, limit, offset);
+		const result = await db.listUploadedImages(user.id, imageType, limit, offset);
 		return c.json({ images: result });
 	} catch (error) {
 		console.error('Failed to list images:', error);

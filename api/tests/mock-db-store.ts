@@ -8,6 +8,7 @@ import type {
 	MapTileRow,
 	MapTokenRow,
 	NpcRow,
+	UploadedImageRow,
 } from '@/shared/workers/db';
 
 interface DataStore {
@@ -20,6 +21,7 @@ interface DataStore {
 	mapTokens: MapTokenRow[];
 	npcs: NpcRow[];
 	activityLogs: ActivityLogRow[];
+	uploadedImages: UploadedImageRow[];
 }
 
 const createDefaultStore = (): DataStore => {
@@ -77,6 +79,7 @@ const createDefaultStore = (): DataStore => {
 			},
 		],
 		activityLogs: [],
+		uploadedImages: [],
 	};
 };
 

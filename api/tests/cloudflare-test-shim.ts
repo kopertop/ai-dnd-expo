@@ -41,7 +41,7 @@ class PreparedStatement {
 
 	private async execute<T>() {
 		const store = getStore();
-		const normalized = this.query.toLowerCase();
+		const normalized = this.query.toLowerCase().trim();
 
 		if (normalized.includes('from sqlite_master')) {
 			return tableList as unknown as T[];
@@ -115,6 +115,103 @@ class PreparedStatement {
 				store.npcs.push(npcRow);
 			}
 			return [] as T[];
+		}
+
+		if (normalized.startsWith('insert into uploaded_images')) {
+			const [
+				id,
+				user_id,
+				filename,
+				r2_key,
+				public_url,
+				title,
+				description,
+				image_type,
+				is_public,
+				created_at,
+				updated_at,
+			] = this.args as [
+				string,
+				string,
+				string,
+				string,
+				string,
+				string | null,
+				string | null,
+				'npc' | 'character' | 'both',
+				number,
+				number,
+				number,
+			];
+			const existingIndex = store.uploadedImages.findIndex(img => img.id === id);
+			const imageRow = {
+				id,
+				user_id,
+				filename,
+				r2_key,
+				public_url,
+				title,
+				description,
+				image_type,
+				is_public,
+				created_at,
+				updated_at,
+			};
+			if (existingIndex >= 0) {
+				store.uploadedImages[existingIndex] = imageRow;
+			} else {
+				store.uploadedImages.push(imageRow);
+			}
+			return [] as T[];
+		}
+
+		if (normalized.startsWith('delete from uploaded_images')) {
+			if (normalized.includes('where id = ?')) {
+				const [id] = this.args as [string];
+				store.uploadedImages = store.uploadedImages.filter(img => img.id !== id);
+			}
+			return [] as T[];
+		}
+
+		if (normalized.includes('from uploaded_images')) {
+			let results = store.uploadedImages;
+			let argIndex = 0;
+
+			// Handle get by ID
+			if (normalized.includes('where id = ?')) {
+				const id = this.args[argIndex++] as string;
+				results = results.filter(img => img.id === id);
+				return results as unknown as T[];
+			}
+
+			// Handle user_id filter
+			if (normalized.includes('user_id = ?')) {
+				const userId = this.args[argIndex++] as string;
+				results = results.filter(img => img.user_id === userId);
+			}
+
+			// Handle image_type filter
+			if (normalized.includes('image_type = ?')) {
+				const imageType = this.args[argIndex++] as string;
+				// The query uses (image_type = ? OR image_type = "both")
+				// We replicate the logic: match specific type OR both
+				results = results.filter(img => img.image_type === imageType || img.image_type === 'both');
+			}
+
+			// Handle sorting (mock always sorts by created_at desc)
+			results.sort((a, b) => b.created_at - a.created_at);
+
+			// Handle limit/offset if present (last two args)
+			// Assuming limit and offset are always provided in the list query
+			if (this.args.length >= argIndex + 2) {
+				// The arguments might be separated by other params, but DB.ts pushes limit, offset at the end
+				// So we take from the end of args
+				const offset = this.args[this.args.length - 1] as number;
+				const limit = this.args[this.args.length - 2] as number;
+				results = results.slice(offset, offset + limit);
+			}
+
+			return results as unknown as T[];
 		}
 
 		return [] as T[];
