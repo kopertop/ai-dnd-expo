@@ -3,10 +3,10 @@ import { Hono } from 'hono';
 import type { CloudflareBindings } from '../env';
 
 import { createDatabase } from '@/api/src/utils/repository';
-import { Database } from 'shared/workers/db';
+import type { User } from 'expo-auth-template/backend';
 
 type Variables = {
-	user: { id: string; email: string; name?: string | null } | null;
+	user: (User & { is_admin?: boolean | number; role?: string }) | null;
 };
 
 const maps = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
@@ -73,6 +73,32 @@ maps.get('/:id', async (c) => {
 		console.error('Failed to get map:', error);
 		return c.json({ error: 'Failed to get map' }, 500);
 	}
+});
+
+// Update a map
+maps.patch('/:id', async (c) => {
+	// Only admins
+	const user = c.get('user');
+	console.log('** user', user);
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+	if (!user.is_admin) {
+		return c.json({ error: 'Forbidden' }, 403);
+	}
+	const id = c.req.param('id');
+	const db = createDatabase(c.env);
+	const map = await db.getMapById(id);
+	if (!map) {
+		return c.json({ error: 'Map not found' }, 404);
+	}
+	const body = await c.req.json();
+	const resp = await db.saveMap({
+		...map,
+		...body,
+		id,
+	});
+	return c.json({ success: true, id, map: resp });
 });
 
 

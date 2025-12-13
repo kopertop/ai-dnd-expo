@@ -479,8 +479,8 @@ export class Database {
 
 		await this.db.prepare(
 			`UPDATE game_states
-			 SET state_data = ?, map_state = ?, log_entries = ?, state_version = ?, updated_at = ?
-			 WHERE game_id = ?`,
+			SET state_data = ?, map_state = ?, log_entries = ?, state_version = ?, updated_at = ?
+			WHERE game_id = ?`,
 		).bind(stateData, mapState, logEntries, newVersion, now, gameId).run();
 	}
 
@@ -553,10 +553,18 @@ export class Database {
 			map.description,
 			map.width,
 			map.height,
-			map.default_terrain,
-			map.fog_of_war,
-			map.terrain_layers,
-			map.metadata,
+			typeof map.default_terrain === 'object' && map.default_terrain !== null
+				? JSON.stringify(map.default_terrain)
+				: map.default_terrain,
+			typeof map.fog_of_war === 'object' && map.fog_of_war !== null
+				? JSON.stringify(map.fog_of_war)
+				: map.fog_of_war,
+			typeof map.terrain_layers === 'object' && map.terrain_layers !== null
+				? JSON.stringify(map.terrain_layers)
+				: map.terrain_layers,
+			typeof map.metadata === 'object' && map.metadata !== null
+				? JSON.stringify(map.metadata)
+				: map.metadata,
 			map.generator_preset,
 			map.seed,
 			map.theme,

@@ -4,10 +4,11 @@ import type { CloudflareBindings } from '@/api/src/env';
 import { deserializeCharacter } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
 import { isAdmin as sharedIsAdmin } from '@/shared/workers/admin';
+import { User } from '@/types/models';
 import { Quest } from '@/types/quest';
 
 type Variables = {
-	user: { id: string; email: string; name?: string | null } | null;
+	user: User | null;
 };
 
 const admin = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();

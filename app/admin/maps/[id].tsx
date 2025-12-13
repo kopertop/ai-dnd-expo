@@ -1,24 +1,24 @@
 import { ExpoIcon } from '@/components/expo-icon';
+import { ImageUploader } from '@/components/image-uploader';
+import { MediaLibraryModal } from '@/components/media-library-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { fetchAPI } from '@/lib/fetch';
-import { Stack, useLocalSearchParams, router } from 'expo-router';
+import { apiService } from 'expo-auth-template/frontend';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
 	ActivityIndicator,
 	Alert,
-	Dimensions,
 	Image,
+	Platform,
 	ScrollView,
 	StyleSheet,
 	TextInput,
 	TouchableOpacity,
 	View,
-    Switch,
+	Switch,
 } from 'react-native';
 import Svg, { Line, Rect } from 'react-native-svg';
-import { ImageUploader } from '@/components/image-uploader';
-import { MediaLibraryModal } from '@/components/media-library-modal';
 
 interface TileData {
     x: number;
@@ -101,7 +101,7 @@ export default function MapEditorScreen() {
 	const loadMap = async (mapId: string) => {
 		try {
 			setLoading(true);
-			const data = await fetchAPI<MapData>(`/api/maps/${mapId}`);
+			const data: MapData = await apiService.fetchApi(`/maps/${mapId}`);
 			setMap(data);
 
 			setGridConfig({
@@ -176,11 +176,17 @@ export default function MapEditorScreen() {
 					token_type: 'prop'
 				}))
 			};
-
-			await fetchAPI(`/api/maps`, {
-				method: 'POST',
-				body: JSON.stringify(payload),
-			});
+			if (map.id) {
+				await apiService.fetchApi(`/maps/${map.id}`, {
+					method: 'PATCH',
+					body: JSON.stringify(payload),
+				});
+			} else {
+				await apiService.fetchApi('/maps', {
+					method: 'POST',
+					body: JSON.stringify(payload),
+				});
+			}
 
 			Alert.alert('Success', 'Map saved');
             // Don't reload fully to keep state, maybe update ID?
