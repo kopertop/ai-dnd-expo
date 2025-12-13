@@ -1,10 +1,11 @@
+import { Stack, router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
+
 import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { fetchAPI } from '@/lib/fetch';
-import { Stack, router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface MapItem {
 	id: string;
@@ -15,7 +16,7 @@ interface MapItem {
 	background_image_url: string | null;
 }
 
-export default function MapsListScreen() {
+const MapsListScreen = () => {
 	const [maps, setMaps] = useState<MapItem[]>([]);
 	const [loading, setLoading] = useState(true);
 
@@ -89,7 +90,7 @@ export default function MapsListScreen() {
 			)}
 		</ThemedView>
 	);
-}
+};
 
 const styles = StyleSheet.create({
 	container: {
@@ -160,3 +161,5 @@ const styles = StyleSheet.create({
 		zIndex: 100,
 	},
 });
+
+export default MapsListScreen;

@@ -1,19 +1,21 @@
 import { ExpoIcon } from '@/components/expo-icon';
+import { MediaLibraryModal } from '@/components/media-library-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { fetchAPI } from '@/lib/fetch';
+import { Picker } from '@react-native-picker/picker';
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-	ActivityIndicator,
-	Alert,
-	ScrollView,
-	StyleSheet,
-	TextInput,
-	TouchableOpacity,
-	View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 
 interface World {
 	id: string;
@@ -30,7 +32,13 @@ export default function CreateMapScreen() {
 		slug: '',
 		description: '',
 		world_id: '',
+		background_image_url: '',
+		grid_size: 100,
+		grid_columns: 40,
+		grid_rows: 30,
 	});
+
+	const [bgPickerVisible, setBgPickerVisible] = useState(false);
 
 	useEffect(() => {
 		loadWorlds();
@@ -63,13 +71,10 @@ export default function CreateMapScreen() {
 				method: 'POST',
 				body: JSON.stringify({
 					...formData,
-					// Default grid settings
-					grid_size: 64,
-					grid_columns: 20,
 					grid_offset_x: 0,
 					grid_offset_y: 0,
-					width: 20,
-					height: 20,
+					width: formData.grid_columns,
+					height: formData.grid_rows,
 				}),
 			});
 
@@ -95,15 +100,8 @@ export default function CreateMapScreen() {
 			<Stack.Screen
 				options={{
 					title: 'Create New Map',
-					headerRight: () => (
-						<TouchableOpacity onPress={handleCreate} disabled={saving}>
-							{saving ? (
-								<ActivityIndicator size="small" color="#3B2F1B" />
-							) : (
-								<ThemedText style={styles.createButton}>Create</ThemedText>
-							)}
-						</TouchableOpacity>
-					),
+					headerTitleAlign: 'center',
+					headerRight: () => null,
 				}}
 			/>
 
@@ -165,7 +163,73 @@ export default function CreateMapScreen() {
 						textAlignVertical="top"
 					/>
 				</View>
+
+				<View style={styles.formGroup}>
+					<ThemedText style={styles.label}>Background Image</ThemedText>
+					<TouchableOpacity style={styles.pickerBtn} onPress={() => setBgPickerVisible(true)}>
+						<ThemedText>Choose from Library</ThemedText>
+					</TouchableOpacity>
+					{formData.background_image_url && (
+						<Image source={{ uri: formData.background_image_url }} style={styles.previewImage} resizeMode="contain" />
+					)}
+				</View>
+
+				<View style={styles.formGroup}>
+					<ThemedText style={styles.label}>Grid Size (px)</ThemedText>
+					<TextInput
+						style={styles.input}
+						value={String(formData.grid_size)}
+						onChangeText={(text) => setFormData(prev => ({ ...prev, grid_size: parseInt(text) || 100 }))}
+						placeholder="100"
+						placeholderTextColor="#999"
+						keyboardType="numeric"
+					/>
+				</View>
+
+				<View style={styles.row}>
+					<View style={[styles.formGroup, { flex: 1, marginRight: 8 }]}>
+						<ThemedText style={styles.label}>Columns</ThemedText>
+						<TextInput
+							style={styles.input}
+							value={String(formData.grid_columns)}
+							onChangeText={(text) => setFormData(prev => ({ ...prev, grid_columns: parseInt(text) || 40 }))}
+							placeholder="40"
+							placeholderTextColor="#999"
+							keyboardType="numeric"
+						/>
+					</View>
+					<View style={[styles.formGroup, { flex: 1 }]}>
+						<ThemedText style={styles.label}>Rows</ThemedText>
+						<TextInput
+							style={styles.input}
+							value={String(formData.grid_rows)}
+							onChangeText={(text) => setFormData(prev => ({ ...prev, grid_rows: parseInt(text) || 30 }))}
+							placeholder="30"
+							placeholderTextColor="#999"
+							keyboardType="numeric"
+						/>
+					</View>
+				</View>
 			</ScrollView>
+
+			<MediaLibraryModal
+				visible={bgPickerVisible}
+				onClose={() => setBgPickerVisible(false)}
+				onSelect={(url) => setFormData(prev => ({ ...prev, background_image_url: url }))}
+			/>
+
+			<TouchableOpacity
+				style={styles.fab}
+				onPress={handleCreate}
+				disabled={saving}
+				accessibilityLabel="Create Map"
+			>
+				{saving ? (
+					<ActivityIndicator size="small" color="#FFF" />
+				) : (
+					<ExpoIcon icon="Feather:save" size={24} color="#FFF" />
+				)}
+			</TouchableOpacity>
 		</ThemedView>
 	);
 }
@@ -215,9 +279,41 @@ const styles = StyleSheet.create({
 	textArea: {
 		minHeight: 100,
 	},
-	createButton: {
-		color: '#3B2F1B',
-		fontWeight: 'bold',
-		fontSize: 16,
+	row: {
+		flexDirection: 'row',
+		alignItems: 'flex-start',
+	},
+	pickerBtn: {
+		backgroundColor: '#FFF',
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+		padding: 12,
+		borderRadius: 8,
+		alignItems: 'center',
+		marginBottom: 8,
+	},
+	previewImage: {
+		width: '100%',
+		height: 100,
+		backgroundColor: '#222',
+		borderRadius: 8,
+		marginTop: 8,
+	},
+	fab: {
+		position: 'absolute',
+		bottom: 24,
+		right: 24,
+		width: 56,
+		height: 56,
+		borderRadius: 28,
+		backgroundColor: '#8B6914',
+		alignItems: 'center',
+		justifyContent: 'center',
+		elevation: 4,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.25,
+		shadowRadius: 4,
+		zIndex: 100,
 	},
 });

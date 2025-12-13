@@ -1,4 +1,5 @@
 export interface CloudflareBindings {
+	__DEV__: boolean;
 	DATABASE: D1Database;
 	/**
 	 * SQL binding backed by R2 (libSQL-compatible). Prefer this for new data access paths.

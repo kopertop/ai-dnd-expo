@@ -440,8 +440,8 @@ export class Database {
 	async saveGameState(gameId: string, stateData: string): Promise<void> {
 		await this.db.prepare(
 			`INSERT INTO game_states (game_id, state_data, updated_at)
-			 VALUES (?, ?, ?)
-			 ON CONFLICT(game_id) DO UPDATE SET state_data = ?, updated_at = ?`,
+			VALUES (?, ?, ?)
+			ON CONFLICT(game_id) DO UPDATE SET state_data = ?, updated_at = ?`,
 		).bind(gameId, stateData, Date.now(), stateData, Date.now()).run();
 	}
 
@@ -466,7 +466,7 @@ export class Database {
 			const logEntries = updates.log_entries || '[]';
 			await this.db.prepare(
 				`INSERT INTO game_states (game_id, state_data, map_state, log_entries, state_version, updated_at)
-				 VALUES (?, ?, ?, ?, 1, ?)`,
+				VALUES (?, ?, ?, ?, 1, ?)`,
 			).bind(gameId, stateData, mapState, logEntries, now).run();
 			return;
 		}

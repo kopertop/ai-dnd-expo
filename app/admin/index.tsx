@@ -1,8 +1,8 @@
-import { ExpoIcon } from '@/components/expo-icon';
 import { Stack, router } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useUserInfo } from '@/hooks/api/use-auth-queries';
@@ -57,6 +57,7 @@ const AdminPortalScreen: React.FC = () => {
 					options={{
 						title: 'Admin Portal',
 						headerShown: true,
+						headerTitleAlign: 'center',
 					}}
 				/>
 				<View style={styles.center}>
@@ -75,6 +76,7 @@ const AdminPortalScreen: React.FC = () => {
 				options={{
 					title: 'Admin Portal',
 					headerShown: true,
+					headerTitleAlign: 'center',
 				}}
 			/>
 			<ScrollView contentContainerStyle={styles.content}>

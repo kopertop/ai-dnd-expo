@@ -150,6 +150,7 @@ const HostGameIndexScreen: React.FC = () => {
 					options={{
 						title: 'Host Game',
 						headerShown: true,
+						headerTitleAlign: 'center',
 					}}
 				/>
 				<View style={styles.loaderFallback}>
@@ -167,6 +168,7 @@ const HostGameIndexScreen: React.FC = () => {
 				options={{
 					title: 'Host Game',
 					headerShown: true,
+					headerTitleAlign: 'center',
 				}}
 			/>
 			<ScrollView

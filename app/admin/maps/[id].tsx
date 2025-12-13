@@ -1,11 +1,6 @@
-import { ExpoIcon } from '@/components/expo-icon';
-import { ImageUploader } from '@/components/image-uploader';
-import { MediaLibraryModal } from '@/components/media-library-modal';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { apiService } from 'expo-auth-template/frontend';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
 	ActivityIndicator,
 	Alert,
@@ -13,22 +8,28 @@ import {
 	Platform,
 	ScrollView,
 	StyleSheet,
+	Switch,
 	TextInput,
 	TouchableOpacity,
 	View,
-	Switch,
 } from 'react-native';
 import Svg, { Line, Rect } from 'react-native-svg';
 
+import { ExpoIcon } from '@/components/expo-icon';
+import { ImageUploader } from '@/components/image-uploader';
+import { MediaLibraryModal } from '@/components/media-library-modal';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+
 interface TileData {
-    x: number;
-    y: number;
-    terrain: string; // terrain_type
-    movement_cost?: number;
-    is_blocked?: boolean;
-    is_difficult?: boolean;
-    provides_cover?: boolean;
-    cover_type?: 'half' | 'three-quarters' | 'full';
+	x: number;
+	y: number;
+	terrain: string; // terrain_type
+	movement_cost?: number;
+	is_blocked?: boolean;
+	is_difficult?: boolean;
+	provides_cover?: boolean;
+	cover_type?: 'half' | 'three-quarters' | 'full';
 }
 
 interface MapData {
@@ -45,7 +46,7 @@ interface MapData {
 	width: number;
 	height: number;
 	world_id: string | null;
-    tiles?: any[]; // From API
+	tiles?: any[]; // From API
 	tokens?: any[];
 }
 
@@ -59,10 +60,10 @@ const TERRAIN_TYPES = [
 	{ id: 'wall', color: 'rgba(0, 0, 0, 0.5)', label: 'Wall', blocked: true },
 	{ id: 'water', color: 'rgba(0, 0, 255, 0.3)', label: 'Water', difficult: true },
 	{ id: 'difficult', color: 'rgba(255, 165, 0, 0.3)', label: 'Difficult', difficult: true },
-    { id: 'cover', color: 'rgba(0, 128, 0, 0.3)', label: 'Cover', cover: true },
+	{ id: 'cover', color: 'rgba(0, 128, 0, 0.3)', label: 'Cover', cover: true },
 ];
 
-export default function MapEditorScreen() {
+const MapEditorScreen: React.FC = () => {
 	const { id } = useLocalSearchParams<{ id: string }>();
 	const [map, setMap] = useState<MapData | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -70,7 +71,7 @@ export default function MapEditorScreen() {
 	const [activeTool, setActiveTool] = useState<Tool['id']>('select');
 	const [showSidebar, setShowSidebar] = useState(true);
 
-    // Grid config
+	// Grid config
 	const [gridConfig, setGridConfig] = useState({
 		size: 64,
 		offsetX: 0,
@@ -79,20 +80,24 @@ export default function MapEditorScreen() {
 		rows: 20,
 	});
 
-    // Tiles state: key "x,y" -> TileData
+	// Tiles state: key "x,y" -> TileData
 	const [tiles, setTiles] = useState<Record<string, TileData>>({});
 	const [objects, setObjects] = useState<any[]>([]);
 
-    // Selection
-    const [selectedTileKey, setSelectedTileKey] = useState<string | null>(null);
-    const selectedTile = selectedTileKey ? tiles[selectedTileKey] : null;
+	// Selection
+	const [selectedTileKey, setSelectedTileKey] = useState<string | null>(null);
+	const selectedTile = selectedTileKey ? tiles[selectedTileKey] : null;
 
-    // Active brush settings
+	// Active brush settings
 	const [activeTerrain, setActiveTerrain] = useState('wall');
 
-    // Modals
-    const [bgPickerVisible, setBgPickerVisible] = useState(false);
-    const [coverPickerVisible, setCoverPickerVisible] = useState(false);
+	// Modals
+	const [bgPickerVisible, setBgPickerVisible] = useState(false);
+	const [coverPickerVisible, setCoverPickerVisible] = useState(false);
+
+	// Canvas container size for scaling
+	const [canvasContainerSize, setCanvasContainerSize] = useState({ width: 0, height: 0 });
+	const canvasContainerRef = useRef<View>(null);
 
 	useEffect(() => {
 		if (id) loadMap(id);
@@ -113,21 +118,21 @@ export default function MapEditorScreen() {
 			});
 
 			// Load Tiles
-            const newTiles: Record<string, TileData> = {};
-            if (data.tiles && Array.isArray(data.tiles)) {
-                data.tiles.forEach((t: any) => {
-                    newTiles[`${t.x},${t.y}`] = {
-                        x: t.x,
-                        y: t.y,
-                        terrain: t.terrain_type,
-                        movement_cost: t.movement_cost,
-                        is_blocked: Boolean(t.is_blocked),
-                        is_difficult: Boolean(t.is_difficult),
-                        provides_cover: Boolean(t.provides_cover),
-                        cover_type: t.cover_type,
-                    };
-                });
-            }
+			const newTiles: Record<string, TileData> = {};
+			if (data.tiles && Array.isArray(data.tiles)) {
+				data.tiles.forEach((t: any) => {
+					newTiles[`${t.x},${t.y}`] = {
+						x: t.x,
+						y: t.y,
+						terrain: t.terrain_type,
+						movement_cost: t.movement_cost,
+						is_blocked: Boolean(t.is_blocked),
+						is_difficult: Boolean(t.is_difficult),
+						provides_cover: Boolean(t.provides_cover),
+						cover_type: t.cover_type,
+					};
+				});
+			}
 			setTiles(newTiles);
 
 			// Load Objects
@@ -137,7 +142,7 @@ export default function MapEditorScreen() {
 					x: t.x,
 					y: t.y,
 					image_url: t.image_url,
-					label: t.label
+					label: t.label,
 				}));
 				setObjects(loadedObjects);
 			}
@@ -155,8 +160,8 @@ export default function MapEditorScreen() {
 		try {
 			setSaving(true);
 
-            // Convert tiles record to array
-            const tilesArray = Object.values(tiles);
+			// Convert tiles record to array
+			const tilesArray = Object.values(tiles);
 
 			const payload = {
 				...map,
@@ -173,8 +178,8 @@ export default function MapEditorScreen() {
 					y: obj.y,
 					image_url: obj.image_url,
 					label: obj.label || 'Object',
-					token_type: 'prop'
-				}))
+					token_type: 'prop',
+				})),
 			};
 			if (map.id) {
 				await apiService.fetchApi(`/maps/${map.id}`, {
@@ -189,7 +194,7 @@ export default function MapEditorScreen() {
 			}
 
 			Alert.alert('Success', 'Map saved');
-            // Don't reload fully to keep state, maybe update ID?
+			// Don't reload fully to keep state, maybe update ID?
 		} catch (error: any) {
 			Alert.alert('Error', error.message);
 		} finally {
@@ -200,53 +205,53 @@ export default function MapEditorScreen() {
 	const handleTileClick = (x: number, y: number) => {
 		const key = `${x},${y}`;
 
-        if (activeTool === 'select') {
-            // Select or deselect
-            if (selectedTileKey === key) {
-                setSelectedTileKey(null);
-            } else {
-                // If tile doesn't exist, maybe create default
-                if (!tiles[key]) {
-                    setTiles(prev => ({
-                        ...prev,
-                        [key]: { x, y, terrain: 'none', movement_cost: 1 }
-                    }));
-                }
-                setSelectedTileKey(key);
-                setShowSidebar(true);
-            }
-            return;
-        }
+		if (activeTool === 'select') {
+			// Select or deselect
+			if (selectedTileKey === key) {
+				setSelectedTileKey(null);
+			} else {
+				// If tile doesn't exist, maybe create default
+				if (!tiles[key]) {
+					setTiles(prev => ({
+						...prev,
+						[key]: { x, y, terrain: 'none', movement_cost: 1 },
+					}));
+				}
+				setSelectedTileKey(key);
+				setShowSidebar(true);
+			}
+			return;
+		}
 
 		if (activeTool === 'terrain') {
-            // Paint logic
-            const preset = TERRAIN_TYPES.find(t => t.id === activeTerrain);
+			// Paint logic
+			const preset = TERRAIN_TYPES.find(t => t.id === activeTerrain);
 			setTiles(prev => {
 				const next = { ...prev };
 				if (next[key] && next[key].terrain === activeTerrain) {
 					delete next[key];
 				} else {
 					next[key] = {
-                        x, y,
-                        terrain: activeTerrain,
-                        is_blocked: preset?.blocked,
-                        is_difficult: preset?.difficult,
-                        provides_cover: preset?.cover,
-                        movement_cost: preset?.difficult ? 2 : 1,
-                    };
+						x, y,
+						terrain: activeTerrain,
+						is_blocked: preset?.blocked,
+						is_difficult: preset?.difficult,
+						provides_cover: preset?.cover,
+						movement_cost: preset?.difficult ? 2 : 1,
+					};
 				}
 				return next;
 			});
 		}
 	};
 
-    const updateSelectedTile = (updates: Partial<TileData>) => {
-        if (!selectedTileKey) return;
-        setTiles(prev => ({
-            ...prev,
-            [selectedTileKey]: { ...prev[selectedTileKey], ...updates }
-        }));
-    };
+	const updateSelectedTile = (updates: Partial<TileData>) => {
+		if (!selectedTileKey) return;
+		setTiles(prev => ({
+			...prev,
+			[selectedTileKey]: { ...prev[selectedTileKey], ...updates },
+		}));
+	};
 
 	const handleAddObject = (imageUrl: string) => {
 		setObjects(prev => [
@@ -256,18 +261,18 @@ export default function MapEditorScreen() {
 				x: 0,
 				y: 0,
 				image_url: imageUrl,
-				label: 'Object'
-			}
+				label: 'Object',
+			},
 		]);
 		setActiveTool('object');
-        Alert.alert('Object Added', 'Object placed at (0,0).');
+		Alert.alert('Object Added', 'Object placed at (0,0).');
 	};
 
 	const tools: Tool[] = [
-		{ id: 'select', name: 'Select', icon: 'mouse-pointer' },
-		{ id: 'grid', name: 'Grid', icon: 'grid' },
-		{ id: 'terrain', name: 'Paint', icon: 'brush' },
-		{ id: 'object', name: 'Object', icon: 'box' },
+		{ id: 'select', name: 'Select', icon: 'Feather:mouse-pointer' },
+		{ id: 'grid', name: 'Grid', icon: 'Feather:grid' },
+		{ id: 'terrain', name: 'Paint', icon: 'Ionicons:brush' },
+		{ id: 'object', name: 'Object', icon: 'Feather:box' },
 	];
 
 	if (loading || !map) {
@@ -283,15 +288,8 @@ export default function MapEditorScreen() {
 			<Stack.Screen
 				options={{
 					title: map.name,
-					headerRight: () => (
-						<TouchableOpacity onPress={handleSave} disabled={saving}>
-							{saving ? (
-								<ActivityIndicator size="small" color="#3B2F1B" />
-							) : (
-								<ThemedText style={styles.headerBtn}>Save</ThemedText>
-							)}
-						</TouchableOpacity>
-					),
+					headerShown: true,
+					headerTitleAlign: 'center',
 				}}
 			/>
 
@@ -308,7 +306,7 @@ export default function MapEditorScreen() {
 							}}
 						>
 							<ExpoIcon
-								icon={`Feather:${tool.icon}` as any}
+								icon={tool.icon}
 								size={20}
 								color={activeTool === tool.id ? '#FFF' : '#3B2F1B'}
 							/>
@@ -317,19 +315,25 @@ export default function MapEditorScreen() {
 				</View>
 
 				{/* Main Canvas Area */}
-				<ScrollView style={styles.canvasScroll} horizontal>
-					<ScrollView style={styles.canvasScrollVertical}>
-						<EditorCanvas
-							map={map}
-							gridConfig={gridConfig}
-							activeTool={activeTool}
-							tiles={tiles}
-							objects={objects}
-							onTileClick={handleTileClick}
-                            selectedTileKey={selectedTileKey}
-						/>
-					</ScrollView>
-				</ScrollView>
+				<View
+					ref={canvasContainerRef}
+					style={styles.canvasScroll}
+					onLayout={(event) => {
+						const { width, height } = event.nativeEvent.layout;
+						setCanvasContainerSize({ width, height });
+					}}
+				>
+					<EditorCanvas
+						map={map}
+						gridConfig={gridConfig}
+						activeTool={activeTool}
+						tiles={tiles}
+						objects={objects}
+						onTileClick={handleTileClick}
+						selectedTileKey={selectedTileKey}
+						containerSize={canvasContainerSize}
+					/>
+				</View>
 
 				{/* Sidebar / Properties Panel */}
 				{showSidebar && (
@@ -346,97 +350,97 @@ export default function MapEditorScreen() {
 						<ScrollView style={styles.sidebarContent}>
 							{activeTool === 'select' && (
 								<View>
-                                    {!selectedTile ? (
-                                        <View>
-                                            <ThemedText style={styles.helperText}>Select a tile to edit properties.</ThemedText>
-                                            <View style={styles.divider} />
-                                            <ThemedText style={styles.sectionTitle}>Map Settings</ThemedText>
+									{!selectedTile ? (
+										<View>
+											<ThemedText style={styles.helperText}>Select a tile to edit properties.</ThemedText>
+											<View style={styles.divider} />
+											<ThemedText style={styles.sectionTitle}>Map Settings</ThemedText>
 
-                                            <View style={styles.inputGroup}>
-                                                <ThemedText style={styles.label}>Background Image</ThemedText>
-                                                <TouchableOpacity style={styles.pickerBtn} onPress={() => setBgPickerVisible(true)}>
-                                                    <ThemedText>Choose from Library</ThemedText>
-                                                </TouchableOpacity>
-                                                {map.background_image_url && (
-                                                    <Image source={{ uri: map.background_image_url }} style={styles.previewImage} resizeMode="contain" />
-                                                )}
-                                            </View>
+											<View style={styles.inputGroup}>
+												<ThemedText style={styles.label}>Background Image</ThemedText>
+												<TouchableOpacity style={styles.pickerBtn} onPress={() => setBgPickerVisible(true)}>
+													<ThemedText>Choose from Library</ThemedText>
+												</TouchableOpacity>
+												{map.background_image_url && (
+													<Image source={{ uri: map.background_image_url }} style={styles.previewImage} resizeMode="contain" />
+												)}
+											</View>
 
-                                            <View style={styles.inputGroup}>
-                                                <ThemedText style={styles.label}>Cover Image</ThemedText>
-                                                <TouchableOpacity style={styles.pickerBtn} onPress={() => setCoverPickerVisible(true)}>
-                                                    <ThemedText>Choose from Library</ThemedText>
-                                                </TouchableOpacity>
-                                                {map.cover_image_url && (
-                                                    <Image source={{ uri: map.cover_image_url }} style={styles.previewImage} resizeMode="contain" />
-                                                )}
-                                            </View>
-                                        </View>
-                                    ) : (
-                                        <View>
-                                            <ThemedText style={styles.sectionTitle}>Tile ({selectedTile.x}, {selectedTile.y})</ThemedText>
+											<View style={styles.inputGroup}>
+												<ThemedText style={styles.label}>Cover Image</ThemedText>
+												<TouchableOpacity style={styles.pickerBtn} onPress={() => setCoverPickerVisible(true)}>
+													<ThemedText>Choose from Library</ThemedText>
+												</TouchableOpacity>
+												{map.cover_image_url && (
+													<Image source={{ uri: map.cover_image_url }} style={styles.previewImage} resizeMode="contain" />
+												)}
+											</View>
+										</View>
+									) : (
+										<View>
+											<ThemedText style={styles.sectionTitle}>Tile ({selectedTile.x}, {selectedTile.y})</ThemedText>
 
-                                            <View style={styles.inputGroup}>
-                                                <ThemedText style={styles.label}>Movement Cost</ThemedText>
-                                                <TextInput
-                                                    style={styles.input}
-                                                    value={String(selectedTile.movement_cost ?? 1)}
-                                                    onChangeText={(t) => updateSelectedTile({ movement_cost: parseFloat(t) || 1 })}
-                                                    keyboardType="numeric"
-                                                />
-                                            </View>
+											<View style={styles.inputGroup}>
+												<ThemedText style={styles.label}>Movement Cost</ThemedText>
+												<TextInput
+													style={styles.input}
+													value={String(selectedTile.movement_cost ?? 1)}
+													onChangeText={(t) => updateSelectedTile({ movement_cost: parseFloat(t) || 1 })}
+													keyboardType="numeric"
+												/>
+											</View>
 
-                                            <View style={styles.switchRow}>
-                                                <ThemedText>Blocked</ThemedText>
-                                                <Switch
-                                                    value={selectedTile.is_blocked}
-                                                    onValueChange={(v) => updateSelectedTile({ is_blocked: v })}
-                                                />
-                                            </View>
+											<View style={styles.switchRow}>
+												<ThemedText>Blocked</ThemedText>
+												<Switch
+													value={selectedTile.is_blocked}
+													onValueChange={(v) => updateSelectedTile({ is_blocked: v })}
+												/>
+											</View>
 
-                                            <View style={styles.switchRow}>
-                                                <ThemedText>Difficult Terrain</ThemedText>
-                                                <Switch
-                                                    value={selectedTile.is_difficult}
-                                                    onValueChange={(v) => updateSelectedTile({ is_difficult: v })}
-                                                />
-                                            </View>
+											<View style={styles.switchRow}>
+												<ThemedText>Difficult Terrain</ThemedText>
+												<Switch
+													value={selectedTile.is_difficult}
+													onValueChange={(v) => updateSelectedTile({ is_difficult: v })}
+												/>
+											</View>
 
-                                            <View style={styles.switchRow}>
-                                                <ThemedText>Provides Cover</ThemedText>
-                                                <Switch
-                                                    value={selectedTile.provides_cover}
-                                                    onValueChange={(v) => updateSelectedTile({ provides_cover: v })}
-                                                />
-                                            </View>
+											<View style={styles.switchRow}>
+												<ThemedText>Provides Cover</ThemedText>
+												<Switch
+													value={selectedTile.provides_cover}
+													onValueChange={(v) => updateSelectedTile({ provides_cover: v })}
+												/>
+											</View>
 
-                                            <View style={styles.inputGroup}>
-                                                <ThemedText style={styles.label}>Terrain Type (Tag)</ThemedText>
-                                                <TextInput
-                                                    style={styles.input}
-                                                    value={selectedTile.terrain || ''}
-                                                    onChangeText={(t) => updateSelectedTile({ terrain: t })}
-                                                />
-                                            </View>
+											<View style={styles.inputGroup}>
+												<ThemedText style={styles.label}>Terrain Type (Tag)</ThemedText>
+												<TextInput
+													style={styles.input}
+													value={selectedTile.terrain || ''}
+													onChangeText={(t) => updateSelectedTile({ terrain: t })}
+												/>
+											</View>
 
-                                            <TouchableOpacity
-                                                style={styles.deleteBtn}
-                                                onPress={() => {
-                                                    const next = { ...tiles };
-                                                    delete next[selectedTileKey!];
-                                                    setTiles(next);
-                                                    setSelectedTileKey(null);
-                                                }}
-                                            >
-                                                <ThemedText style={{ color: '#FFF' }}>Clear Tile</ThemedText>
-                                            </TouchableOpacity>
-                                        </View>
-                                    )}
+											<TouchableOpacity
+												style={styles.deleteBtn}
+												onPress={() => {
+													const next = { ...tiles };
+													delete next[selectedTileKey!];
+													setTiles(next);
+													setSelectedTileKey(null);
+												}}
+											>
+												<ThemedText style={{ color: '#FFF' }}>Clear Tile</ThemedText>
+											</TouchableOpacity>
+										</View>
+									)}
 								</View>
 							)}
 
 							{activeTool === 'grid' && (
-                                <View>
+								<View>
 									<View style={styles.inputGroup}>
 										<ThemedText style={styles.label}>Grid Size (px)</ThemedText>
 										<TextInput
@@ -448,7 +452,7 @@ export default function MapEditorScreen() {
 											keyboardType="numeric"
 										/>
 									</View>
-                                    <View style={styles.row}>
+									<View style={styles.row}>
 										<View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
 											<ThemedText style={styles.label}>Columns</ThemedText>
 											<TextInput
@@ -473,7 +477,7 @@ export default function MapEditorScreen() {
 										</View>
 									</View>
 
-                                    <View style={styles.row}>
+									<View style={styles.row}>
 										<View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
 											<ThemedText style={styles.label}>Offset X</ThemedText>
 											<TextInput
@@ -497,7 +501,7 @@ export default function MapEditorScreen() {
 											/>
 										</View>
 									</View>
-                                </View>
+								</View>
 							)}
 
 							{activeTool === 'terrain' && (
@@ -509,7 +513,7 @@ export default function MapEditorScreen() {
 												key={type.id}
 												style={[
 													styles.terrainOption,
-													activeTerrain === type.id && styles.terrainOptionActive
+													activeTerrain === type.id && styles.terrainOptionActive,
 												]}
 												onPress={() => setActiveTerrain(type.id)}
 											>
@@ -528,49 +532,49 @@ export default function MapEditorScreen() {
 										onChange={handleAddObject}
 										placeholder="Upload Object/Mini"
 									/>
-                                    {objects.length > 0 && (
-								        <View style={{ marginTop: 20 }}>
-									        <ThemedText style={styles.sectionTitle}>Placed Objects</ThemedText>
-									        {objects.map((obj, idx) => (
-										        <View key={obj.id || idx} style={styles.objectItem}>
-											        <Image source={{ uri: obj.image_url }} style={styles.objectThumb} />
-											        <View style={{ flex: 1 }}>
-												        <View style={styles.row}>
-													        <ThemedText style={{ fontSize: 12 }}>X:</ThemedText>
-													        <TextInput
-														        style={[styles.input, { padding: 4, height: 30, width: 50, marginLeft: 4 }]}
-														        value={String(obj.x)}
-														        onChangeText={(t) => {
-															        const newObjs = [...objects];
-															        newObjs[idx].x = parseInt(t) || 0;
-															        setObjects(newObjs);
-														        }}
-														        keyboardType="numeric"
-													        />
-													        <ThemedText style={{ fontSize: 12, marginLeft: 8 }}>Y:</ThemedText>
-													        <TextInput
-														        style={[styles.input, { padding: 4, height: 30, width: 50, marginLeft: 4 }]}
-														        value={String(obj.y)}
-														        onChangeText={(t) => {
-															        const newObjs = [...objects];
-															        newObjs[idx].y = parseInt(t) || 0;
-															        setObjects(newObjs);
-														        }}
-														        keyboardType="numeric"
-													        />
-												        </View>
-											        </View>
-											        <TouchableOpacity onPress={() => {
-												        const newObjs = [...objects];
-												        newObjs.splice(idx, 1);
-												        setObjects(newObjs);
-											        }}>
-												        <ExpoIcon icon="Feather:trash-2" size={16} color="#8B2323" />
-											        </TouchableOpacity>
-										        </View>
-									        ))}
-								        </View>
-							        )}
+									{objects.length > 0 && (
+										<View style={{ marginTop: 20 }}>
+											<ThemedText style={styles.sectionTitle}>Placed Objects</ThemedText>
+											{objects.map((obj, idx) => (
+												<View key={obj.id || idx} style={styles.objectItem}>
+													<Image source={{ uri: obj.image_url }} style={styles.objectThumb} />
+													<View style={{ flex: 1 }}>
+														<View style={styles.row}>
+															<ThemedText style={{ fontSize: 12 }}>X:</ThemedText>
+															<TextInput
+																style={[styles.input, { padding: 4, height: 30, width: 50, marginLeft: 4 }]}
+																value={String(obj.x)}
+																onChangeText={(t) => {
+																	const newObjs = [...objects];
+																	newObjs[idx].x = parseInt(t) || 0;
+																	setObjects(newObjs);
+																}}
+																keyboardType="numeric"
+															/>
+															<ThemedText style={{ fontSize: 12, marginLeft: 8 }}>Y:</ThemedText>
+															<TextInput
+																style={[styles.input, { padding: 4, height: 30, width: 50, marginLeft: 4 }]}
+																value={String(obj.y)}
+																onChangeText={(t) => {
+																	const newObjs = [...objects];
+																	newObjs[idx].y = parseInt(t) || 0;
+																	setObjects(newObjs);
+																}}
+																keyboardType="numeric"
+															/>
+														</View>
+													</View>
+													<TouchableOpacity onPress={() => {
+														const newObjs = [...objects];
+														newObjs.splice(idx, 1);
+														setObjects(newObjs);
+													}}>
+														<ExpoIcon icon="Feather:trash-2" size={16} color="#8B2323" />
+													</TouchableOpacity>
+												</View>
+											))}
+										</View>
+									)}
 								</View>
 							)}
 						</ScrollView>
@@ -578,29 +582,45 @@ export default function MapEditorScreen() {
 				)}
 			</View>
 
-            <MediaLibraryModal
-                visible={bgPickerVisible}
-                onClose={() => setBgPickerVisible(false)}
-                onSelect={(url) => setMap({ ...map!, background_image_url: url })}
-            />
+			<MediaLibraryModal
+				visible={bgPickerVisible}
+				onClose={() => setBgPickerVisible(false)}
+				onSelect={(url) => setMap({ ...map!, background_image_url: url })}
+			/>
 
-            <MediaLibraryModal
-                visible={coverPickerVisible}
-                onClose={() => setCoverPickerVisible(false)}
-                onSelect={(url) => setMap({ ...map!, cover_image_url: url })}
-            />
+			<MediaLibraryModal
+				visible={coverPickerVisible}
+				onClose={() => setCoverPickerVisible(false)}
+				onSelect={(url) => setMap({ ...map!, cover_image_url: url })}
+			/>
+
+			<TouchableOpacity
+				style={styles.fab}
+				onPress={handleSave}
+				disabled={saving}
+				accessibilityLabel="Save Map"
+			>
+				{saving ? (
+					<ActivityIndicator size="small" color="#FFF" />
+				) : (
+					<ExpoIcon icon="Feather:save" size={24} color="#FFF" />
+				)}
+			</TouchableOpacity>
 		</ThemedView>
 	);
-}
+};
 
-function EditorCanvas({
+export default MapEditorScreen;
+
+const EditorCanvas = ({
 	map,
 	gridConfig,
 	activeTool,
 	tiles,
 	objects,
 	onTileClick,
-    selectedTileKey
+	selectedTileKey,
+	containerSize,
 }: {
 	map: MapData;
 	gridConfig: { size: number; offsetX: number; offsetY: number; columns: number; rows: number };
@@ -608,10 +628,18 @@ function EditorCanvas({
 	tiles: Record<string, TileData>;
 	objects: any[];
 	onTileClick: (x: number, y: number) => void;
-    selectedTileKey: string | null;
-}) {
+	selectedTileKey: string | null;
+	containerSize: { width: number; height: number };
+}) => {
 	const width = gridConfig.columns * gridConfig.size;
 	const height = gridConfig.rows * gridConfig.size;
+	const canvasWidth = width + 200;
+	const canvasHeight = height + 200;
+
+	// Calculate scale to fit
+	const scaleX = containerSize.width > 0 ? Math.min(1, containerSize.width / canvasWidth) : 1;
+	const scaleY = containerSize.height > 0 ? Math.min(1, containerSize.height / canvasHeight) : 1;
+	const scale = Math.min(scaleX, scaleY);
 
 	const renderGrid = () => {
 		const lines = [];
@@ -627,7 +655,7 @@ function EditorCanvas({
 					y2={height + gridConfig.offsetY}
 					stroke="rgba(0,0,0,0.3)"
 					strokeWidth="1"
-				/>
+				/>,
 			);
 		}
 		// Horizontal lines
@@ -642,7 +670,7 @@ function EditorCanvas({
 					y2={y}
 					stroke="rgba(0,0,0,0.3)"
 					strokeWidth="1"
-				/>
+				/>,
 			);
 		}
 		return lines;
@@ -654,7 +682,7 @@ function EditorCanvas({
 			const y = tile.y * gridConfig.size + gridConfig.offsetY;
 			const terrainDef = TERRAIN_TYPES.find(t => t.id === tile.terrain);
 			const color = terrainDef?.color || 'rgba(100, 100, 100, 0.3)';
-            const isSelected = selectedTileKey === key;
+			const isSelected = selectedTileKey === key;
 
 			return (
 				<Rect
@@ -664,30 +692,30 @@ function EditorCanvas({
 					width={gridConfig.size}
 					height={gridConfig.size}
 					fill={color}
-                    stroke={isSelected ? '#00FFFF' : undefined}
-                    strokeWidth={isSelected ? 2 : 0}
+					stroke={isSelected ? '#00FFFF' : undefined}
+					strokeWidth={isSelected ? 2 : 0}
 				/>
 			);
 		});
 	};
 
-    const renderSelection = () => {
-        if (!selectedTileKey) return null;
-        const [gx, gy] = selectedTileKey.split(',').map(Number);
-        const x = gx * gridConfig.size + gridConfig.offsetX;
-        const y = gy * gridConfig.size + gridConfig.offsetY;
-        return (
-            <Rect
-                x={x}
-                y={y}
-                width={gridConfig.size}
-                height={gridConfig.size}
-                fill="transparent"
-                stroke="#00FFFF"
-                strokeWidth={2}
-            />
-        );
-    };
+	const renderSelection = () => {
+		if (!selectedTileKey) return null;
+		const [gx, gy] = selectedTileKey.split(',').map(Number);
+		const x = gx * gridConfig.size + gridConfig.offsetX;
+		const y = gy * gridConfig.size + gridConfig.offsetY;
+		return (
+			<Rect
+				x={x}
+				y={y}
+				width={gridConfig.size}
+				height={gridConfig.size}
+				fill="transparent"
+				stroke="#00FFFF"
+				strokeWidth={2}
+			/>
+		);
+	};
 
 	const handlePress = (e: any) => {
 		// Handle web vs native event coordinates
@@ -699,8 +727,12 @@ function EditorCanvas({
 			y = e.nativeEvent.offsetY;
 		}
 
-		const adjX = x - gridConfig.offsetX;
-		const adjY = y - gridConfig.offsetY;
+		// Adjust for scale transform
+		const scaledX = x / scale;
+		const scaledY = y / scale;
+
+		const adjX = scaledX - gridConfig.offsetX;
+		const adjY = scaledY - gridConfig.offsetY;
 
 		if (adjX < 0 || adjY < 0) return;
 
@@ -713,21 +745,30 @@ function EditorCanvas({
 	};
 
 	return (
-		<TouchableOpacity
-			testID="editor-canvas"
-			activeOpacity={1}
-			onPress={handlePress}
+		<View
 			style={{
-				width: width + 200,
-				height: height + 200,
-				backgroundColor: '#222',
-				position: 'relative',
+				width: containerSize.width || canvasWidth,
+				height: containerSize.height || canvasHeight,
+				alignItems: 'center',
+				justifyContent: 'center',
+				backgroundColor: '#333',
 			}}
 		>
+			<TouchableOpacity
+				testID="editor-canvas"
+				activeOpacity={1}
+				onPress={handlePress}
+				style={{
+					width: canvasWidth,
+					height: canvasHeight,
+					backgroundColor: '#222',
+					position: 'relative',
+					transform: [{ scale }],
+				}}
+			>
 			{/* Background Layer */}
 			{map.background_image_url && (
 				<Image
-                    pointerEvents="none"
 					source={{ uri: map.background_image_url }}
 					style={{
 						position: 'absolute',
@@ -736,7 +777,7 @@ function EditorCanvas({
 						width: width,
 						height: height,
 						resizeMode: 'stretch',
-						opacity: 0.8
+						opacity: 0.8,
 					}}
 				/>
 			)}
@@ -744,12 +785,11 @@ function EditorCanvas({
 			<Svg height="100%" width="100%" style={{ position: 'absolute', top: 0, left: 0 }} pointerEvents="none">
 				{renderGrid()}
 				{renderTiles()}
-                {renderSelection()}
+				{renderSelection()}
 			</Svg>
 
 			{objects.map((obj, idx) => (
 				<Image
-                    pointerEvents="none"
 					key={obj.id || idx}
 					source={{ uri: obj.image_url }}
 					style={{
@@ -761,9 +801,10 @@ function EditorCanvas({
 					}}
 				/>
 			))}
-		</TouchableOpacity>
+			</TouchableOpacity>
+		</View>
 	);
-}
+};
 
 const styles = StyleSheet.create({
 	container: {
@@ -774,11 +815,6 @@ const styles = StyleSheet.create({
 		flex: 1,
 		alignItems: 'center',
 		justifyContent: 'center',
-	},
-	headerBtn: {
-		color: '#3B2F1B',
-		fontWeight: 'bold',
-		fontSize: 16,
 	},
 	editorContainer: {
 		flex: 1,
@@ -913,42 +949,59 @@ const styles = StyleSheet.create({
 		borderRadius: 4,
 		backgroundColor: '#333',
 	},
-    pickerBtn: {
-        backgroundColor: '#FFF',
-        borderWidth: 1,
-        borderColor: '#E2D3B3',
-        padding: 8,
-        borderRadius: 4,
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    previewImage: {
-        width: '100%',
-        height: 100,
-        backgroundColor: '#222',
-        borderRadius: 4,
-    },
-    switchRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-        backgroundColor: '#FFF',
-        padding: 8,
-        borderRadius: 4,
-        borderWidth: 1,
-        borderColor: '#E2D3B3',
-    },
-    deleteBtn: {
-        backgroundColor: '#8B2323',
-        padding: 10,
-        borderRadius: 4,
-        alignItems: 'center',
-        marginTop: 10,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#E2D3B3',
-        marginVertical: 12,
-    },
+	pickerBtn: {
+		backgroundColor: '#FFF',
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+		padding: 8,
+		borderRadius: 4,
+		alignItems: 'center',
+		marginBottom: 8,
+	},
+	previewImage: {
+		width: '100%',
+		height: 100,
+		backgroundColor: '#222',
+		borderRadius: 4,
+	},
+	switchRow: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginBottom: 12,
+		backgroundColor: '#FFF',
+		padding: 8,
+		borderRadius: 4,
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+	},
+	deleteBtn: {
+		backgroundColor: '#8B2323',
+		padding: 10,
+		borderRadius: 4,
+		alignItems: 'center',
+		marginTop: 10,
+	},
+	divider: {
+		height: 1,
+		backgroundColor: '#E2D3B3',
+		marginVertical: 12,
+	},
+	fab: {
+		position: 'absolute',
+		bottom: 24,
+		right: 24,
+		width: 56,
+		height: 56,
+		borderRadius: 28,
+		backgroundColor: '#8B6914',
+		alignItems: 'center',
+		justifyContent: 'center',
+		elevation: 4,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.25,
+		shadowRadius: 4,
+		zIndex: 100,
+	},
 });

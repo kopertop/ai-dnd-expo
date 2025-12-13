@@ -2333,6 +2333,7 @@ const MultiplayerGameScreen: React.FC = () => {
 				options={{
 					title: gameState.quest.name,
 					headerShown: true,
+					headerTitleAlign: 'center',
 				}}
 			/>
 

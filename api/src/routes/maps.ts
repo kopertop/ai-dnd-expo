@@ -1,9 +1,9 @@
+import type { User } from 'expo-auth-template/backend';
 import { Hono } from 'hono';
 
 import type { CloudflareBindings } from '../env';
 
 import { createDatabase } from '@/api/src/utils/repository';
-import type { User } from 'expo-auth-template/backend';
 
 type Variables = {
 	user: (User & { is_admin?: boolean | number; role?: string }) | null;
@@ -148,6 +148,7 @@ maps.post('/', async (c) => {
 			is_generated: body.is_generated ? 1 : 0,
 			created_at: body.created_at ?? now,
 			updated_at: now,
+			world: body.world ?? null,
 		});
 
 		// Process tiles if provided
@@ -167,7 +168,7 @@ maps.post('/', async (c) => {
 					cover_type: t.cover_type,
 					feature_type: t.feature_type,
 					metadata: JSON.stringify(t.metadata || {}),
-				}))
+				})),
 			);
 		}
 
