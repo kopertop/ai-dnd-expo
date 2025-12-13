@@ -4,12 +4,13 @@ title: Show DM action indicator to non-DM clients during DM Action
 status: Done
 assignee: []
 created_date: '2025-11-25 01:33'
-updated_date: '2025-12-02 21:06'
+updated_date: '2025-12-10 23:26'
 labels:
   - feature
   - ui
   - dm
 dependencies: []
+ordinal: 6000
 ---
 
 ## Description

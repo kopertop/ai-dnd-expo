@@ -1,16 +1,17 @@
 ---
 id: task-18
 title: Revamp home My Characters section for inline management and creation
-status: In Progress
+status: Done
 assignee: []
 created_date: '2025-12-04 20:18'
-updated_date: '2025-12-04 20:22'
+updated_date: '2025-12-10 23:26'
 labels:
   - ui
   - character
   - home
 dependencies: []
 priority: high
+ordinal: 12000
 ---
 
 ## Description

@@ -1,15 +1,15 @@
 ---
 id: task-4
 title: 'Add items, equipment, and character inventory management'
-status: To Do
+status: Done
 assignee: []
 created_date: '2025-11-25 01:32'
-updated_date: '2025-12-05 03:22'
+updated_date: '2025-12-10 23:26'
 labels:
   - feature
   - inventory
 dependencies: []
-ordinal: 5000
+ordinal: 15000
 ---
 
 ## Description
