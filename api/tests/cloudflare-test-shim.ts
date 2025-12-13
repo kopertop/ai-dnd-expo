@@ -41,7 +41,7 @@ class PreparedStatement {
 
 	private async execute<T>() {
 		const store = getStore();
-		const normalized = this.query.toLowerCase();
+		const normalized = this.query.toLowerCase().trim();
 
 		if (normalized.includes('from sqlite_master')) {
 			return tableList as unknown as T[];
@@ -115,6 +115,90 @@ class PreparedStatement {
 				store.npcs.push(npcRow);
 			}
 			return [] as T[];
+		}
+
+		if (normalized.startsWith('insert into uploaded_images')) {
+			const [
+				id,
+				user_id,
+				filename,
+				r2_key,
+				public_url,
+				title,
+				description,
+				image_type,
+				is_public,
+				created_at,
+				updated_at,
+			] = this.args as [
+				string,
+				string,
+				string,
+				string,
+				string,
+				string | null,
+				string | null,
+				'npc' | 'character' | 'both',
+				number,
+				number,
+				number,
+			];
+			const existingIndex = store.uploadedImages.findIndex(img => img.id === id);
+			const imageRow = {
+				id,
+				user_id,
+				filename,
+				r2_key,
+				public_url,
+				title,
+				description,
+				image_type,
+				is_public,
+				created_at,
+				updated_at,
+			};
+			if (existingIndex >= 0) {
+				store.uploadedImages[existingIndex] = imageRow;
+			} else {
+				store.uploadedImages.push(imageRow);
+			}
+			return [] as T[];
+		}
+
+		if (normalized.includes('from uploaded_images')) {
+			let results = store.uploadedImages;
+
+			// Handle user_id filter
+			if (normalized.includes('user_id = ?')) {
+				// We need to find which arg corresponds to user_id.
+				// In listUploadedImages, the order is params.push(userId) if userId exists.
+				// And then limit, offset.
+				// But we are in the shim, we receive `this.args`.
+				// If user_id is present, it's the first arg.
+				// But wait, listUploadedImages uses named parameters? No, `?` placeholders.
+				// The implementation in db.ts conditionally adds parameters.
+
+				// If the query has 'user_id = ?', then the first arg is user_id.
+				// Unless there are other filters before it?
+				// query = 'SELECT * FROM uploaded_images WHERE 1=1'
+				// if (userId) query += ' AND user_id = ?'
+				// So if user_id check is present, it's the first param.
+				const userId = this.args[0] as string;
+				results = results.filter(img => img.user_id === userId);
+			}
+
+			// Handle sorting (mock always sorts by created_at desc)
+			results.sort((a, b) => b.created_at - a.created_at);
+
+			// Handle limit/offset
+			// The last two args are typically limit and offset.
+			if (this.args.length >= 2) {
+				const offset = this.args[this.args.length - 1] as number;
+				const limit = this.args[this.args.length - 2] as number;
+				results = results.slice(offset, offset + limit);
+			}
+
+			return results as unknown as T[];
 		}
 
 		return [] as T[];
