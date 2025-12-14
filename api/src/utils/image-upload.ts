@@ -35,12 +35,24 @@ export const validateImageFile = (file: File): string | null => {
  * @returns Unique key for R2 storage
  */
 export const generateImageKey = (userId: string, filename: string): string => {
-	const ext = filename.split('.').pop() || '';
+	const parts = filename.split('.');
+	// Get extension only if there is one (length > 1 means at least name + dot + ext)
+	// If filename starts with dot (hidden file), parts[0] is empty, which is fine.
+	let ext = parts.length > 1 ? parts.pop() || '' : '';
+
+	// Sanitize extension: allow only alphanumeric characters
+	// This prevents path traversal (..) and special characters
+	ext = ext.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
 	const timestamp = Date.now();
 	const uniqueId = createId('img');
-	// Sanitize filename to remove non-alphanumeric characters except dots and dashes
-	const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
-	return `images/${userId}/${timestamp}-${uniqueId}.${ext}`;
+
+	// If no valid extension found or empty after sanitization, default to 'bin' or just append nothing?
+	// Given we only allow specific image types in validation, we could infer ext, but here we just sanitize.
+	// If ext is empty, the key will end with a dot. Let's avoid that.
+	const suffix = ext ? `.${ext}` : '';
+
+	return `images/${userId}/${timestamp}-${uniqueId}${suffix}`;
 };
 
 /**
@@ -85,5 +97,3 @@ export const uploadImageToR2 = async (
 		size: file.size,
 	};
 };
-
-
