@@ -61,6 +61,8 @@ vi.mock('react-native', () => ({
 			},
 			'data-testid': props.testID,
 		}),
+	Modal: ({ children, visible = true, ...props }: any) =>
+		visible ? React.createElement('div', { ...props, 'data-testid': props.testID ?? 'modal' }, children) : null,
 
 	// Platform
 	Platform: {
@@ -73,6 +75,13 @@ vi.mock('react-native', () => ({
 		get: vi.fn().mockReturnValue({ width: 375, height: 812 }),
 		addEventListener: vi.fn(),
 		removeEventListener: vi.fn(),
+	},
+	useWindowDimensions: () => ({ width: 1024, height: 768, scale: 2, fontScale: 2 }),
+
+	PanResponder: {
+		create: (handlers: any) => ({
+			panHandlers: handlers ?? {},
+		}),
 	},
 
 	// StyleSheet

@@ -21,15 +21,15 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 	cancelLabel = 'Cancel',
 }) => (
 	<Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-		<View style={styles.overlay}>
-			<View style={styles.modalBox}>
+		<View style={styles.overlay} testID="confirm-overlay">
+			<View style={styles.modalBox} testID="confirm-modal">
 				<Text style={styles.title}>{title}</Text>
 				<Text style={styles.message}>{message}</Text>
 				<View style={styles.buttonRow}>
-					<TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
+					<TouchableOpacity style={styles.cancelButton} onPress={onCancel} testID="confirm-cancel">
 						<Text style={styles.cancelButtonText}>{cancelLabel}</Text>
 					</TouchableOpacity>
-					<TouchableOpacity style={styles.confirmButton} onPress={onConfirm}>
+					<TouchableOpacity style={styles.confirmButton} onPress={onConfirm} testID="confirm-accept">
 						<Text style={styles.confirmButtonText}>{confirmLabel}</Text>
 					</TouchableOpacity>
 				</View>

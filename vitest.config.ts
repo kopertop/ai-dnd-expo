@@ -115,6 +115,9 @@ export default defineConfig({
 			],
 		},
 	},
+	optimizeDeps: {
+		exclude: ['react-native'],
+	},
 	ssr: {
 		noExternal: [
 			'react-native',
@@ -138,7 +141,10 @@ export default defineConfig({
 			{ find: '@/hooks', replacement: path.resolve(rootDir, 'hooks') },
 			{ find: '@/components', replacement: path.resolve(rootDir, 'components') },
 			{ find: '@/types', replacement: path.resolve(rootDir, 'types') },
+			{ find: 'react-native', replacement: reactNativeMock },
 			{ find: /^react-native(?:\/.*)?$/, replacement: reactNativeMock },
+			{ find: 'react-native/index.js', replacement: reactNativeMock },
+			{ find: 'react-native/index', replacement: reactNativeMock },
 			{ find: '@expo/vector-icons$', replacement: vectorIconMock },
 			{ find: '@expo/vector-icons/build/createIconSet', replacement: vectorIconMock },
 			{ find: '@expo/vector-icons/build/createIconSet.js', replacement: vectorIconMock },

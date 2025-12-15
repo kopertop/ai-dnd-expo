@@ -384,6 +384,7 @@ const MapTile: React.FC<{
 					opacity: hoveredTile?.x === x && hoveredTile?.y === y ? 0.6 : 1,
 				},
 			]}
+			testID={`map-tile-${x}-${y}`}
 		>
 			{hasTrap && (
 				<View style={styles.trapIndicator}>
@@ -406,9 +407,10 @@ const MapTile: React.FC<{
 					onTilePress?.(x, y);
 				}}
 				onLongPress={() => onTileLongPress?.(x, y)}
+				testID={`map-tile-touchable-${x}-${y}`}
 			>
 				{isReachable && (
-					<View style={styles.rangeOutline} />
+					<View style={styles.rangeOutline} testID={`map-tile-reachable-${x}-${y}`} />
 				)}
 			</TouchableOpacity>
 		</View>
@@ -1027,6 +1029,7 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 				setContainerSize({ width: squareDimension, height: squareDimension });
 			}}
 			{...(enablePanning ? panResponder.panHandlers : {})}
+			testID="interactive-map"
 		>
 			<View style={styles.panSurface}>
 				<View
@@ -1042,6 +1045,7 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
 							],
 						},
 					]}
+					testID="map-grid"
 				>
 					{backgroundImage && (
 						<Image

@@ -1,12 +1,15 @@
 ---
 id: task-26
 title: Add reliable unit tests for admin map editor screen
-status: In Progress
+status: Done
 assignee:
   - cmoyer
 created_date: '2025-12-14 16:14'
-updated_date: '2025-12-14 23:32'
-labels: []
+updated_date: '2025-12-15 14:04'
+labels:
+  - testing
+  - frontend
+  - map
 dependencies: []
 ---
 
@@ -28,11 +31,10 @@ Add robust unit tests for the admin Map Editor screen so interactions and save p
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-Next steps to finish stabilization and coverage:
-- Fix Vitest API runner resolution for `cloudflare:test` by enforcing shim redirect (alias + Module resolver) so API suites load without scheme errors.
-- Stub @expo/vector-icons for React Native unit tests (e.g., Collapsible) so Vitest doesn't parse JSX from the library.
-- Re-run full `bun run test` to ensure all suites pass; capture coverage numbers for MapEditor and nearby utilities.
-- Identify any remaining high-value gaps and add tests if needed to keep coverage high for MapEditor and related hooks.
+- [x] Fix Vitest Cloudflare scheme resolution so API suites load reliably.
+- [x] Stub @expo/vector-icons for React Native unit tests to avoid JSX parse errors.
+- [x] Re-run `bun run test` and capture coverage for MapEditor and related utilities.
+- [x] Add/adjust MapEditorScreen tests to cover loading, tool switching, painting, object flows, and save payloads; address any remaining gaps found in coverage run.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -41,4 +43,6 @@ Next steps to finish stabilization and coverage:
 Added data-testid hooks across MapEditorScreen (loading indicator, toolbar tools, grid/terrain/object inputs, save) and strengthened react-native/react-native-svg mocks plus toolbar/accessory mocks. Implemented unit tests for load success/error, tool switching, terrain paint/clear with tile properties, object add/edit/remove, and save PATCH/POST payloads. Ran `bun run test tests/unit/app/admin/maps/map-editor-screen.test.tsx` successfully.
 
 Stabilized the broader suite by mocking PartyServer/Cloudflare scheme resolution for API tests, adding vector icon shims and asset mocks for React Native tests, and rerunning `bun run test` and `bun run test:coverage` (all suites passing).
+
+Full suite remains green after recent map/ui test additions; MapEditorScreen coverage and selectors remain stable with added testIDs.
 <!-- SECTION:NOTES:END -->

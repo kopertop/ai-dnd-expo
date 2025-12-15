@@ -23,6 +23,7 @@ export const Accordion: React.FC<AccordionProps> = ({
 				style={styles.header}
 				onPress={onToggle}
 				activeOpacity={0.7}
+				testID="accordion-toggle"
 			>
 				<ThemedText type="defaultSemiBold" style={styles.title}>
 					{title}

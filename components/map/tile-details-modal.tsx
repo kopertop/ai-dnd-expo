@@ -61,7 +61,7 @@ export const TileDetailsModal: React.FC<TileDetailsModalProps> = ({
 
 	return (
 		<Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-			<TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+			<TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose} testID="tile-details-overlay">
 				<View
 					style={[
 						styles.modalContainer,
@@ -71,12 +71,13 @@ export const TileDetailsModal: React.FC<TileDetailsModalProps> = ({
 						},
 					]}
 					onStartShouldSetResponder={() => true}
+					testID="tile-details-modal"
 				>
 					<View style={styles.header}>
 						<ThemedText type="title" style={styles.title}>
 							Tile Details
 						</ThemedText>
-						<TouchableOpacity style={styles.closeButton} onPress={onClose}>
+						<TouchableOpacity style={styles.closeButton} onPress={onClose} testID="tile-details-close">
 							<ThemedText style={styles.closeButtonText}>✕</ThemedText>
 						</TouchableOpacity>
 					</View>

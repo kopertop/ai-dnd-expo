@@ -48,6 +48,8 @@ export const Switch = ({ value, onValueChange, ...props }: any) =>
 		},
 		'data-testid': props.testID,
 	});
+export const Modal = ({ children, visible = true, ...props }: any) =>
+	visible ? React.createElement('div', { ...props, 'data-testid': props.testID ?? 'modal' }, children) : null;
 
 export const Platform = {
 	OS: 'ios',
@@ -60,9 +62,17 @@ export const Dimensions = {
 	removeEventListener: () => {},
 };
 
+export const useWindowDimensions = () => ({ width: 1024, height: 768, scale: 2, fontScale: 2 });
+
 export const StyleSheet = {
 	create: (styles: any) => styles,
 	flatten: (style: any) => style,
+};
+
+export const PanResponder = {
+	create: (handlers: any) => ({
+		panHandlers: handlers ?? {},
+	}),
 };
 
 export const Alert = {
@@ -86,4 +96,7 @@ export default {
 	ActivityIndicator,
 	Switch,
 	useColorScheme,
+	useWindowDimensions,
+	PanResponder,
+	Modal,
 };
