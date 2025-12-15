@@ -50,11 +50,11 @@ class PreparedStatement {
 		// Characters
 		if (normalized.startsWith('insert into characters')) {
 			const [
-				id, player_id, player_email, name, level, race, class_, description, trait, icon, stats, skills, inventory, equipped, health, max_health, action_points, max_action_points, created_at, updated_at
+				id, player_id, player_email, name, level, race, class_, description, trait, icon, stats, skills, inventory, equipped, health, max_health, action_points, max_action_points, created_at, updated_at,
 			] = this.args as [string, string, string | null, string, number, string, string, string | null, string, string | null, string, string, string, string, number, number, number, number, number, number];
 
 			const character = {
-				id, player_id, player_email, name, level, race, class: class_, description, trait, icon, stats, skills, inventory, equipped, health, max_health, action_points, max_action_points, status_effects: '[]', prepared_spells: '[]', created_at, updated_at
+				id, player_id, player_email, name, level, race, class: class_, description, trait, icon, stats, skills, inventory, equipped, health, max_health, action_points, max_action_points, status_effects: '[]', prepared_spells: '[]', created_at, updated_at,
 			};
 			const existingIndex = store.characters.findIndex(c => c.id === id);
 			if (existingIndex >= 0) {
@@ -108,11 +108,11 @@ class PreparedStatement {
 		// Games
 		if (normalized.startsWith('insert into games')) {
 			const [
-				id, invite_code, host_id, host_email, quest_id, quest_data, world, starting_area, status, current_map_id, created_at, updated_at
+				id, invite_code, host_id, host_email, quest_id, quest_data, world, starting_area, status, current_map_id, created_at, updated_at,
 			] = this.args as [string, string, string, string | null, string, string, string, string, 'waiting' | 'active' | 'completed' | 'cancelled', string | null, number, number];
 
 			const game = {
-				id, invite_code, host_id, host_email, quest_id, quest_data, world, starting_area, status, current_map_id, created_at, updated_at
+				id, invite_code, host_id, host_email, quest_id, quest_data, world, starting_area, status, current_map_id, created_at, updated_at,
 			};
 			store.games.push(game);
 			return [] as T[];
@@ -135,10 +135,10 @@ class PreparedStatement {
 		// Game Players
 		if (normalized.startsWith('insert into game_players')) {
 			const [
-				id, game_id, player_id, player_email, character_id, character_name, joined_at
+				id, game_id, player_id, player_email, character_id, character_name, joined_at,
 			] = this.args as [string, string, string, string | null, string, string, number];
 			store.gamePlayers.push({
-				id, game_id, player_id, player_email, character_id, character_name, joined_at
+				id, game_id, player_id, player_email, character_id, character_name, joined_at,
 			});
 			return [] as T[];
 		}

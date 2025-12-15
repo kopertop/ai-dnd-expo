@@ -1,17 +1,17 @@
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
-    useWindowDimensions,
+	ActivityIndicator,
+	Alert,
+	Image,
+	Modal,
+	Platform,
+	ScrollView,
+	StyleSheet,
+	TextInput,
+	TouchableOpacity,
+	View,
+	useWindowDimensions,
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
