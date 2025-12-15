@@ -269,9 +269,17 @@ core.post('/:inviteCode/join', async (c) => {
 
 	// Accept either full character payload or a characterId referring to an existing character
 	const existingCharacterRow = body.characterId ? await db.getCharacterById(body.characterId) : null;
+
+	// Security: Ensure the character belongs to the authenticated user
+	if (existingCharacterRow && existingCharacterRow.player_id !== user.id) {
+		return c.json({ error: 'Forbidden - Cannot use another user\'s character' }, 403);
+	}
+
 	const character = body.character || (existingCharacterRow ? deserializeCharacter(existingCharacterRow) : null);
-	const playerId = body.playerId || existingCharacterRow?.player_id || user.id;
-	const playerEmail = body.playerEmail || existingCharacterRow?.player_email || user.email || null;
+
+	// Security: Enforce identity based on authenticated user (ignore body.playerId)
+	const playerId = user.id;
+	const playerEmail = user.email || null;
 
 	if (!character) {
 		return c.json({ error: 'Character data is required' }, 400);

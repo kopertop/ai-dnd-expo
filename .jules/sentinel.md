@@ -7,3 +7,8 @@
 **Vulnerability:** Path traversal and special character injection in R2 keys via `generateImageKey`. The function extracted the extension from the filename without sanitization, allowing inputs like `file.png/../../hack` to manipulate the generated key. It also ignored a defined `sanitizedFilename` variable.
 **Learning:** Extracting file extensions using string splitting without validation is risky. Unused variables (`sanitizedFilename`) can mask security intent that isn't actually implemented.
 **Prevention:** Always sanitize extracted file extensions using an allowlist (alphanumeric only). Use defensive coding to ensure sanitized values are actually used in the final output.
+
+## 2025-10-26 - Unprotected Player Identity in Game Join
+**Vulnerability:** IDOR and Account Impersonation in `POST /api/games/:inviteCode/join`. The endpoint trusted `playerId` from the request body, allowing an attacker to join a game as another user. It also allowed "joining" with a character ID belonging to another user, effectively hijacking that character's session in the game.
+**Learning:** Trusting request body parameters for identity (`playerId`) instead of the authenticated session (`user.id`) is a critical flaw. Even "convenience" features for debugging or flexibility can become major security holes.
+**Prevention:** Always derive user identity from the authenticated session context (`c.get('user')`). Verify ownership of any resources (like `characterId`) provided by the user before performing actions on them.
