@@ -278,7 +278,7 @@ const MapEditorScreen: React.FC = () => {
 	if (loading || !map) {
 		return (
 			<ThemedView style={styles.center}>
-				<ActivityIndicator size="large" color="#8B6914" />
+				<ActivityIndicator size="large" color="#8B6914" testID="loading-indicator" />
 			</ThemedView>
 		);
 	}
@@ -300,6 +300,8 @@ const MapEditorScreen: React.FC = () => {
 						<TouchableOpacity
 							key={tool.id}
 							style={[styles.toolBtn, activeTool === tool.id && styles.toolBtnActive]}
+							testID={`tool-${tool.id}`}
+							accessibilityLabel={`${tool.name} tool`}
 							onPress={() => {
 								setActiveTool(tool.id);
 								setShowSidebar(true);
@@ -354,7 +356,7 @@ const MapEditorScreen: React.FC = () => {
 										<View>
 											<ThemedText style={styles.helperText}>Select a tile to edit properties.</ThemedText>
 											<View style={styles.divider} />
-											<ThemedText style={styles.sectionTitle}>Map Settings</ThemedText>
+											<ThemedText style={styles.sectionTitle} testID="map-settings-label">Map Settings</ThemedText>
 
 											<View style={styles.inputGroup}>
 												<ThemedText style={styles.label}>Background Image</ThemedText>
@@ -385,6 +387,7 @@ const MapEditorScreen: React.FC = () => {
 												<TextInput
 													style={styles.input}
 													value={String(selectedTile.movement_cost ?? 1)}
+													testID="movement-cost-input"
 													onChangeText={(t) => updateSelectedTile({ movement_cost: parseFloat(t) || 1 })}
 													keyboardType="numeric"
 												/>
@@ -394,6 +397,7 @@ const MapEditorScreen: React.FC = () => {
 												<ThemedText>Blocked</ThemedText>
 												<Switch
 													value={selectedTile.is_blocked}
+													testID="blocked-switch"
 													onValueChange={(v) => updateSelectedTile({ is_blocked: v })}
 												/>
 											</View>
@@ -402,6 +406,7 @@ const MapEditorScreen: React.FC = () => {
 												<ThemedText>Difficult Terrain</ThemedText>
 												<Switch
 													value={selectedTile.is_difficult}
+													testID="difficult-switch"
 													onValueChange={(v) => updateSelectedTile({ is_difficult: v })}
 												/>
 											</View>
@@ -410,6 +415,7 @@ const MapEditorScreen: React.FC = () => {
 												<ThemedText>Provides Cover</ThemedText>
 												<Switch
 													value={selectedTile.provides_cover}
+													testID="cover-switch"
 													onValueChange={(v) => updateSelectedTile({ provides_cover: v })}
 												/>
 											</View>
@@ -419,12 +425,14 @@ const MapEditorScreen: React.FC = () => {
 												<TextInput
 													style={styles.input}
 													value={selectedTile.terrain || ''}
+													testID="terrain-type-input"
 													onChangeText={(t) => updateSelectedTile({ terrain: t })}
 												/>
 											</View>
 
 											<TouchableOpacity
 												style={styles.deleteBtn}
+												testID="clear-tile-button"
 												onPress={() => {
 													const next = { ...tiles };
 													delete next[selectedTileKey!];
@@ -446,6 +454,7 @@ const MapEditorScreen: React.FC = () => {
 										<TextInput
 											style={styles.input}
 											value={String(gridConfig.size)}
+											testID="grid-size-input"
 											onChangeText={(text) =>
 												setGridConfig({ ...gridConfig, size: parseInt(text) || 64 })
 											}
@@ -458,6 +467,7 @@ const MapEditorScreen: React.FC = () => {
 											<TextInput
 												style={styles.input}
 												value={String(gridConfig.columns)}
+												testID="grid-columns-input"
 												onChangeText={(text) =>
 													setGridConfig({ ...gridConfig, columns: parseInt(text) || 1 })
 												}
@@ -469,6 +479,7 @@ const MapEditorScreen: React.FC = () => {
 											<TextInput
 												style={styles.input}
 												value={String(gridConfig.rows)}
+												testID="grid-rows-input"
 												onChangeText={(text) =>
 													setGridConfig({ ...gridConfig, rows: parseInt(text) || 1 })
 												}
@@ -483,6 +494,7 @@ const MapEditorScreen: React.FC = () => {
 											<TextInput
 												style={styles.input}
 												value={String(gridConfig.offsetX)}
+												testID="grid-offset-x-input"
 												onChangeText={(text) =>
 													setGridConfig({ ...gridConfig, offsetX: parseInt(text) || 0 })
 												}
@@ -494,6 +506,7 @@ const MapEditorScreen: React.FC = () => {
 											<TextInput
 												style={styles.input}
 												value={String(gridConfig.offsetY)}
+												testID="grid-offset-y-input"
 												onChangeText={(text) =>
 													setGridConfig({ ...gridConfig, offsetY: parseInt(text) || 0 })
 												}
@@ -515,6 +528,7 @@ const MapEditorScreen: React.FC = () => {
 													styles.terrainOption,
 													activeTerrain === type.id && styles.terrainOptionActive,
 												]}
+												testID={`terrain-option-${type.id}`}
 												onPress={() => setActiveTerrain(type.id)}
 											>
 												<View style={[styles.terrainColor, { backgroundColor: type.color }]} />
@@ -529,6 +543,7 @@ const MapEditorScreen: React.FC = () => {
 								<View>
 									<ThemedText style={styles.sectionTitle}>Add Object</ThemedText>
 									<ImageUploader
+										testID="image-uploader"
 										onChange={handleAddObject}
 										placeholder="Upload Object/Mini"
 									/>
@@ -544,6 +559,7 @@ const MapEditorScreen: React.FC = () => {
 															<TextInput
 																style={[styles.input, { padding: 4, height: 30, width: 50, marginLeft: 4 }]}
 																value={String(obj.x)}
+																testID={`object-x-input-${idx}`}
 																onChangeText={(t) => {
 																	const newObjs = [...objects];
 																	newObjs[idx].x = parseInt(t) || 0;
@@ -555,6 +571,7 @@ const MapEditorScreen: React.FC = () => {
 															<TextInput
 																style={[styles.input, { padding: 4, height: 30, width: 50, marginLeft: 4 }]}
 																value={String(obj.y)}
+																testID={`object-y-input-${idx}`}
 																onChangeText={(t) => {
 																	const newObjs = [...objects];
 																	newObjs[idx].y = parseInt(t) || 0;
@@ -568,7 +585,7 @@ const MapEditorScreen: React.FC = () => {
 														const newObjs = [...objects];
 														newObjs.splice(idx, 1);
 														setObjects(newObjs);
-													}}>
+													}} testID={`remove-object-${idx}`}>
 														<ExpoIcon icon="Feather:trash-2" size={16} color="#8B2323" />
 													</TouchableOpacity>
 												</View>
@@ -599,9 +616,10 @@ const MapEditorScreen: React.FC = () => {
 				onPress={handleSave}
 				disabled={saving}
 				accessibilityLabel="Save Map"
+				testID="save-map"
 			>
 				{saving ? (
-					<ActivityIndicator size="small" color="#FFF" />
+					<ActivityIndicator size="small" color="#FFF" testID="saving-indicator" />
 				) : (
 					<ExpoIcon icon="Feather:save" size={24} color="#FFF" />
 				)}

@@ -11,9 +11,16 @@ interface ImageUploaderProps {
 	onChange: (url: string) => void;
 	folder?: string;
 	placeholder?: string;
+	testID?: string;
 }
 
-export function ImageUploader({ value, onChange, folder = 'misc', placeholder = 'Upload Image' }: ImageUploaderProps) {
+export function ImageUploader({
+	value,
+	onChange,
+	folder = 'misc',
+	placeholder = 'Upload Image',
+	testID,
+}: ImageUploaderProps) {
 	const [uploading, setUploading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [mediaModalVisible, setMediaModalVisible] = useState(false);
@@ -57,7 +64,7 @@ export function ImageUploader({ value, onChange, folder = 'misc', placeholder = 
 	};
 
 	return (
-		<View style={styles.container}>
+		<View style={styles.container} testID={testID}>
 			<TouchableOpacity style={styles.uploadArea} onPress={() => setMediaModalVisible(true)} disabled={uploading}>
 				{value ? (
 					<Image source={{ uri: value }} style={styles.preview} resizeMode="contain" />

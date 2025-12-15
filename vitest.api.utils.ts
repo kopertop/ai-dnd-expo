@@ -4,10 +4,29 @@ import { getStore, resetStore } from './api/tests/mock-db-store';
 
 import * as realDb from '@/shared/workers/db';
 
+// Force-resolve Cloudflare protocol imports to the local shim so Node's loader doesn't reject the scheme
+const Module = require('module');
+const originalResolve = Module._resolveFilename;
+Module._resolveFilename = function (request: string, parent: any, isMain: boolean, options: any) {
+	if (typeof request === 'string' && request.startsWith('cloudflare:')) {
+		return require.resolve('./api/tests/cloudflare-test-shim.ts');
+	}
+	return originalResolve.call(this, request, parent, isMain, options);
+};
+
 if (!globalThis.fetch) {
 	const { fetch, Headers, Request, Response, FormData } = require('undici');
 	Object.assign(globalThis, { fetch, Headers, Request, Response, FormData });
 }
+
+// Mock PartyServer to avoid cloudflare:workers imports during tests
+vi.mock('partyserver', () => {
+	const fetchStub = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+	return {
+		Server: vi.fn(() => ({ upgrade: vi.fn(), fetch: fetchStub })),
+		getServerByName: vi.fn(async () => ({ fetch: fetchStub })),
+	};
+});
 
 vi.mock('fs/promises', () => ({
 	readdir: async () => [],
@@ -174,6 +193,10 @@ class InMemoryDatabase {
 
 	async getMapById(mapId: string): Promise<realDb.MapRow | null> {
 		return this.store.maps.find(m => m.id === mapId) ?? null;
+	}
+
+	async getMapBySlug(slug: string): Promise<realDb.MapRow | null> {
+		return this.store.maps.find(m => m.slug === slug) ?? null;
 	}
 
 	async getMapTiles(mapId: string): Promise<realDb.MapTileRow[]> {
