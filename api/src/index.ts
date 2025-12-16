@@ -1,9 +1,9 @@
-import { handleGoogleCallback, useAuth, User } from 'expo-auth-template/backend';
+import { handleGoogleCallback, useAuth } from 'expo-auth-template/backend';
 import { Hono } from 'hono';
 import { partyserverMiddleware } from 'hono-party';
 
 import { corsMiddleware } from './cors';
-import type { CloudflareBindings } from './env';
+import type { HonoContext } from './env';
 import { GameRoom } from './partykit/server';
 import adminRoutes from './routes/admin';
 import characterRoutes from './routes/characters';
@@ -12,13 +12,12 @@ import imageRoutes from './routes/images';
 import mapRoutes from './routes/maps';
 import meRoutes from './routes/me';
 import questRoutes from './routes/quests';
+import worldRoutes from './routes/worlds';
 import { resolveSqlBinding } from './utils/repository';
 
-type Variables = {
-	user: User | null;
-};
+import type { User } from '@/types/models';
 
-const app = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
+const app = new Hono<HonoContext>();
 
 // Apply CORS globally
 app.use('*', corsMiddleware);
@@ -79,9 +78,18 @@ app.use('*', async (c, next) => {
 
 	// Authenticate using expo-auth-template
 	const user = await useAuth(c.req.raw, envWithDB);
+	const hydratedUser: (User & { created_at?: number; updated_at?: number }) | null = user
+		? {
+			...user,
+			created_at: user.created_at ?? Date.now(),
+			updated_at: user.updated_at ?? Date.now(),
+			isAdmin: user.isAdmin ?? user.is_admin ?? false,
+			is_admin: user.is_admin ?? user.isAdmin ?? false,
+		}
+		: null;
 
 	// Set user in context
-	c.set('user', user);
+	c.set('user', hydratedUser);
 
 	await next();
 });
@@ -147,6 +155,7 @@ app.route('/api/characters', characterRoutes);
 app.route('/api/quests', questRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/maps', mapRoutes);
+app.route('/api/worlds', worldRoutes);
 // Note: /api/auth/exchange and /api/device-tokens routes removed - handled by expo-auth-template
 app.route('/api/me', meRoutes);
 

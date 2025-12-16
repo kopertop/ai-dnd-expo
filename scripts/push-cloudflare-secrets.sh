@@ -87,9 +87,9 @@ put_secret() {
 	fi
 
 	if [[ -n "$WRANGLER_ENV" ]]; then
-		printf "%s" "$value" | wrangler secret put "$name" --env "$WRANGLER_ENV"
+		printf "%s" "$value" | wrangler secret put "$name" --env "$WRANGLER_ENV" --config wrangler.api.toml
 	else
-		printf "%s" "$value" | wrangler secret put "$name"
+		printf "%s" "$value" | wrangler secret put "$name" --config wrangler.api.toml
 	fi
 }
 

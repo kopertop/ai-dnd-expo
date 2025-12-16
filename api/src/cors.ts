@@ -4,6 +4,8 @@
 
 import { Context, Next } from 'hono';
 
+import type { HonoContext } from './env';
+
 /**
  * Get allowed origin from request
  * When credentials are included, we must use a specific origin, not '*'
@@ -63,8 +65,13 @@ export function corsHeaders(origin: string | null): Record<string, string> {
 /**
  * CORS middleware for Hono
  */
-export async function corsMiddleware(c: Context, next: Next) {
+export async function corsMiddleware(c: Context<HonoContext>, next: Next) {
 	const origin = c.req.header('Origin') || c.req.header('referer') || null;
+
+	// Set dev flag in request context instead of mutating immutable env bindings
+	if (origin?.startsWith('http://localhost') || origin?.startsWith('http://127.0.0.1')) {
+		c.set('isDev', true);
+	}
 
 	const headers = corsHeaders(origin);
 

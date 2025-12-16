@@ -4,6 +4,10 @@
 - When resetting turns in the durable game session, ensure `activeTurn` usage fields are cleared and speeds are derived per-entity; also guard paused turn snapshots against nulls.
 - In `api-base-url` resolution, `expo-constants` typings don’t expose `expoConfig`; cast the config when reading `extra` values to keep typecheck happy.
 
+## Lint Fixes
+
+- For `react/function-component-definition`, prefer `const MyComponent: React.FC<PropType> = (props) => { ... }; export default MyComponent;` instead of `function MyComponent() { ... }`.
+
 <!-- BACKLOG.MD MCP GUIDELINES START -->
 
 <CRITICAL_INSTRUCTION>
@@ -32,3 +36,30 @@ You MUST read the overview resource to understand the complete workflow. The inf
 </CRITICAL_INSTRUCTION>
 
 <!-- BACKLOG.MD MCP GUIDELINES END -->
+
+## GitHub CLI (`gh`) Usage
+
+When reviewing pull requests or managing GitHub operations:
+
+### Common Commands:
+- `gh pr list` - List all open PRs
+- `gh pr view <number>` - View PR details (title, description, author, status)
+- `gh pr view <number> --json <fields>` - Get structured JSON data (e.g., `mergeable`, `mergeStateStatus`)
+- `gh pr diff <number>` - View the diff for a PR
+- `gh pr checks <number>` - Check CI/CD status (may return "no checks reported" if CI not configured)
+- `gh pr view <number> --comments` - View comments on a PR
+- `gh pr comment <number> --body "<text>"` - Add a comment to a PR (use quotes for multi-line)
+
+### PR Review Workflow:
+1. List PRs: `gh pr list`
+2. View details: `gh pr view <number>`
+3. Check mergeability: `gh pr view <number> --json mergeable,mergeStateStatus`
+4. Review diff: `gh pr diff <number>`
+5. Check CI status: `gh pr checks <number>`
+6. Add feedback: `gh pr comment <number> --body "<review>"`
+
+### Notes:
+- Always check `mergeStateStatus` (should be "CLEAN" for mergeable PRs)
+- DRAFT PRs should not be merged until marked ready
+- When commenting, use `@jules` to tag the bot if requesting changes
+- For multi-line comments, use heredoc or escape quotes properly in shell

@@ -8,12 +8,17 @@ export const UserSchema = z.object({
 	id: z.string().uuid(),
 	email: z.string().email(),
 	name: z.string(),
+	is_admin: z.boolean().optional(),
+	isAdmin: z.boolean().optional(),
+	role: z.string().optional(),
 	picture: z.string().url().optional(),
 	created_at: z.number(),
 	updated_at: z.number(),
 });
 
-export type User = z.infer<typeof UserSchema>;
+export type User = z.infer<typeof UserSchema> & {
+	isAdmin?: boolean; // Alias for is_admin, prefer is_admin in new code
+};
 
 // ============================================================================
 // Device Token Models
@@ -61,6 +66,24 @@ export type Game = z.infer<typeof GameSchema>;
 // Character Models
 // ============================================================================
 
+export const DamageTypeSchema = z.enum([
+	'fire',
+	'radiant',
+	'force',
+	'cold',
+	'lightning',
+	'acid',
+	'necrotic',
+	'poison',
+	'psychic',
+	'thunder',
+	'bludgeoning',
+	'piercing',
+	'slashing',
+	'healing',
+	'support',
+]);
+
 export const StatsSchema = z.object({
 	strength: z.number().int().min(1).max(30).optional(),
 	dexterity: z.number().int().min(1).max(30).optional(),
@@ -96,9 +119,14 @@ export const CharacterSchema = z.object({
 	action_points: z.number().int().min(0),
 	max_action_points: z.number().int().min(0),
 	status_effects: z.array(z.string()).default([]),
+	prepared_spells: z.array(z.string()).default([]), // Array of spell IDs
+	weaknesses: z.array(DamageTypeSchema).optional(),
+	resistances: z.array(DamageTypeSchema).optional(),
+	immunities: z.array(DamageTypeSchema).optional(),
 	created_at: z.number().optional(),
 	updated_at: z.number().optional(),
 });
+
 
 export type Character = z.infer<typeof CharacterSchema>;
 
@@ -261,6 +289,9 @@ export function parseCharacterFromDb(row: any): Character {
 		skills: typeof row.skills === 'string' ? JSON.parse(row.skills) : row.skills,
 		inventory: typeof row.inventory === 'string' ? JSON.parse(row.inventory) : row.inventory,
 		equipped: typeof row.equipped === 'string' ? JSON.parse(row.equipped) : row.equipped,
+		weaknesses: typeof row.weaknesses === 'string' ? JSON.parse(row.weaknesses) : row.weaknesses,
+		resistances: typeof row.resistances === 'string' ? JSON.parse(row.resistances) : row.resistances,
+		immunities: typeof row.immunities === 'string' ? JSON.parse(row.immunities) : row.immunities,
 	};
 	return CharacterSchema.parse(parsed);
 }

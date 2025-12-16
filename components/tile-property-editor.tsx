@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
+import { Picker } from '@react-native-picker/picker';
+import React, { useEffect, useState } from 'react';
 import {
-	ScrollView,
-	StyleSheet,
-	Switch,
-	TextInput,
-	TouchableOpacity,
-	View,
+    StyleSheet,
+    Switch,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import {
+    TERRAIN_TYPES,
+    getTerrainDisplayName,
+    isValidTerrainType,
+} from '@/constants/terrain-types';
 
 interface TileProperties {
 	terrainType: string;
@@ -26,14 +31,52 @@ interface TilePropertyEditorProps {
 	properties: TileProperties;
 	onChange: (properties: TileProperties) => void;
 	onClose: () => void;
+	compact?: boolean;
 }
 
 export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 	properties,
 	onChange,
 	onClose,
+	compact = false,
 }) => {
-	const [localProps, setLocalProps] = useState<TileProperties>(properties);
+	// Normalize terrain type - default to 'stone' if empty, 'none', or invalid
+
+	const normalizedTerrainType =
+		properties.terrainType &&
+		properties.terrainType !== 'none' &&
+		isValidTerrainType(properties.terrainType)
+			? properties.terrainType
+			: 'stone';
+
+	const [localProps, setLocalProps] = useState<TileProperties>({
+		...properties,
+		terrainType: normalizedTerrainType,
+	});
+
+	// Update localProps when properties prop changes (e.g., when selecting a different tile)
+	useEffect(() => {
+		const normalizedTerrainType =
+			properties.terrainType &&
+			properties.terrainType !== 'none' &&
+			isValidTerrainType(properties.terrainType)
+				? properties.terrainType
+				: 'stone';
+
+		setLocalProps({
+			...properties,
+			terrainType: normalizedTerrainType,
+		});
+	}, [
+		properties.terrainType,
+		properties.movementCost,
+		properties.isBlocked,
+		properties.isDifficult,
+		properties.providesCover,
+		properties.coverType,
+		properties.elevation,
+		properties.featureType,
+	]);
 
 	const handleChange = <K extends keyof TileProperties>(key: K, value: TileProperties[K]) => {
 		const newProps = { ...localProps, [key]: value };
@@ -61,34 +104,38 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 		onChange(newProps);
 	};
 
-	return (
-		<ThemedView style={styles.container}>
-			<View style={styles.header}>
-				<ThemedText type="subtitle">Tile Properties</ThemedText>
-				<TouchableOpacity onPress={onClose}>
-					<ThemedText style={styles.closeButton}>✕</ThemedText>
-				</TouchableOpacity>
-			</View>
-
-			<ScrollView style={styles.scrollContent}>
+	const content = (
+		<View style={compact ? styles.contentCompact : styles.content}>
 				<View style={styles.section}>
 					<ThemedText style={styles.sectionTitle}>Movement & Terrain</ThemedText>
 
-					<View style={styles.row}>
-						<ThemedText>Terrain Type</ThemedText>
-						<TextInput
-							style={styles.input}
-							value={localProps.terrainType}
-							onChangeText={(text) => handleChange('terrainType', text)}
-						/>
+					<View style={styles.inputGroup}>
+						<ThemedText style={styles.label}>Terrain Type</ThemedText>
+						<View style={styles.pickerContainer}>
+							<Picker
+								selectedValue={localProps.terrainType || 'stone'}
+								onValueChange={(itemValue) => handleChange('terrainType', itemValue)}
+								style={styles.picker}
+								testID="terrain-type-input"
+							>
+								{TERRAIN_TYPES.map((terrain) => (
+									<Picker.Item
+										key={terrain}
+										label={getTerrainDisplayName(terrain)}
+										value={terrain}
+									/>
+								))}
+							</Picker>
+						</View>
 					</View>
 
-					<View style={styles.row}>
-						<ThemedText>Movement Cost</ThemedText>
+					<View style={styles.inputGroup}>
+						<ThemedText style={styles.label}>Movement Cost</ThemedText>
 						<TextInput
 							style={[styles.input, styles.numberInput]}
 							value={localProps.movementCost.toString()}
 							keyboardType="numeric"
+							testID="movement-cost-input"
 							onChangeText={(text) => {
 								const val = parseFloat(text);
 								if (!isNaN(val)) handleChange('movementCost', val);
@@ -100,6 +147,7 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 						<ThemedText>Blocked (Impassible)</ThemedText>
 						<Switch
 							value={localProps.isBlocked}
+							testID="blocked-switch"
 							onValueChange={(val) => handleChange('isBlocked', val)}
 							trackColor={{ false: '#767577', true: '#DC3545' }}
 						/>
@@ -109,6 +157,7 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 						<ThemedText>Difficult Terrain</ThemedText>
 						<Switch
 							value={localProps.isDifficult}
+							testID="difficult-switch"
 							onValueChange={(val) => handleChange('isDifficult', val)}
 							trackColor={{ false: '#767577', true: '#E9D8A6' }}
 						/>
@@ -122,6 +171,7 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 						<ThemedText>Provides Cover</ThemedText>
 						<Switch
 							value={localProps.providesCover}
+							testID="cover-switch"
 							onValueChange={(val) => handleChange('providesCover', val)}
 							trackColor={{ false: '#767577', true: '#4CAF50' }}
 						/>
@@ -160,8 +210,8 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 				<View style={styles.section}>
 					<ThemedText style={styles.sectionTitle}>Details</ThemedText>
 
-					<View style={styles.row}>
-						<ThemedText>Elevation</ThemedText>
+					<View style={styles.inputGroup}>
+						<ThemedText style={styles.label}>Elevation</ThemedText>
 						<TextInput
 							style={[styles.input, styles.numberInput]}
 							value={localProps.elevation.toString()}
@@ -173,8 +223,8 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 						/>
 					</View>
 
-					<View style={styles.row}>
-						<ThemedText>Feature Type</ThemedText>
+					<View style={styles.inputGroup}>
+						<ThemedText style={styles.label}>Feature Type</ThemedText>
 						<TextInput
 							style={styles.input}
 							value={localProps.featureType || ''}
@@ -183,19 +233,34 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 						/>
 					</View>
 				</View>
-			</ScrollView>
+			</View>
+	);
+
+	if (compact) {
+		return content;
+	}
+
+	return (
+		<ThemedView style={styles.container}>
+			<View style={styles.header}>
+				<ThemedText type="subtitle">Tile Properties</ThemedText>
+				<TouchableOpacity onPress={onClose}>
+					<ThemedText style={styles.closeButton}>✕</ThemedText>
+				</TouchableOpacity>
+			</View>
+			{content}
 		</ThemedView>
 	);
 };
 
 const styles = StyleSheet.create({
 	container: {
+		width: '100%',
 		padding: 16,
 		borderRadius: 12,
 		borderWidth: 1,
-		borderColor: '#3B2F1B',
-		backgroundColor: '#1F130A',
-		maxHeight: 500,
+		borderColor: '#E2D3B3',
+		backgroundColor: '#FFF',
 	},
 	header: {
 		flexDirection: 'row',
@@ -205,11 +270,14 @@ const styles = StyleSheet.create({
 	},
 	closeButton: {
 		fontSize: 20,
-		color: '#8B7355',
+		color: '#6B5B3D',
 		padding: 4,
 	},
-	scrollContent: {
-		flexGrow: 0,
+	content: {
+		width: '100%',
+	},
+	contentCompact: {
+		width: '100%',
 	},
 	section: {
 		marginBottom: 20,
@@ -218,10 +286,10 @@ const styles = StyleSheet.create({
 	sectionTitle: {
 		fontSize: 14,
 		fontWeight: 'bold',
-		color: '#CAB08A',
+		color: '#3B2F1B',
 		marginBottom: 4,
 		borderBottomWidth: 1,
-		borderBottomColor: 'rgba(255,255,255,0.1)',
+		borderBottomColor: '#E2D3B3',
 		paddingBottom: 4,
 	},
 	row: {
@@ -234,18 +302,41 @@ const styles = StyleSheet.create({
 		justifyContent: 'space-between',
 		alignItems: 'center',
 	},
+	inputGroup: {
+		marginBottom: 12,
+	},
+	label: {
+		width: '100%',
+		fontSize: 14,
+		fontWeight: '500',
+		lineHeight: 16,
+		textAlign: 'left',
+		color: 'rgba(117, 68, 0, 1)',
+		marginBottom: 4,
+	},
 	input: {
-		backgroundColor: '#160F08',
+		backgroundColor: '#FFF',
 		borderWidth: 1,
-		borderColor: '#3B2F1B',
+		borderColor: '#E2D3B3',
 		borderRadius: 6,
 		padding: 8,
-		color: '#FFF',
-		minWidth: 120,
+		color: '#3B2F1B',
+		width: '100%',
 		textAlign: 'right',
 	},
+	pickerContainer: {
+		backgroundColor: '#FFF',
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+		borderRadius: 6,
+		overflow: 'hidden',
+	},
+	picker: {
+		width: '100%',
+		height: 50,
+	},
 	numberInput: {
-		minWidth: 60,
+		// Inherits width: '100%' from input style
 	},
 	optionGroup: {
 		flexDirection: 'row',
@@ -256,17 +347,17 @@ const styles = StyleSheet.create({
 		flex: 1,
 		padding: 8,
 		borderWidth: 1,
-		borderColor: '#3B2F1B',
+		borderColor: '#E2D3B3',
 		borderRadius: 6,
 		alignItems: 'center',
+		backgroundColor: '#FFF',
 	},
 	selectedOption: {
-		backgroundColor: '#4A6741',
-		borderColor: '#4A6741',
+		backgroundColor: '#8B6914',
+		borderColor: '#8B6914',
 	},
 	selectedText: {
 		color: '#FFF',
 		fontWeight: 'bold',
 	},
 });
-

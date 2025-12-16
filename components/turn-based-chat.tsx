@@ -3,7 +3,6 @@
  * Similar to transcript overlay but for turn-based gameplay
  */
 
-import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
 	Dimensions,
@@ -22,6 +21,7 @@ import {
 
 import { VoiceChatInput } from './voice-chat-input';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { Colors } from '@/constants/colors';
 import { RaceByID } from '@/constants/races';
 import { SKILL_LIST } from '@/constants/skills';
@@ -338,7 +338,7 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 			>
 				{/* Chat Header */}
 				<View style={styles.chatHeader}>
-					<Feather name="message-circle" size={20} color="#000" />
+					<ExpoIcon icon="Feather:message-circle" size={20} color="#000" />
 					<Text style={styles.headerTitle}>Party Chat</Text>
 
 					{/* TTS Control Button */}
@@ -352,8 +352,8 @@ export const TurnBasedChat: React.FC<TurnBasedChatProps> = ({
 							}}
 							accessibilityLabel={dmVoice.isSpeaking ? 'Stop speech' : 'TTS enabled'}
 						>
-							<Feather
-								name={dmVoice.isSpeaking ? 'volume-x' : 'volume-2'}
+							<ExpoIcon
+								icon={dmVoice.isSpeaking ? 'Feather:volume-x' : 'Feather:volume-2'}
 								size={16}
 								color={dmVoice.isSpeaking ? '#ff4444' : '#8B2323'}
 							/>

@@ -260,6 +260,7 @@ const GameRoute: React.FC = () => {
 					options={{
 						title: 'Waiting for Host',
 						headerShown: true,
+						headerTitleAlign: 'center',
 						headerRight: () => (
 							<RefreshButton onPress={() => refetchSession()} variant="small" showLabel />
 						),
@@ -296,6 +297,7 @@ const GameRoute: React.FC = () => {
 					options={{
 						title: 'Choose Character',
 						headerShown: true,
+						headerTitleAlign: 'center',
 					}}
 				/>
 				<ScrollView

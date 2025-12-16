@@ -1,5 +1,3 @@
-import * as fs from 'fs';
-import * as path from 'path';
 
 const WORLDS = ['faerun', 'eberron', 'underdark'] as const;
 const LOCATIONS = [
@@ -160,10 +158,13 @@ function generateMapsSQL(): string {
 }
 
 function main() {
-	const outputPath = path.resolve(__dirname, '../api/migrations/0009_seed_starting_location_maps.sql');
-	const sql = generateMapsSQL();
-	fs.writeFileSync(outputPath, sql, 'utf-8');
-	console.log(`Generated migration file: ${outputPath}`);
+	console.log('Map generation disabled - all maps must be built from scratch using the map editor');
+	console.log('This script has been disabled to prevent pre-built maps with bad data.');
+	// Script disabled - migration file already deleted
+	// const outputPath = path.resolve(__dirname, '../api/migrations/0009_seed_starting_location_maps.sql');
+	// const sql = generateMapsSQL();
+	// fs.writeFileSync(outputPath, sql, 'utf-8');
+	// console.log(`Generated migration file: ${outputPath}`);
 }
 
 main();

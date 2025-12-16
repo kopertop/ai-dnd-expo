@@ -4,9 +4,10 @@ title: Add full icon support for characters/NPCs across backend and map UI
 status: Done
 assignee: []
 created_date: '2025-12-03 15:55'
-updated_date: '2025-12-03 16:14'
+updated_date: '2025-12-10 23:26'
 labels: []
 dependencies: []
+ordinal: 5000
 ---
 
 ## Description

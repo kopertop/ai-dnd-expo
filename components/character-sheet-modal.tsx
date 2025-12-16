@@ -1,4 +1,3 @@
-import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -14,6 +13,7 @@ import {
 	View,
 } from 'react-native';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { getEquipmentSpritesheet } from '@/components/equipment-spritesheet';
 import { PortraitSelector } from '@/components/portrait-selector';
 import { SpriteIcon } from '@/components/sprite-icon';
@@ -771,8 +771,8 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 									isPlaying ? 'Mute background music' : 'Unmute background music'
 								}
 							>
-								<Feather
-									name={isPlaying ? 'volume-2' : 'volume-x'}
+								<ExpoIcon
+									icon={isPlaying ? 'Feather:volume-2' : 'Feather:volume-x'}
 									size={isMobile ? 16 : 18}
 									color={isPlaying ? '#4caf50' : '#f44336'}
 									style={{ marginRight: 6 }}
@@ -792,8 +792,8 @@ export const CharacterSheetModal: React.FC<CharacterSheetModalProps> = ({ visibl
 								style={isMobile ? styles.actionButtonMobile : styles.actionButton}
 								onPress={handleMainMenu}
 							>
-								<Feather
-									name="home"
+								<ExpoIcon
+									icon="Feather:home"
 									size={isMobile ? 16 : 18}
 									color="#3B2F1B"
 									style={{ marginRight: 6 }}

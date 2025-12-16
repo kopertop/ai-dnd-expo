@@ -1,7 +1,7 @@
-import { FontAwesome } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { Colors } from '@/constants/colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SpeechRecognitionError } from '@/utils/speech-recognition-errors';
@@ -59,8 +59,8 @@ export const VoiceErrorHandler: React.FC<VoiceErrorHandlerProps> = ({
 	if (compact) {
 		return (
 			<View style={styles.compactContainer}>
-				<FontAwesome
-					name={getErrorIcon()}
+				<ExpoIcon
+					icon={`FontAwesome:${getErrorIcon()}`}
 					size={12}
 					color="#FFFFFF"
 					style={styles.compactIcon}
@@ -70,7 +70,7 @@ export const VoiceErrorHandler: React.FC<VoiceErrorHandlerProps> = ({
 				</Text>
 				{error.canRetry && onRetry && (
 					<TouchableOpacity style={styles.compactRetryButton} onPress={onRetry}>
-						<FontAwesome name="refresh" size={12} color="#FFFFFF" />
+						<ExpoIcon icon="FontAwesome:refresh" size={12} color="#FFFFFF" />
 					</TouchableOpacity>
 				)}
 			</View>
@@ -80,13 +80,13 @@ export const VoiceErrorHandler: React.FC<VoiceErrorHandlerProps> = ({
 	return (
 		<View style={styles.container}>
 			<View style={styles.header}>
-				<FontAwesome name={getErrorIcon()} size={16} color="#FFFFFF" style={styles.icon} />
+				<ExpoIcon icon={`FontAwesome:${getErrorIcon()}`} size={16} color="#FFFFFF" style={styles.icon} />
 				<Text style={styles.title}>
 					{error.isTemporary ? 'Temporary Issue' : 'Voice Error'}
 				</Text>
 				{onDismiss && (
 					<TouchableOpacity style={styles.dismissButton} onPress={onDismiss}>
-						<FontAwesome name="times" size={14} color="#FFFFFF" />
+						<ExpoIcon icon="FontAwesome:times" size={14} color="#FFFFFF" />
 					</TouchableOpacity>
 				)}
 			</View>
@@ -97,7 +97,7 @@ export const VoiceErrorHandler: React.FC<VoiceErrorHandlerProps> = ({
 				<View style={styles.actions}>
 					{error.canRetry && onRetry && (
 						<TouchableOpacity style={styles.actionButton} onPress={onRetry}>
-							<FontAwesome name="refresh" size={14} color="#FFFFFF" />
+							<ExpoIcon icon="FontAwesome:refresh" size={14} color="#FFFFFF" />
 							<Text style={styles.actionButtonText}>Try Again</Text>
 						</TouchableOpacity>
 					)}
@@ -106,7 +106,7 @@ export const VoiceErrorHandler: React.FC<VoiceErrorHandlerProps> = ({
 							style={[styles.actionButton, styles.primaryActionButton]}
 							onPress={error.onAction}
 						>
-							<FontAwesome name="cog" size={14} color="#FFFFFF" />
+							<ExpoIcon icon="FontAwesome:cog" size={14} color="#FFFFFF" />
 							<Text style={styles.actionButtonText}>
 								{error.actionText || 'Settings'}
 							</Text>

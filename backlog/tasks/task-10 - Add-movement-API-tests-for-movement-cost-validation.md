@@ -4,12 +4,13 @@ title: Add movement API tests for movement cost validation
 status: Done
 assignee: []
 created_date: '2025-12-02 01:38'
-updated_date: '2025-12-02 01:43'
+updated_date: '2025-12-10 23:26'
 labels:
   - testing
   - multiplayer
   - map
 dependencies: []
+ordinal: 9000
 ---
 
 ## Description

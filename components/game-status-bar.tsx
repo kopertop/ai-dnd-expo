@@ -1,7 +1,7 @@
-import Feather from '@expo/vector-icons/Feather';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
 import { RaceByID } from '@/constants/races';
 import { getCharacterImage } from '@/hooks/use-game-state';
@@ -226,8 +226,8 @@ export const GameStatusBar: React.FC<GameStatusBarProps> = ({
 				<View
 					style={[styles.diceIconContainer, isMobile && styles.diceIconContainerMobile]}
 				>
-					<Feather
-						name="hexagon"
+					<ExpoIcon
+						icon="Feather:hexagon"
 						size={isMobile ? 40 : 52}
 						color="#C9B037"
 						style={styles.diceIcon}

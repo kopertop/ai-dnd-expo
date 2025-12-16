@@ -20,14 +20,10 @@ const GameLayout: React.FC = () => {
 				options={{
 					headerShown: true,
 					title: gameName,
+					headerTitleAlign: 'center',
 					headerStyle: {
 						backgroundColor: '#F9F6EF',
 					},
-					headerTitleStyle: {
-						color: '#3B2F1B',
-						fontWeight: 'bold',
-					},
-					headerTintColor: '#C9B037',
 				}}
 			/>
 		</Stack>

@@ -38,25 +38,26 @@ export const TileActionMenu: React.FC<TileActionMenuProps> = ({
 
 	return (
 		<Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-			<TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
-				<View style={styles.menuContainer}>
+			<TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose} testID="tile-action-overlay">
+				<View style={styles.menuContainer} testID="tile-action-menu">
 					<ThemedText type="subtitle" style={styles.menuTitle}>
 						Tile ({x + 1}, {y + 1})
 					</ThemedText>
 					{availableActions.length === 0 ? (
-						<ThemedText style={styles.emptyText}>No actions available</ThemedText>
+						<ThemedText style={styles.emptyText} testID="tile-action-empty">No actions available</ThemedText>
 					) : (
 						availableActions.map(action => (
 							<TouchableOpacity
 								key={action}
 								style={styles.actionButton}
 								onPress={() => handleAction(action)}
+								testID={`tile-action-${action}`}
 							>
 								<ThemedText style={styles.actionText}>{ACTION_LABELS[action]}</ThemedText>
 							</TouchableOpacity>
 						))
 					)}
-					<TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+					<TouchableOpacity style={styles.cancelButton} onPress={onClose} testID="tile-action-cancel">
 						<ThemedText style={styles.cancelText}>Cancel</ThemedText>
 					</TouchableOpacity>
 				</View>
@@ -113,4 +114,3 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 	},
 });
-

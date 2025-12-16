@@ -1,16 +1,13 @@
 import { Hono } from 'hono';
 
-import type { CloudflareBindings } from '@/api/src/env';
+import type { HonoContext } from '@/api/src/env';
 import { deserializeCharacter } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
-import { isAdmin as sharedIsAdmin } from '@/shared/workers/admin';
 import { Quest } from '@/types/quest';
 
-type Variables = {
-	user: { id: string; email: string; name?: string | null } | null;
-};
+const admin = new Hono<HonoContext>();
 
-const admin = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
+admin.get('/status', async (c) => c.json({ status: 'ok', admin: true, host: c.env.PARTYKIT_HOST || '' }));
 
 admin.use('*', async (c, next) => {
 	const user = c.get('user');
@@ -18,7 +15,7 @@ admin.use('*', async (c, next) => {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
 
-	if (!sharedIsAdmin(user.email, c.env.ADMIN_EMAILS)) {
+	if (!user.is_admin) {
 		return c.json({ error: 'Forbidden - Admin access required' }, 403);
 	}
 
@@ -153,4 +150,3 @@ admin.post('/sql/query', async (c) => {
 });
 
 export default admin;
-

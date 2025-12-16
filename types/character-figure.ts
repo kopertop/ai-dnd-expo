@@ -145,6 +145,11 @@ export const CHARACTER_IMAGE_OPTIONS: Array<CharacterFigure> = [
 		source: require('@/assets/images/characters/half-orc/half-orc-base.png'),
 	},
 	{
+		key: 'Characters:Human:ArchanistMerchant',
+		label: 'Archanist Merchant',
+		source: require('@/assets/images/characters/human/archanist-merchant.png'),
+	},
+	{
 		key: 'Characters:Human:HumanBlank',
 		label: 'Human Blank',
 		source: require('@/assets/images/characters/human/human-blank.png'),

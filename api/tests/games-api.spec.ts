@@ -1,10 +1,10 @@
 import { readdir, readFile } from 'fs/promises';
 import path from 'path';
 
-import { env } from 'cloudflare:test';
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { env } from '@/api/tests/cloudflare-test-shim';
 import type { CloudflareBindings } from '@/api/src/env';
 import characterRoutes from '@/api/src/routes/characters';
 import gameRoutes from '@/api/src/routes/games';
@@ -38,7 +38,7 @@ describe('Games API with Cloudflare Workers', () => {
 		testApp.route('/api/characters', characterRoutes);
 
 		// Run migrations on the D1 database
-		const db = (env as CloudflareBindings).DATABASE;
+		const db = (env as unknown as CloudflareBindings).DATABASE;
 		// Execute all migration files in order
 		const migrationFiles = await readdir(path.resolve(process.cwd(), 'api', 'migrations'));
 		for (const migrationFile of migrationFiles) {
@@ -55,7 +55,7 @@ describe('Games API with Cloudflare Workers', () => {
 	) => {
 		const headers = new Headers(options.headers);
 		headers.set('X-Test-User', user);
-		return testApp.fetch(new Request(url, { ...options, headers }), env as CloudflareBindings);
+		return testApp.fetch(new Request(url, { ...options, headers }), env as unknown as CloudflareBindings);
 	};
 
 	describe('POST /api/games', () => {
@@ -228,7 +228,7 @@ describe('Games API with Cloudflare Workers', () => {
 			expect(mapData.tiles.length).toBeGreaterThan(0);
 
 			// Verify tiles were saved to database
-			const db = (env as CloudflareBindings).DATABASE;
+			const db = (env as unknown as CloudflareBindings).DATABASE;
 			const tilesResult = await db
 				.prepare('SELECT COUNT(*) as count FROM map_tiles WHERE map_id = ?')
 				.bind(mapData.map.id)
@@ -339,7 +339,7 @@ describe('Games API with Cloudflare Workers', () => {
 			expect(mapData.tiles.length).toBe(2500);
 
 			// Verify all tiles were saved using batch operations
-			const db = (env as CloudflareBindings).DATABASE;
+			const db = (env as unknown as CloudflareBindings).DATABASE;
 			const tilesResult = await db
 				.prepare('SELECT COUNT(*) as count FROM map_tiles WHERE map_id = ?')
 				.bind(mapData.map.id)
@@ -432,7 +432,7 @@ describe('Games API with Cloudflare Workers', () => {
 			expect(updateResponse.status).toBe(200);
 
 			// Verify tiles were updated
-			const db = (env as CloudflareBindings).DATABASE;
+			const db = (env as unknown as CloudflareBindings).DATABASE;
 			const tile1 = await db
 				.prepare('SELECT * FROM map_tiles WHERE map_id = ? AND x = ? AND y = ?')
 				.bind(generateMapData.map.id, 0, 0)
@@ -614,7 +614,7 @@ describe('Games API with Cloudflare Workers', () => {
 	describe('NPC management', () => {
 		it('lists NPC definitions and places NPCs on map', async () => {
 			// First, seed an NPC
-			const db = (env as CloudflareBindings).DATABASE;
+			const db = (env as unknown as CloudflareBindings).DATABASE;
 			await db
 				.prepare(
 					`INSERT INTO npcs (
@@ -733,7 +733,7 @@ describe('Games API with Cloudflare Workers', () => {
 
 	afterEach(async () => {
 		// Clean up database tables
-		const db = (env as CloudflareBindings).DATABASE;
+		const db = (env as unknown as CloudflareBindings).DATABASE;
 		// Cleanup all tables
 		const tables = await db.prepare('SELECT name FROM sqlite_master WHERE type = "table"').all<{ name: string }>();
 		for (const table of tables.results) {

@@ -1,23 +1,24 @@
-import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
 	Alert,
 	Modal,
 	Platform,
+	Switch as RNSwitch,
 	ScrollView,
 	StyleSheet,
 	Text,
-	Switch as RNSwitch,
 	TouchableOpacity,
 	View,
 } from 'react-native';
+
 
 import { useSettingsStore } from '../stores/settings-store';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { useGameState } from '@/hooks/use-game-state';
 import { TTSVoice, useTextToSpeech } from '@/hooks/use-text-to-speech';
 
@@ -393,11 +394,11 @@ export const SettingsView: React.FC = () => {
 										style={styles.playButton}
 										onPress={() => handleVoicePreview(voice)}
 									>
-										<Feather
-											name={
+										<ExpoIcon
+											icon={
 												playingVoiceId === voice.identifier && isSpeaking
-													? 'pause-circle'
-													: 'play-circle'
+													? 'Feather:pause-circle'
+													: 'Feather:play-circle'
 											}
 											size={24}
 											color="#C9B037"

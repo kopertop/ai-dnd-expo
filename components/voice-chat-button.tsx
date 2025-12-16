@@ -1,7 +1,8 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, Text, Alert } from 'react-native';
+import { Alert, Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { Colors } from '@/constants/colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useDMVoice } from '@/hooks/use-text-to-speech';
@@ -161,7 +162,7 @@ export const VoiceChatButton: React.FC<VoiceChatButtonProps> = ({
 	/**
 	 * Get appropriate icon based on state
 	 */
-	const getIconName = (): keyof typeof Feather.glyphMap => {
+	const getIconName = (): string => {
 		if (voiceRecognition.isListening) {
 			return 'mic';
 		}
@@ -231,7 +232,7 @@ export const VoiceChatButton: React.FC<VoiceChatButtonProps> = ({
 					disabled={isDisabled}
 					activeOpacity={0.8}
 				>
-					<Feather name={getIconName()} size={24} color={getIconColor()} />
+					<ExpoIcon icon={`Feather:${getIconName()}`} size={24} color={getIconColor()} />
 				</TouchableOpacity>
 
 				{/* Recording Indicator */}

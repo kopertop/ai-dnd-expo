@@ -4,10 +4,29 @@ import { getStore, resetStore } from './api/tests/mock-db-store';
 
 import * as realDb from '@/shared/workers/db';
 
+// Force-resolve Cloudflare protocol imports to the local shim so Node's loader doesn't reject the scheme
+const Module = require('module');
+const originalResolve = Module._resolveFilename;
+Module._resolveFilename = function (request: string, parent: any, isMain: boolean, options: any) {
+	if (typeof request === 'string' && request.startsWith('cloudflare:')) {
+		return require.resolve('./api/tests/cloudflare-test-shim.ts');
+	}
+	return originalResolve.call(this, request, parent, isMain, options);
+};
+
 if (!globalThis.fetch) {
 	const { fetch, Headers, Request, Response, FormData } = require('undici');
 	Object.assign(globalThis, { fetch, Headers, Request, Response, FormData });
 }
+
+// Mock PartyServer to avoid cloudflare:workers imports during tests
+vi.mock('partyserver', () => {
+	const fetchStub = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+	return {
+		Server: vi.fn(() => ({ upgrade: vi.fn(), fetch: fetchStub })),
+		getServerByName: vi.fn(async () => ({ fetch: fetchStub })),
+	};
+});
 
 vi.mock('fs/promises', () => ({
 	readdir: async () => [],
@@ -176,6 +195,10 @@ class InMemoryDatabase {
 		return this.store.maps.find(m => m.id === mapId) ?? null;
 	}
 
+	async getMapBySlug(slug: string): Promise<realDb.MapRow | null> {
+		return this.store.maps.find(m => m.slug === slug) ?? null;
+	}
+
 	async getMapTiles(mapId: string): Promise<realDb.MapTileRow[]> {
 		return this.store.mapTiles.filter(t => t.map_id === mapId);
 	}
@@ -206,6 +229,10 @@ class InMemoryDatabase {
 			has_fog?: number;
 			feature_type?: string | null;
 			metadata?: string;
+			is_difficult?: number;
+			movement_cost?: number;
+			provides_cover?: number;
+			cover_type?: string | null;
 		}>,
 	) {
 		const map = this.store.maps.find(m => m.id === mapId);
@@ -229,6 +256,10 @@ class InMemoryDatabase {
 				y: tile.y,
 				terrain_type: tile.terrain_type,
 				elevation: tile.elevation ?? 0,
+				is_difficult: tile.is_difficult ?? 0,
+				movement_cost: tile.movement_cost ?? 1,
+				provides_cover: tile.provides_cover ?? 0,
+				cover_type: tile.cover_type ?? null,
 				is_blocked: tile.is_blocked ?? 0,
 				has_fog: tile.has_fog ?? 0,
 				feature_type: tile.feature_type ?? null,
@@ -256,7 +287,11 @@ class InMemoryDatabase {
 						y,
 						terrain_type: defaultTerrain,
 						elevation: 0,
+						movement_cost: 1,
 						is_blocked: 0,
+						is_difficult: 0,
+						provides_cover: 0,
+						cover_type: null,
 						has_fog: 0,
 						feature_type: null,
 						metadata: '{}',

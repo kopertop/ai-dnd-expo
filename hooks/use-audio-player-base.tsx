@@ -77,7 +77,7 @@ export const createAudioHooks = (
 					console.warn('Audio cleanup failed:', error);
 				}
 			};
-			 
+
 		}, []);
 
 		useEffect(() => {
@@ -85,10 +85,12 @@ export const createAudioHooks = (
 			if (!currentPlayer || !isInitializedRef.current) return;
 
 			if (previousMutedRef.current !== isMusicMuted) {
+				const wasMuted = previousMutedRef.current;
 				previousMutedRef.current = isMusicMuted;
 				if (isMusicMuted) {
 					currentPlayer.pause();
-				} else if (!currentPlayer.playing) {
+				} else if (wasMuted !== null && !currentPlayer.playing) {
+					// Only auto-play if transitioning from muted to unmuted (not on initial mount)
 					currentPlayer.play().catch(error => {
 						console.warn('Audio play failed:', error);
 					});

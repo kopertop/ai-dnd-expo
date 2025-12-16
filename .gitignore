@@ -77,6 +77,7 @@ logs/
 
 # Test coverage
 coverage/
+coverage_report/
 *.lcov
 test-results/
 reports/

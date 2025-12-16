@@ -1,4 +1,3 @@
-import { FontAwesome } from '@expo/vector-icons';
 import React, { useEffect } from 'react';
 import { LayoutAnimation, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, {
@@ -16,6 +15,7 @@ import { SettingsModal } from './settings-modal';
 import { ThemedText } from './themed-text';
 import { TurnBasedChat } from './turn-based-chat';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { DMMessage } from '@/services/ai/agents/dungeon-master-agent';
 import { useLayoutStore } from '@/stores/use-layout-store';
 import { Character } from '@/types/character';
@@ -73,7 +73,7 @@ const AnimatedControlButton: React.FC<{
 			activeOpacity={1}
 		>
 			<Animated.View style={[styles.controlButton, animatedStyle]}>
-				<FontAwesome name={icon as any} size={24} color="white" />
+				<ExpoIcon icon={`FontAwesome:${icon}`} size={24} color="white" />
 				<ThemedText style={styles.buttonText}>{label}</ThemedText>
 			</Animated.View>
 		</TouchableOpacity>

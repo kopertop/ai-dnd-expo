@@ -5,7 +5,6 @@ import type { GamesContext } from './types';
 import { GameStateService } from '@/api/src/services/game-state';
 import { createId, deserializeCharacter, isHostUser, serializeCharacter, toGameSummary } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
-import { isAdmin } from '@/shared/workers/admin';
 import { generateInviteCode } from '@/shared/workers/session-manager';
 import type { CreateGameBody, JoinGameBody } from '@/types/games-api';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
@@ -270,16 +269,16 @@ core.post('/:inviteCode/join', async (c) => {
 
 	// Accept either full character payload or a characterId referring to an existing character
 	const existingCharacterRow = body.characterId ? await db.getCharacterById(body.characterId) : null;
-	const isUserAdmin = isAdmin(user.email, c.env.ADMIN_EMAILS);
 
 	// Security: Ensure the character belongs to the authenticated user (unless admin)
-	if (existingCharacterRow && existingCharacterRow.player_id !== user.id && !isUserAdmin) {
+	if (existingCharacterRow && existingCharacterRow.player_id !== user.id && !user.is_admin) {
 		return c.json({ error: 'Forbidden - Cannot use another user\'s character' }, 403);
 	}
 
 	const character = body.character || (existingCharacterRow ? deserializeCharacter(existingCharacterRow) : null);
 
 	// Security: Enforce identity based on authenticated user (ignore body.playerId unless admin)
+	const isUserAdmin = user.is_admin ?? false;
 	const playerId = isUserAdmin ? (body.playerId || existingCharacterRow?.player_id || user.id) : user.id;
 	const playerEmail = isUserAdmin ? (body.playerEmail || existingCharacterRow?.player_email || user.email || null) : (user.email || null);
 

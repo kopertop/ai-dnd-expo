@@ -65,6 +65,7 @@ const AdminImagesScreen: React.FC = () => {
 					options={{
 						title: 'Admin - Images',
 						headerShown: true,
+						headerTitleAlign: 'center',
 					}}
 				/>
 				<View style={styles.center}>
@@ -85,6 +86,7 @@ const AdminImagesScreen: React.FC = () => {
 				options={{
 					title: 'Admin - Manage Images',
 					headerShown: true,
+					headerTitleAlign: 'center',
 				}}
 			/>
 			<View style={styles.header}>

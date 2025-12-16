@@ -4,19 +4,65 @@ import { vi } from 'vitest';
 // Define global __DEV__ for Expo modules
 (global as any).__DEV__ = true;
 
+vi.mock('@/types/character-figure', () => ({
+	CHARACTER_IMAGE_OPTIONS: [],
+}));
+
 // Mock React Native modules that don't work in test environment
 vi.mock('react-native', () => ({
 	// Core components
-	View: ({ children, ...props }: any) => React.createElement('div', props, children),
-	Text: ({ children, ...props }: any) => React.createElement('span', props, children),
+	View: ({ children, ...props }: any) =>
+		React.createElement('div', { ...props, 'data-testid': props.testID }, children),
+	Text: ({ children, ...props }: any) =>
+		React.createElement('span', { ...props, 'data-testid': props.testID }, children),
 	ScrollView: ({ children, ...props }: any) =>
-		React.createElement('div', { ...props, 'data-testid': 'scroll-view' }, children),
+		React.createElement('div', { ...props, 'data-testid': props.testID ?? 'scroll-view' }, children),
 	TouchableOpacity: ({ children, onPress, ...props }: any) =>
-		React.createElement('button', { ...props, onClick: onPress }, children),
-	TextInput: (props: any) => React.createElement('input', props),
-	Image: (props: any) => React.createElement('img', { ...props, alt: props.alt || 'image' }),
+		React.createElement('button', {
+			...props,
+			onClick: (e: any) =>
+				onPress?.({
+					nativeEvent: {
+						locationX: e?.nativeEvent?.offsetX ?? 0,
+						locationY: e?.nativeEvent?.offsetY ?? 0,
+						offsetX: e?.nativeEvent?.offsetX ?? 0,
+						offsetY: e?.nativeEvent?.offsetY ?? 0,
+					},
+				}),
+			'data-testid': props.testID,
+		}, children),
+	TextInput: ({ onChangeText, ...props }: any) => {
+		const handleChange = (e: any) => onChangeText?.(e.target.value);
+		const attachRef = (node: any) => {
+			if (node) {
+				node.__onChangeText = onChangeText;
+			}
+		};
+		return React.createElement('input', {
+			...props,
+			onChange: handleChange,
+			'data-testid': props.testID,
+			ref: attachRef,
+		});
+	},
+	Image: (props: any) => React.createElement('img', { ...props, alt: props.alt || 'image', 'data-testid': props.testID }),
 	SafeAreaView: ({ children, ...props }: any) =>
-		React.createElement('div', { ...props, 'data-testid': 'safe-area-view' }, children),
+		React.createElement('div', { ...props, 'data-testid': props.testID ?? 'safe-area-view' }, children),
+	ActivityIndicator: ({ children, ...props }: any) =>
+		React.createElement('div', { ...props, 'data-testid': props.testID }, children),
+	Switch: ({ value, onValueChange, ...props }: any) =>
+		React.createElement('input', {
+			...props,
+			type: 'checkbox',
+			checked: value,
+			onChange: (e: any) => onValueChange?.(e.target.checked),
+			ref: (node: any) => {
+				if (node) node.__onValueChange = onValueChange;
+			},
+			'data-testid': props.testID,
+		}),
+	Modal: ({ children, visible = true, ...props }: any) =>
+		visible ? React.createElement('div', { ...props, 'data-testid': props.testID ?? 'modal' }, children) : null,
 
 	// Platform
 	Platform: {
@@ -29,6 +75,13 @@ vi.mock('react-native', () => ({
 		get: vi.fn().mockReturnValue({ width: 375, height: 812 }),
 		addEventListener: vi.fn(),
 		removeEventListener: vi.fn(),
+	},
+	useWindowDimensions: () => ({ width: 1024, height: 768, scale: 2, fontScale: 2 }),
+
+	PanResponder: {
+		create: (handlers: any) => ({
+			panHandlers: handlers ?? {},
+		}),
 	},
 
 	// StyleSheet
@@ -166,12 +219,22 @@ vi.mock('react-native-reanimated', () => ({
 }));
 
 // Mock React Native SVG
-vi.mock('react-native-svg', () => ({
-	Svg: ({ children }: { children: React.ReactNode }) => children,
-	Circle: () => null,
-	Path: () => null,
-	G: ({ children }: { children: React.ReactNode }) => children,
-}));
+vi.mock('react-native-svg', () => {
+	const Svg = ({ children, ...props }: { children: React.ReactNode }) =>
+		React.createElement('svg', { ...props, 'data-testid': props.testID }, children);
+	const createShape = (tag: string) => ({ children, ...props }: any) =>
+		React.createElement(tag, { ...props, 'data-testid': props.testID }, children);
+	return {
+		__esModule: true,
+		default: Svg,
+		Svg,
+		Circle: createShape('circle'),
+		Path: createShape('path'),
+		G: createShape('g'),
+		Line: createShape('line'),
+		Rect: createShape('rect'),
+	};
+});
 
 // Mock Skia
 vi.mock('@shopify/react-native-skia', () => ({

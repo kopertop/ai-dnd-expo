@@ -35,7 +35,7 @@ const useNativeAudioPlayer = (): AudioPlayer => {
 };
 
 const { AudioProvider, useAudio } = createAudioHooks(useNativeAudioPlayer, {
-	autoPlayOnMount: true,
+	autoPlayOnMount: false,
 });
 
 export { AudioProvider, useAudio };

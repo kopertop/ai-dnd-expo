@@ -1,3 +1,4 @@
+import { User } from 'expo-auth-template/backend';
 import { Hono } from 'hono';
 
 import type { CloudflareBindings } from '@/api/src/env';
@@ -7,7 +8,7 @@ import { createDatabase } from '@/api/src/utils/repository';
 
 type Bindings = CloudflareBindings;
 
-const images = new Hono<{ Bindings: Bindings; Variables: { user: any } }>();
+const images = new Hono<{ Bindings: Bindings; Variables: { user: User | null } }>();
 
 /**
  * List uploaded images
@@ -66,6 +67,9 @@ images.post('/upload', async (c) => {
 		// Generate key and upload to R2
 		const key = generateImageKey(user.id, file.name);
 		const bucket = c.env.IMAGES_BUCKET;
+		if (!bucket) {
+			return c.json({ error: 'Image bucket not configured' }, 500);
+		}
 
 		await bucket.put(key, file, {
 			httpMetadata: {
@@ -81,8 +85,11 @@ images.post('/upload', async (c) => {
 		// Construct public URL using the worker endpoint
 		// For local dev, use localhost:8787 (the worker port)
 		// For production, use the request origin
+		// Use isDev from context (set by CORS middleware based on Origin header) instead of checking request URL
 		const requestUrl = new URL(c.req.url);
-		const isLocalDev = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
+		const isDevFromContext = c.get('isDev');
+		const isLocalDevFromUrl = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
+		const isLocalDev = isDevFromContext === true || isLocalDevFromUrl;
 		const origin = isLocalDev ? 'http://localhost:8787' : requestUrl.origin;
 		const publicUrl = `${origin}/api/images/${imageId}`;
 
@@ -129,7 +136,7 @@ images.get('/:id', async (c) => {
 		// Check if image is public or user is the owner/admin
 		const user = c.get('user');
 		const isOwner = user && image.user_id === user.id;
-		const isAdmin = user && (user.role === 'admin' || user.is_admin === 1);
+		const isAdmin = user && (user.role === 'admin' || user.isAdmin);
 
 		if (!image.is_public && !isOwner && !isAdmin) {
 			return c.json({ error: 'Forbidden' }, 403);
@@ -137,6 +144,9 @@ images.get('/:id', async (c) => {
 
 		// Fetch image from R2
 		const bucket = c.env.IMAGES_BUCKET;
+		if (!bucket) {
+			return c.json({ error: 'Image bucket not configured' }, 500);
+		}
 		const object = await bucket.get(image.r2_key);
 
 		if (!object) {
@@ -146,9 +156,9 @@ images.get('/:id', async (c) => {
 		// Get content type from object metadata or infer from filename
 		const contentType = object.httpMetadata?.contentType ||
 			(image.filename.endsWith('.png') ? 'image/png' :
-			 image.filename.endsWith('.jpg') || image.filename.endsWith('.jpeg') ? 'image/jpeg' :
-			 image.filename.endsWith('.webp') ? 'image/webp' :
-			 'image/jpeg');
+				image.filename.endsWith('.jpg') || image.filename.endsWith('.jpeg') ? 'image/jpeg' :
+					image.filename.endsWith('.webp') ? 'image/webp' :
+						'image/jpeg');
 
 		// Return the image with appropriate headers
 		const body = await object.arrayBuffer();
@@ -184,13 +194,16 @@ images.delete('/:id', async (c) => {
 		}
 
 		// Only owner or admin can delete
-		const isAdmin = user.role === 'admin' || user.is_admin === 1;
+		const isAdmin = user.role === 'admin' || user.isAdmin;
 		if (image.user_id !== user.id && !isAdmin) {
 			return c.json({ error: 'Forbidden' }, 403);
 		}
 
 		// Delete from R2
 		const bucket = c.env.IMAGES_BUCKET;
+		if (!bucket) {
+			return c.json({ error: 'Image bucket not configured' }, 500);
+		}
 		await bucket.delete(image.r2_key);
 
 		// Delete from database
