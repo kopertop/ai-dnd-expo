@@ -94,6 +94,60 @@ maps.patch('/:id', async (c) => {
 		...body,
 		id,
 	});
+
+	// Process tiles if provided
+	if (body.tiles && Array.isArray(body.tiles)) {
+		await db.replaceMapTiles(
+			id,
+			body.tiles.map((t: any) => ({
+				x: t.x,
+				y: t.y,
+				terrain_type: t.terrain_type || t.terrain,
+				elevation: t.elevation,
+				movement_cost: t.movement_cost,
+				is_blocked: t.is_blocked ? 1 : 0,
+				is_difficult: t.is_difficult ? 1 : 0,
+				has_fog: t.has_fog ? 1 : 0,
+				provides_cover: t.provides_cover ? 1 : 0,
+				cover_type: t.cover_type,
+				feature_type: t.feature_type,
+				metadata: JSON.stringify(t.metadata || {}),
+			})),
+		);
+	}
+
+	// Process tokens if provided in the body
+	if (body.tokens && Array.isArray(body.tokens)) {
+		// First, remove existing "prop" tokens for this map.
+		// This ensures that if the user deleted a prop in the editor, it's gone from DB.
+		// We only target tokens with game_id IS NULL (template tokens) and token_type = 'prop'.
+		// This avoids accidentally deleting player tokens if they were somehow associated with this map id directly (though usually they have game_id).
+		await db.deletePropTokensForMap(id);
+
+		for (const token of body.tokens) {
+			await db.saveMapToken({
+				id: token.id || `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+				game_id: null, // Map Editor tokens don't belong to a specific game yet
+				map_id: id,
+				character_id: null,
+				npc_id: null,
+				token_type: 'prop', // Default to prop for editor placed items
+				label: token.label || 'Object',
+				image_url: token.image_url,
+				x: token.x || 0,
+				y: token.y || 0,
+				facing: 0,
+				color: null,
+				status: 'active',
+				is_visible: 1,
+				hit_points: null,
+				max_hit_points: null,
+				status_effects: null,
+				metadata: JSON.stringify(token.metadata || {}),
+			});
+		}
+	}
+
 	return c.json({ success: true, id, map: resp });
 });
 
