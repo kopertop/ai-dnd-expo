@@ -23,7 +23,7 @@ interface World {
 	name: string;
 }
 
-export default function CreateMapScreen() {
+const CreateMapScreen: React.FC = () => {
 	const [worlds, setWorlds] = useState<World[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
@@ -233,7 +233,9 @@ export default function CreateMapScreen() {
 			</TouchableOpacity>
 		</ThemedView>
 	);
-}
+};
+
+export default CreateMapScreen;
 
 const styles = StyleSheet.create({
 	container: {

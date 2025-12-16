@@ -26,7 +26,7 @@ interface World {
 	is_public: number;
 }
 
-export default function WorldEditScreen() {
+const WorldEditScreen: React.FC = () => {
 	const { id } = useLocalSearchParams<{ id: string }>();
 	const isNew = id === 'create';
 	const [loading, setLoading] = useState(!isNew);
@@ -205,7 +205,9 @@ export default function WorldEditScreen() {
 			</ScrollView>
 		</ThemedView>
 	);
-}
+};
+
+export default WorldEditScreen;
 
 const styles = StyleSheet.create({
 	container: {

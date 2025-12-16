@@ -16,7 +16,7 @@ interface World {
 	is_public: number;
 }
 
-export default function WorldsListScreen() {
+const WorldsListScreen: React.FC = () => {
 	const [worlds, setWorlds] = useState<World[]>([]);
 	const [loading, setLoading] = useState(true);
 
@@ -93,7 +93,9 @@ export default function WorldsListScreen() {
 			)}
 		</ThemedView>
 	);
-}
+};
+
+export default WorldsListScreen;
 
 const styles = StyleSheet.create({
 	container: {

@@ -4,6 +4,10 @@
 - When resetting turns in the durable game session, ensure `activeTurn` usage fields are cleared and speeds are derived per-entity; also guard paused turn snapshots against nulls.
 - In `api-base-url` resolution, `expo-constants` typings don’t expose `expoConfig`; cast the config when reading `extra` values to keep typecheck happy.
 
+## Lint Fixes
+
+- For `react/function-component-definition`, prefer `const MyComponent: React.FC<PropType> = (props) => { ... }; export default MyComponent;` instead of `function MyComponent() { ... }`.
+
 <!-- BACKLOG.MD MCP GUIDELINES START -->
 
 <CRITICAL_INSTRUCTION>
