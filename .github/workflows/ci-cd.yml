@@ -129,3 +129,18 @@ jobs:
           echo "Production build completed. Manual app store submission can be triggered with:"
           echo "eas submit --platform all --profile production"
         if: false  # Disabled for now, enable when ready for app store submission
+      
+      - name: Deploy to Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          # Wrangler is already installed via npm ci (devDependency)
+          # CLOUDFLARE_API_TOKEN is automatically used by wrangler for authentication
+          
+          # Deploy API Worker first (required for service bindings)
+          echo "Deploying API Worker to Cloudflare..."
+          npm run deploy:api
+          
+          # Deploy Web (Cloudflare Pages)
+          echo "Deploying Web to Cloudflare Pages..."
+          npm run deploy:web
