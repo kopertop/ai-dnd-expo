@@ -1,21 +1,21 @@
-import { Stack, useLocalSearchParams, router } from 'expo-router';
+import { apiService } from 'expo-auth-template/frontend';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
 	ActivityIndicator,
 	Alert,
 	ScrollView,
 	StyleSheet,
+	Switch,
 	TextInput,
 	TouchableOpacity,
 	View,
-	Switch,
 } from 'react-native';
 
 import { ExpoIcon } from '@/components/expo-icon';
+import { ImageUploader } from '@/components/image-uploader';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { fetchAPI } from '@/lib/fetch';
-import { ImageUploader } from '@/components/image-uploader';
 
 interface World {
 	id: string;
@@ -49,7 +49,7 @@ const WorldEditScreen: React.FC = () => {
 	const loadWorld = async (worldId: string) => {
 		try {
 			setLoading(true);
-			const data = await fetchAPI<World>(`/api/worlds/${worldId}`);
+			const data = await apiService.fetchApi(`worlds/${worldId}`);
 			setFormData(data);
 		} catch (error) {
 			Alert.alert('Error', 'Failed to load world details');
@@ -67,7 +67,7 @@ const WorldEditScreen: React.FC = () => {
 
 		try {
 			setSaving(true);
-			await fetchAPI('/api/worlds', {
+			await apiService.fetchApi('worlds', {
 				method: 'POST',
 				body: JSON.stringify(formData),
 			});
@@ -95,7 +95,7 @@ const WorldEditScreen: React.FC = () => {
 					onPress: async () => {
 						try {
 							setSaving(true);
-							await fetchAPI(`/api/worlds/${id}`, { method: 'DELETE' });
+							await apiService.fetchApi(`worlds/${id}`, { method: 'DELETE' });
 							router.back();
 						} catch (error: any) {
 							Alert.alert('Error', error.message || 'Failed to delete world');

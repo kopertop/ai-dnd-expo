@@ -85,8 +85,11 @@ images.post('/upload', async (c) => {
 		// Construct public URL using the worker endpoint
 		// For local dev, use localhost:8787 (the worker port)
 		// For production, use the request origin
+		// Use isDev from context (set by CORS middleware based on Origin header) instead of checking request URL
 		const requestUrl = new URL(c.req.url);
-		const isLocalDev = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
+		const isDevFromContext = c.get('isDev');
+		const isLocalDevFromUrl = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
+		const isLocalDev = isDevFromContext === true || isLocalDevFromUrl;
 		const origin = isLocalDev ? 'http://localhost:8787' : requestUrl.origin;
 		const publicUrl = `${origin}/api/images/${imageId}`;
 

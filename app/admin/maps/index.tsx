@@ -1,3 +1,4 @@
+import { apiService } from 'expo-auth-template/frontend';
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -5,7 +6,6 @@ import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 
 import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { fetchAPI } from '@/lib/fetch';
 
 interface MapItem {
 	id: string;
@@ -23,8 +23,8 @@ const MapsListScreen = () => {
 	const loadMaps = async () => {
 		try {
 			setLoading(true);
-			const data = await fetchAPI<{ maps: MapItem[] }>('/api/maps');
-			setMaps(data.maps);
+			const data = await apiService.fetchApi('maps');
+			setMaps(data);
 		} catch (error) {
 			console.error('Failed to load maps:', error);
 		} finally {
@@ -59,6 +59,7 @@ const MapsListScreen = () => {
 			<Stack.Screen
 				options={{
 					title: 'Maps',
+					headerTitleAlign: 'center',
 				}}
 			/>
 

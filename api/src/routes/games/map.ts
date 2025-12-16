@@ -4,11 +4,11 @@ import type { GamesContext } from './types';
 
 import { GameStateService } from '@/api/src/services/game-state';
 import {
-	buildMapState,
-	createId,
-	deserializeCharacter,
-	isHostUser,
-	resolveMapRow,
+    buildMapState,
+    createId,
+    deserializeCharacter,
+    isHostUser,
+    resolveMapRow,
 } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
@@ -972,8 +972,11 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 		});
 
 		// Construct public URL
+		// Use isDev from context (set by CORS middleware based on Origin header) instead of checking request URL
 		const requestUrl = new URL(c.req.url);
-		const isLocalDev = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
+		const isDevFromContext = c.get('isDev');
+		const isLocalDevFromUrl = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
+		const isLocalDev = isDevFromContext === true || isLocalDevFromUrl;
 		const origin = isLocalDev ? 'http://localhost:8787' : requestUrl.origin;
 
 		// We need to create an image record to serve it via the API

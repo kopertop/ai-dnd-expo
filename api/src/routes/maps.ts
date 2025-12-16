@@ -31,7 +31,7 @@ maps.get('/', async (c) => {
 			grid_offset_y: map.grid_offset_y,
 			metadata: map.metadata ? JSON.parse(map.metadata) : {},
 		}));
-		return c.json({ maps: mapsWithMetadata });
+		return c.json(mapsWithMetadata);
 	} catch (error) {
 		console.error('Failed to list maps:', error);
 		return c.json({ error: 'Failed to list maps' }, 500);
@@ -103,6 +103,7 @@ maps.patch('/:id', async (c) => {
  */
 maps.post('/', async (c) => {
 	const user = c.get('user');
+	console.log('** user', user);
 	if (!user) {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}

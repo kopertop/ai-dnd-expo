@@ -1,4 +1,5 @@
 import { Picker } from '@react-native-picker/picker';
+import { apiService } from 'expo-auth-template/frontend';
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -16,7 +17,6 @@ import { ExpoIcon } from '@/components/expo-icon';
 import { MediaLibraryModal } from '@/components/media-library-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { fetchAPI } from '@/lib/fetch';
 
 interface World {
 	id: string;
@@ -48,7 +48,7 @@ const CreateMapScreen: React.FC = () => {
 	const loadWorlds = async () => {
 		try {
 			setLoading(true);
-			const data = await fetchAPI<World[]>('/api/worlds');
+			const data = await apiService.fetchApi('worlds');
 			setWorlds(data);
 			if (data.length > 0) {
 				setFormData(prev => ({ ...prev, world_id: data[0].id }));
@@ -68,7 +68,7 @@ const CreateMapScreen: React.FC = () => {
 
 		try {
 			setSaving(true);
-			const response = await fetchAPI<{ success: boolean; id: string }>('/api/maps', {
+			const response = await apiService.fetchApi('maps', {
 				method: 'POST',
 				body: JSON.stringify({
 					...formData,
