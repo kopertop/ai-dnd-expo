@@ -1,13 +1,10 @@
 import { Hono } from 'hono';
-import { Database } from 'shared/workers/db';
+
+import type { HonoContext } from '../env';
+
 import { createDatabase } from '@/api/src/utils/repository';
-import type { CloudflareBindings } from '../env';
 
-type Variables = {
-	user: { id: string; email: string; name?: string | null } | null;
-};
-
-const worlds = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
+const worlds = new Hono<HonoContext>();
 
 // List all worlds
 worlds.get('/', async (c) => {

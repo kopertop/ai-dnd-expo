@@ -3,13 +3,13 @@ import { apiService, useMutationApi, useQueryApi } from 'expo-auth-template/fron
 
 import { websocketClient } from '@/services/api/websocket-client';
 import type {
-    MapMoveResponse,
-    MapStateResponse,
-    MapTokenListResponse,
-    MapTokenMutationResponse,
-    MovementValidationResponse,
-    NpcDefinitionListResponse,
-    NpcInstanceListResponse,
+	MapMoveResponse,
+	MapStateResponse,
+	MapTokenListResponse,
+	MapTokenMutationResponse,
+	MovementValidationResponse,
+	NpcDefinitionListResponse,
+	NpcInstanceListResponse,
 } from '@/types/api/multiplayer-api';
 import type { NpcDefinition } from '@/types/multiplayer-map';
 

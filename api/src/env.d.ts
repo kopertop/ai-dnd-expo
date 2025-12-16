@@ -1,3 +1,4 @@
+import type { User } from '@/types/models';
 export interface CloudflareBindings {
 	__DEV__: boolean;
 	DATABASE: D1Database;
@@ -29,6 +30,12 @@ export interface CloudflareBindings {
 
 	API_RATE_LIMITER?: any; // RateLimit binding
 }
+
+export type Variables = {
+	user: User | null;
+};
+
+export type HonoContext = { Bindings: CloudflareBindings; Variables: Variables };
 
 declare global {
 	namespace NodeJS {

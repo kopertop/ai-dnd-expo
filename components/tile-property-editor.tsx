@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import {
-    StyleSheet,
-    Switch,
-    TextInput,
-    TouchableOpacity,
-    View,
+	ScrollView,
+	StyleSheet,
+	Switch,
+	TextInput,
+	TouchableOpacity,
+	View,
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
 
 interface TileProperties {
 	terrainType: string;
@@ -60,7 +62,7 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 	};
 
 	return (
-		<View style={styles.container}>
+		<ThemedView style={styles.container}>
 			<View style={styles.header}>
 				<ThemedText type="subtitle">Tile Properties</ThemedText>
 				<TouchableOpacity onPress={onClose}>
@@ -68,7 +70,7 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 				</TouchableOpacity>
 			</View>
 
-			<View style={styles.content}>
+			<ScrollView style={styles.scrollContent} contentContainerStyle={styles.content}>
 				<View style={styles.section}>
 					<ThemedText style={styles.sectionTitle}>Movement & Terrain</ThemedText>
 
@@ -181,14 +183,20 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 						/>
 					</View>
 				</View>
-			</View>
-		</View>
+			</ScrollView>
+		</ThemedView>
 	);
 };
 
 const styles = StyleSheet.create({
 	container: {
 		width: '100%',
+		padding: 16,
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: '#3B2F1B',
+		backgroundColor: '#1F130A',
+		maxHeight: 500,
 	},
 	header: {
 		flexDirection: 'row',
@@ -200,6 +208,9 @@ const styles = StyleSheet.create({
 		fontSize: 20,
 		color: '#8B7355',
 		padding: 4,
+	},
+	scrollContent: {
+		flexGrow: 0,
 	},
 	content: {
 		width: '100%',

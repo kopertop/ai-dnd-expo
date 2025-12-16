@@ -1,23 +1,23 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+	ActivityIndicator,
+	Alert,
+	Image,
+	ScrollView,
+	StyleSheet,
+	TextInput,
+	TouchableOpacity,
+	View,
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { VTTMapImport } from '@/components/vtt-map-import';
 import { LOCATIONS } from '@/constants/locations';
 import {
-    useAllMaps,
-    useCloneMap,
-    useDeleteMap,
-    useSwitchMap,
+	useAllMaps,
+	useCloneMap,
+	useDeleteMap,
+	useSwitchMap,
 } from '@/hooks/api/use-map-queries';
 import { LocationOption } from '@/types/location-option';
 import { WorldOption } from '@/types/world-option';

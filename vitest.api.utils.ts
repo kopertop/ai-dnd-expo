@@ -461,6 +461,43 @@ class InMemoryDatabase {
 	async deleteActivityLogs(gameId: string): Promise<void> {
 		this.store.activityLogs = this.store.activityLogs.filter(l => l.game_id !== gameId);
 	}
+
+	async saveUploadedImage(image: realDb.UploadedImageRow): Promise<void> {
+		const idx = this.store.uploadedImages.findIndex(img => img.id === image.id);
+		if (idx === -1) {
+			this.store.uploadedImages.push(image);
+		} else {
+			this.store.uploadedImages[idx] = image;
+		}
+	}
+
+	async listUploadedImages(
+		userId?: string,
+		imageType?: 'npc' | 'character' | 'both',
+		limit: number = 50,
+		offset: number = 0,
+	): Promise<realDb.UploadedImageRow[]> {
+		let results = this.store.uploadedImages;
+
+		if (userId) {
+			results = results.filter(img => img.user_id === userId);
+		}
+
+		if (imageType && imageType !== 'both') {
+			results = results.filter(img => img.image_type === imageType || img.image_type === 'both');
+		}
+
+		results.sort((a, b) => b.created_at - a.created_at);
+		return results.slice(offset, offset + limit);
+	}
+
+	async getUploadedImageById(id: string): Promise<realDb.UploadedImageRow | null> {
+		return this.store.uploadedImages.find(img => img.id === id) ?? null;
+	}
+
+	async deleteUploadedImage(id: string): Promise<void> {
+		this.store.uploadedImages = this.store.uploadedImages.filter(img => img.id !== id);
+	}
 }
 
 vi.mock('@/shared/workers/db', async () => {
