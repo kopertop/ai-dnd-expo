@@ -77,13 +77,13 @@ export interface MapRow {
 	theme: string;
 	biome: string;
 	world: string | null; // Deprecated: Old string based world
-	world_id: string | null; // FK to worlds table
-	background_image_url: string | null;
-	cover_image_url: string | null;
-	grid_columns: number;
-	grid_size: number;
-	grid_offset_x: number;
-	grid_offset_y: number;
+	world_id?: string | null; // FK to worlds table
+	background_image_url?: string | null;
+	cover_image_url?: string | null;
+	grid_columns?: number;
+	grid_size?: number;
+	grid_offset_x?: number;
+	grid_offset_y?: number;
 	is_generated: number;
 	created_at: number;
 	updated_at: number;
@@ -96,14 +96,14 @@ export interface MapTileRow {
 	y: number;
 	terrain_type: string;
 	elevation: number;
-	movement_cost: number | null;
-	is_blocked: number;
-	is_difficult: number;
-	has_fog: number;
-	provides_cover: number;
-	cover_type: string | null;
-	feature_type: string | null;
-	metadata: string;
+	movement_cost?: number | null;
+	is_blocked?: number;
+	is_difficult?: number;
+	has_fog?: number;
+	provides_cover?: number;
+	cover_type?: string | null;
+	feature_type?: string | null;
+	metadata?: string;
 }
 
 export interface UploadedImageRow {
@@ -150,7 +150,7 @@ export interface MapTokenRow {
 	npc_id: string | null;
 	token_type: string;
 	label: string | null;
-	image_url: string | null;
+	image_url?: string | null;
 	x: number;
 	y: number;
 	facing: number;
