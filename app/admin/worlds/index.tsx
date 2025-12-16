@@ -1,3 +1,4 @@
+import { apiService } from 'expo-auth-template/frontend';
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -5,7 +6,6 @@ import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 
 import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { fetchAPI } from '@/lib/fetch';
 
 interface World {
 	id: string;
@@ -23,7 +23,7 @@ const WorldsListScreen: React.FC = () => {
 	const loadWorlds = async () => {
 		try {
 			setLoading(true);
-			const data = await fetchAPI<World[]>('/api/worlds');
+			const data = await apiService.fetchApi('worlds');
 			setWorlds(data);
 		} catch (error) {
 			console.error('Failed to load worlds:', error);
@@ -66,11 +66,7 @@ const WorldsListScreen: React.FC = () => {
 			<Stack.Screen
 				options={{
 					title: 'Worlds',
-					headerRight: () => (
-						<TouchableOpacity onPress={() => router.push('/admin/worlds/create')}>
-							<ExpoIcon icon="Feather:plus" size={24} color="#3B2F1B" />
-						</TouchableOpacity>
-					),
+					headerTitleAlign: 'center',
 				}}
 			/>
 
@@ -79,17 +75,26 @@ const WorldsListScreen: React.FC = () => {
 					<ActivityIndicator size="large" color="#8B6914" />
 				</View>
 			) : (
-				<FlatList
-					data={worlds}
-					keyExtractor={(item) => item.id}
-					renderItem={renderItem}
-					contentContainerStyle={styles.listContent}
-					ListEmptyComponent={
-						<View style={styles.center}>
-							<ThemedText>No worlds found.</ThemedText>
-						</View>
-					}
-				/>
+				<>
+					<FlatList
+						data={worlds}
+						keyExtractor={(item) => item.id}
+						renderItem={renderItem}
+						contentContainerStyle={styles.listContent}
+						ListEmptyComponent={
+							<View style={styles.center}>
+								<ThemedText>No worlds found.</ThemedText>
+							</View>
+						}
+					/>
+					<TouchableOpacity
+						style={styles.fab}
+						onPress={() => router.push('/admin/worlds/create')}
+						accessibilityLabel="Create World"
+					>
+						<ExpoIcon icon="Feather:plus" size={24} color="#FFF" />
+					</TouchableOpacity>
+				</>
 			)}
 		</ThemedView>
 	);
@@ -164,5 +169,22 @@ const styles = StyleSheet.create({
 		fontSize: 10,
 		color: '#155724',
 		fontWeight: 'bold',
+	},
+	fab: {
+		position: 'absolute',
+		bottom: 24,
+		right: 24,
+		width: 56,
+		height: 56,
+		borderRadius: 28,
+		backgroundColor: '#8B6914',
+		alignItems: 'center',
+		justifyContent: 'center',
+		elevation: 4,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.25,
+		shadowRadius: 4,
+		zIndex: 100,
 	},
 });
