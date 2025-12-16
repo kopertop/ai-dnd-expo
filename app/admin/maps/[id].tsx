@@ -1,14 +1,14 @@
 import { apiService } from 'expo-auth-template/frontend';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
 	ActivityIndicator,
 	Alert,
 	Image,
+	PanResponder,
 	Platform,
 	ScrollView,
 	StyleSheet,
-	Switch,
 	TextInput,
 	TouchableOpacity,
 	View,
@@ -20,6 +20,7 @@ import { ImageUploader } from '@/components/image-uploader';
 import { MediaLibraryModal } from '@/components/media-library-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TilePropertyEditor } from '@/components/tile-property-editor';
 
 interface TileData {
 	x: number;
@@ -30,6 +31,8 @@ interface TileData {
 	is_difficult?: boolean;
 	provides_cover?: boolean;
 	cover_type?: 'half' | 'three-quarters' | 'full';
+	elevation?: number;
+	feature_type?: string | null;
 }
 
 interface MapData {
@@ -99,6 +102,10 @@ const MapEditorScreen: React.FC = () => {
 	const [canvasContainerSize, setCanvasContainerSize] = useState({ width: 0, height: 0 });
 	const canvasContainerRef = useRef<View>(null);
 
+	// Panning state
+	const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+	const panStartRef = useRef({ x: 0, y: 0 });
+
 	useEffect(() => {
 		if (id) loadMap(id);
 	}, [id]);
@@ -124,12 +131,14 @@ const MapEditorScreen: React.FC = () => {
 					newTiles[`${t.x},${t.y}`] = {
 						x: t.x,
 						y: t.y,
-						terrain: t.terrain_type,
+						terrain: t.terrain_type || t.terrain || 'none',
 						movement_cost: t.movement_cost,
 						is_blocked: Boolean(t.is_blocked),
 						is_difficult: Boolean(t.is_difficult),
 						provides_cover: Boolean(t.provides_cover),
 						cover_type: t.cover_type,
+						elevation: t.elevation || 0,
+						feature_type: t.feature_type || null,
 					};
 				});
 			}
@@ -160,8 +169,19 @@ const MapEditorScreen: React.FC = () => {
 		try {
 			setSaving(true);
 
-			// Convert tiles record to array
-			const tilesArray = Object.values(tiles);
+			// Convert tiles record to array with API format
+			const tilesArray = Object.values(tiles).map(tile => ({
+				x: tile.x,
+				y: tile.y,
+				terrain_type: tile.terrain || 'none',
+				movement_cost: tile.movement_cost ?? 1,
+				is_blocked: tile.is_blocked ?? false,
+				is_difficult: tile.is_difficult ?? false,
+				provides_cover: tile.provides_cover ?? false,
+				cover_type: tile.cover_type || null,
+				elevation: tile.elevation ?? 0,
+				feature_type: tile.feature_type || null,
+			}));
 
 			const payload = {
 				...map,
@@ -253,6 +273,39 @@ const MapEditorScreen: React.FC = () => {
 		}));
 	};
 
+	// Convert TileData to TileProperties format for TilePropertyEditor
+	const tileDataToProperties = (tile: TileData) => ({
+		terrainType: tile.terrain || 'none',
+		movementCost: tile.movement_cost ?? 1,
+		isBlocked: tile.is_blocked ?? false,
+		isDifficult: tile.is_difficult ?? false,
+		providesCover: tile.provides_cover ?? false,
+		coverType: tile.cover_type || null,
+		elevation: tile.elevation ?? 0,
+		featureType: tile.feature_type || null,
+	});
+
+	// Convert TileProperties back to TileData format
+	const propertiesToTileData = (props: {
+		terrainType: string;
+		movementCost: number;
+		isBlocked: boolean;
+		isDifficult: boolean;
+		providesCover: boolean;
+		coverType: 'half' | 'three-quarters' | 'full' | null;
+		elevation: number;
+		featureType: string | null;
+	}): Partial<TileData> => ({
+		terrain: props.terrainType,
+		movement_cost: props.movementCost,
+		is_blocked: props.isBlocked,
+		is_difficult: props.isDifficult,
+		provides_cover: props.providesCover,
+		cover_type: props.coverType || undefined,
+		elevation: props.elevation,
+		feature_type: props.featureType,
+	});
+
 	const handleAddObject = (imageUrl: string) => {
 		setObjects(prev => [
 			...prev,
@@ -334,6 +387,9 @@ const MapEditorScreen: React.FC = () => {
 						onTileClick={handleTileClick}
 						selectedTileKey={selectedTileKey}
 						containerSize={canvasContainerSize}
+						panOffset={panOffset}
+						panStartRef={panStartRef}
+						setPanOffset={setPanOffset}
 					/>
 				</View>
 
@@ -380,56 +436,13 @@ const MapEditorScreen: React.FC = () => {
 										</View>
 									) : (
 										<View>
-											<ThemedText style={styles.sectionTitle}>Tile ({selectedTile.x}, {selectedTile.y})</ThemedText>
-
-											<View style={styles.inputGroup}>
-												<ThemedText style={styles.label}>Movement Cost</ThemedText>
-												<TextInput
-													style={styles.input}
-													value={String(selectedTile.movement_cost ?? 1)}
-													testID="movement-cost-input"
-													onChangeText={(t) => updateSelectedTile({ movement_cost: parseFloat(t) || 1 })}
-													keyboardType="numeric"
-												/>
-											</View>
-
-											<View style={styles.switchRow}>
-												<ThemedText>Blocked</ThemedText>
-												<Switch
-													value={selectedTile.is_blocked}
-													testID="blocked-switch"
-													onValueChange={(v) => updateSelectedTile({ is_blocked: v })}
-												/>
-											</View>
-
-											<View style={styles.switchRow}>
-												<ThemedText>Difficult Terrain</ThemedText>
-												<Switch
-													value={selectedTile.is_difficult}
-													testID="difficult-switch"
-													onValueChange={(v) => updateSelectedTile({ is_difficult: v })}
-												/>
-											</View>
-
-											<View style={styles.switchRow}>
-												<ThemedText>Provides Cover</ThemedText>
-												<Switch
-													value={selectedTile.provides_cover}
-													testID="cover-switch"
-													onValueChange={(v) => updateSelectedTile({ provides_cover: v })}
-												/>
-											</View>
-
-											<View style={styles.inputGroup}>
-												<ThemedText style={styles.label}>Terrain Type (Tag)</ThemedText>
-												<TextInput
-													style={styles.input}
-													value={selectedTile.terrain || ''}
-													testID="terrain-type-input"
-													onChangeText={(t) => updateSelectedTile({ terrain: t })}
-												/>
-											</View>
-
+											<TilePropertyEditor
+												properties={tileDataToProperties(selectedTile)}
+												onChange={(props) => {
+													updateSelectedTile(propertiesToTileData(props));
+												}}
+												onClose={() => setSelectedTileKey(null)}
+											/>
 											<TouchableOpacity
 												style={styles.deleteBtn}
 												testID="clear-tile-button"
@@ -639,6 +652,9 @@ const EditorCanvas = ({
 	onTileClick,
 	selectedTileKey,
 	containerSize,
+	panOffset,
+	panStartRef,
+	setPanOffset,
 }: {
 	map: MapData;
 	gridConfig: { size: number; offsetX: number; offsetY: number; columns: number; rows: number };
@@ -648,16 +664,57 @@ const EditorCanvas = ({
 	onTileClick: (x: number, y: number) => void;
 	selectedTileKey: string | null;
 	containerSize: { width: number; height: number };
+	panOffset: { x: number; y: number };
+	panStartRef: React.MutableRefObject<{ x: number; y: number }>;
+	setPanOffset: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
 }) => {
 	const width = gridConfig.columns * gridConfig.size;
 	const height = gridConfig.rows * gridConfig.size;
-	const canvasWidth = width + 200;
-	const canvasHeight = height + 200;
+	// Add padding around the map for easier editing
+	const padding = 100;
+	const canvasWidth = width + gridConfig.offsetX + padding;
+	const canvasHeight = height + gridConfig.offsetY + padding;
 
-	// Calculate scale to fit
-	const scaleX = containerSize.width > 0 ? Math.min(1, containerSize.width / canvasWidth) : 1;
-	const scaleY = containerSize.height > 0 ? Math.min(1, containerSize.height / canvasHeight) : 1;
-	const scale = Math.min(scaleX, scaleY);
+	// Calculate pan bounds
+	const mapWidthPx = width + gridConfig.offsetX;
+	const mapHeightPx = height + gridConfig.offsetY;
+	const maxPanX = Math.max(0, mapWidthPx - containerSize.width);
+	const maxPanY = Math.max(0, mapHeightPx - containerSize.height);
+
+	const clampPan = (value: number, containerSize: number, mapSize: number) => {
+		const max = Math.max(0, mapSize - containerSize);
+		return Math.max(0, Math.min(max, value));
+	};
+
+	// Create PanResponder for panning
+	// Only enable panning in select or grid mode, and when map is larger than container
+	const enablePanning = (activeTool === 'select' || activeTool === 'grid') &&
+		(mapWidthPx > containerSize.width || mapHeightPx > containerSize.height);
+
+	const panResponder = useMemo(
+		() =>
+			PanResponder.create({
+				onStartShouldSetPanResponder: () => false,
+				onMoveShouldSetPanResponder: (_, gestureState) => {
+					// Only pan if moving enough distance
+					return enablePanning && (Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5);
+				},
+				onPanResponderGrant: () => {
+					panStartRef.current = panOffset;
+				},
+				onPanResponderMove: (_, gestureState) => {
+					if (!enablePanning) return;
+					setPanOffset({
+						x: clampPan(panStartRef.current.x - gestureState.dx, containerSize.width, mapWidthPx),
+						y: clampPan(panStartRef.current.y - gestureState.dy, containerSize.height, mapHeightPx),
+					});
+				},
+				onPanResponderRelease: () => {
+					// Pan complete
+				},
+			}),
+		[enablePanning, containerSize.width, containerSize.height, mapWidthPx, mapHeightPx, panOffset, panStartRef, activeTool],
+	);
 
 	const renderGrid = () => {
 		const lines = [];
@@ -745,19 +802,16 @@ const EditorCanvas = ({
 			y = e.nativeEvent.offsetY;
 		}
 
-		// Adjust for scale transform
-		const scaledX = x / scale;
-		const scaledY = y / scale;
-
-		const adjX = scaledX - gridConfig.offsetX;
-		const adjY = scaledY - gridConfig.offsetY;
+		// Adjust for pan offset
+		const adjX = x + panOffset.x - gridConfig.offsetX;
+		const adjY = y + panOffset.y - gridConfig.offsetY;
 
 		if (adjX < 0 || adjY < 0) return;
 
 		const gx = Math.floor(adjX / gridConfig.size);
 		const gy = Math.floor(adjY / gridConfig.size);
 
-		if (gx < gridConfig.columns && gy < gridConfig.rows) {
+		if (gx >= 0 && gx < gridConfig.columns && gy >= 0 && gy < gridConfig.rows) {
 			onTileClick(gx, gy);
 		}
 	};
@@ -767,10 +821,10 @@ const EditorCanvas = ({
 			style={{
 				width: containerSize.width || canvasWidth,
 				height: containerSize.height || canvasHeight,
-				alignItems: 'center',
-				justifyContent: 'center',
+				overflow: 'hidden',
 				backgroundColor: '#333',
 			}}
+			{...panResponder.panHandlers}
 		>
 			<TouchableOpacity
 				testID="editor-canvas"
@@ -780,45 +834,50 @@ const EditorCanvas = ({
 					width: canvasWidth,
 					height: canvasHeight,
 					backgroundColor: '#222',
-					position: 'relative',
-					transform: [{ scale }],
+					position: 'absolute',
+					left: -panOffset.x,
+					top: -panOffset.y,
 				}}
 			>
-			{/* Background Layer */}
-			{map.background_image_url && (
-				<Image
-					source={{ uri: map.background_image_url }}
-					style={{
-						position: 'absolute',
-						top: 0,
-						left: 0,
-						width: width,
-						height: height,
-						resizeMode: 'stretch',
-						opacity: 0.8,
-					}}
-				/>
-			)}
+				{/* Background Layer */}
+				{map.background_image_url && (
+					<Image
+						source={{ uri: map.background_image_url }}
+						style={{
+							position: 'absolute',
+							top: gridConfig.offsetY,
+							left: gridConfig.offsetX,
+							width: width,
+							height: height,
+							resizeMode: 'cover',
+						}}
+					/>
+				)}
 
-			<Svg height="100%" width="100%" style={{ position: 'absolute', top: 0, left: 0 }} pointerEvents="none">
-				{renderGrid()}
-				{renderTiles()}
-				{renderSelection()}
-			</Svg>
+				<Svg
+					height={canvasHeight}
+					width={canvasWidth}
+					style={{ position: 'absolute', top: 0, left: 0 }}
+					pointerEvents="none"
+				>
+					{renderGrid()}
+					{renderTiles()}
+					{renderSelection()}
+				</Svg>
 
-			{objects.map((obj, idx) => (
-				<Image
-					key={obj.id || idx}
-					source={{ uri: obj.image_url }}
-					style={{
-						position: 'absolute',
-						left: obj.x + gridConfig.offsetX,
-						top: obj.y + gridConfig.offsetY,
-						width: gridConfig.size,
-						height: gridConfig.size,
-					}}
-				/>
-			))}
+				{objects.map((obj, idx) => (
+					<Image
+						key={obj.id || idx}
+						source={{ uri: obj.image_url }}
+						style={{
+							position: 'absolute',
+							left: obj.x + gridConfig.offsetX,
+							top: obj.y + gridConfig.offsetY,
+							width: gridConfig.size,
+							height: gridConfig.size,
+						}}
+					/>
+				))}
 			</TouchableOpacity>
 		</View>
 	);
@@ -861,9 +920,7 @@ const styles = StyleSheet.create({
 	canvasScroll: {
 		flex: 1,
 		backgroundColor: '#333',
-	},
-	canvasScrollVertical: {
-		flex: 1,
+		overflow: 'hidden',
 	},
 	sidebar: {
 		width: 250,

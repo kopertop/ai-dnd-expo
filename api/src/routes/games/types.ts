@@ -1,16 +1,18 @@
+import { User } from 'expo-auth-template/backend';
+
 import type { CloudflareBindings } from '../../env';
 
 import type {
-	AttackTarget,
-	CreateGameBody,
-	JoinGameBody,
+    AttackTarget,
+    CreateGameBody,
+    JoinGameBody,
 } from '@/types/games-api';
 
 /**
  * User variables available in route context
  */
 export type Variables = {
-	user: { id: string; email: string; name?: string | null } | null;
+	user: User | null;
 };
 
 /**

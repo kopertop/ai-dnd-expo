@@ -1,10 +1,10 @@
+import { User } from 'expo-auth-template/backend';
 import { Hono } from 'hono';
 
 import type { CloudflareBindings } from '@/api/src/env';
 import { createId } from '@/api/src/utils/games-utils';
 import { generateImageKey, validateImageFile } from '@/api/src/utils/image-upload';
 import { createDatabase } from '@/api/src/utils/repository';
-import { User } from '@/types/models';
 
 type Bindings = CloudflareBindings;
 
@@ -130,7 +130,7 @@ images.get('/:id', async (c) => {
 		// Check if image is public or user is the owner/admin
 		const user = c.get('user');
 		const isOwner = user && image.user_id === user.id;
-		const isAdmin = user && (user.role === 'admin' || user.is_admin);
+		const isAdmin = user && (user.role === 'admin' || user.isAdmin);
 
 		if (!image.is_public && !isOwner && !isAdmin) {
 			return c.json({ error: 'Forbidden' }, 403);
@@ -185,7 +185,7 @@ images.delete('/:id', async (c) => {
 		}
 
 		// Only owner or admin can delete
-		const isAdmin = user.role === 'admin' || user.is_admin;
+		const isAdmin = user.role === 'admin' || user.isAdmin;
 		if (image.user_id !== user.id && !isAdmin) {
 			return c.json({ error: 'Forbidden' }, 403);
 		}

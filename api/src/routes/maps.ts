@@ -6,7 +6,7 @@ import type { CloudflareBindings } from '../env';
 import { createDatabase } from '@/api/src/utils/repository';
 
 type Variables = {
-	user: (User & { is_admin?: boolean | number; role?: string }) | null;
+	user: User | null;
 };
 
 const maps = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
@@ -83,7 +83,8 @@ maps.patch('/:id', async (c) => {
 	if (!user) {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
-	if (!user.is_admin) {
+	// Check for isAdmin (camelCase) from expo-auth-template User type
+	if (!user.isAdmin) {
 		return c.json({ error: 'Forbidden' }, 403);
 	}
 	const id = c.req.param('id');
