@@ -5,7 +5,9 @@ import { partyserverMiddleware } from 'hono-party';
 import { corsMiddleware } from './cors';
 import type { CloudflareBindings } from './env';
 import { GameRoom } from './partykit/server';
+import { zValidator } from '@hono/zod-validator';
 import adminRoutes from './routes/admin';
+import { googleCallbackSchema } from './routes/auth';
 import characterRoutes from './routes/characters';
 import gameRoutes from './routes/games';
 import imageRoutes from './routes/images';
@@ -105,14 +107,14 @@ app.get('/api/status', c => {
 });
 
 // Google OAuth callback handler (no auth required - this is the authentication endpoint)
-app.post('/api/auth/google/callback', async (c) => {
+app.post('/api/auth/google/callback', zValidator('json', googleCallbackSchema), async (c) => {
 	try {
 		const envWithDB = {
 			...c.env,
 			DB: c.env.DATABASE, // Package expects DB binding
 		};
 
-		const body = await c.req.json();
+		const body = c.req.valid('json');
 		console.log('body', body);
 
 		// Validate configuration
