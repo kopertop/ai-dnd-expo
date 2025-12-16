@@ -409,7 +409,10 @@ const MapEditorScreen: React.FC = () => {
 							</TouchableOpacity>
 						</View>
 
-						<ScrollView style={styles.sidebarContent}>
+						<ScrollView
+							style={styles.sidebarContent}
+							contentContainerStyle={styles.sidebarContentContainer}
+						>
 							{activeTool === 'select' && (
 								<View>
 									{!selectedTile ? (
@@ -946,6 +949,9 @@ const styles = StyleSheet.create({
 	},
 	sidebarContent: {
 		padding: 10,
+	},
+	sidebarContentContainer: {
+		paddingRight: 20,
 	},
 	sectionTitle: {
 		fontSize: 14,
