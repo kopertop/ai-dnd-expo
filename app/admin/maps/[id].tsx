@@ -170,18 +170,22 @@ const MapEditorScreen: React.FC = () => {
 			setSaving(true);
 
 			// Convert tiles record to array with API format
-			const tilesArray = Object.values(tiles).map(tile => ({
-				x: tile.x,
-				y: tile.y,
-				terrain_type: tile.terrain || 'none',
-				movement_cost: tile.movement_cost ?? 1,
-				is_blocked: tile.is_blocked ?? false,
-				is_difficult: tile.is_difficult ?? false,
-				provides_cover: tile.provides_cover ?? false,
-				cover_type: tile.cover_type || null,
-				elevation: tile.elevation ?? 0,
-				feature_type: tile.feature_type || null,
-			}));
+			const tilesArray = Object.values(tiles).map(tile => {
+				const terrainValue = tile.terrain || 'none';
+				return {
+					x: tile.x,
+					y: tile.y,
+					terrain: terrainValue,
+					terrain_type: terrainValue,
+					movement_cost: tile.movement_cost ?? 1,
+					is_blocked: tile.is_blocked ?? false,
+					is_difficult: tile.is_difficult ?? false,
+					provides_cover: tile.provides_cover ?? false,
+					cover_type: tile.cover_type || null,
+					elevation: tile.elevation ?? 0,
+					feature_type: tile.feature_type || null,
+				};
+			});
 
 			const payload = {
 				...map,

@@ -79,6 +79,7 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 						<TextInput
 							style={styles.input}
 							value={localProps.terrainType}
+							testID="terrain-type-input"
 							onChangeText={(text) => handleChange('terrainType', text)}
 						/>
 					</View>
@@ -89,6 +90,7 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 							style={[styles.input, styles.numberInput]}
 							value={localProps.movementCost.toString()}
 							keyboardType="numeric"
+							testID="movement-cost-input"
 							onChangeText={(text) => {
 								const val = parseFloat(text);
 								if (!isNaN(val)) handleChange('movementCost', val);
@@ -100,6 +102,7 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 						<ThemedText>Blocked (Impassible)</ThemedText>
 						<Switch
 							value={localProps.isBlocked}
+							testID="blocked-switch"
 							onValueChange={(val) => handleChange('isBlocked', val)}
 							trackColor={{ false: '#767577', true: '#DC3545' }}
 						/>
@@ -109,6 +112,7 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 						<ThemedText>Difficult Terrain</ThemedText>
 						<Switch
 							value={localProps.isDifficult}
+							testID="difficult-switch"
 							onValueChange={(val) => handleChange('isDifficult', val)}
 							trackColor={{ false: '#767577', true: '#E9D8A6' }}
 						/>
@@ -122,6 +126,7 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 						<ThemedText>Provides Cover</ThemedText>
 						<Switch
 							value={localProps.providesCover}
+							testID="cover-switch"
 							onValueChange={(val) => handleChange('providesCover', val)}
 							trackColor={{ false: '#767577', true: '#4CAF50' }}
 						/>
