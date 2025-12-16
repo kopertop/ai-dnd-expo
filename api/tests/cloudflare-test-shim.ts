@@ -236,6 +236,14 @@ class D1DatabaseMock {
 		}
 		return [];
 	}
+
+	async withSession(_callback: any) {
+		return this; // Placeholder
+	}
+
+	async dump() {
+		return new ArrayBuffer(0);
+	}
 }
 
 class KvNamespaceMock {
@@ -261,11 +269,24 @@ class KvNamespaceMock {
 	}
 }
 
+class R2BucketMock {
+	async put(_key: string, _value: any, _options?: any) { return null; }
+	async get(_key: string) { return null; }
+	async delete(_key: string) { return null; }
+}
+
+class DurableObjectNamespaceMock {
+	idFromName(name: string) { return { toString: () => name }; }
+	get(_id: any) { return { fetch: async () => new Response() }; }
+}
+
 export const env = {
 	DATABASE: new D1DatabaseMock(),
 	DB: new D1DatabaseMock(),
 	QUESTS: new KvNamespaceMock(),
 	AUTH_SESSIONS: new KvNamespaceMock(),
+	IMAGES_BUCKET: new R2BucketMock(),
+	GameRoom: new DurableObjectNamespaceMock(),
 	ASSETS: undefined,
 	OLLAMA_BASE_URL: '',
 	OLLAMA_MODEL: '',

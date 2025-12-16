@@ -269,16 +269,21 @@ core.post('/:inviteCode/join', async (c) => {
 
 	// Accept either full character payload or a characterId referring to an existing character
 	const existingCharacterRow = body.characterId ? await db.getCharacterById(body.characterId) : null;
+
+	// Security: Verify character ownership if using existing character
+	if (existingCharacterRow && existingCharacterRow.player_id !== user.id) {
+		return c.json({ error: 'Forbidden - You do not own this character' }, 403);
+	}
+
 	const character = body.character || (existingCharacterRow ? deserializeCharacter(existingCharacterRow) : null);
-	const playerId = body.playerId || existingCharacterRow?.player_id || user.id;
-	const playerEmail = body.playerEmail || existingCharacterRow?.player_email || user.email || null;
+
+	// Security: Always enforce authenticated user identity
+	// We ignore body.playerId to prevent ID spoofing
+	const playerId = user.id;
+	const playerEmail = user.email || null;
 
 	if (!character) {
 		return c.json({ error: 'Character data is required' }, 400);
-	}
-
-	if (!playerId) {
-		return c.json({ error: 'Player identity is required' }, 400);
 	}
 
 	const game = await db.getGameByInviteCode(inviteCode);
@@ -291,6 +296,10 @@ core.post('/:inviteCode/join', async (c) => {
 	const existingCharacter = await db.getCharacterById(character.id);
 
 	if (existingCharacter) {
+		// Security: Verify ownership before updating existing character
+		if (existingCharacter.player_id !== user.id) {
+			return c.json({ error: 'Forbidden - Cannot update another user\'s character' }, 403);
+		}
 		await db.updateCharacter(character.id, serializedCharacter);
 	} else {
 		await db.createCharacter(serializedCharacter);
