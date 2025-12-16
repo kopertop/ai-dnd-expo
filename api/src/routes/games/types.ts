@@ -3,9 +3,9 @@ import { User } from 'expo-auth-template/backend';
 import type { CloudflareBindings } from '../../env';
 
 import type {
-    AttackTarget,
-    CreateGameBody,
-    JoinGameBody,
+	AttackTarget,
+	CreateGameBody,
+	JoinGameBody,
 } from '@/types/games-api';
 
 /**

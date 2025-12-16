@@ -1,24 +1,24 @@
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Modal,
-    Platform,
-    Switch as RNSwitch,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+	Alert,
+	Modal,
+	Platform,
+	Switch as RNSwitch,
+	ScrollView,
+	StyleSheet,
+	Text,
+	TouchableOpacity,
+	View,
 } from 'react-native';
 
-import { ExpoIcon } from '@/components/expo-icon';
 
 import { useSettingsStore } from '../stores/settings-store';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { useGameState } from '@/hooks/use-game-state';
 import { TTSVoice, useTextToSpeech } from '@/hooks/use-text-to-speech';
 

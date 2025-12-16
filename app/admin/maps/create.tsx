@@ -1,21 +1,22 @@
+import { Picker } from '@react-native-picker/picker';
+import { Stack, router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+	ActivityIndicator,
+	Alert,
+	Image,
+	ScrollView,
+	StyleSheet,
+	TextInput,
+	TouchableOpacity,
+	View,
+} from 'react-native';
+
 import { ExpoIcon } from '@/components/expo-icon';
 import { MediaLibraryModal } from '@/components/media-library-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { fetchAPI } from '@/lib/fetch';
-import { Picker } from '@react-native-picker/picker';
-import { Stack, router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
 
 interface World {
 	id: string;
@@ -115,7 +116,7 @@ export default function CreateMapScreen() {
 							setFormData(prev => ({
 								...prev,
 								name: text,
-								slug: text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+								slug: text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
 							}));
 						}}
 						placeholder="e.g. The Red Tavern"

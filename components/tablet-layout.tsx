@@ -1,12 +1,10 @@
 import React, { useEffect } from 'react';
 import { LayoutAnimation, StyleSheet, TouchableOpacity, View } from 'react-native';
-
-import { ExpoIcon } from '@/components/expo-icon';
 import Animated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    withTiming,
+	useAnimatedStyle,
+	useSharedValue,
+	withSpring,
+	withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -17,6 +15,7 @@ import { SettingsModal } from './settings-modal';
 import { ThemedText } from './themed-text';
 import { TurnBasedChat } from './turn-based-chat';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { DMMessage } from '@/services/ai/agents/dungeon-master-agent';
 import { useLayoutStore } from '@/stores/use-layout-store';
 import { Character } from '@/types/character';

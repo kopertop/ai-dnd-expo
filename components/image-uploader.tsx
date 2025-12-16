@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, ActivityIndicator, Image, Text, Platform } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+
 import { ExpoIcon } from '@/components/expo-icon';
 import { ThemedText } from '@/components/themed-text';
-import * as DocumentPicker from 'expo-document-picker';
 import { fetchAPI, uploadFile } from '@/lib/fetch';
 import { MediaLibraryModal } from '@/components/media-library-modal';
 
@@ -14,13 +15,13 @@ interface ImageUploaderProps {
 	testID?: string;
 }
 
-export function ImageUploader({
+export const ImageUploader = ({
 	value,
 	onChange,
 	folder = 'misc',
 	placeholder = 'Upload Image',
 	testID,
-}: ImageUploaderProps) {
+}: ImageUploaderProps) => {
 	const [uploading, setUploading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [mediaModalVisible, setMediaModalVisible] = useState(false);
@@ -104,7 +105,7 @@ export function ImageUploader({
 			/>
 		</View>
 	);
-}
+};
 
 const styles = StyleSheet.create({
 	container: {

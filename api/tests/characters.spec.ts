@@ -1,10 +1,10 @@
 import { readdir, readFile } from 'fs/promises';
 import path from 'path';
 
-import { env } from '@/api/tests/cloudflare-test-shim';
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { env } from '@/api/tests/cloudflare-test-shim';
 import type { CloudflareBindings } from '@/api/src/env';
 import characterRoutes from '@/api/src/routes/characters';
 import * as dbModule from '@/shared/workers/db';

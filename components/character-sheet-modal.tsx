@@ -1,16 +1,16 @@
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Image,
-    ImageSourcePropType,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+	Alert,
+	Image,
+	ImageSourcePropType,
+	Modal,
+	Platform,
+	Pressable,
+	ScrollView,
+	Text,
+	TouchableOpacity,
+	View,
 } from 'react-native';
 
 import { getEquipmentSpritesheet } from '@/components/equipment-spritesheet';

@@ -2,13 +2,13 @@ import { apiService } from 'expo-auth-template/frontend';
 import { Stack } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+	ActivityIndicator,
+	Alert,
+	ScrollView,
+	StyleSheet,
+	TextInput,
+	TouchableOpacity,
+	View,
 } from 'react-native';
 
 import { AnimatedModal } from '@/components/animated-modal';
