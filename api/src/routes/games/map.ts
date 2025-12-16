@@ -185,12 +185,12 @@ map.post('/:inviteCode/map/generate', async (c) => {
 		...generated.map,
 		world: game.world || null, // Set world from game, or null for world-agnostic
 		world_id: game.world_id ?? null,
-		background_image_url: generated.map.background_image_url ?? null,
-		cover_image_url: generated.map.cover_image_url ?? null,
-		grid_columns: generated.map.grid_columns ?? generated.map.width,
-		grid_size: generated.map.grid_size ?? 64,
-		grid_offset_x: generated.map.grid_offset_x ?? 0,
-		grid_offset_y: generated.map.grid_offset_y ?? 0,
+		background_image_url: null,
+		cover_image_url: null,
+		grid_columns: generated.map.width,
+		grid_size: 64,
+		grid_offset_x: 0,
+		grid_offset_y: 0,
 		created_at: Date.now(),
 		updated_at: Date.now(),
 	});
@@ -1019,7 +1019,8 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 			is_generated: 0,
 			created_at: timestamp,
 			updated_at: timestamp,
-			world: game.world_id || null,
+			world: game.world || null,
+			world_id: game.world_id ?? null,
 		});
 
 		// Create default tiles
@@ -1106,7 +1107,7 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 		// Set as current map
 		await db.updateGameMap(game.id, mapId);
 		game.current_map_id = mapId;
-		game.world_id = game.world_id ?? map.world_id ?? null;
+		// world_id is already set on game, no need to update from map
 
 		const mapState = await buildMapState(db, game);
 		return c.json(mapState);

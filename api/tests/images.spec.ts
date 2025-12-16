@@ -26,11 +26,11 @@ describe('Images API', () => {
 	});
 
 	const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-		return testApp.fetch(new Request(url, options), env as CloudflareBindings);
+		return testApp.fetch(new Request(url, options), env as unknown as CloudflareBindings);
 	};
 
 	it('should only list images belonging to the current user', async () => {
-		const db = (env as CloudflareBindings).DATABASE;
+		const db = (env as unknown as CloudflareBindings).DATABASE;
 
 		// 1. Insert image for other user
 		const otherUserId = 'user-2';

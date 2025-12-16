@@ -229,6 +229,10 @@ class InMemoryDatabase {
 			has_fog?: number;
 			feature_type?: string | null;
 			metadata?: string;
+			is_difficult?: number;
+			movement_cost?: number;
+			provides_cover?: number;
+			cover_type?: string | null;
 		}>,
 	) {
 		const map = this.store.maps.find(m => m.id === mapId);

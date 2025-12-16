@@ -79,7 +79,13 @@ app.use('*', async (c, next) => {
 	// Authenticate using expo-auth-template
 	const user = await useAuth(c.req.raw, envWithDB);
 	const hydratedUser: (User & { created_at?: number; updated_at?: number }) | null = user
-		? { ...user, created_at: user.created_at ?? Date.now(), updated_at: user.updated_at ?? Date.now() }
+		? {
+			...user,
+			created_at: user.created_at ?? Date.now(),
+			updated_at: user.updated_at ?? Date.now(),
+			isAdmin: user.isAdmin ?? user.is_admin ?? false,
+			is_admin: user.is_admin ?? user.isAdmin ?? false,
+		}
 		: null;
 
 	// Set user in context

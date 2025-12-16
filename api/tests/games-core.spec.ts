@@ -36,7 +36,7 @@ describe('Games Core API', () => {
 		testApp.route('/api/games', gameRoutes);
 
 		// Run migrations on the D1 database
-		const db = (env as CloudflareBindings).DATABASE;
+		const db = (env as unknown as CloudflareBindings).DATABASE;
 		// Execute all migration files in order
 		const migrationFiles = await readdir(path.resolve(process.cwd(), 'api', 'migrations'));
 		for (const migrationFile of migrationFiles) {
@@ -53,7 +53,7 @@ describe('Games Core API', () => {
 	) => {
 		const headers = new Headers(options.headers);
 		headers.set('X-Test-User', user);
-		return testApp.fetch(new Request(url, { ...options, headers }), env as CloudflareBindings);
+		return testApp.fetch(new Request(url, { ...options, headers }), env as unknown as CloudflareBindings);
 	};
 
 	describe('POST /api/games', () => {
@@ -484,7 +484,7 @@ describe('Games Core API', () => {
 
 	afterEach(async () => {
 		// Clean up database tables
-		const db = (env as CloudflareBindings).DATABASE;
+		const db = (env as unknown as CloudflareBindings).DATABASE;
 		// Cleanup all tables
 		const tables = await db.prepare('SELECT name FROM sqlite_master WHERE type = "table"').all<{ name: string }>();
 		for (const table of tables.results) {

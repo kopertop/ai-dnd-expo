@@ -379,7 +379,7 @@ export const handleBasicAttack = async ({
 
 		// Check equipped weapon for damage type override
 		const equipped = attacker.equipped || {};
-		const weaponId = equipped.mainHand || equipped.twoHand;
+		const weaponId = equipped.mainHand;
 		if (weaponId) {
 			const weapon = attacker.inventory.find(i => i.id === weaponId);
 			if (weapon && weapon.metadata && typeof weapon.metadata === 'object' && 'damageType' in weapon.metadata) {

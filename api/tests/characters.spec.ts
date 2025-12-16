@@ -23,7 +23,7 @@ describe('Characters API', () => {
 		});
 		testApp.route('/api/characters', characterRoutes);
 
-		const db = (env as CloudflareBindings).DATABASE;
+		const db = (env as unknown as CloudflareBindings).DATABASE;
 		const migrationFiles = await readdir(path.resolve(process.cwd(), 'api', 'migrations'));
 		for (const migrationFile of migrationFiles) {
 			await db.exec(await readFile(path.join(__dirname, '..', 'migrations', migrationFile), 'utf8'));
@@ -31,7 +31,7 @@ describe('Characters API', () => {
 	});
 
 	const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-		return testApp.fetch(new Request(url, options), env as CloudflareBindings);
+		return testApp.fetch(new Request(url, options), env as unknown as CloudflareBindings);
 	};
 
 	it('creates a character with the exact payload format and verifies trait is saved', async () => {
@@ -128,7 +128,7 @@ describe('Characters API', () => {
 		}
 
 		// Also verify directly from database that trait is not null
-		const db = (env as CloudflareBindings).DATABASE;
+		const db = (env as unknown as CloudflareBindings).DATABASE;
 		const dbResult = await db.prepare('SELECT trait FROM characters WHERE id = ?').bind(payload.id).first<{ trait: string }>();
 		expect(dbResult).toBeDefined();
 		expect(dbResult?.trait).toBe('');
@@ -287,7 +287,7 @@ describe('Characters API', () => {
 
 		const response = await unauthenticatedApp.fetch(
 			new Request('http://localhost/api/characters'),
-			env as CloudflareBindings,
+			env as unknown as CloudflareBindings,
 		);
 
 		expect(response.status).toBe(401);
@@ -333,7 +333,7 @@ describe('Characters API', () => {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ name: 'Hacked Name' }),
 			}),
-			env as CloudflareBindings,
+			env as unknown as CloudflareBindings,
 		);
 
 		expect(response.status).toBe(403);
@@ -373,7 +373,7 @@ describe('Characters API', () => {
 
 		const response = await otherUserApp.fetch(
 			new Request('http://localhost/api/characters/char-5'),
-			env as CloudflareBindings,
+			env as unknown as CloudflareBindings,
 		);
 
 		expect(response.status).toBe(403);
@@ -415,14 +415,14 @@ describe('Characters API', () => {
 			new Request('http://localhost/api/characters/char-6', {
 				method: 'DELETE',
 			}),
-			env as CloudflareBindings,
+			env as unknown as CloudflareBindings,
 		);
 
 		expect(response.status).toBe(403);
 	});
 
 	afterEach(async () => {
-		const db = (env as CloudflareBindings).DATABASE;
+		const db = (env as unknown as CloudflareBindings).DATABASE;
 		const tables = await db.prepare('SELECT name FROM sqlite_master WHERE type = "table"').all<{ name: string }>();
 		for (const table of tables.results) {
 			await db.exec(`DELETE FROM ${table.name}`);

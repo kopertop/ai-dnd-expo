@@ -1,6 +1,4 @@
-import { User } from 'expo-auth-template/backend';
-
-import type { CloudflareBindings } from '../../env';
+import type { HonoContext } from '../../env';
 
 import type {
 	AttackTarget,
@@ -9,16 +7,9 @@ import type {
 } from '@/types/games-api';
 
 /**
- * User variables available in route context
- */
-export type Variables = {
-	user: User | null;
-};
-
-/**
  * Context type for games routes
  */
-export type GamesContext = { Bindings: CloudflareBindings; Variables: Variables };
+export type GamesContext = HonoContext;
 
 /**
  * Options for performing a basic attack

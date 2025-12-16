@@ -1,15 +1,10 @@
-import type { User } from 'expo-auth-template/backend';
 import { Hono } from 'hono';
 
-import type { CloudflareBindings } from '../env';
+import type { HonoContext } from '../env';
 
 import { createDatabase } from '@/api/src/utils/repository';
 
-type Variables = {
-	user: User | null;
-};
-
-const maps = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
+const maps = new Hono<HonoContext>();
 
 /**
  * List all available maps in the system

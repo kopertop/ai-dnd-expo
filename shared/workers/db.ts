@@ -13,6 +13,7 @@ export interface GameRow {
 	starting_area: string;
 	status: 'waiting' | 'active' | 'completed' | 'cancelled';
 	current_map_id: string | null;
+	world_id?: string | null;
 	created_at: number;
 	updated_at: number;
 }

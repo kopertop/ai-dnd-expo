@@ -8,7 +8,7 @@ type TerrainCell = {
 	blocked?: boolean;
 	movementCost: number;
 	providesCover?: boolean;
-	coverType?: string | null;
+	coverType?: 'half' | 'three-quarters' | 'full' | null;
 	difficult?: boolean;
 	featureType?: string | null;
 	metadata?: Record<string, unknown>;

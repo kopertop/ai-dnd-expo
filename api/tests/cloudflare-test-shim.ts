@@ -36,7 +36,21 @@ class PreparedStatement {
 
 	async run() {
 		await this.execute();
-		return { success: true };
+		return {
+			success: true,
+			meta: {
+				changes: 0,
+				last_row_id: 0,
+				duration: 0,
+				rows_read: 0,
+				rows_written: 0,
+			},
+		};
+	}
+
+	async raw<T>() {
+		const results = await this.execute<T>();
+		return results as T[];
 	}
 
 	private async execute<T>() {
@@ -332,6 +346,14 @@ class D1DatabaseMock {
 			await stmt.run();
 		}
 		return [];
+	}
+
+	withSession(_session: unknown) {
+		return this;
+	}
+
+	async dump() {
+		return new ArrayBuffer(0);
 	}
 }
 
