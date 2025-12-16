@@ -31,12 +31,14 @@ interface TilePropertyEditorProps {
 	properties: TileProperties;
 	onChange: (properties: TileProperties) => void;
 	onClose: () => void;
+	compact?: boolean;
 }
 
 export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 	properties,
 	onChange,
 	onClose,
+	compact = false,
 }) => {
 	// Normalize terrain type - default to 'stone' if empty, 'none', or invalid
 
@@ -78,16 +80,8 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 		onChange(newProps);
 	};
 
-	return (
-		<ThemedView style={styles.container}>
-			<View style={styles.header}>
-				<ThemedText type="subtitle">Tile Properties</ThemedText>
-				<TouchableOpacity onPress={onClose}>
-					<ThemedText style={styles.closeButton}>✕</ThemedText>
-				</TouchableOpacity>
-			</View>
-
-			<View style={styles.content}>
+	const content = (
+		<View style={compact ? styles.contentCompact : styles.content}>
 				<View style={styles.section}>
 					<ThemedText style={styles.sectionTitle}>Movement & Terrain</ThemedText>
 
@@ -216,6 +210,21 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 					</View>
 				</View>
 			</View>
+	);
+
+	if (compact) {
+		return content;
+	}
+
+	return (
+		<ThemedView style={styles.container}>
+			<View style={styles.header}>
+				<ThemedText type="subtitle">Tile Properties</ThemedText>
+				<TouchableOpacity onPress={onClose}>
+					<ThemedText style={styles.closeButton}>✕</ThemedText>
+				</TouchableOpacity>
+			</View>
+			{content}
 		</ThemedView>
 	);
 };
@@ -241,6 +250,9 @@ const styles = StyleSheet.create({
 		padding: 4,
 	},
 	content: {
+		width: '100%',
+	},
+	contentCompact: {
 		width: '100%',
 	},
 	section: {
