@@ -959,9 +959,12 @@ const EditorCanvas = ({
 			y = e.nativeEvent.offsetY;
 		}
 
-		// Adjust for pan offset and zoom
-		const adjX = (x + panOffset.x) / zoom - gridConfig.offsetX;
-		const adjY = (y + panOffset.y) / zoom - gridConfig.offsetY;
+		// Adjust for zoom and grid offset
+		// NOTE: We do NOT add panOffset here because the TouchableOpacity is already positioned
+		// with left: -panOffset.x, top: -panOffset.y, so event coordinates are already in the
+		// "panned" coordinate space relative to the positioned element
+		const adjX = x / zoom - gridConfig.offsetX;
+		const adjY = y / zoom - gridConfig.offsetY;
 
 		if (adjX < 0 || adjY < 0) return;
 
