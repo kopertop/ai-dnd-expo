@@ -741,9 +741,20 @@ const EditorCanvas = ({
 	const maxPanX = Math.max(0, mapWidthPx - containerSize.width);
 	const maxPanY = Math.max(0, mapHeightPx - containerSize.height);
 
+	// Margin for panning past edges - scales inversely with zoom
+	// When zoomed out (zoom < 1), we need more margin to see edges
+	// When zoomed in (zoom > 1), we need less margin
+	// Base margin of 200px at zoom = 1, scales proportionally
+	const BASE_PAN_MARGIN = 200;
+	const PAN_MARGIN = BASE_PAN_MARGIN / Math.max(zoom, 0.1); // Prevent division by zero, cap at reasonable minimum
+
 	const clampPan = (value: number, containerSize: number, mapSize: number) => {
 		const max = Math.max(0, mapSize - containerSize);
-		return Math.max(0, Math.min(max, value));
+		// Allow panning up to PAN_MARGIN pixels past the normal bounds
+		// Margin scales with zoom level to ensure edges are always visible
+		const minValue = -PAN_MARGIN;
+		const maxValue = max + PAN_MARGIN;
+		return Math.max(minValue, Math.min(maxValue, value));
 	};
 
 	const clampZoom = (value: number) => {
@@ -773,9 +784,11 @@ const EditorCanvas = ({
 	};
 
 	// Create gestures for pan and zoom
-	// Only enable panning in select or grid mode, and when map is larger than container
+	// Enable panning in select or grid mode when:
+	// 1. Map is larger than container (normal case), OR
+	// 2. We have a meaningful margin that allows panning past edges (when zoomed out)
 	const enablePanning = (activeTool === 'select' || activeTool === 'grid') &&
-		(mapWidthPx > containerSize.width || mapHeightPx > containerSize.height);
+		(mapWidthPx > containerSize.width || mapHeightPx > containerSize.height || PAN_MARGIN > 50);
 
 	const panGesture = Gesture.Pan()
 		.enabled(enablePanning)
@@ -967,7 +980,7 @@ const EditorCanvas = ({
 				width: containerSize.width || canvasWidth,
 				height: containerSize.height || canvasHeight,
 				overflow: 'hidden',
-				backgroundColor: '#333',
+				backgroundColor: '#000',
 			}}
 		>
 			<GestureDetector gesture={composedGesture}>
@@ -979,7 +992,7 @@ const EditorCanvas = ({
 						style={{
 							width: canvasWidth,
 							height: canvasHeight,
-							backgroundColor: '#222',
+							backgroundColor: '#000',
 							position: 'absolute',
 							left: -panOffset.x,
 							top: -panOffset.y,
