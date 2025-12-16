@@ -84,7 +84,7 @@ images.post('/upload', async (c) => {
 		// For production, use the request origin
 		const requestUrl = new URL(c.req.url);
 		const isLocalDev = c.env.__DEV__ || requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
-		const origin = isLocalDev || c.env.__DEV__ ? 'http://localhost:8787' : requestUrl.origin;
+		const origin = isLocalDev ? 'http://localhost:8787' : requestUrl.origin;
 		const publicUrl = `${origin}/api/images/${imageId}`;
 
 		const imageRecord = {

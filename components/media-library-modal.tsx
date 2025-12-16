@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { ExpoIcon } from '@/components/expo-icon';
-import { ThemedText } from '@/components/themed-text';
-import { useUploadedImages, useDeleteImage } from '@/hooks/api/use-image-queries';
 import { ImageUploadModal } from '@/components/image-upload-modal';
+import { ThemedText } from '@/components/themed-text';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
+import { useDeleteImage, useUploadedImages } from '@/hooks/api/use-image-queries';
 import { useAuth } from 'expo-auth-template/frontend';
+import React, { useState } from 'react';
+import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface MediaLibraryModalProps {
     visible: boolean;
@@ -19,7 +19,7 @@ export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({ visible, o
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const deleteImageMutation = useDeleteImage();
     const { user } = useAuth();
-    const isAdmin = user?.role === 'admin' || user?.is_admin === 1;
+    const isAdmin = user?.role === 'admin' || user?.isAdmin;
 
     const handleUploadSuccess = (url: string) => {
         setUploadModalVisible(false);
