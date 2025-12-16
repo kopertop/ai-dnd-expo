@@ -46,7 +46,7 @@ app.use('*', async (c, next) => {
 				error: 'Rate limit exceeded',
 				limit: limit ?? 0,
 				remaining: 0,
-				reset: reset ? new Date(reset * 1000).toISOString() : new Date().toISOString()
+				reset: reset ? new Date(reset * 1000).toISOString() : new Date().toISOString(),
 			}, 429);
 		}
 
