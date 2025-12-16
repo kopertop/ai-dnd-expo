@@ -457,6 +457,7 @@ const MapEditorScreen: React.FC = () => {
 									) : (
 										<View>
 											<TilePropertyEditor
+												key={selectedTileKey}
 												compact
 												properties={tileDataToProperties(selectedTile)}
 												onChange={(props) => {
@@ -984,16 +985,16 @@ const EditorCanvas = ({
 							top: -panOffset.y,
 						}}
 					>
-						{/* Background Layer */}
+						{/* Background Layer - extend to cover padding area */}
 						{map.background_image_url && (
 							<Image
 								source={{ uri: map.background_image_url }}
 								style={{
 									position: 'absolute',
-									top: gridConfig.offsetY * zoom,
-									left: gridConfig.offsetX * zoom,
-									width: width * zoom,
-									height: height * zoom,
+									top: Math.max(0, (gridConfig.offsetY - padding) * zoom),
+									left: Math.max(0, (gridConfig.offsetX - padding) * zoom),
+									width: (width + padding * 2) * zoom,
+									height: (height + padding * 2) * zoom,
 									resizeMode: 'cover',
 								}}
 							/>

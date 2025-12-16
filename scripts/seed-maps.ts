@@ -50,47 +50,11 @@ interface NpcSeed {
         metadata?: Record<string, unknown>;
 }
 
-const MAP_SEEDS: MapSeed[] = [
-	{
-		id: 'map_town_square',
-		slug: 'town_square',
-		name: 'Town Square',
-		description: 'Central marketplace with merchant stalls and a fountain.',
-		width: 24,
-		height: 24,
-		defaultTerrain: { type: 'cobblestone', elevation: 0 },
-		fogOfWar: { enabled: false },
-		terrainLayers: [{ type: 'structures', items: ['fountain', 'stalls', 'statue'] }],
-		metadata: { biome: 'urban', tags: ['safe', 'trade'] },
-		theme: 'urban',
-		biome: 'city',
-	},
-	{
-		id: 'map_dungeon_antechamber',
-		slug: 'dungeon_antechamber',
-		name: 'Dungeon Antechamber',
-		description: 'Torch-lit stone room that leads into the depths of a forgotten dungeon.',
-		width: 18,
-		height: 18,
-		defaultTerrain: { type: 'stone', elevation: 0 },
-		fogOfWar: { enabled: true },
-		terrainLayers: [{ type: 'features', items: ['doorways', 'pillars'] }],
-		metadata: { biome: 'underground', tags: ['danger', 'combat'] },
-		theme: 'dungeon',
-		biome: 'underground',
-	},
-];
+// Map seeds removed - all maps must be built from scratch using the map editor
+const MAP_SEEDS: MapSeed[] = [];
 
-const MAP_TILE_SEEDS: MapTileSeed[] = [
-	{ id: 'tile_town_square_0_0', mapId: 'map_town_square', x: 0, y: 0, terrainType: 'cobblestone' },
-	{ id: 'tile_town_square_1_0', mapId: 'map_town_square', x: 1, y: 0, terrainType: 'cobblestone' },
-	{ id: 'tile_town_square_0_1', mapId: 'map_town_square', x: 0, y: 1, terrainType: 'fountain', isBlocked: true },
-	{ id: 'tile_town_square_1_1', mapId: 'map_town_square', x: 1, y: 1, terrainType: 'market' },
-	{ id: 'tile_dungeon_0_0', mapId: 'map_dungeon_antechamber', x: 0, y: 0, terrainType: 'stone' },
-	{ id: 'tile_dungeon_1_0', mapId: 'map_dungeon_antechamber', x: 1, y: 0, terrainType: 'stone' },
-	{ id: 'tile_dungeon_0_1', mapId: 'map_dungeon_antechamber', x: 0, y: 1, terrainType: 'pit', isBlocked: true },
-	{ id: 'tile_dungeon_1_1', mapId: 'map_dungeon_antechamber', x: 1, y: 1, terrainType: 'doorway' },
-];
+// Map tile seeds removed - all tiles must be created through the map editor
+const MAP_TILE_SEEDS: MapTileSeed[] = [];
 
 const NPC_SEEDS: NpcSeed[] = [
 	{
@@ -333,7 +297,7 @@ function main() {
 	});
 	transaction();
 
-	console.log(`Seeded maps and NPCs into ${databasePath}`);
+	console.log(`Seeded NPCs into ${databasePath}`);
 }
 
 main();

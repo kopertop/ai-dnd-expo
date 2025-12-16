@@ -1,5 +1,5 @@
 import { Picker } from '@react-native-picker/picker';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     StyleSheet,
     Switch,
@@ -53,6 +53,30 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 		...properties,
 		terrainType: normalizedTerrainType,
 	});
+
+	// Update localProps when properties prop changes (e.g., when selecting a different tile)
+	useEffect(() => {
+		const normalizedTerrainType =
+			properties.terrainType &&
+			properties.terrainType !== 'none' &&
+			isValidTerrainType(properties.terrainType)
+				? properties.terrainType
+				: 'stone';
+
+		setLocalProps({
+			...properties,
+			terrainType: normalizedTerrainType,
+		});
+	}, [
+		properties.terrainType,
+		properties.movementCost,
+		properties.isBlocked,
+		properties.isDifficult,
+		properties.providesCover,
+		properties.coverType,
+		properties.elevation,
+		properties.featureType,
+	]);
 
 	const handleChange = <K extends keyof TileProperties>(key: K, value: TileProperties[K]) => {
 		const newProps = { ...localProps, [key]: value };
