@@ -171,6 +171,7 @@ npcs.post('/:inviteCode/npcs', async (c) => {
 		npc_id: npc.id,
 		token_type: 'npc',
 		label: uniqueLabel,
+		image_url: npc.icon ?? null,
 		x: payload.x,
 		y: payload.y,
 		facing: 0,

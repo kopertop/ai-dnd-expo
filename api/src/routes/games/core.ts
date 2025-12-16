@@ -270,7 +270,7 @@ core.post('/:inviteCode/join', async (c) => {
 
 	// Accept either full character payload or a characterId referring to an existing character
 	const existingCharacterRow = body.characterId ? await db.getCharacterById(body.characterId) : null;
-	const isUserAdmin = isAdmin(user.email, c.env.ADMIN_EMAILS);
+	const isUserAdmin = isAdmin(user.email, c.env.ADMIN_EMAILS || []);
 
 	// Security: Ensure the character belongs to the authenticated user (unless admin)
 	if (existingCharacterRow && existingCharacterRow.player_id !== user.id && !isUserAdmin) {

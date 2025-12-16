@@ -184,6 +184,13 @@ map.post('/:inviteCode/map/generate', async (c) => {
 	await db.saveMap({
 		...generated.map,
 		world: game.world || null, // Set world from game, or null for world-agnostic
+		world_id: game.world_id ?? null,
+		background_image_url: generated.map.background_image_url ?? null,
+		cover_image_url: generated.map.cover_image_url ?? null,
+		grid_columns: generated.map.grid_columns ?? generated.map.width,
+		grid_size: generated.map.grid_size ?? 64,
+		grid_offset_x: generated.map.grid_offset_x ?? 0,
+		grid_offset_y: generated.map.grid_offset_y ?? 0,
 		created_at: Date.now(),
 		updated_at: Date.now(),
 	});
@@ -662,6 +669,7 @@ map.post('/:inviteCode/map/tokens', async (c) => {
 		npc_id: npcId,
 		token_type: tokenType,
 		label,
+		image_url: existingToken?.image_url ?? null,
 		x: body.x,
 		y: body.y,
 		facing,
@@ -954,6 +962,9 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 		}
 
 		const bucket = c.env.IMAGES_BUCKET;
+		if (!bucket) {
+			return c.json({ error: 'Image bucket not configured' }, 500);
+		}
 		await bucket.put(key, file, {
 			httpMetadata: {
 				contentType: file.type || 'image/png',
@@ -1095,6 +1106,7 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 		// Set as current map
 		await db.updateGameMap(game.id, mapId);
 		game.current_map_id = mapId;
+		game.world_id = game.world_id ?? map.world_id ?? null;
 
 		const mapState = await buildMapState(db, game);
 		return c.json(mapState);

@@ -13,6 +13,8 @@ type Variables = {
 
 const admin = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
 
+admin.get('/status', async (c) => c.json({ status: 'ok', admin: true, host: c.env.PARTYKIT_HOST || '' }));
+
 admin.use('*', async (c, next) => {
 	const user = c.get('user');
 	if (!user) {
@@ -154,4 +156,3 @@ admin.post('/sql/query', async (c) => {
 });
 
 export default admin;
-

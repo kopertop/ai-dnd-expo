@@ -6,7 +6,7 @@ type TerrainCell = {
 	elevation: number;
 	fogged: boolean;
 	blocked?: boolean;
-	movementCost?: number;
+	movementCost: number;
 	providesCover?: boolean;
 	coverType?: string | null;
 	difficult?: boolean;

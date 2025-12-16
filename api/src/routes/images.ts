@@ -67,6 +67,9 @@ images.post('/upload', async (c) => {
 		// Generate key and upload to R2
 		const key = generateImageKey(user.id, file.name);
 		const bucket = c.env.IMAGES_BUCKET;
+		if (!bucket) {
+			return c.json({ error: 'Image bucket not configured' }, 500);
+		}
 
 		await bucket.put(key, file, {
 			httpMetadata: {
@@ -83,7 +86,7 @@ images.post('/upload', async (c) => {
 		// For local dev, use localhost:8787 (the worker port)
 		// For production, use the request origin
 		const requestUrl = new URL(c.req.url);
-		const isLocalDev = c.env.__DEV__ || requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
+		const isLocalDev = (c.get('isDev') as boolean | undefined) || requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
 		const origin = isLocalDev ? 'http://localhost:8787' : requestUrl.origin;
 		const publicUrl = `${origin}/api/images/${imageId}`;
 
