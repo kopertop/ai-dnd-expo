@@ -87,9 +87,8 @@ const MapEditorScreen: React.FC = () => {
 	const [tiles, setTiles] = useState<Record<string, TileData>>({});
 	const [objects, setObjects] = useState<any[]>([]);
 
-	// Selection
-	const [selectedTileKey, setSelectedTileKey] = useState<string | null>(null);
-	const selectedTile = selectedTileKey ? tiles[selectedTileKey] : null;
+	// Selection - support multiple tiles
+	const [selectedTileKeys, setSelectedTileKeys] = useState<Set<string>>(new Set());
 
 	// Active brush settings
 	const [activeTerrain, setActiveTerrain] = useState('wall');
@@ -232,23 +231,45 @@ const MapEditorScreen: React.FC = () => {
 		}
 	};
 
-	const handleTileClick = (x: number, y: number) => {
+	const handleTileClick = (x: number, y: number, isShiftPressed: boolean = false) => {
 		const key = `${x},${y}`;
 
 		if (activeTool === 'select') {
-			// Select or deselect
-			if (selectedTileKey === key) {
-				setSelectedTileKey(null);
-			} else {
-				// If tile doesn't exist, maybe create default
-				if (!tiles[key]) {
-					setTiles(prev => ({
-						...prev,
-						[key]: { x, y, terrain: 'none', movement_cost: 1 },
-					}));
-				}
-				setSelectedTileKey(key);
+			if (isShiftPressed) {
+				// Multi-selection mode: toggle tile in/out of selection
+				setSelectedTileKeys(prev => {
+					const next = new Set(prev);
+					if (next.has(key)) {
+						next.delete(key);
+					} else {
+						// If tile doesn't exist, create default
+						if (!tiles[key]) {
+							setTiles(tiles => ({
+								...tiles,
+								[key]: { x, y, terrain: 'none', movement_cost: 1 },
+							}));
+						}
+						next.add(key);
+					}
+					return next;
+				});
 				setShowSidebar(true);
+			} else {
+				// Single selection mode: clear and select new tile
+				if (selectedTileKeys.has(key) && selectedTileKeys.size === 1) {
+					// Deselect if clicking the same single tile
+					setSelectedTileKeys(new Set());
+				} else {
+					// If tile doesn't exist, create default
+					if (!tiles[key]) {
+						setTiles(prev => ({
+							...prev,
+							[key]: { x, y, terrain: 'none', movement_cost: 1 },
+						}));
+					}
+					setSelectedTileKeys(new Set([key]));
+					setShowSidebar(true);
+				}
 			}
 			return;
 		}
@@ -276,11 +297,16 @@ const MapEditorScreen: React.FC = () => {
 	};
 
 	const updateSelectedTile = (updates: Partial<TileData>) => {
-		if (!selectedTileKey) return;
-		setTiles(prev => ({
-			...prev,
-			[selectedTileKey]: { ...prev[selectedTileKey], ...updates },
-		}));
+		if (selectedTileKeys.size === 0) return;
+		setTiles(prev => {
+			const next = { ...prev };
+			selectedTileKeys.forEach(key => {
+				if (next[key]) {
+					next[key] = { ...next[key], ...updates };
+				}
+			});
+			return next;
+		});
 	};
 
 	// Convert TileData to TileProperties format for TilePropertyEditor
@@ -294,6 +320,62 @@ const MapEditorScreen: React.FC = () => {
 		elevation: tile.elevation ?? 0,
 		featureType: tile.feature_type || null,
 	});
+
+	// Merge properties from multiple tiles - returns common values or null if mixed
+	const mergeTileProperties = (tileKeys: Set<string>): {
+		properties: ReturnType<typeof tileDataToProperties>;
+		hasMixedValues: boolean;
+	} => {
+		if (tileKeys.size === 0) {
+			return {
+				properties: {
+					terrainType: 'none',
+					movementCost: 1,
+					isBlocked: false,
+					isDifficult: false,
+					providesCover: false,
+					coverType: null,
+					elevation: 0,
+					featureType: null,
+				},
+				hasMixedValues: false,
+			};
+		}
+
+		const tileArray = Array.from(tileKeys).map(key => tiles[key]).filter(Boolean);
+		if (tileArray.length === 0) {
+			return {
+				properties: {
+					terrainType: 'none',
+					movementCost: 1,
+					isBlocked: false,
+					isDifficult: false,
+					providesCover: false,
+					coverType: null,
+					elevation: 0,
+					featureType: null,
+				},
+				hasMixedValues: false,
+			};
+		}
+
+		const firstTile = tileArray[0];
+		const allSame = tileArray.every(tile =>
+			tile.terrain === firstTile.terrain &&
+			tile.movement_cost === firstTile.movement_cost &&
+			tile.is_blocked === firstTile.is_blocked &&
+			tile.is_difficult === firstTile.is_difficult &&
+			tile.provides_cover === firstTile.provides_cover &&
+			tile.cover_type === firstTile.cover_type &&
+			tile.elevation === firstTile.elevation &&
+			tile.feature_type === firstTile.feature_type,
+		);
+
+		return {
+			properties: tileDataToProperties(firstTile),
+			hasMixedValues: !allSame,
+		};
+	};
 
 	// Convert TileProperties back to TileData format
 	const propertiesToTileData = (props: {
@@ -396,7 +478,7 @@ const MapEditorScreen: React.FC = () => {
 						tiles={tiles}
 						objects={objects}
 						onTileClick={handleTileClick}
-						selectedTileKey={selectedTileKey}
+						selectedTileKeys={selectedTileKeys}
 						containerSize={canvasContainerSize}
 						panOffset={panOffset}
 						panStartRef={panStartRef}
@@ -428,9 +510,9 @@ const MapEditorScreen: React.FC = () => {
 						>
 							{activeTool === 'select' && (
 								<View>
-									{!selectedTile ? (
+									{selectedTileKeys.size === 0 ? (
 										<View>
-											<ThemedText style={styles.helperText}>Select a tile to edit properties.</ThemedText>
+											<ThemedText style={styles.helperText}>Select a tile to edit properties. Hold Shift to select multiple.</ThemedText>
 											<View style={styles.divider} />
 											<ThemedText style={styles.sectionTitle} testID="map-settings-label">Map Settings</ThemedText>
 
@@ -456,26 +538,40 @@ const MapEditorScreen: React.FC = () => {
 										</View>
 									) : (
 										<View>
-											<TilePropertyEditor
-												key={selectedTileKey}
-												compact
-												properties={tileDataToProperties(selectedTile)}
-												onChange={(props) => {
-													updateSelectedTile(propertiesToTileData(props));
-												}}
-												onClose={() => setSelectedTileKey(null)}
-											/>
+											{selectedTileKeys.size > 1 && (
+												<ThemedText style={styles.helperText}>
+													{selectedTileKeys.size} tiles selected. Changes will apply to all.
+												</ThemedText>
+											)}
+											{(() => {
+												const { properties } = mergeTileProperties(selectedTileKeys);
+												return (
+													<TilePropertyEditor
+														key={Array.from(selectedTileKeys).join(',')}
+														compact
+														properties={properties}
+														onChange={(props) => {
+															updateSelectedTile(propertiesToTileData(props));
+														}}
+														onClose={() => setSelectedTileKeys(new Set())}
+													/>
+												);
+											})()}
 											<TouchableOpacity
 												style={styles.deleteBtn}
 												testID="clear-tile-button"
 												onPress={() => {
 													const next = { ...tiles };
-													delete next[selectedTileKey!];
+													selectedTileKeys.forEach(key => {
+														delete next[key];
+													});
 													setTiles(next);
-													setSelectedTileKey(null);
+													setSelectedTileKeys(new Set());
 												}}
 											>
-												<ThemedText style={{ color: '#FFF' }}>Clear Tile</ThemedText>
+												<ThemedText style={{ color: '#FFF' }}>
+													{selectedTileKeys.size > 1 ? `Clear ${selectedTileKeys.size} Tiles` : 'Clear Tile'}
+												</ThemedText>
 											</TouchableOpacity>
 										</View>
 									)}
@@ -698,7 +794,7 @@ const EditorCanvas = ({
 	tiles,
 	objects,
 	onTileClick,
-	selectedTileKey,
+	selectedTileKeys,
 	containerSize,
 	panOffset,
 	panStartRef,
@@ -715,8 +811,8 @@ const EditorCanvas = ({
 	activeTool: string;
 	tiles: Record<string, TileData>;
 	objects: any[];
-	onTileClick: (x: number, y: number) => void;
-	selectedTileKey: string | null;
+	onTileClick: (x: number, y: number, isShiftPressed?: boolean) => void;
+	selectedTileKeys: Set<string>;
 	containerSize: { width: number; height: number };
 	panOffset: { x: number; y: number };
 	panStartRef: React.MutableRefObject<{ x: number; y: number }>;
@@ -911,7 +1007,7 @@ const EditorCanvas = ({
 			const y = (tile.y * gridConfig.size + gridConfig.offsetY) * zoom;
 			const terrainDef = TERRAIN_TYPES.find(t => t.id === tile.terrain);
 			const color = terrainDef?.color || 'rgba(100, 100, 100, 0.3)';
-			const isSelected = selectedTileKey === key;
+			const isSelected = selectedTileKeys.has(key);
 
 			return (
 				<Rect
@@ -929,24 +1025,28 @@ const EditorCanvas = ({
 	};
 
 	const renderSelection = () => {
-		if (!selectedTileKey) return null;
-		const [gx, gy] = selectedTileKey.split(',').map(Number);
+		if (selectedTileKeys.size === 0) return null;
 		const scaledSize = gridConfig.size * zoom;
 		const scaledOffsetX = gridConfig.offsetX * zoom;
 		const scaledOffsetY = gridConfig.offsetY * zoom;
-		const x = (gx * gridConfig.size + gridConfig.offsetX) * zoom;
-		const y = (gy * gridConfig.size + gridConfig.offsetY) * zoom;
-		return (
-			<Rect
-				x={x}
-				y={y}
-				width={scaledSize}
-				height={scaledSize}
-				fill="transparent"
-				stroke="#00FFFF"
-				strokeWidth={2 / Math.max(1, zoom)}
-			/>
-		);
+
+		return Array.from(selectedTileKeys).map(key => {
+			const [gx, gy] = key.split(',').map(Number);
+			const x = (gx * gridConfig.size + gridConfig.offsetX) * zoom;
+			const y = (gy * gridConfig.size + gridConfig.offsetY) * zoom;
+			return (
+				<Rect
+					key={key}
+					x={x}
+					y={y}
+					width={scaledSize}
+					height={scaledSize}
+					fill="transparent"
+					stroke="#00FFFF"
+					strokeWidth={2 / Math.max(1, zoom)}
+				/>
+			);
+		});
 	};
 
 	const handlePress = (e: any) => {
@@ -958,6 +1058,11 @@ const EditorCanvas = ({
 			x = e.nativeEvent.offsetX;
 			y = e.nativeEvent.offsetY;
 		}
+
+		// Detect shift key
+		const isShiftPressed = Platform.OS === 'web'
+			? e.nativeEvent.shiftKey || false
+			: false; // For native, we'd need keyboard tracking - simplified for now
 
 		// Adjust for zoom and grid offset
 		// NOTE: We do NOT add panOffset here because the TouchableOpacity is already positioned
@@ -972,7 +1077,7 @@ const EditorCanvas = ({
 		const gy = Math.floor(adjY / gridConfig.size);
 
 		if (gx >= 0 && gx < gridConfig.columns && gy >= 0 && gy < gridConfig.rows) {
-			onTileClick(gx, gy);
+			onTileClick(gx, gy, isShiftPressed);
 		}
 	};
 
