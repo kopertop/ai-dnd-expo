@@ -90,13 +90,8 @@ describe('Games Character Routes - Game-specific endpoints', () => {
 		};
 
 		// Create character via the characters API
-<<<<<<< HEAD
-		const db = (env as CloudflareBindings).DATABASE;
-		const { Database } = await import('@/db');
-=======
 		const db = (env as unknown as CloudflareBindings).DATABASE;
-		const { Database } = await import('@/shared/workers/db');
->>>>>>> origin/develop
+		const { Database } = await import('@/db');
 		const dbInstance = new Database(db);
 		const { serializeCharacter } = await import('@/api/src/utils/games-utils');
 		const serialized = serializeCharacter(characterPayload, hostUser.id, hostUser.email);
