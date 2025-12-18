@@ -1,19 +1,19 @@
 import { Hono } from 'hono';
 
-import coreRoutes from './core';
 import characterRoutes from './characters';
-import mapRoutes from './map';
-import npcRoutes from './npcs';
 import combatRoutes from './combat';
-import turnRoutes from './turns';
+import coreRoutes from './core';
 import diceRoutes from './dice';
 import logRoutes from './logs';
-import websocketRoutes from './websocket';
+import mapRoutes from './map';
+import npcRoutes from './npcs';
+import turnRoutes from './turns';
 import type { GamesContext } from './types';
+import websocketRoutes from './websocket';
 
 /**
  * Main games router
- * 
+ *
  * Mounts all game-related route modules:
  * - Core game lifecycle routes
  * - Character management routes
@@ -41,7 +41,7 @@ games.route('/', websocketRoutes);
 export default games;
 
 // Re-export types for convenience
-export type { GamesContext, Variables } from './types';
 export type { CreateGameBody, JoinGameBody } from '@/types/games-api';
+export type { GamesContext } from './types';
 
 

@@ -1,7 +1,6 @@
-import { User } from 'expo-auth-template/backend';
 import { Hono } from 'hono';
 
-import type { CloudflareBindings } from '../env';
+import type { HonoContext } from '../env';
 
 import {
 	createId,
@@ -15,13 +14,7 @@ import {
 	needsStartingEquipment,
 } from '@/utils/starting-equipment';
 
-type Variables = {
-	user: User | null;
-};
-
-type CharactersContext = { Bindings: CloudflareBindings; Variables: Variables };
-
-const characters = new Hono<CharactersContext>();
+const characters = new Hono<HonoContext>();
 
 /**
  * List user's characters

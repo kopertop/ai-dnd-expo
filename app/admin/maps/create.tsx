@@ -1,4 +1,5 @@
 import { Picker } from '@react-native-picker/picker';
+import { apiService } from 'expo-auth-template/frontend';
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -16,7 +17,10 @@ import { ExpoIcon } from '@/components/expo-icon';
 import { MediaLibraryModal } from '@/components/media-library-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { fetchAPI } from '@/lib/fetch';
+import {
+	TERRAIN_TYPES,
+	getTerrainDisplayName,
+} from '@/constants/terrain-types';
 
 interface World {
 	id: string;
@@ -37,6 +41,7 @@ const CreateMapScreen: React.FC = () => {
 		grid_size: 100,
 		grid_columns: 40,
 		grid_rows: 30,
+		default_terrain_type: 'stone',
 	});
 
 	const [bgPickerVisible, setBgPickerVisible] = useState(false);
@@ -48,7 +53,7 @@ const CreateMapScreen: React.FC = () => {
 	const loadWorlds = async () => {
 		try {
 			setLoading(true);
-			const data = await fetchAPI<World[]>('/api/worlds');
+			const data = await apiService.fetchApi('worlds');
 			setWorlds(data);
 			if (data.length > 0) {
 				setFormData(prev => ({ ...prev, world_id: data[0].id }));
@@ -68,7 +73,7 @@ const CreateMapScreen: React.FC = () => {
 
 		try {
 			setSaving(true);
-			const response = await fetchAPI<{ success: boolean; id: string }>('/api/maps', {
+			const response = await apiService.fetchApi('maps', {
 				method: 'POST',
 				body: JSON.stringify({
 					...formData,
@@ -76,6 +81,7 @@ const CreateMapScreen: React.FC = () => {
 					grid_offset_y: 0,
 					width: formData.grid_columns,
 					height: formData.grid_rows,
+					default_terrain: JSON.stringify({ type: formData.default_terrain_type }),
 				}),
 			});
 
@@ -209,6 +215,25 @@ const CreateMapScreen: React.FC = () => {
 							placeholderTextColor="#999"
 							keyboardType="numeric"
 						/>
+					</View>
+				</View>
+
+				<View style={styles.formGroup}>
+					<ThemedText style={styles.label}>Default Terrain Type</ThemedText>
+					<View style={styles.pickerContainer}>
+						<Picker
+							selectedValue={formData.default_terrain_type}
+							onValueChange={(itemValue) => setFormData(prev => ({ ...prev, default_terrain_type: itemValue }))}
+							style={styles.picker}
+						>
+							{TERRAIN_TYPES.map((terrain) => (
+								<Picker.Item
+									key={terrain}
+									label={getTerrainDisplayName(terrain)}
+									value={terrain}
+								/>
+							))}
+						</Picker>
 					</View>
 				</View>
 			</ScrollView>

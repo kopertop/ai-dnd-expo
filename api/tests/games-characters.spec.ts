@@ -23,7 +23,7 @@ describe('Games Character Routes - Game-specific endpoints', () => {
 		});
 		testApp.route('/api/games', gameRoutes);
 
-		const db = (env as CloudflareBindings).DATABASE;
+		const db = (env as unknown as CloudflareBindings).DATABASE;
 		const migrationFiles = await readdir(path.resolve(process.cwd(), 'api', 'migrations'));
 		for (const migrationFile of migrationFiles) {
 			await db.exec(await readFile(path.join(__dirname, '..', 'migrations', migrationFile), 'utf8'));
@@ -31,7 +31,7 @@ describe('Games Character Routes - Game-specific endpoints', () => {
 	});
 
 	const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-		return testApp.fetch(new Request(url, options), env as CloudflareBindings);
+		return testApp.fetch(new Request(url, options), env as unknown as CloudflareBindings);
 	};
 
 	it('returns all characters in a game (host only)', async () => {
@@ -90,8 +90,13 @@ describe('Games Character Routes - Game-specific endpoints', () => {
 		};
 
 		// Create character via the characters API
+<<<<<<< HEAD
 		const db = (env as CloudflareBindings).DATABASE;
 		const { Database } = await import('@/db');
+=======
+		const db = (env as unknown as CloudflareBindings).DATABASE;
+		const { Database } = await import('@/shared/workers/db');
+>>>>>>> origin/develop
 		const dbInstance = new Database(db);
 		const { serializeCharacter } = await import('@/api/src/utils/games-utils');
 		const serialized = serializeCharacter(characterPayload, hostUser.id, hostUser.email);
@@ -155,7 +160,7 @@ describe('Games Character Routes - Game-specific endpoints', () => {
 
 		const response = await otherUserApp.fetch(
 			new Request(`http://localhost/api/games/${inviteCode}/characters`),
-			env as CloudflareBindings,
+			env as unknown as CloudflareBindings,
 		);
 
 		expect(response.status).toBe(403);
@@ -167,7 +172,7 @@ describe('Games Character Routes - Game-specific endpoints', () => {
 	});
 
 	afterEach(async () => {
-		const db = (env as CloudflareBindings).DATABASE;
+		const db = (env as unknown as CloudflareBindings).DATABASE;
 		const tables = await db.prepare('SELECT name FROM sqlite_master WHERE type = "table"').all<{ name: string }>();
 		for (const table of tables.results) {
 			await db.exec(`DELETE FROM ${table.name}`);

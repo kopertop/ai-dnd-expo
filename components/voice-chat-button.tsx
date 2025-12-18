@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -161,7 +162,7 @@ export const VoiceChatButton: React.FC<VoiceChatButtonProps> = ({
 	/**
 	 * Get appropriate icon based on state
 	 */
-	const getIconName = (): keyof typeof Feather.glyphMap => {
+	const getIconName = (): string => {
 		if (voiceRecognition.isListening) {
 			return 'mic';
 		}

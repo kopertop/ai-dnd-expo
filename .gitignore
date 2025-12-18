@@ -70,6 +70,7 @@ app-example
 /generated/
 /temp/
 .tmp/
+/tmp/
 
 # Logs
 logs/
@@ -77,6 +78,7 @@ logs/
 
 # Test coverage
 coverage/
+coverage_report/
 *.lcov
 test-results/
 reports/

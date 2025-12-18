@@ -13,6 +13,7 @@ import {
 	View,
 } from 'react-native';
 
+import { ExpoIcon } from '@/components/expo-icon';
 import { getEquipmentSpritesheet } from '@/components/equipment-spritesheet';
 import { PortraitSelector } from '@/components/portrait-selector';
 import { SpriteIcon } from '@/components/sprite-icon';

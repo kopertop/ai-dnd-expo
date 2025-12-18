@@ -23,7 +23,7 @@ describe('Games Dice API', () => {
 		});
 		testApp.route('/api/games', gameRoutes);
 
-		const db = (env as CloudflareBindings).DATABASE;
+		const db = (env as unknown as CloudflareBindings).DATABASE;
 		const migrationFiles = await readdir(path.resolve(process.cwd(), 'api', 'migrations'));
 		for (const migrationFile of migrationFiles) {
 			await db.exec(await readFile(path.join(__dirname, '..', 'migrations', migrationFile), 'utf8'));
@@ -31,7 +31,7 @@ describe('Games Dice API', () => {
 	});
 
 	const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-		return testApp.fetch(new Request(url, options), env as CloudflareBindings);
+		return testApp.fetch(new Request(url, options), env as unknown as CloudflareBindings);
 	};
 
 	describe('POST /api/games/:inviteCode/dice/roll', () => {
@@ -80,7 +80,7 @@ describe('Games Dice API', () => {
 	});
 
 	afterEach(async () => {
-		const db = (env as CloudflareBindings).DATABASE;
+		const db = (env as unknown as CloudflareBindings).DATABASE;
 		const tables = await db.prepare('SELECT name FROM sqlite_master WHERE type = "table"').all<{ name: string }>();
 		for (const table of tables.results) {
 			await db.exec(`DELETE FROM ${table.name}`);

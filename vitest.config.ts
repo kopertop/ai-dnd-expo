@@ -99,22 +99,6 @@ export default defineConfig({
 			},
 		},
 	},
-	server: {
-		deps: {
-			inline: [
-				'react-native',
-				'react-native-svg',
-				'react-native-gesture-handler',
-				'react-native-reanimated',
-				'@testing-library/react-native',
-				'@expo/vector-icons',
-				'expo-router',
-				'expo-auth-template',
-				'@react-native-async-storage/async-storage',
-				'cloudflare:test',
-			],
-		},
-	},
 	optimizeDeps: {
 		exclude: ['react-native'],
 	},

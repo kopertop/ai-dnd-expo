@@ -1,11 +1,10 @@
 import { apiService } from 'expo-auth-template/frontend';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
 	ActivityIndicator,
 	Alert,
 	Image,
-	PanResponder,
 	Platform,
 	ScrollView,
 	StyleSheet,
@@ -13,6 +12,7 @@ import {
 	TouchableOpacity,
 	View,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Svg, { Line, Rect } from 'react-native-svg';
 
 import { ExpoIcon } from '@/components/expo-icon';
@@ -54,7 +54,7 @@ interface MapData {
 }
 
 interface Tool {
-	id: 'select' | 'grid' | 'terrain' | 'object';
+	id: 'select' | 'grid' | 'terrain' | 'object' | 'properties';
 	name: string;
 	icon: string;
 }
@@ -87,9 +87,8 @@ const MapEditorScreen: React.FC = () => {
 	const [tiles, setTiles] = useState<Record<string, TileData>>({});
 	const [objects, setObjects] = useState<any[]>([]);
 
-	// Selection
-	const [selectedTileKey, setSelectedTileKey] = useState<string | null>(null);
-	const selectedTile = selectedTileKey ? tiles[selectedTileKey] : null;
+	// Selection - support multiple tiles
+	const [selectedTileKeys, setSelectedTileKeys] = useState<Set<string>>(new Set());
 
 	// Active brush settings
 	const [activeTerrain, setActiveTerrain] = useState('wall');
@@ -105,6 +104,12 @@ const MapEditorScreen: React.FC = () => {
 	// Panning state
 	const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 	const panStartRef = useRef({ x: 0, y: 0 });
+
+	// Zoom state
+	const MIN_ZOOM = 0.25;
+	const MAX_ZOOM = 4;
+	const [zoom, setZoom] = useState(1);
+	const [isPanning, setIsPanning] = useState(false);
 
 	useEffect(() => {
 		if (id) loadMap(id);
@@ -170,18 +175,22 @@ const MapEditorScreen: React.FC = () => {
 			setSaving(true);
 
 			// Convert tiles record to array with API format
-			const tilesArray = Object.values(tiles).map(tile => ({
-				x: tile.x,
-				y: tile.y,
-				terrain_type: tile.terrain || 'none',
-				movement_cost: tile.movement_cost ?? 1,
-				is_blocked: tile.is_blocked ?? false,
-				is_difficult: tile.is_difficult ?? false,
-				provides_cover: tile.provides_cover ?? false,
-				cover_type: tile.cover_type || null,
-				elevation: tile.elevation ?? 0,
-				feature_type: tile.feature_type || null,
-			}));
+			const tilesArray = Object.values(tiles).map(tile => {
+				const terrainValue = tile.terrain || 'none';
+				return {
+					x: tile.x,
+					y: tile.y,
+					terrain: terrainValue,
+					terrain_type: terrainValue,
+					movement_cost: tile.movement_cost ?? 1,
+					is_blocked: tile.is_blocked ?? false,
+					is_difficult: tile.is_difficult ?? false,
+					provides_cover: tile.provides_cover ?? false,
+					cover_type: tile.cover_type || null,
+					elevation: tile.elevation ?? 0,
+					feature_type: tile.feature_type || null,
+				};
+			});
 
 			const payload = {
 				...map,
@@ -222,23 +231,45 @@ const MapEditorScreen: React.FC = () => {
 		}
 	};
 
-	const handleTileClick = (x: number, y: number) => {
+	const handleTileClick = (x: number, y: number, isShiftPressed: boolean = false) => {
 		const key = `${x},${y}`;
 
 		if (activeTool === 'select') {
-			// Select or deselect
-			if (selectedTileKey === key) {
-				setSelectedTileKey(null);
-			} else {
-				// If tile doesn't exist, maybe create default
-				if (!tiles[key]) {
-					setTiles(prev => ({
-						...prev,
-						[key]: { x, y, terrain: 'none', movement_cost: 1 },
-					}));
-				}
-				setSelectedTileKey(key);
+			if (isShiftPressed) {
+				// Multi-selection mode: toggle tile in/out of selection
+				setSelectedTileKeys(prev => {
+					const next = new Set(prev);
+					if (next.has(key)) {
+						next.delete(key);
+					} else {
+						// If tile doesn't exist, create default
+						if (!tiles[key]) {
+							setTiles(tiles => ({
+								...tiles,
+								[key]: { x, y, terrain: 'none', movement_cost: 1 },
+							}));
+						}
+						next.add(key);
+					}
+					return next;
+				});
 				setShowSidebar(true);
+			} else {
+				// Single selection mode: clear and select new tile
+				if (selectedTileKeys.has(key) && selectedTileKeys.size === 1) {
+					// Deselect if clicking the same single tile
+					setSelectedTileKeys(new Set());
+				} else {
+					// If tile doesn't exist, create default
+					if (!tiles[key]) {
+						setTiles(prev => ({
+							...prev,
+							[key]: { x, y, terrain: 'none', movement_cost: 1 },
+						}));
+					}
+					setSelectedTileKeys(new Set([key]));
+					setShowSidebar(true);
+				}
 			}
 			return;
 		}
@@ -266,11 +297,16 @@ const MapEditorScreen: React.FC = () => {
 	};
 
 	const updateSelectedTile = (updates: Partial<TileData>) => {
-		if (!selectedTileKey) return;
-		setTiles(prev => ({
-			...prev,
-			[selectedTileKey]: { ...prev[selectedTileKey], ...updates },
-		}));
+		if (selectedTileKeys.size === 0) return;
+		setTiles(prev => {
+			const next = { ...prev };
+			selectedTileKeys.forEach(key => {
+				if (next[key]) {
+					next[key] = { ...next[key], ...updates };
+				}
+			});
+			return next;
+		});
 	};
 
 	// Convert TileData to TileProperties format for TilePropertyEditor
@@ -284,6 +320,62 @@ const MapEditorScreen: React.FC = () => {
 		elevation: tile.elevation ?? 0,
 		featureType: tile.feature_type || null,
 	});
+
+	// Merge properties from multiple tiles - returns common values or null if mixed
+	const mergeTileProperties = (tileKeys: Set<string>): {
+		properties: ReturnType<typeof tileDataToProperties>;
+		hasMixedValues: boolean;
+	} => {
+		if (tileKeys.size === 0) {
+			return {
+				properties: {
+					terrainType: 'none',
+					movementCost: 1,
+					isBlocked: false,
+					isDifficult: false,
+					providesCover: false,
+					coverType: null,
+					elevation: 0,
+					featureType: null,
+				},
+				hasMixedValues: false,
+			};
+		}
+
+		const tileArray = Array.from(tileKeys).map(key => tiles[key]).filter(Boolean);
+		if (tileArray.length === 0) {
+			return {
+				properties: {
+					terrainType: 'none',
+					movementCost: 1,
+					isBlocked: false,
+					isDifficult: false,
+					providesCover: false,
+					coverType: null,
+					elevation: 0,
+					featureType: null,
+				},
+				hasMixedValues: false,
+			};
+		}
+
+		const firstTile = tileArray[0];
+		const allSame = tileArray.every(tile =>
+			tile.terrain === firstTile.terrain &&
+			tile.movement_cost === firstTile.movement_cost &&
+			tile.is_blocked === firstTile.is_blocked &&
+			tile.is_difficult === firstTile.is_difficult &&
+			tile.provides_cover === firstTile.provides_cover &&
+			tile.cover_type === firstTile.cover_type &&
+			tile.elevation === firstTile.elevation &&
+			tile.feature_type === firstTile.feature_type,
+		);
+
+		return {
+			properties: tileDataToProperties(firstTile),
+			hasMixedValues: !allSame,
+		};
+	};
 
 	// Convert TileProperties back to TileData format
 	const propertiesToTileData = (props: {
@@ -326,6 +418,7 @@ const MapEditorScreen: React.FC = () => {
 		{ id: 'grid', name: 'Grid', icon: 'Feather:grid' },
 		{ id: 'terrain', name: 'Paint', icon: 'Ionicons:brush' },
 		{ id: 'object', name: 'Object', icon: 'Feather:box' },
+		{ id: 'properties', name: 'Properties', icon: 'Feather:settings' },
 	];
 
 	if (loading || !map) {
@@ -385,11 +478,17 @@ const MapEditorScreen: React.FC = () => {
 						tiles={tiles}
 						objects={objects}
 						onTileClick={handleTileClick}
-						selectedTileKey={selectedTileKey}
+						selectedTileKeys={selectedTileKeys}
 						containerSize={canvasContainerSize}
 						panOffset={panOffset}
 						panStartRef={panStartRef}
 						setPanOffset={setPanOffset}
+						zoom={zoom}
+						setZoom={setZoom}
+						isPanning={isPanning}
+						setIsPanning={setIsPanning}
+						minZoom={MIN_ZOOM}
+						maxZoom={MAX_ZOOM}
 					/>
 				</View>
 
@@ -405,12 +504,15 @@ const MapEditorScreen: React.FC = () => {
 							</TouchableOpacity>
 						</View>
 
-						<ScrollView style={styles.sidebarContent}>
+						<ScrollView
+							style={styles.sidebarContent}
+							contentContainerStyle={styles.sidebarContentContainer}
+						>
 							{activeTool === 'select' && (
 								<View>
-									{!selectedTile ? (
+									{selectedTileKeys.size === 0 ? (
 										<View>
-											<ThemedText style={styles.helperText}>Select a tile to edit properties.</ThemedText>
+											<ThemedText style={styles.helperText}>Select a tile to edit properties. Hold Shift to select multiple.</ThemedText>
 											<View style={styles.divider} />
 											<ThemedText style={styles.sectionTitle} testID="map-settings-label">Map Settings</ThemedText>
 
@@ -436,24 +538,40 @@ const MapEditorScreen: React.FC = () => {
 										</View>
 									) : (
 										<View>
-											<TilePropertyEditor
-												properties={tileDataToProperties(selectedTile)}
-												onChange={(props) => {
-													updateSelectedTile(propertiesToTileData(props));
-												}}
-												onClose={() => setSelectedTileKey(null)}
-											/>
+											{selectedTileKeys.size > 1 && (
+												<ThemedText style={styles.helperText}>
+													{selectedTileKeys.size} tiles selected. Changes will apply to all.
+												</ThemedText>
+											)}
+											{(() => {
+												const { properties } = mergeTileProperties(selectedTileKeys);
+												return (
+													<TilePropertyEditor
+														key={Array.from(selectedTileKeys).join(',')}
+														compact
+														properties={properties}
+														onChange={(props) => {
+															updateSelectedTile(propertiesToTileData(props));
+														}}
+														onClose={() => setSelectedTileKeys(new Set())}
+													/>
+												);
+											})()}
 											<TouchableOpacity
 												style={styles.deleteBtn}
 												testID="clear-tile-button"
 												onPress={() => {
 													const next = { ...tiles };
-													delete next[selectedTileKey!];
+													selectedTileKeys.forEach(key => {
+														delete next[key];
+													});
 													setTiles(next);
-													setSelectedTileKey(null);
+													setSelectedTileKeys(new Set());
 												}}
 											>
-												<ThemedText style={{ color: '#FFF' }}>Clear Tile</ThemedText>
+												<ThemedText style={{ color: '#FFF' }}>
+													{selectedTileKeys.size > 1 ? `Clear ${selectedTileKeys.size} Tiles` : 'Clear Tile'}
+												</ThemedText>
 											</TouchableOpacity>
 										</View>
 									)}
@@ -607,6 +725,32 @@ const MapEditorScreen: React.FC = () => {
 									)}
 								</View>
 							)}
+
+							{activeTool === 'properties' && (
+								<View>
+									<ThemedText style={styles.sectionTitle} testID="map-settings-label">Map Properties</ThemedText>
+
+									<View style={styles.inputGroup}>
+										<ThemedText style={styles.label}>Background Image</ThemedText>
+										<TouchableOpacity style={styles.pickerBtn} onPress={() => setBgPickerVisible(true)}>
+											<ThemedText>Choose from Library</ThemedText>
+										</TouchableOpacity>
+										{map.background_image_url && (
+											<Image source={{ uri: map.background_image_url }} style={styles.previewImage} resizeMode="contain" />
+										)}
+									</View>
+
+									<View style={styles.inputGroup}>
+										<ThemedText style={styles.label}>Cover Image</ThemedText>
+										<TouchableOpacity style={styles.pickerBtn} onPress={() => setCoverPickerVisible(true)}>
+											<ThemedText>Choose from Library</ThemedText>
+										</TouchableOpacity>
+										{map.cover_image_url && (
+											<Image source={{ uri: map.cover_image_url }} style={styles.previewImage} resizeMode="contain" />
+										)}
+									</View>
+								</View>
+							)}
 						</ScrollView>
 					</View>
 				)}
@@ -650,101 +794,203 @@ const EditorCanvas = ({
 	tiles,
 	objects,
 	onTileClick,
-	selectedTileKey,
+	selectedTileKeys,
 	containerSize,
 	panOffset,
 	panStartRef,
 	setPanOffset,
+	zoom,
+	setZoom,
+	isPanning,
+	setIsPanning,
+	minZoom,
+	maxZoom,
 }: {
 	map: MapData;
 	gridConfig: { size: number; offsetX: number; offsetY: number; columns: number; rows: number };
 	activeTool: string;
 	tiles: Record<string, TileData>;
 	objects: any[];
-	onTileClick: (x: number, y: number) => void;
-	selectedTileKey: string | null;
+	onTileClick: (x: number, y: number, isShiftPressed?: boolean) => void;
+	selectedTileKeys: Set<string>;
 	containerSize: { width: number; height: number };
 	panOffset: { x: number; y: number };
 	panStartRef: React.MutableRefObject<{ x: number; y: number }>;
 	setPanOffset: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
+	zoom: number;
+	setZoom: React.Dispatch<React.SetStateAction<number>>;
+	isPanning: boolean;
+	setIsPanning: React.Dispatch<React.SetStateAction<boolean>>;
+	minZoom: number;
+	maxZoom: number;
 }) => {
 	const width = gridConfig.columns * gridConfig.size;
 	const height = gridConfig.rows * gridConfig.size;
 	// Add padding around the map for easier editing
 	const padding = 100;
-	const canvasWidth = width + gridConfig.offsetX + padding;
-	const canvasHeight = height + gridConfig.offsetY + padding;
+	const canvasWidth = (width + gridConfig.offsetX + padding) * zoom;
+	const canvasHeight = (height + gridConfig.offsetY + padding) * zoom;
 
-	// Calculate pan bounds
-	const mapWidthPx = width + gridConfig.offsetX;
-	const mapHeightPx = height + gridConfig.offsetY;
+	// Calculate pan bounds accounting for zoom
+	const mapWidthPx = (width + gridConfig.offsetX) * zoom;
+	const mapHeightPx = (height + gridConfig.offsetY) * zoom;
 	const maxPanX = Math.max(0, mapWidthPx - containerSize.width);
 	const maxPanY = Math.max(0, mapHeightPx - containerSize.height);
 
+	// Margin for panning past edges - scales inversely with zoom
+	// When zoomed out (zoom < 1), we need more margin to see edges
+	// When zoomed in (zoom > 1), we need less margin
+	// Base margin of 200px at zoom = 1, scales proportionally
+	const BASE_PAN_MARGIN = 200;
+	const PAN_MARGIN = BASE_PAN_MARGIN / Math.max(zoom, 0.1); // Prevent division by zero, cap at reasonable minimum
+
 	const clampPan = (value: number, containerSize: number, mapSize: number) => {
 		const max = Math.max(0, mapSize - containerSize);
-		return Math.max(0, Math.min(max, value));
+		// Allow panning up to PAN_MARGIN pixels past the normal bounds
+		// Margin scales with zoom level to ensure edges are always visible
+		const minValue = -PAN_MARGIN;
+		const maxValue = max + PAN_MARGIN;
+		return Math.max(minValue, Math.min(maxValue, value));
 	};
 
-	// Create PanResponder for panning
-	// Only enable panning in select or grid mode, and when map is larger than container
-	const enablePanning = (activeTool === 'select' || activeTool === 'grid') &&
-		(mapWidthPx > containerSize.width || mapHeightPx > containerSize.height);
+	const clampZoom = (value: number) => {
+		return Math.max(minZoom, Math.min(maxZoom, value));
+	};
 
-	const panResponder = useMemo(
-		() =>
-			PanResponder.create({
-				onStartShouldSetPanResponder: () => false,
-				onMoveShouldSetPanResponder: (_, gestureState) => {
-					// Only pan if moving enough distance
-					return enablePanning && (Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5);
-				},
-				onPanResponderGrant: () => {
-					panStartRef.current = panOffset;
-				},
-				onPanResponderMove: (_, gestureState) => {
-					if (!enablePanning) return;
-					setPanOffset({
-						x: clampPan(panStartRef.current.x - gestureState.dx, containerSize.width, mapWidthPx),
-						y: clampPan(panStartRef.current.y - gestureState.dy, containerSize.height, mapHeightPx),
-					});
-				},
-				onPanResponderRelease: () => {
-					// Pan complete
-				},
-			}),
-		[enablePanning, containerSize.width, containerSize.height, mapWidthPx, mapHeightPx, panOffset, panStartRef, activeTool],
-	);
+	// Zoom functions
+	const handleZoomIn = () => {
+		setZoom(prev => clampZoom(prev + 0.25));
+	};
+
+	const handleZoomOut = () => {
+		setZoom(prev => clampZoom(prev - 0.25));
+	};
+
+	const handleZoomReset = () => {
+		setZoom(1);
+		setPanOffset({ x: 0, y: 0 });
+	};
+
+	const handleZoomToFit = () => {
+		const scaleX = containerSize.width / (width + gridConfig.offsetX);
+		const scaleY = containerSize.height / (height + gridConfig.offsetY);
+		const newZoom = clampZoom(Math.min(scaleX, scaleY) * 0.9); // 90% to add some padding
+		setZoom(newZoom);
+		setPanOffset({ x: 0, y: 0 });
+	};
+
+	// Create gestures for pan and zoom
+	// Enable panning in select or grid mode when:
+	// 1. Map is larger than container (normal case), OR
+	// 2. We have a meaningful margin that allows panning past edges (when zoomed out)
+	const enablePanning = (activeTool === 'select' || activeTool === 'grid') &&
+		(mapWidthPx > containerSize.width || mapHeightPx > containerSize.height || PAN_MARGIN > 50);
+
+	const panGesture = Gesture.Pan()
+		.enabled(enablePanning)
+		.onStart(() => {
+			panStartRef.current = panOffset;
+			setIsPanning(true);
+		})
+		.onUpdate((e) => {
+			if (!enablePanning) return;
+			setPanOffset({
+				x: clampPan(panStartRef.current.x - e.translationX, containerSize.width, mapWidthPx),
+				y: clampPan(panStartRef.current.y - e.translationY, containerSize.height, mapHeightPx),
+			});
+		})
+		.onEnd(() => {
+			setIsPanning(false);
+		});
+
+	const pinchStartZoom = useRef(zoom);
+	const pinchGesture = Gesture.Pinch()
+		.onStart(() => {
+			pinchStartZoom.current = zoom;
+		})
+		.onUpdate((e) => {
+			const newZoom = clampZoom(pinchStartZoom.current * e.scale);
+			setZoom(newZoom);
+		})
+		.onEnd(() => {
+			// Zoom complete
+		});
+
+	const composedGesture = Gesture.Simultaneous(panGesture, pinchGesture);
+
+	// Mouse wheel zoom and cursor style for web
+	const canvasRef = useRef<View>(null);
+
+	useEffect(() => {
+		if (Platform.OS !== 'web') return;
+
+		const handleWheel = (e: WheelEvent) => {
+			e.preventDefault();
+			const delta = e.deltaY > 0 ? -0.1 : 0.1;
+			setZoom(prev => clampZoom(prev + delta));
+		};
+
+		const element = canvasRef.current;
+		if (element) {
+			const domNode = (element as any)._nativeNode || element;
+			if (domNode && typeof domNode.addEventListener === 'function') {
+				domNode.addEventListener('wheel', handleWheel, { passive: false });
+				return () => {
+					domNode.removeEventListener('wheel', handleWheel);
+				};
+			}
+		}
+	}, [zoom, minZoom, maxZoom]);
+
+	// Set cursor style for web
+	useEffect(() => {
+		if (Platform.OS !== 'web') return;
+
+		const cursorStyle = isPanning ? 'grabbing' : (enablePanning ? 'grab' : 'default');
+		const element = canvasRef.current;
+		if (element) {
+			const domNode = (element as any)._nativeNode || element;
+			if (domNode && typeof domNode.style !== 'undefined') {
+				domNode.style.cursor = cursorStyle;
+			}
+		}
+	}, [isPanning, enablePanning]);
 
 	const renderGrid = () => {
 		const lines = [];
+		const scaledSize = gridConfig.size * zoom;
+		const scaledOffsetX = gridConfig.offsetX * zoom;
+		const scaledOffsetY = gridConfig.offsetY * zoom;
+		const scaledWidth = width * zoom;
+		const scaledHeight = height * zoom;
+
 		// Vertical lines
 		for (let i = 0; i <= gridConfig.columns; i++) {
-			const x = i * gridConfig.size + gridConfig.offsetX;
+			const x = i * scaledSize + scaledOffsetX;
 			lines.push(
 				<Line
 					key={`v-${i}`}
 					x1={x}
-					y1={gridConfig.offsetY}
+					y1={scaledOffsetY}
 					x2={x}
-					y2={height + gridConfig.offsetY}
-					stroke="rgba(0,0,0,0.3)"
-					strokeWidth="1"
+					y2={scaledHeight + scaledOffsetY}
+					stroke="rgba(0,0,0,0.4)"
+					strokeWidth={1 / Math.max(1, zoom)}
 				/>,
 			);
 		}
 		// Horizontal lines
 		for (let i = 0; i <= gridConfig.rows; i++) {
-			const y = i * gridConfig.size + gridConfig.offsetY;
+			const y = i * scaledSize + scaledOffsetY;
 			lines.push(
 				<Line
 					key={`h-${i}`}
-					x1={gridConfig.offsetX}
+					x1={scaledOffsetX}
 					y1={y}
-					x2={width + gridConfig.offsetX}
+					x2={scaledWidth + scaledOffsetX}
 					y2={y}
-					stroke="rgba(0,0,0,0.3)"
-					strokeWidth="1"
+					stroke="rgba(0,0,0,0.4)"
+					strokeWidth={1 / Math.max(1, zoom)}
 				/>,
 			);
 		}
@@ -752,44 +998,55 @@ const EditorCanvas = ({
 	};
 
 	const renderTiles = () => {
+		const scaledSize = gridConfig.size * zoom;
+		const scaledOffsetX = gridConfig.offsetX * zoom;
+		const scaledOffsetY = gridConfig.offsetY * zoom;
+
 		return Object.entries(tiles).map(([key, tile]) => {
-			const x = tile.x * gridConfig.size + gridConfig.offsetX;
-			const y = tile.y * gridConfig.size + gridConfig.offsetY;
+			const x = (tile.x * gridConfig.size + gridConfig.offsetX) * zoom;
+			const y = (tile.y * gridConfig.size + gridConfig.offsetY) * zoom;
 			const terrainDef = TERRAIN_TYPES.find(t => t.id === tile.terrain);
 			const color = terrainDef?.color || 'rgba(100, 100, 100, 0.3)';
-			const isSelected = selectedTileKey === key;
+			const isSelected = selectedTileKeys.has(key);
 
 			return (
 				<Rect
 					key={key}
 					x={x}
 					y={y}
-					width={gridConfig.size}
-					height={gridConfig.size}
+					width={scaledSize}
+					height={scaledSize}
 					fill={color}
 					stroke={isSelected ? '#00FFFF' : undefined}
-					strokeWidth={isSelected ? 2 : 0}
+					strokeWidth={isSelected ? 2 / Math.max(1, zoom) : 0}
 				/>
 			);
 		});
 	};
 
 	const renderSelection = () => {
-		if (!selectedTileKey) return null;
-		const [gx, gy] = selectedTileKey.split(',').map(Number);
-		const x = gx * gridConfig.size + gridConfig.offsetX;
-		const y = gy * gridConfig.size + gridConfig.offsetY;
-		return (
-			<Rect
-				x={x}
-				y={y}
-				width={gridConfig.size}
-				height={gridConfig.size}
-				fill="transparent"
-				stroke="#00FFFF"
-				strokeWidth={2}
-			/>
-		);
+		if (selectedTileKeys.size === 0) return null;
+		const scaledSize = gridConfig.size * zoom;
+		const scaledOffsetX = gridConfig.offsetX * zoom;
+		const scaledOffsetY = gridConfig.offsetY * zoom;
+
+		return Array.from(selectedTileKeys).map(key => {
+			const [gx, gy] = key.split(',').map(Number);
+			const x = (gx * gridConfig.size + gridConfig.offsetX) * zoom;
+			const y = (gy * gridConfig.size + gridConfig.offsetY) * zoom;
+			return (
+				<Rect
+					key={key}
+					x={x}
+					y={y}
+					width={scaledSize}
+					height={scaledSize}
+					fill="transparent"
+					stroke="#00FFFF"
+					strokeWidth={2 / Math.max(1, zoom)}
+				/>
+			);
+		});
 	};
 
 	const handlePress = (e: any) => {
@@ -802,9 +1059,17 @@ const EditorCanvas = ({
 			y = e.nativeEvent.offsetY;
 		}
 
-		// Adjust for pan offset
-		const adjX = x + panOffset.x - gridConfig.offsetX;
-		const adjY = y + panOffset.y - gridConfig.offsetY;
+		// Detect shift key
+		const isShiftPressed = Platform.OS === 'web'
+			? e.nativeEvent.shiftKey || false
+			: false; // For native, we'd need keyboard tracking - simplified for now
+
+		// Adjust for zoom and grid offset
+		// NOTE: We do NOT add panOffset here because the TouchableOpacity is already positioned
+		// with left: -panOffset.x, top: -panOffset.y, so event coordinates are already in the
+		// "panned" coordinate space relative to the positioned element
+		const adjX = x / zoom - gridConfig.offsetX;
+		const adjY = y / zoom - gridConfig.offsetY;
 
 		if (adjX < 0 || adjY < 0) return;
 
@@ -812,73 +1077,94 @@ const EditorCanvas = ({
 		const gy = Math.floor(adjY / gridConfig.size);
 
 		if (gx >= 0 && gx < gridConfig.columns && gy >= 0 && gy < gridConfig.rows) {
-			onTileClick(gx, gy);
+			onTileClick(gx, gy, isShiftPressed);
 		}
 	};
 
 	return (
 		<View
+			ref={canvasRef}
 			style={{
 				width: containerSize.width || canvasWidth,
 				height: containerSize.height || canvasHeight,
 				overflow: 'hidden',
-				backgroundColor: '#333',
+				backgroundColor: '#000',
 			}}
-			{...panResponder.panHandlers}
 		>
-			<TouchableOpacity
-				testID="editor-canvas"
-				activeOpacity={1}
-				onPress={handlePress}
-				style={{
-					width: canvasWidth,
-					height: canvasHeight,
-					backgroundColor: '#222',
-					position: 'absolute',
-					left: -panOffset.x,
-					top: -panOffset.y,
-				}}
-			>
-				{/* Background Layer */}
-				{map.background_image_url && (
-					<Image
-						source={{ uri: map.background_image_url }}
+			<GestureDetector gesture={composedGesture}>
+				<View style={{ flex: 1 }}>
+					<TouchableOpacity
+						testID="editor-canvas"
+						activeOpacity={1}
+						onPress={handlePress}
 						style={{
+							width: canvasWidth,
+							height: canvasHeight,
+							backgroundColor: '#000',
 							position: 'absolute',
-							top: gridConfig.offsetY,
-							left: gridConfig.offsetX,
-							width: width,
-							height: height,
-							resizeMode: 'cover',
+							left: -panOffset.x,
+							top: -panOffset.y,
 						}}
-					/>
-				)}
+					>
+						{/* Background Layer - extend to cover padding area */}
+						{map.background_image_url && (
+							<Image
+								source={{ uri: map.background_image_url }}
+								style={{
+									position: 'absolute',
+									top: Math.max(0, (gridConfig.offsetY - padding) * zoom),
+									left: Math.max(0, (gridConfig.offsetX - padding) * zoom),
+									width: (width + padding * 2) * zoom,
+									height: (height + padding * 2) * zoom,
+									resizeMode: 'cover',
+								}}
+							/>
+						)}
 
-				<Svg
-					height={canvasHeight}
-					width={canvasWidth}
-					style={{ position: 'absolute', top: 0, left: 0 }}
-					pointerEvents="none"
-				>
-					{renderGrid()}
-					{renderTiles()}
-					{renderSelection()}
-				</Svg>
+						<Svg
+							height={canvasHeight}
+							width={canvasWidth}
+							style={{ position: 'absolute', top: 0, left: 0 }}
+							pointerEvents="none"
+						>
+							{renderGrid()}
+							{renderTiles()}
+							{renderSelection()}
+						</Svg>
 
-				{objects.map((obj, idx) => (
-					<Image
-						key={obj.id || idx}
-						source={{ uri: obj.image_url }}
-						style={{
-							position: 'absolute',
-							left: obj.x + gridConfig.offsetX,
-							top: obj.y + gridConfig.offsetY,
-							width: gridConfig.size,
-							height: gridConfig.size,
-						}}
-					/>
-				))}
-			</TouchableOpacity>
+						{objects.map((obj, idx) => (
+							<Image
+								key={obj.id || idx}
+								source={{ uri: obj.image_url }}
+								style={{
+									position: 'absolute',
+									left: (obj.x + gridConfig.offsetX) * zoom,
+									top: (obj.y + gridConfig.offsetY) * zoom,
+									width: gridConfig.size * zoom,
+									height: gridConfig.size * zoom,
+								}}
+							/>
+						))}
+					</TouchableOpacity>
+				</View>
+			</GestureDetector>
+
+			{/* Zoom Controls */}
+			<View style={styles.zoomControls}>
+				<TouchableOpacity style={styles.zoomButton} onPress={handleZoomIn}>
+					<ExpoIcon icon="Feather:plus" size={16} color="#3B2F1B" />
+				</TouchableOpacity>
+				<TouchableOpacity style={styles.zoomButton} onPress={handleZoomOut}>
+					<ExpoIcon icon="Feather:minus" size={16} color="#3B2F1B" />
+				</TouchableOpacity>
+				<TouchableOpacity style={styles.zoomButton} onPress={handleZoomReset}>
+					<ExpoIcon icon="Feather:rotate-cw" size={16} color="#3B2F1B" />
+				</TouchableOpacity>
+				<TouchableOpacity style={styles.zoomButton} onPress={handleZoomToFit}>
+					<ExpoIcon icon="Feather:maximize-2" size={16} color="#3B2F1B" />
+				</TouchableOpacity>
+				<ThemedText style={styles.zoomLevel}>{Math.round(zoom * 100)}%</ThemedText>
+			</View>
 		</View>
 	);
 };
@@ -942,6 +1228,9 @@ const styles = StyleSheet.create({
 	},
 	sidebarContent: {
 		padding: 10,
+	},
+	sidebarContentContainer: {
+		paddingRight: 20,
 	},
 	sectionTitle: {
 		fontSize: 14,
@@ -1078,5 +1367,35 @@ const styles = StyleSheet.create({
 		shadowOpacity: 0.25,
 		shadowRadius: 4,
 		zIndex: 100,
+	},
+	zoomControls: {
+		position: 'absolute',
+		top: 10,
+		right: 10,
+		backgroundColor: '#FFF9EF',
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+		padding: 4,
+		zIndex: 1000,
+		flexDirection: 'column',
+		gap: 4,
+	},
+	zoomButton: {
+		width: 32,
+		height: 32,
+		backgroundColor: '#FFF',
+		borderRadius: 4,
+		alignItems: 'center',
+		justifyContent: 'center',
+		borderWidth: 1,
+		borderColor: '#E2D3B3',
+	},
+	zoomLevel: {
+		fontSize: 10,
+		color: '#3B2F1B',
+		textAlign: 'center',
+		paddingHorizontal: 4,
+		paddingVertical: 2,
 	},
 });

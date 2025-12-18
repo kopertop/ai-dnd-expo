@@ -1,18 +1,12 @@
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 
-import type { CloudflareBindings } from '../env';
+import type { HonoContext } from '../env';
 
-type Variables = {
-	user: { id: string; email: string; name?: string | null } | null;
-};
-
-type MeContext = { Bindings: CloudflareBindings; Variables: Variables };
-
-const me = new Hono<MeContext>();
+const me = new Hono<HonoContext>();
 
 // Get current user info
-me.get('/', async (c: Context<MeContext>) => {
+me.get('/', async (c: Context<HonoContext>) => {
 	const user = c.get('user');
 	if (!user) {
 		return c.json({ error: 'Unauthorized' }, 401);

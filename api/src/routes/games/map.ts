@@ -4,11 +4,11 @@ import type { GamesContext } from './types';
 
 import { GameStateService } from '@/api/src/services/game-state';
 import {
-	buildMapState,
-	createId,
-	deserializeCharacter,
-	isHostUser,
-	resolveMapRow,
+    buildMapState,
+    createId,
+    deserializeCharacter,
+    isHostUser,
+    resolveMapRow,
 } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
@@ -184,6 +184,13 @@ map.post('/:inviteCode/map/generate', async (c) => {
 	await db.saveMap({
 		...generated.map,
 		world: game.world || null, // Set world from game, or null for world-agnostic
+		world_id: game.world_id ?? null,
+		background_image_url: null,
+		cover_image_url: null,
+		grid_columns: generated.map.width,
+		grid_size: 64,
+		grid_offset_x: 0,
+		grid_offset_y: 0,
 		created_at: Date.now(),
 		updated_at: Date.now(),
 	});
@@ -662,6 +669,7 @@ map.post('/:inviteCode/map/tokens', async (c) => {
 		npc_id: npcId,
 		token_type: tokenType,
 		label,
+		image_url: existingToken?.image_url ?? null,
 		x: body.x,
 		y: body.y,
 		facing,
@@ -954,6 +962,9 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 		}
 
 		const bucket = c.env.IMAGES_BUCKET;
+		if (!bucket) {
+			return c.json({ error: 'Image bucket not configured' }, 500);
+		}
 		await bucket.put(key, file, {
 			httpMetadata: {
 				contentType: file.type || 'image/png',
@@ -961,8 +972,11 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 		});
 
 		// Construct public URL
+		// Use isDev from context (set by CORS middleware based on Origin header) instead of checking request URL
 		const requestUrl = new URL(c.req.url);
-		const isLocalDev = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
+		const isDevFromContext = c.get('isDev');
+		const isLocalDevFromUrl = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
+		const isLocalDev = isDevFromContext === true || isLocalDevFromUrl;
 		const origin = isLocalDev ? 'http://localhost:8787' : requestUrl.origin;
 
 		// We need to create an image record to serve it via the API
@@ -1008,7 +1022,8 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 			is_generated: 0,
 			created_at: timestamp,
 			updated_at: timestamp,
-			world: game.world_id || null,
+			world: game.world || null,
+			world_id: game.world_id ?? null,
 		});
 
 		// Create default tiles
@@ -1095,6 +1110,7 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 		// Set as current map
 		await db.updateGameMap(game.id, mapId);
 		game.current_map_id = mapId;
+		// world_id is already set on game, no need to update from map
 
 		const mapState = await buildMapState(db, game);
 		return c.json(mapState);

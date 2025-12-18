@@ -9,13 +9,16 @@ export const UserSchema = z.object({
 	email: z.string().email(),
 	name: z.string(),
 	is_admin: z.boolean().optional(),
+	isAdmin: z.boolean().optional(),
 	role: z.string().optional(),
 	picture: z.string().url().optional(),
 	created_at: z.number(),
 	updated_at: z.number(),
 });
 
-export type User = z.infer<typeof UserSchema>;
+export type User = z.infer<typeof UserSchema> & {
+	isAdmin?: boolean; // Alias for is_admin, prefer is_admin in new code
+};
 
 // ============================================================================
 // Device Token Models

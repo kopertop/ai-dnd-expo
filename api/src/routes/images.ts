@@ -67,6 +67,9 @@ images.post('/upload', async (c) => {
 		// Generate key and upload to R2
 		const key = generateImageKey(user.id, file.name);
 		const bucket = c.env.IMAGES_BUCKET;
+		if (!bucket) {
+			return c.json({ error: 'Image bucket not configured' }, 500);
+		}
 
 		await bucket.put(key, file, {
 			httpMetadata: {
@@ -82,8 +85,11 @@ images.post('/upload', async (c) => {
 		// Construct public URL using the worker endpoint
 		// For local dev, use localhost:8787 (the worker port)
 		// For production, use the request origin
+		// Use isDev from context (set by CORS middleware based on Origin header) instead of checking request URL
 		const requestUrl = new URL(c.req.url);
-		const isLocalDev = c.env.__DEV__ || requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
+		const isDevFromContext = c.get('isDev');
+		const isLocalDevFromUrl = requestUrl.hostname === 'localhost' || requestUrl.hostname === '127.0.0.1';
+		const isLocalDev = isDevFromContext === true || isLocalDevFromUrl;
 		const origin = isLocalDev ? 'http://localhost:8787' : requestUrl.origin;
 		const publicUrl = `${origin}/api/images/${imageId}`;
 
@@ -138,6 +144,9 @@ images.get('/:id', async (c) => {
 
 		// Fetch image from R2
 		const bucket = c.env.IMAGES_BUCKET;
+		if (!bucket) {
+			return c.json({ error: 'Image bucket not configured' }, 500);
+		}
 		const object = await bucket.get(image.r2_key);
 
 		if (!object) {
@@ -192,6 +201,9 @@ images.delete('/:id', async (c) => {
 
 		// Delete from R2
 		const bucket = c.env.IMAGES_BUCKET;
+		if (!bucket) {
+			return c.json({ error: 'Image bucket not configured' }, 500);
+		}
 		await bucket.delete(image.r2_key);
 
 		// Delete from database

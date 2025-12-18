@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, ActivityIndicator, Image, Text, Platform } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import React, { useState } from 'react';
+import { ActivityIndicator, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ExpoIcon } from '@/components/expo-icon';
-import { ThemedText } from '@/components/themed-text';
-import { fetchAPI, uploadFile } from '@/lib/fetch';
 import { MediaLibraryModal } from '@/components/media-library-modal';
+import { ThemedText } from '@/components/themed-text';
+import { uploadFile } from '@/lib/fetch';
 
 interface ImageUploaderProps {
 	value?: string | null;
