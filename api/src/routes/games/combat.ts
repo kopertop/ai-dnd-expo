@@ -598,7 +598,7 @@ combat.post('/:inviteCode/dm-action', async (c) => {
 		}
 
 		// Serialize updates for database
-		const serializedUpdates: Partial<import('../../../../shared/workers/db').CharacterRow> = {};
+		const serializedUpdates: Partial<import('@/db').CharacterRow> = {};
 		if (updates.health !== undefined) serializedUpdates.health = updates.health;
 		if (updates.maxHealth !== undefined) serializedUpdates.max_health = updates.maxHealth;
 		if (updates.actionPoints !== undefined) serializedUpdates.action_points = updates.actionPoints;

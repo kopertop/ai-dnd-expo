@@ -1,4 +1,4 @@
-import type { CharacterRow, Database, GameRow } from '../../../shared/workers/db';
+import type { CharacterRow, Database, GameRow } from '@/db';
 
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import type { Character } from '@/types/character';

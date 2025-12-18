@@ -5,8 +5,8 @@ import type { CloudflareBindings } from '@/api/src/env';
 import { GameStateService } from '@/api/src/services/game-state';
 import { createId } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
-import type { CharacterRow, GamePlayerRow, GameRow, MapTokenRow } from '@/shared/workers/db';
-import { Database } from '@/shared/workers/db';
+import type { CharacterRow, GamePlayerRow, GameRow, MapTokenRow } from '@/db';
+import { Database } from '@/db';
 
 export type PartyMessage =
 	| {

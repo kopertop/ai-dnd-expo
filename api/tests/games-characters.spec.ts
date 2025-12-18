@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { env } from '@/api/tests/cloudflare-test-shim';
 import type { CloudflareBindings } from '@/api/src/env';
 import gameRoutes from '@/api/src/routes/games';
-import * as dbModule from '@/shared/workers/db';
+import * as dbModule from '@/db';
 
 describe('Games Character Routes - Game-specific endpoints', () => {
 	let hostUser: { id: string; email: string; name?: string | null };
@@ -91,7 +91,7 @@ describe('Games Character Routes - Game-specific endpoints', () => {
 
 		// Create character via the characters API
 		const db = (env as CloudflareBindings).DATABASE;
-		const { Database } = await import('@/shared/workers/db');
+		const { Database } = await import('@/db');
 		const dbInstance = new Database(db);
 		const { serializeCharacter } = await import('@/api/src/utils/games-utils');
 		const serialized = serializeCharacter(characterPayload, hostUser.id, hostUser.email);

@@ -1,11 +1,15 @@
-import type { MapRow, MapTileRow, MapTokenRow, NpcRow } from '@/shared/workers/db';
+import type { MapRow, MapTileRow, MapTokenRow, NpcRow } from '@/db';
 import type { MapState, MapToken, NpcDefinition } from '@/types/multiplayer-map';
 
 type TerrainCell = {
 	terrain: string;
 	elevation: number;
 	fogged: boolean;
+	movementCost: number;
+	blocked?: boolean;
 	difficult?: boolean;
+	providesCover?: boolean;
+	coverType?: string | null;
 	featureType?: string | null;
 	metadata?: Record<string, unknown>;
 };
@@ -44,6 +48,7 @@ const buildBaseTerrain = (map: MapRow): TerrainCell[][] => {
 			terrain: fallback.type ?? 'stone',
 			elevation: fallback.elevation ?? 0,
 			fogged: false,
+			movementCost: 1,
 		})),
 	);
 };

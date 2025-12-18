@@ -8,7 +8,7 @@ import { env } from '@/api/tests/cloudflare-test-shim';
 import type { CloudflareBindings } from '@/api/src/env';
 import characterRoutes from '@/api/src/routes/characters';
 import gameRoutes from '@/api/src/routes/games';
-import * as dbModule from '@/shared/workers/db';
+import * as dbModule from '@/db';
 
 describe('Games API with Cloudflare Workers', () => {
 	let hostUser: { id: string; email: string; name?: string | null };

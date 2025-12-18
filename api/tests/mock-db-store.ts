@@ -9,7 +9,7 @@ import type {
 	MapTokenRow,
 	NpcRow,
 	UploadedImageRow,
-} from '@/shared/workers/db';
+} from '@/db';
 
 interface DataStore {
 	games: GameRow[];
@@ -49,6 +49,13 @@ const createDefaultStore = (): DataStore => {
 				theme: 'default',
 				biome: 'forest',
 				is_generated: 0,
+				world_id: null,
+				background_image_url: null,
+				cover_image_url: null,
+				grid_columns: 10,
+				grid_size: 64,
+				grid_offset_x: 0,
+				grid_offset_y: 0,
 				created_at: now,
 				updated_at: now,
 			},

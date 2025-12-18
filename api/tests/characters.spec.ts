@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { env } from '@/api/tests/cloudflare-test-shim';
 import type { CloudflareBindings } from '@/api/src/env';
 import characterRoutes from '@/api/src/routes/characters';
-import * as dbModule from '@/shared/workers/db';
+import * as dbModule from '@/db';
 
 describe('Characters API', () => {
 	let testUser: { id: string; email: string; name?: string | null };

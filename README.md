@@ -33,7 +33,7 @@ An open-source platform for playing Dungeons and Dragons online with AI assistan
 1. **Install dependencies**
 
    ```bash
-   npm install
+   bun install
    ```
 
 2. **Configure environment variables** (optional, for web platform)
@@ -64,7 +64,7 @@ An open-source platform for playing Dungeons and Dragons online with AI assistan
 3. **Start the development server**
 
    ```bash
-   npm run dev
+   bun run dev
    ```
    This will start both the Expo web server and the Cloudflare Worker API server locally.
 
@@ -101,16 +101,16 @@ For web platform, you'll need:
 
 ### Available Scripts
 
-- `npm run dev` - Start Expo web + API Worker in parallel (recommended)
-- `npm run dev:web` - Start Expo development server only
-- `npm run dev:api` - Start API Worker development server only
-- `npm run android` - Run on Android emulator
-- `npm run ios` - Run on iOS simulator
-- `npm run lint` - Run ESLint
-- `npm run test` - Run tests
-- `npm run deploy` - Deploy both Web (Pages) and API (Worker)
-- `npm run deploy:web` - Deploy Web to Cloudflare Pages
-- `npm run deploy:api` - Deploy API to Cloudflare Workers
+- `bun run dev` - Start Expo web + API Worker in parallel (recommended)
+- `bun run dev:web` - Start Expo development server only
+- `bun run dev:api` - Start API Worker development server only
+- `bun run android` - Run on Android emulator
+- `bun run ios` - Run on iOS simulator
+- `bun run lint` - Run ESLint
+- `bun run test` - Run tests
+- `bun run deploy` - Deploy both Web (Pages) and API (Worker)
+- `bun run deploy:web` - Deploy Web to Cloudflare Pages
+- `bun run deploy:api` - Deploy API to Cloudflare Workers
 
 ### Project Structure
 

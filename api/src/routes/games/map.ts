@@ -14,7 +14,7 @@ import { createDatabase } from '@/api/src/utils/repository';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
 import { MapAnalyzer } from '@/services/ai/map-analyzer';
 import { createOllamaProvider } from '@/services/ai/providers/ollama-provider';
-import { MapTokenRow } from '@/shared/workers/db';
+import { MapTokenRow } from '@/db';
 import { generateProceduralMap, MapGeneratorPreset } from '@/shared/workers/map-generator';
 import { MultiplayerGameState } from '@/types/multiplayer-game';
 import { getCharacterSpeed } from '@/utils/character-utils';

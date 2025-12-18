@@ -2,7 +2,7 @@ import { afterEach, beforeEach, vi } from 'vitest';
 
 import { getStore, resetStore } from './api/tests/mock-db-store';
 
-import * as realDb from '@/shared/workers/db';
+import * as realDb from '@/db';
 
 // Force-resolve Cloudflare protocol imports to the local shim so Node's loader doesn't reject the scheme
 const Module = require('module');
@@ -225,8 +225,12 @@ class InMemoryDatabase {
 			y: number;
 			terrain_type: string;
 			elevation?: number;
+			movement_cost?: number;
 			is_blocked?: number;
+			is_difficult?: number;
 			has_fog?: number;
+			provides_cover?: number;
+			cover_type?: string | null;
 			feature_type?: string | null;
 			metadata?: string;
 		}>,
@@ -252,8 +256,12 @@ class InMemoryDatabase {
 				y: tile.y,
 				terrain_type: tile.terrain_type,
 				elevation: tile.elevation ?? 0,
+				movement_cost: tile.movement_cost ?? 1.0,
 				is_blocked: tile.is_blocked ?? 0,
+				is_difficult: tile.is_difficult ?? 0,
 				has_fog: tile.has_fog ?? 0,
+				provides_cover: tile.provides_cover ?? 0,
+				cover_type: tile.cover_type ?? null,
 				feature_type: tile.feature_type ?? null,
 				metadata: tile.metadata ?? '{}',
 			});
@@ -279,8 +287,12 @@ class InMemoryDatabase {
 						y,
 						terrain_type: defaultTerrain,
 						elevation: 0,
+						movement_cost: 1.0,
 						is_blocked: 0,
+						is_difficult: 0,
 						has_fog: 0,
+						provides_cover: 0,
+						cover_type: null,
 						feature_type: null,
 						metadata: '{}',
 					});
@@ -298,8 +310,12 @@ class InMemoryDatabase {
 			y: number;
 			terrain_type: string;
 			elevation?: number;
+			movement_cost?: number;
 			is_blocked?: number;
+			is_difficult?: number;
 			has_fog?: number;
+			provides_cover?: number;
+			cover_type?: string | null;
 			feature_type?: string | null;
 			metadata?: string;
 		}>,
@@ -314,8 +330,12 @@ class InMemoryDatabase {
 				y: tile.y,
 				terrain_type: tile.terrain_type,
 				elevation: tile.elevation ?? 0,
+				movement_cost: tile.movement_cost ?? 1.0,
 				is_blocked: tile.is_blocked ?? 0,
+				is_difficult: tile.is_difficult ?? 0,
 				has_fog: tile.has_fog ?? 0,
+				provides_cover: tile.provides_cover ?? 0,
+				cover_type: tile.cover_type ?? null,
 				feature_type: tile.feature_type ?? null,
 				metadata: tile.metadata ?? '{}',
 			};
@@ -500,8 +520,8 @@ class InMemoryDatabase {
 	}
 }
 
-vi.mock('@/shared/workers/db', async () => {
-	const actual = await vi.importActual<typeof realDb>('@/shared/workers/db');
+vi.mock('@/db', async () => {
+	const actual = await vi.importActual<typeof realDb>('@/db');
 	return {
 		...actual,
 		Database: InMemoryDatabase,

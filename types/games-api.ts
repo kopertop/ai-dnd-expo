@@ -2,7 +2,7 @@
 import { Character } from './character';
 import { Quest } from './quest';
 
-import type { CharacterRow, MapTokenRow, NpcRow } from '@/shared/workers/db';
+import type { CharacterRow, MapTokenRow, NpcRow } from '@/db';
 
 /**
  * Request body for creating a new game

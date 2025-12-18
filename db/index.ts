@@ -1,199 +1,45 @@
 /**
- * Database helper functions for D1 database
+ * Main Database Access Layer
+ *
+ * This module exports the Database class which provides a typed wrapper around the D1 database.
+ * It also re-exports all database row types from `./types`.
  */
 
-export interface GameRow {
-	id: string;
-	invite_code: string;
-	host_id: string;
-	host_email: string | null;
-	quest_id: string;
-	quest_data: string; // JSON
-	world: string;
-	starting_area: string;
-	status: 'waiting' | 'active' | 'completed' | 'cancelled';
-	current_map_id: string | null;
-	created_at: number;
-	updated_at: number;
-}
+import type {
+	ActivityLogRow,
+	CharacterRow,
+	GamePlayerRow,
+	GameRow,
+	GameStateRow,
+	MapRow,
+	MapTileRow,
+	MapTokenRow,
+	NpcRow,
+	UploadedImageRow,
+	WorldRow
+} from './types';
 
-export interface CharacterRow {
-	id: string;
-	player_id: string;
-	player_email: string | null;
-	name: string;
-	level: number;
-	race: string;
-	class: string;
-	description: string | null;
-	trait: string | null;
-	icon: string | null;
-	stats: string; // JSON
-	skills: string; // JSON array
-	inventory: string; // JSON array
-	equipped: string; // JSON object
-	health: number;
-	max_health: number;
-	action_points: number;
-	max_action_points: number;
-	status_effects: string; // JSON array
-	prepared_spells: string | null; // JSON array of spell IDs
-	created_at: number;
-	updated_at: number;
-}
+// Re-export types for consumers
+export * from './types';
 
-export interface GamePlayerRow {
-	id: string;
-	game_id: string;
-	player_id: string;
-	player_email: string | null;
-	character_id: string;
-	character_name: string;
-	joined_at: number;
-}
-
-export interface GameStateRow {
-	game_id: string;
-	state_data: string; // JSON
-	map_state: string; // JSON
-	log_entries: string; // JSON
-	state_version: number;
-	updated_at: number;
-}
-
-export interface MapRow {
-	id: string;
-	slug: string;
-	name: string;
-	description: string | null;
-	width: number;
-	height: number;
-	default_terrain: string; // JSON
-	fog_of_war: string; // JSON
-	terrain_layers: string; // JSON
-	metadata: string; // JSON
-	generator_preset: string;
-	seed: string;
-	theme: string;
-	biome: string;
-	world: string | null; // Deprecated: Old string based world
-	world_id: string | null; // FK to worlds table
-	background_image_url: string | null;
-	cover_image_url: string | null;
-	grid_columns: number;
-	grid_size: number;
-	grid_offset_x: number;
-	grid_offset_y: number;
-	is_generated: number;
-	created_at: number;
-	updated_at: number;
-}
-
-export interface MapTileRow {
-	id: string;
-	map_id: string;
-	x: number;
-	y: number;
-	terrain_type: string;
-	elevation: number;
-	movement_cost: number | null;
-	is_blocked: number;
-	is_difficult: number;
-	has_fog: number;
-	provides_cover: number;
-	cover_type: string | null;
-	feature_type: string | null;
-	metadata: string;
-}
-
-export interface UploadedImageRow {
-	id: string;
-	user_id: string;
-	filename: string;
-	r2_key: string;
-	public_url: string;
-	title: string | null;
-	description: string | null;
-	image_type: 'npc' | 'character' | 'both';
-	is_public: number;
-	created_at: number;
-	updated_at: number;
-}
-
-export interface NpcRow {
-	id: string;
-	slug: string;
-	name: string;
-	role: string;
-	alignment: string;
-	disposition: string;
-	description: string | null;
-	icon: string | null;
-	base_health: number;
-	base_armor_class: number;
-	challenge_rating: number;
-	archetype: string;
-	default_actions: string;
-	stats: string;
-	abilities: string;
-	loot_table: string;
-	metadata: string;
-	created_at: number;
-	updated_at: number;
-}
-
-export interface MapTokenRow {
-	id: string;
-	game_id: string | null;
-	map_id: string;
-	character_id: string | null;
-	npc_id: string | null;
-	token_type: string;
-	label: string | null;
-	image_url: string | null;
-	x: number;
-	y: number;
-	facing: number;
-	color: string | null;
-	status: string;
-	is_visible: number;
-	hit_points: number | null;
-	max_hit_points: number | null;
-	status_effects: string | null;
-	metadata: string;
-	created_at: number;
-	updated_at: number;
-}
-
-
-export interface ActivityLogRow {
-	id: string;
-	game_id: string;
-	invite_code: string;
-	type: string;
-	timestamp: number;
-	description: string;
-	actor_id: string | null;
-	actor_name: string | null;
-	data: string | null; // JSON
-	created_at: number;
-}
-
-export interface WorldRow {
-	id: string;
-	name: string;
-	slug: string;
-	description: string | null;
-	image_url: string | null;
-	is_public: number;
-	created_at: number;
-	updated_at: number;
-}
-
+/**
+ * Database wrapper class for D1 interactions.
+ */
 export class Database {
+	/**
+	 * Creates a new Database instance.
+	 * @param db - The D1Database binding from Cloudflare environment
+	 */
 	constructor(private db: D1Database) { }
 
-	// Game operations
+	// -------------------------------------------------------------------------
+	// Game Operations
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Creates a new game session.
+	 * @param game - The game data to insert (excluding timestamps)
+	 */
 	async createGame(game: Omit<GameRow, 'created_at' | 'updated_at'>): Promise<void> {
 		const now = Date.now();
 		await this.db.prepare(
@@ -215,6 +61,11 @@ export class Database {
 		).run();
 	}
 
+	/**
+	 * Retrieves a game by its invite code (case-insensitive).
+	 * @param inviteCode - The invite code to search for
+	 * @returns The game row or null if not found
+	 */
 	async getGameByInviteCode(inviteCode: string): Promise<GameRow | null> {
 		// Try exact match first
 		const result = await this.db.prepare(
@@ -231,6 +82,11 @@ export class Database {
 		return allResults || null;
 	}
 
+	/**
+	 * Retrieves a game by its ID.
+	 * @param gameId - The game ID
+	 * @returns The game row or null if not found
+	 */
 	async getGameById(gameId: string): Promise<GameRow | null> {
 		const result = await this.db.prepare(
 			'SELECT * FROM games WHERE id = ?',
@@ -238,6 +94,12 @@ export class Database {
 		return result || null;
 	}
 
+	/**
+	 * Lists games hosted by a specific user.
+	 * @param hostId - The host's user ID
+	 * @param hostEmail - The host's email (optional)
+	 * @returns Array of games
+	 */
 	async getGamesHostedByUser(hostId?: string, hostEmail?: string | null): Promise<GameRow[]> {
 		const clauses: string[] = [];
 		const values: (string)[] = [];
@@ -261,19 +123,36 @@ export class Database {
 		return result.results || [];
 	}
 
+	/**
+	 * Updates the status of a game.
+	 * @param gameId - The game ID
+	 * @param status - The new status
+	 */
 	async updateGameStatus(gameId: string, status: GameRow['status']): Promise<void> {
 		await this.db.prepare(
 			'UPDATE games SET status = ?, updated_at = ? WHERE id = ?',
 		).bind(status, Date.now(), gameId).run();
 	}
 
+	/**
+	 * Updates the current active map for a game.
+	 * @param gameId - The game ID
+	 * @param mapId - The new map ID
+	 */
 	async updateGameMap(gameId: string, mapId: string | null): Promise<void> {
 		await this.db.prepare(
 			'UPDATE games SET current_map_id = ?, updated_at = ? WHERE id = ?',
 		).bind(mapId, Date.now(), gameId).run();
 	}
 
-	// Character operations
+	// -------------------------------------------------------------------------
+	// Character Operations
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Creates a new character.
+	 * @param character - Character data
+	 */
 	async createCharacter(character: Omit<CharacterRow, 'created_at' | 'updated_at'>): Promise<void> {
 		const now = Date.now();
 		await this.db.prepare(
@@ -303,6 +182,11 @@ export class Database {
 		).run();
 	}
 
+	/**
+	 * Retrieves a character by ID.
+	 * @param characterId - The character ID
+	 * @returns The character row or null
+	 */
 	async getCharacterById(characterId: string): Promise<CharacterRow | null> {
 		const result = await this.db.prepare(
 			'SELECT * FROM characters WHERE id = ?',
@@ -310,6 +194,11 @@ export class Database {
 		return result || null;
 	}
 
+	/**
+	 * Retrieves all characters owned by a player ID.
+	 * @param playerId - The player's user ID
+	 * @returns Array of characters
+	 */
 	async getCharactersByPlayerId(playerId: string): Promise<CharacterRow[]> {
 		const result = await this.db.prepare(
 			'SELECT * FROM characters WHERE player_id = ? ORDER BY updated_at DESC',
@@ -317,6 +206,11 @@ export class Database {
 		return result.results || [];
 	}
 
+	/**
+	 * Retrieves all characters owned by a player email.
+	 * @param email - The player's email
+	 * @returns Array of characters
+	 */
 	async getCharactersByEmail(email: string): Promise<CharacterRow[]> {
 		const result = await this.db.prepare(
 			'SELECT * FROM characters WHERE player_email = ? ORDER BY updated_at DESC',
@@ -324,6 +218,12 @@ export class Database {
 		return result.results || [];
 	}
 
+	/**
+	 * Retrieves characters by player ID or email.
+	 * @param playerId - Optional player ID
+	 * @param playerEmail - Optional player email
+	 * @returns Array of characters
+	 */
 	async getCharactersByPlayerIdentity(playerId?: string, playerEmail?: string | null): Promise<CharacterRow[]> {
 		const clauses: string[] = [];
 		const values: (string)[] = [];
@@ -347,6 +247,11 @@ export class Database {
 		return result.results || [];
 	}
 
+	/**
+	 * Updates a character.
+	 * @param characterId - The character ID
+	 * @param updates - Partial character data to update
+	 */
 	async updateCharacter(characterId: string, updates: Partial<CharacterRow>): Promise<void> {
 		const fields: string[] = [];
 		const values: any[] = [];
@@ -369,10 +274,18 @@ export class Database {
 		).bind(...values).run();
 	}
 
+	/**
+	 * Deletes a character.
+	 * @param characterId - The character ID
+	 */
 	async deleteCharacter(characterId: string): Promise<void> {
 		await this.db.prepare('DELETE FROM characters WHERE id = ?').bind(characterId).run();
 	}
 
+	/**
+	 * Retrieves all characters in the system (Admin only typically).
+	 * @returns Array of all characters
+	 */
 	async getAllCharacters(): Promise<CharacterRow[]> {
 		const result = await this.db.prepare(
 			'SELECT * FROM characters ORDER BY updated_at DESC',
@@ -380,7 +293,15 @@ export class Database {
 		return result.results || [];
 	}
 
-	// Game player operations
+	// -------------------------------------------------------------------------
+	// Game Player Operations
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Adds a player to a game.
+	 * @param player - Player membership data
+	 * @returns The ID of the new membership record
+	 */
 	async addPlayerToGame(player: Omit<GamePlayerRow, 'id'>): Promise<string> {
 		const id = `gp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 		await this.db.prepare(
@@ -400,6 +321,11 @@ export class Database {
 		return id;
 	}
 
+	/**
+	 * Retrieves all players in a game.
+	 * @param gameId - The game ID
+	 * @returns Array of game players
+	 */
 	async getGamePlayers(gameId: string): Promise<GamePlayerRow[]> {
 		const result = await this.db.prepare(
 			'SELECT * FROM game_players WHERE game_id = ? ORDER BY joined_at ASC',
@@ -407,12 +333,23 @@ export class Database {
 		return result.results || [];
 	}
 
+	/**
+	 * Removes a player from a game.
+	 * @param gameId - The game ID
+	 * @param playerId - The player ID
+	 */
 	async removePlayerFromGame(gameId: string, playerId: string): Promise<void> {
 		await this.db.prepare(
 			'DELETE FROM game_players WHERE game_id = ? AND player_id = ?',
 		).bind(gameId, playerId).run();
 	}
 
+	/**
+	 * Retrieves all game memberships for a player.
+	 * @param playerId - Optional player ID
+	 * @param playerEmail - Optional player email
+	 * @returns Array of game memberships
+	 */
 	async getGameMembershipsForPlayer(playerId?: string, playerEmail?: string | null): Promise<GamePlayerRow[]> {
 		const clauses: string[] = [];
 		const values: (string)[] = [];
@@ -436,7 +373,15 @@ export class Database {
 		return result.results || [];
 	}
 
-	// Game state operations
+	// -------------------------------------------------------------------------
+	// Game State Operations
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Saves the current state of a game.
+	 * @param gameId - The game ID
+	 * @param stateData - JSON string of state data
+	 */
 	async saveGameState(gameId: string, stateData: string): Promise<void> {
 		await this.db.prepare(
 			`INSERT INTO game_states (game_id, state_data, updated_at)
@@ -445,6 +390,11 @@ export class Database {
 		).bind(gameId, stateData, Date.now(), stateData, Date.now()).run();
 	}
 
+	/**
+	 * Retrieves the state of a game.
+	 * @param gameId - The game ID
+	 * @returns The game state row or null
+	 */
 	async getGameState(gameId: string): Promise<GameStateRow | null> {
 		const result = await this.db.prepare(
 			'SELECT * FROM game_states WHERE game_id = ?',
@@ -453,7 +403,9 @@ export class Database {
 	}
 
 	/**
-	 * Update game state with partial data (merges with existing state)
+	 * Updates game state with partial data (merges with existing state).
+	 * @param gameId - The game ID
+	 * @param updates - Partial updates for state_data, map_state, or log_entries
 	 */
 	async updateGameState(gameId: string, updates: Partial<{ state_data: string; map_state: string; log_entries: string }>): Promise<void> {
 		const existing = await this.getGameState(gameId);
@@ -484,7 +436,14 @@ export class Database {
 		).bind(stateData, mapState, logEntries, newVersion, now, gameId).run();
 	}
 
-	// Map operations
+	// -------------------------------------------------------------------------
+	// Map Operations
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Lists all available maps.
+	 * @returns Array of maps
+	 */
 	async listMaps(): Promise<MapRow[]> {
 		const result = await this.db.prepare(
 			'SELECT * FROM maps ORDER BY name ASC',
@@ -492,6 +451,11 @@ export class Database {
 		return result.results || [];
 	}
 
+	/**
+	 * Retrieves a map by ID.
+	 * @param mapId - The map ID
+	 * @returns The map row or null
+	 */
 	async getMapById(mapId: string): Promise<MapRow | null> {
 		const result = await this.db.prepare(
 			'SELECT * FROM maps WHERE id = ?',
@@ -499,6 +463,11 @@ export class Database {
 		return result || null;
 	}
 
+	/**
+	 * Retrieves a map by slug.
+	 * @param slug - The map slug
+	 * @returns The map row or null
+	 */
 	async getMapBySlug(slug: string): Promise<MapRow | null> {
 		const result = await this.db.prepare(
 			'SELECT * FROM maps WHERE slug = ?',
@@ -506,6 +475,11 @@ export class Database {
 		return result || null;
 	}
 
+	/**
+	 * Retrieves all tiles for a map.
+	 * @param mapId - The map ID
+	 * @returns Array of map tiles
+	 */
 	async getMapTiles(mapId: string): Promise<MapTileRow[]> {
 		const result = await this.db.prepare(
 			'SELECT * FROM map_tiles WHERE map_id = ? ORDER BY y ASC, x ASC',
@@ -513,6 +487,10 @@ export class Database {
 		return result.results || [];
 	}
 
+	/**
+	 * Saves (creates or updates) a map.
+	 * @param map - Map data
+	 */
 	async saveMap(map: Omit<MapRow, 'created_at' | 'updated_at'> & Partial<Pick<MapRow, 'created_at' | 'updated_at'>>): Promise<void> {
 		const now = Date.now();
 		await this.db.prepare(
@@ -583,6 +561,11 @@ export class Database {
 		).run();
 	}
 
+	/**
+	 * Replaces all tiles for a map.
+	 * @param mapId - The map ID
+	 * @param tiles - Array of tile data
+	 */
 	async replaceMapTiles(
 		mapId: string,
 		tiles: Array<{
@@ -639,6 +622,13 @@ export class Database {
 		await this.db.batch([deleteStatement, ...insertStatements]);
 	}
 
+	/**
+	 * Clones a map and its tiles.
+	 * @param sourceMapId - Source map ID
+	 * @param newName - New map name
+	 * @param newSlug - New map slug
+	 * @returns The new map row
+	 */
 	async cloneMap(sourceMapId: string, newName: string, newSlug: string): Promise<MapRow> {
 		const sourceMap = await this.getMapById(sourceMapId);
 		if (!sourceMap) {
@@ -709,6 +699,11 @@ export class Database {
 		return result;
 	}
 
+	/**
+	 * Upserts specific map tiles (merging with existing).
+	 * @param mapId - Map ID
+	 * @param tiles - Tiles to upsert
+	 */
 	async upsertMapTiles(
 		mapId: string,
 		tiles: Array<{
@@ -763,7 +758,14 @@ export class Database {
 		await this.db.batch(statements);
 	}
 
-	// NPC operations
+	// -------------------------------------------------------------------------
+	// NPC Operations
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Lists all NPC definitions.
+	 * @returns Array of NPCs
+	 */
 	async listNpcDefinitions(): Promise<NpcRow[]> {
 		const result = await this.db.prepare(
 			'SELECT * FROM npcs ORDER BY name ASC',
@@ -771,6 +773,11 @@ export class Database {
 		return result.results || [];
 	}
 
+	/**
+	 * Retrieves an NPC by slug.
+	 * @param slug - The NPC slug
+	 * @returns The NPC row or null
+	 */
 	async getNpcBySlug(slug: string): Promise<NpcRow | null> {
 		const result = await this.db.prepare(
 			'SELECT * FROM npcs WHERE slug = ?',
@@ -778,6 +785,11 @@ export class Database {
 		return result || null;
 	}
 
+	/**
+	 * Retrieves an NPC by ID.
+	 * @param id - The NPC ID
+	 * @returns The NPC row or null
+	 */
 	async getNpcById(id: string): Promise<NpcRow | null> {
 		const result = await this.db.prepare(
 			'SELECT * FROM npcs WHERE id = ?',
@@ -785,6 +797,10 @@ export class Database {
 		return result || null;
 	}
 
+	/**
+	 * Saves (creates or updates) an NPC definition.
+	 * @param npc - NPC data
+	 */
 	async saveNpcDefinition(
 		npc: Omit<NpcRow, 'created_at' | 'updated_at'> & Partial<Pick<NpcRow, 'created_at' | 'updated_at'>>,
 	): Promise<void> {
@@ -836,7 +852,15 @@ export class Database {
 		).run();
 	}
 
-	// Token operations
+	// -------------------------------------------------------------------------
+	// Token Operations
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Lists tokens for a game (active tokens).
+	 * @param gameId - The game ID
+	 * @returns Array of map tokens
+	 */
 	async listMapTokensForGame(gameId: string): Promise<MapTokenRow[]> {
 		const result = await this.db.prepare(
 			'SELECT * FROM map_tokens WHERE game_id = ? ORDER BY updated_at DESC',
@@ -844,6 +868,11 @@ export class Database {
 		return result.results || [];
 	}
 
+	/**
+	 * Lists all tokens on a map (including templates).
+	 * @param mapId - The map ID
+	 * @returns Array of map tokens
+	 */
 	async listMapTokensForMap(mapId: string): Promise<MapTokenRow[]> {
 		const result = await this.db.prepare(
 			'SELECT * FROM map_tokens WHERE map_id = ? ORDER BY updated_at DESC',
@@ -851,6 +880,11 @@ export class Database {
 		return result.results || [];
 	}
 
+	/**
+	 * Lists "prop" tokens for a map (map editor objects).
+	 * @param mapId - The map ID
+	 * @returns Array of map tokens
+	 */
 	async listPropTokensForMap(mapId: string): Promise<MapTokenRow[]> {
 		const result = await this.db.prepare(
 			'SELECT * FROM map_tokens WHERE map_id = ? AND game_id IS NULL ORDER BY updated_at DESC',
@@ -858,6 +892,11 @@ export class Database {
 		return result.results || [];
 	}
 
+	/**
+	 * Retrieves a token by ID.
+	 * @param tokenId - The token ID
+	 * @returns The token row or null
+	 */
 	async getMapTokenById(tokenId: string): Promise<MapTokenRow | null> {
 		const result = await this.db.prepare(
 			'SELECT * FROM map_tokens WHERE id = ?',
@@ -865,6 +904,10 @@ export class Database {
 		return result || null;
 	}
 
+	/**
+	 * Saves (creates or updates) a map token.
+	 * @param token - Token data
+	 */
 	async saveMapToken(token: Omit<MapTokenRow, 'created_at' | 'updated_at'>): Promise<void> {
 		const now = Date.now();
 		await this.db.prepare(
@@ -916,12 +959,21 @@ export class Database {
 		).run();
 	}
 
+	/**
+	 * Deletes all "prop" tokens for a map (used when saving map editor state).
+	 * @param mapId - The map ID
+	 */
 	async deletePropTokensForMap(mapId: string): Promise<void> {
 		await this.db.prepare(
 			'DELETE FROM map_tokens WHERE map_id = ? AND token_type = ? AND game_id IS NULL',
 		).bind(mapId, 'prop').run();
 	}
 
+	/**
+	 * Updates a token with partial data.
+	 * @param tokenId - The token ID
+	 * @param updates - Partial token data
+	 */
 	async updateMapToken(tokenId: string, updates: Partial<MapTokenRow>): Promise<void> {
 		const fields: string[] = [];
 		const values: any[] = [];
@@ -944,15 +996,26 @@ export class Database {
 		).bind(...values).run();
 	}
 
+	/**
+	 * Deletes a token.
+	 * @param tokenId - The token ID
+	 */
 	async deleteMapToken(tokenId: string): Promise<void> {
 		await this.db.prepare('DELETE FROM map_tokens WHERE id = ?').bind(tokenId).run();
 	}
 
+	/**
+	 * Clears all tokens for a game (reset).
+	 * @param gameId - The game ID
+	 */
 	async clearTokensForGame(gameId: string): Promise<void> {
 		await this.db.prepare('DELETE FROM map_tokens WHERE game_id = ?').bind(gameId).run();
 	}
 
-
+	/**
+	 * Deletes a game and all related data (tokens, logs, states).
+	 * @param gameId - The game ID
+	 */
 	async deleteGame(gameId: string): Promise<void> {
 		// Delete related data first (foreign key constraints will handle game_players via CASCADE)
 		// Delete activity logs
@@ -965,7 +1028,14 @@ export class Database {
 		await this.db.prepare('DELETE FROM games WHERE id = ?').bind(gameId).run();
 	}
 
-	// Activity log operations
+	// -------------------------------------------------------------------------
+	// Activity Log Operations
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Saves an activity log entry.
+	 * @param log - Log data
+	 */
 	async saveActivityLog(log: Omit<ActivityLogRow, 'created_at'>): Promise<void> {
 		const now = Date.now();
 		await this.db.prepare(
@@ -986,6 +1056,13 @@ export class Database {
 		).run();
 	}
 
+	/**
+	 * Retrieves activity logs for an invite code.
+	 * @param inviteCode - The invite code
+	 * @param limit - Max records
+	 * @param offset - Pagination offset
+	 * @returns Array of log entries
+	 */
 	async getActivityLogs(inviteCode: string, limit: number = 100, offset: number = 0): Promise<ActivityLogRow[]> {
 		const result = await this.db.prepare(
 			'SELECT * FROM activity_logs WHERE invite_code = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?',
@@ -993,6 +1070,13 @@ export class Database {
 		return result.results || [];
 	}
 
+	/**
+	 * Retrieves activity logs by game ID.
+	 * @param gameId - The game ID
+	 * @param limit - Max records
+	 * @param offset - Pagination offset
+	 * @returns Array of log entries
+	 */
 	async getActivityLogsByGameId(gameId: string, limit: number = 100, offset: number = 0): Promise<ActivityLogRow[]> {
 		const result = await this.db.prepare(
 			'SELECT * FROM activity_logs WHERE game_id = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?',
@@ -1000,11 +1084,22 @@ export class Database {
 		return result.results || [];
 	}
 
+	/**
+	 * Deletes all logs for a game.
+	 * @param gameId - The game ID
+	 */
 	async deleteActivityLogs(gameId: string): Promise<void> {
 		await this.db.prepare('DELETE FROM activity_logs WHERE game_id = ?').bind(gameId).run();
 	}
 
-	// Uploaded Image operations
+	// -------------------------------------------------------------------------
+	// Uploaded Image Operations
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Saves (upserts) an uploaded image record.
+	 * @param image - Image data
+	 */
 	async saveUploadedImage(image: UploadedImageRow): Promise<void> {
 		await this.db.prepare(
 			`INSERT INTO uploaded_images (
@@ -1032,10 +1127,23 @@ export class Database {
 		).run();
 	}
 
+	/**
+	 * Retrieves an uploaded image by ID.
+	 * @param id - The image ID
+	 * @returns The image row or null
+	 */
 	async getUploadedImageById(id: string): Promise<UploadedImageRow | null> {
 		return await this.db.prepare('SELECT * FROM uploaded_images WHERE id = ?').bind(id).first<UploadedImageRow>();
 	}
 
+	/**
+	 * Lists uploaded images with filtering.
+	 * @param userId - Optional user ID filter
+	 * @param imageType - Optional type filter
+	 * @param limit - Max records
+	 * @param offset - Pagination offset
+	 * @returns Array of images
+	 */
 	async listUploadedImages(
 		userId?: string,
 		imageType?: 'npc' | 'character' | 'both',
@@ -1066,11 +1174,22 @@ export class Database {
 		return result.results || [];
 	}
 
+	/**
+	 * Deletes an uploaded image record.
+	 * @param id - The image ID
+	 */
 	async deleteUploadedImage(id: string): Promise<void> {
 		await this.db.prepare('DELETE FROM uploaded_images WHERE id = ?').bind(id).run();
 	}
 
-	// World operations
+	// -------------------------------------------------------------------------
+	// World Operations
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Lists all worlds.
+	 * @returns Array of worlds
+	 */
 	async listWorlds(): Promise<WorldRow[]> {
 		const result = await this.db.prepare(
 			'SELECT * FROM worlds ORDER BY name ASC',
@@ -1078,6 +1197,11 @@ export class Database {
 		return result.results || [];
 	}
 
+	/**
+	 * Retrieves a world by ID.
+	 * @param id - The world ID
+	 * @returns The world row or null
+	 */
 	async getWorldById(id: string): Promise<WorldRow | null> {
 		const result = await this.db.prepare(
 			'SELECT * FROM worlds WHERE id = ?',
@@ -1085,6 +1209,10 @@ export class Database {
 		return result || null;
 	}
 
+	/**
+	 * Saves (upserts) a world.
+	 * @param world - World data
+	 */
 	async saveWorld(world: Omit<WorldRow, 'created_at' | 'updated_at'> & Partial<Pick<WorldRow, 'created_at' | 'updated_at'>>): Promise<void> {
 		const now = Date.now();
 		await this.db.prepare(
@@ -1110,6 +1238,10 @@ export class Database {
 		).run();
 	}
 
+	/**
+	 * Deletes a world.
+	 * @param id - The world ID
+	 */
 	async deleteWorld(id: string): Promise<void> {
 		await this.db.prepare('DELETE FROM worlds WHERE id = ?').bind(id).run();
 	}

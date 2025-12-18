@@ -2,7 +2,7 @@ import type { Context } from 'hono';
 
 import type { GamesContext } from '../routes/games/types';
 
-import { CharacterRow, Database, GameRow, MapRow, MapTokenRow } from '@/shared/workers/db';
+import { CharacterRow, Database, GameRow, MapRow, MapTokenRow } from '@/db';
 import { Character } from '@/types/character';
 import { Quest } from '@/types/quest';
 import { mapStateFromDb } from '@/utils/schema-adapters';

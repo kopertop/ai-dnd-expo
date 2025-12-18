@@ -9,8 +9,8 @@ import type {
 	MapRow,
 	MapTileRow,
 	MapTokenRow,
-} from '../../shared/workers/db';
-import * as dbModule from '../../shared/workers/db';
+} from '@/db';
+import * as dbModule from '@/db';
 import games from '../src/routes/games';
 
 const mockEnv = { DATABASE: {} as any };
@@ -78,6 +78,7 @@ class MockMovementDatabase {
 			npc_id: null,
 			token_type: 'player',
 			label: 'Hero',
+			image_url: null,
 			x: 0,
 			y: 0,
 			facing: 0,

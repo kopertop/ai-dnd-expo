@@ -1,4 +1,4 @@
-import { Database } from '../../../shared/workers/db';
+import { Database } from '@/db';
 import type { BasicAttackOptions, SpellCastOptions } from '../routes/games/types';
 
 import { deserializeCharacter } from './games-utils';

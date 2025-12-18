@@ -25,7 +25,7 @@ export type GamesContext = { Bindings: CloudflareBindings; Variables: Variables 
  * Note: This type references the Database class which is API-specific
  */
 export type BasicAttackOptions = {
-	db: import('../../../../shared/workers/db').Database;
+	db: import('@/db').Database;
 	attacker: import('@/types/character').Character;
 	targetId?: string;
 	params?: Record<string, unknown>;
@@ -36,7 +36,7 @@ export type BasicAttackOptions = {
  * Note: This type references the Database class which is API-specific
  */
 export type SpellCastOptions = {
-	db: import('../../../../shared/workers/db').Database;
+	db: import('@/db').Database;
 	attacker: import('@/types/character').Character;
 	spellName?: string;
 	targetId?: string;

@@ -1,6 +1,6 @@
 import type { CloudflareBindings } from '../env';
 
-import { Database } from '@/shared/workers/db';
+import { Database } from '@/db';
 
 /**
  * Resolve the SQL binding, preferring the R2-hosted database when available.
