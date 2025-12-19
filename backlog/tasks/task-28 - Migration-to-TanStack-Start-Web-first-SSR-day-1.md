@@ -1,10 +1,10 @@
 ---
 id: task-28
 title: 'Migration to TanStack Start (Web-first, SSR day 1)'
-status: To Do
+status: Done
 assignee: []
 created_date: '2025-12-18 21:57'
-updated_date: '2025-12-18 21:58'
+updated_date: '2025-12-19 14:17'
 labels: []
 dependencies: []
 priority: medium
@@ -18,9 +18,9 @@ Define and maintain the migration plan to remove Expo/React Native specific code
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Migration plan document reflects web-first, SSR day 1, and Cloudflare Worker/DB retention.
-- [ ] #2 Decision log records agreed constraints (TanStack Start primary, cookies, Tauri later).
-- [ ] #3 Task references the plan and decision log documents.
+- [x] #1 Migration plan document reflects web-first, SSR day 1, and Cloudflare Worker/DB retention.
+- [x] #2 Decision log records agreed constraints (TanStack Start primary, cookies, Tauri later).
+- [x] #3 Task references the plan and decision log documents.
 <!-- AC:END -->
 
 ## Implementation Notes
