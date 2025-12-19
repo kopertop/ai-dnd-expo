@@ -1,0 +1,247 @@
+---
+id: doc-3
+title: Expo/RN Inventory (Dependencies + RN-specific Usage)
+type: other
+created_date: '2025-12-18 22:28'
+---
+# Expo/RN Inventory (Dependencies + RN-specific Usage)
+
+## Dependencies (Expo)
+- expo: remove (TanStack Start replaces runtime)
+- expo-router: replace with TanStack Router
+- expo-auth-template: rewire or replace (used for auth on web + worker)
+- expo-auth-session: replace with web OAuth flow
+- expo-apple-authentication: replace (web OAuth)
+- expo-constants: replace with env/config for SSR
+- expo-font: replace with CSS font loading
+- expo-status-bar: remove
+- expo-system-ui: remove
+- expo-splash-screen: remove (replace with web loading state)
+- expo-ui: replace with web UI primitives
+- @expo/vector-icons: replace with web icon set
+- expo-asset: replace with Vite/public assets
+- expo-image: replace with img/picture + lazy loading
+- expo-image-picker: replace with input[type=file]
+- expo-document-picker: replace with input[type=file]
+- expo-file-system: replace with web FS APIs or server storage
+- expo-clipboard: replace with Web Clipboard API
+- expo-sharing: replace with Web Share API
+- expo-haptics: remove or no-op on web
+- expo-linking: replace with TanStack Router + URL utils
+- expo-web-browser: replace with window.open
+- expo-av: replace with HTML5 audio
+- expo-audio: replace with Web Audio API
+- expo-speech: replace with Web Speech synthesis
+- expo-speech-recognition: replace with Web Speech recognition
+- expo-blur: replace with CSS blur
+- expo-symbols: replace with web icon set
+- expo-three: replace with three.js directly
+- expo-dev-client: remove
+
+## Dependencies (React Native)
+- react-native: remove
+- react-native-web: remove (or keep temporarily during transition)
+- react-native-gesture-handler: replace with pointer events or a web gesture lib
+- react-native-reanimated: replace with CSS animations or web animation lib
+- react-native-screens: remove
+- react-native-safe-area-context: replace with CSS safe-area insets
+- react-native-svg: replace with DOM SVG
+- react-native-webview: replace with iframe or webview strategy for Tauri later
+- react-native-worklets: remove
+- @react-native-async-storage/async-storage: replace with localStorage/IndexedDB
+- @react-native-picker/picker: replace with select
+- @shopify/react-native-skia: replace with Canvas/WebGL (web)
+- react-native-feather: replace with web icon set
+- @react-navigation/*: remove (superseded by TanStack Router)
+
+## Dev Dependencies (RN/Expo tooling)
+- @testing-library/react-native: remove/replace with web testing
+- vitest-react-native: remove
+- eslint-config-expo: remove
+- eslint-plugin-react-native: remove
+- react-test-renderer: remove (if no RN testing)
+
+## Expo/RN-specific Routes (Expo Router)
+- app/_layout.tsx
+- app/+not-found.tsx
+- app/index.tsx
+- app/login.tsx
+- app/join-game.tsx
+- app/new-game.tsx
+- app/multiplayer-game.tsx
+- app/licenses.tsx
+- app/sql.tsx
+- app/party-test.tsx
+- app/characters/index.tsx
+- app/characters/[id].tsx
+- app/new-character/index.tsx
+- app/new-character/[...selections].tsx
+- app/auth/index.tsx
+- app/auth/callback.tsx
+- app/auth/error.tsx
+- app/game/_layout.tsx
+- app/game/index.tsx
+- app/game/[inviteCode].tsx
+- app/game/(tabs)/_layout.tsx
+- app/game/(tabs)/index.tsx
+- app/game/(tabs)/map.tsx
+- app/game/(tabs)/character.tsx
+- app/game/(tabs)/dnd-model.tsx
+- app/game/(tabs)/settings.tsx
+- app/host-game/index.tsx
+- app/host-game/[id].tsx
+- app/host-game/[id]/[mapId].tsx
+- app/admin/_layout.tsx
+- app/admin/index.tsx
+- app/admin/images.tsx
+- app/admin/maps/index.tsx
+- app/admin/maps/create.tsx
+- app/admin/maps/[id].tsx
+- app/admin/worlds/index.tsx
+- app/admin/worlds/[id].tsx
+
+## RN/Expo Components (imports react-native or expo-*)
+- components/animated-modal.tsx
+- components/api-status-indicator.tsx
+- components/app-footer.tsx
+- components/attribute-picker.tsx
+- components/character-creation-wizard.tsx
+- components/character-dm-modal.tsx
+- components/character-list.tsx
+- components/character-review.tsx
+- components/character-sheet-5e.tsx
+- components/character-sheet-modal.tsx
+- components/character-sheet-view.tsx
+- components/character-view-modal.tsx
+- components/class-chooser.tsx
+- components/collapsible.tsx
+- components/combat-result-modal.tsx
+- components/command-palette.tsx
+- components/connection-status-indicator.tsx
+- components/dice-roll-overlay.tsx
+- components/dm-action-banner.tsx
+- components/dm-controls-panel.tsx
+- components/dnd-model-chat.tsx
+- components/email-input.tsx
+- components/equipment-icons-frontend.ts
+- components/equipment-spritesheet.ts
+- components/expo-icon.tsx
+- components/expo-icon-picker.tsx
+- components/external-link.tsx
+- components/game-canvas.tsx
+- components/game-status-bar.tsx
+- components/haptic-tab.tsx
+- components/icon-picker.tsx
+- components/image-upload-modal.tsx
+- components/image-uploader.tsx
+- components/invite-code-display.tsx
+- components/invite-code-input.tsx
+- components/location-chooser.tsx
+- components/map-element-picker.tsx
+- components/map-management-panel.tsx
+- components/map/interactive-map.tsx
+- components/map/tile-action-menu.tsx
+- components/map/tile-details-modal.tsx
+- components/media-library-modal.tsx
+- components/messages.tsx
+- components/multiplayer-chat.tsx
+- components/notifications-panel.tsx
+- components/npc-selector.tsx
+- components/parallax-scroll-view.tsx
+- components/player-action-menu.tsx
+- components/player-character-list.tsx
+- components/player-list.tsx
+- components/portrait-selector.tsx
+- components/quest-selector.tsx
+- components/race-chooser.tsx
+- components/refresh-button.tsx
+- components/responsive-game-container.tsx
+- components/searchable-list.tsx
+- components/settings-modal.tsx
+- components/settings-view.tsx
+- components/skia-game-canvas.tsx
+- components/skill-chooser.tsx
+- components/spell-action-selector.tsx
+- components/sprite-icon.tsx
+- components/svg-game-canvas.tsx
+- components/tablet-layout.tsx
+- components/tavern-companion-recruitment.tsx
+- components/themed-text.tsx
+- components/themed-view.tsx
+- components/tile-property-editor.tsx
+- components/trait-chooser.tsx
+- components/turn-based-chat.tsx
+- components/turn-resource-values.tsx
+- components/ui/accordion.tsx
+- components/ui/confirm-modal.tsx
+- components/ui/icon-symbol.tsx
+- components/ui/icon-symbol.ios.tsx
+- components/ui/tab-bar-background.ios.tsx
+- components/voice-chat-button.tsx
+- components/voice-chat-input.tsx
+- components/voice-error-handler.tsx
+- components/voice-status-indicator.tsx
+- components/vtt-map-import.tsx
+- components/world-chooser.tsx
+
+## RN/Expo Hooks
+- hooks/api/use-auth-queries.ts
+- hooks/api/use-character-queries.ts
+- hooks/api/use-game-queries.ts
+- hooks/api/use-image-queries.ts
+- hooks/api/use-map-queries.ts
+- hooks/api/use-quest-queries.ts
+- hooks/api/use-turn-queries.ts
+- hooks/use-audio-player.native.tsx
+- hooks/use-audio-player.ios.tsx
+- hooks/use-audio-player.android.tsx
+- hooks/use-audio-player.web.tsx
+- hooks/use-character-creation.ts
+- hooks/use-color-scheme.ts
+- hooks/use-color-scheme.web.ts
+- hooks/use-game-state.ts
+- hooks/use-input-mode.tsx
+- hooks/use-polling-game-state.ts
+- hooks/use-screen-size.ts
+- hooks/use-simple-companions.ts
+- hooks/use-speech-recognition.ts
+- hooks/use-text-to-speech.ts
+- hooks/use-text-to-speech-new.ts
+- hooks/use-voice-permissions.ts
+- hooks/use-voice-recognition.ts
+
+## RN/Expo Services, Stores, Utils, Adapters
+- services/api/multiplayer-client.ts (expo-auth-template frontend)
+- services/api/websocket-client.ts (expo-auth-template frontend)
+- services/character-voice-manager.ts (expo-speech)
+- services/character-voice-registry.ts (AsyncStorage)
+- services/config/api-base-url.ts (expo-constants + Platform)
+- services/dnd-model.ts (expo-file-system)
+- services/tts/kokoro-client.ts (expo-file-system + Platform)
+- services/voice-profiles.ts (Platform)
+- services/ai/models/battery-optimizer.ts (AppState)
+- services/ai/models/device-capability-manager.ts (Platform)
+- services/ai/providers/platform-aware-provider.ts (Platform)
+- services/ai/providers/working-ai-provider.ts (Platform)
+- stores/settings-store.ts (AsyncStorage)
+- utils/voice-permissions.ts (expo-speech-recognition + Platform)
+- utils/speech-recognition-errors.ts (Platform)
+- utils/spritesheet.ts (react-native ImageSourcePropType)
+- adapters/web-stubs.js (expo/RN stubs)
+
+## Platform-specific files
+- components/ui/icon-symbol.ios.tsx
+- components/ui/tab-bar-background.ios.tsx
+- hooks/use-audio-player.android.tsx
+- hooks/use-audio-player.ios.tsx
+- hooks/use-audio-player.native.tsx
+- hooks/use-audio-player.web.tsx
+- hooks/use-color-scheme.web.ts
+
+## Known blockers / open questions
+- Speech recognition/TTS: Web Speech support and fallbacks; parity for mobile-only features.
+- Skia/gesture/reanimated: map/canvas interactions need a web-native rendering stack.
+- File system, document/image picking, and sharing: define web replacements and storage flow.
+- expo-auth-template: confirm SSR + cookie strategy works in web + worker or replace auth stack.
+- Whether to keep react-native-web temporarily for incremental rewrites or remove immediately.
+- WebGL stack for game canvas (expo-three replacement) and performance expectations.
