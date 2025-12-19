@@ -1,8 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/posts/')({
-  component: PostsIndexComponent,
-})
+import { createFileRoute } from '@tanstack/react-router';
 
-function PostsIndexComponent() {
-  return <div>Select a post.</div>
-}
+const PostsIndexComponent = () => {
+	return <div>Select a post.</div>;
+};
+
+export const Route = createFileRoute('/posts/')({
+	component: PostsIndexComponent,
+});

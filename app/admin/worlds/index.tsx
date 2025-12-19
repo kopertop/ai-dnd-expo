@@ -1,5 +1,5 @@
 import { apiService } from 'expo-auth-template/frontend';
-import { Stack, router } from 'expo-router';
+import { Stack, router, type Href } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 
@@ -39,7 +39,7 @@ const WorldsListScreen: React.FC = () => {
 	const renderItem = ({ item }: { item: World }) => (
 		<TouchableOpacity
 			style={styles.card}
-			onPress={() => router.push(`/admin/worlds/${item.id}`)}
+			onPress={() => router.push({ pathname: '/admin/worlds/[id]', params: { id: item.id } } as unknown as Href)}
 		>
 			<View style={styles.cardContent}>
 				<View style={styles.cardHeader}>
@@ -89,7 +89,7 @@ const WorldsListScreen: React.FC = () => {
 					/>
 					<TouchableOpacity
 						style={styles.fab}
-						onPress={() => router.push('/admin/worlds/create')}
+						onPress={() => router.push('/admin/worlds/create' as Href)}
 						accessibilityLabel="Create World"
 					>
 						<ExpoIcon icon="Feather:plus" size={24} color="#FFF" />

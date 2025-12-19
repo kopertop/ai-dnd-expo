@@ -1,11 +1,11 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
-import { logout } from '~/utils/auth'
+import { logout } from '~/utils/auth';
 
 export const Route = createFileRoute('/logout')({
-  loader: async () => {
-    await logout()
-    throw redirect({ to: '/login' })
-  },
-  component: () => null,
-})
+	loader: async () => {
+		await logout();
+		throw redirect({ to: '/login' });
+	},
+	component: () => null,
+});

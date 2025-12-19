@@ -1,5 +1,6 @@
-import { Hono } from 'hono';
 import { getServerByName } from 'partyserver';
+
+import { Hono } from 'hono';
 
 import type { GamesContext } from './types';
 

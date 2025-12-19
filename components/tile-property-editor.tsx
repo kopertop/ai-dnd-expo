@@ -1,19 +1,19 @@
 import { Picker } from '@react-native-picker/picker';
 import React, { useEffect, useState } from 'react';
 import {
-    StyleSheet,
-    Switch,
-    TextInput,
-    TouchableOpacity,
-    View,
+	StyleSheet,
+	Switch,
+	TextInput,
+	TouchableOpacity,
+	View,
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import {
-    TERRAIN_TYPES,
-    getTerrainDisplayName,
-    isValidTerrainType,
+	TERRAIN_TYPES,
+	getTerrainDisplayName,
+	isValidTerrainType,
 } from '@/constants/terrain-types';
 
 interface TileProperties {
@@ -106,134 +106,134 @@ export const TilePropertyEditor: React.FC<TilePropertyEditorProps> = ({
 
 	const content = (
 		<View style={compact ? styles.contentCompact : styles.content}>
-				<View style={styles.section}>
-					<ThemedText style={styles.sectionTitle}>Movement & Terrain</ThemedText>
+			<View style={styles.section}>
+				<ThemedText style={styles.sectionTitle}>Movement & Terrain</ThemedText>
 
-					<View style={styles.inputGroup}>
-						<ThemedText style={styles.label}>Terrain Type</ThemedText>
-						<View style={styles.pickerContainer}>
-							<Picker
-								selectedValue={localProps.terrainType || 'stone'}
-								onValueChange={(itemValue) => handleChange('terrainType', itemValue)}
-								style={styles.picker}
-								testID="terrain-type-input"
-							>
-								{TERRAIN_TYPES.map((terrain) => (
-									<Picker.Item
-										key={terrain}
-										label={getTerrainDisplayName(terrain)}
-										value={terrain}
-									/>
-								))}
-							</Picker>
-						</View>
-					</View>
-
-					<View style={styles.inputGroup}>
-						<ThemedText style={styles.label}>Movement Cost</ThemedText>
-						<TextInput
-							style={[styles.input, styles.numberInput]}
-							value={localProps.movementCost.toString()}
-							keyboardType="numeric"
-							testID="movement-cost-input"
-							onChangeText={(text) => {
-								const val = parseFloat(text);
-								if (!isNaN(val)) handleChange('movementCost', val);
-							}}
-						/>
-					</View>
-
-					<View style={styles.toggleRow}>
-						<ThemedText>Blocked (Impassible)</ThemedText>
-						<Switch
-							value={localProps.isBlocked}
-							testID="blocked-switch"
-							onValueChange={(val) => handleChange('isBlocked', val)}
-							trackColor={{ false: '#767577', true: '#DC3545' }}
-						/>
-					</View>
-
-					<View style={styles.toggleRow}>
-						<ThemedText>Difficult Terrain</ThemedText>
-						<Switch
-							value={localProps.isDifficult}
-							testID="difficult-switch"
-							onValueChange={(val) => handleChange('isDifficult', val)}
-							trackColor={{ false: '#767577', true: '#E9D8A6' }}
-						/>
+				<View style={styles.inputGroup}>
+					<ThemedText style={styles.label}>Terrain Type</ThemedText>
+					<View style={styles.pickerContainer}>
+						<Picker
+							selectedValue={localProps.terrainType || 'stone'}
+							onValueChange={(itemValue: string) => handleChange('terrainType', itemValue)}
+							style={styles.picker}
+							testID="terrain-type-input"
+						>
+							{TERRAIN_TYPES.map((terrain) => (
+								<Picker.Item
+									key={terrain}
+									label={getTerrainDisplayName(terrain)}
+									value={terrain}
+								/>
+							))}
+						</Picker>
 					</View>
 				</View>
 
-				<View style={styles.section}>
-					<ThemedText style={styles.sectionTitle}>Cover & Visibility</ThemedText>
-
-					<View style={styles.toggleRow}>
-						<ThemedText>Provides Cover</ThemedText>
-						<Switch
-							value={localProps.providesCover}
-							testID="cover-switch"
-							onValueChange={(val) => handleChange('providesCover', val)}
-							trackColor={{ false: '#767577', true: '#4CAF50' }}
-						/>
-					</View>
-
-					{localProps.providesCover && (
-						<View style={styles.optionGroup}>
-							<TouchableOpacity
-								style={[styles.option, localProps.coverType === 'half' && styles.selectedOption]}
-								onPress={() => handleChange('coverType', 'half')}
-							>
-								<ThemedText style={localProps.coverType === 'half' ? styles.selectedText : undefined}>
-									Half (+2)
-								</ThemedText>
-							</TouchableOpacity>
-							<TouchableOpacity
-								style={[styles.option, localProps.coverType === 'three-quarters' && styles.selectedOption]}
-								onPress={() => handleChange('coverType', 'three-quarters')}
-							>
-								<ThemedText style={localProps.coverType === 'three-quarters' ? styles.selectedText : undefined}>
-									3/4 (+5)
-								</ThemedText>
-							</TouchableOpacity>
-							<TouchableOpacity
-								style={[styles.option, localProps.coverType === 'full' && styles.selectedOption]}
-								onPress={() => handleChange('coverType', 'full')}
-							>
-								<ThemedText style={localProps.coverType === 'full' ? styles.selectedText : undefined}>
-									Full
-								</ThemedText>
-							</TouchableOpacity>
-						</View>
-					)}
+				<View style={styles.inputGroup}>
+					<ThemedText style={styles.label}>Movement Cost</ThemedText>
+					<TextInput
+						style={[styles.input, styles.numberInput]}
+						value={localProps.movementCost.toString()}
+						keyboardType="numeric"
+						testID="movement-cost-input"
+						onChangeText={(text) => {
+							const val = parseFloat(text);
+							if (!isNaN(val)) handleChange('movementCost', val);
+						}}
+					/>
 				</View>
 
-				<View style={styles.section}>
-					<ThemedText style={styles.sectionTitle}>Details</ThemedText>
+				<View style={styles.toggleRow}>
+					<ThemedText>Blocked (Impassible)</ThemedText>
+					<Switch
+						value={localProps.isBlocked}
+						testID="blocked-switch"
+						onValueChange={(val) => handleChange('isBlocked', val)}
+						trackColor={{ false: '#767577', true: '#DC3545' }}
+					/>
+				</View>
 
-					<View style={styles.inputGroup}>
-						<ThemedText style={styles.label}>Elevation</ThemedText>
-						<TextInput
-							style={[styles.input, styles.numberInput]}
-							value={localProps.elevation.toString()}
-							keyboardType="numeric"
-							onChangeText={(text) => {
-								const val = parseInt(text, 10);
-								if (!isNaN(val)) handleChange('elevation', val);
-							}}
-						/>
-					</View>
-
-					<View style={styles.inputGroup}>
-						<ThemedText style={styles.label}>Feature Type</ThemedText>
-						<TextInput
-							style={styles.input}
-							value={localProps.featureType || ''}
-							placeholder="None"
-							onChangeText={(text) => handleChange('featureType', text || null)}
-						/>
-					</View>
+				<View style={styles.toggleRow}>
+					<ThemedText>Difficult Terrain</ThemedText>
+					<Switch
+						value={localProps.isDifficult}
+						testID="difficult-switch"
+						onValueChange={(val) => handleChange('isDifficult', val)}
+						trackColor={{ false: '#767577', true: '#E9D8A6' }}
+					/>
 				</View>
 			</View>
+
+			<View style={styles.section}>
+				<ThemedText style={styles.sectionTitle}>Cover & Visibility</ThemedText>
+
+				<View style={styles.toggleRow}>
+					<ThemedText>Provides Cover</ThemedText>
+					<Switch
+						value={localProps.providesCover}
+						testID="cover-switch"
+						onValueChange={(val) => handleChange('providesCover', val)}
+						trackColor={{ false: '#767577', true: '#4CAF50' }}
+					/>
+				</View>
+
+				{localProps.providesCover && (
+					<View style={styles.optionGroup}>
+						<TouchableOpacity
+							style={[styles.option, localProps.coverType === 'half' && styles.selectedOption]}
+							onPress={() => handleChange('coverType', 'half')}
+						>
+							<ThemedText style={localProps.coverType === 'half' ? styles.selectedText : undefined}>
+									Half (+2)
+							</ThemedText>
+						</TouchableOpacity>
+						<TouchableOpacity
+							style={[styles.option, localProps.coverType === 'three-quarters' && styles.selectedOption]}
+							onPress={() => handleChange('coverType', 'three-quarters')}
+						>
+							<ThemedText style={localProps.coverType === 'three-quarters' ? styles.selectedText : undefined}>
+									3/4 (+5)
+							</ThemedText>
+						</TouchableOpacity>
+						<TouchableOpacity
+							style={[styles.option, localProps.coverType === 'full' && styles.selectedOption]}
+							onPress={() => handleChange('coverType', 'full')}
+						>
+							<ThemedText style={localProps.coverType === 'full' ? styles.selectedText : undefined}>
+									Full
+							</ThemedText>
+						</TouchableOpacity>
+					</View>
+				)}
+			</View>
+
+			<View style={styles.section}>
+				<ThemedText style={styles.sectionTitle}>Details</ThemedText>
+
+				<View style={styles.inputGroup}>
+					<ThemedText style={styles.label}>Elevation</ThemedText>
+					<TextInput
+						style={[styles.input, styles.numberInput]}
+						value={localProps.elevation.toString()}
+						keyboardType="numeric"
+						onChangeText={(text) => {
+							const val = parseInt(text, 10);
+							if (!isNaN(val)) handleChange('elevation', val);
+						}}
+					/>
+				</View>
+
+				<View style={styles.inputGroup}>
+					<ThemedText style={styles.label}>Feature Type</ThemedText>
+					<TextInput
+						style={styles.input}
+						value={localProps.featureType || ''}
+						placeholder="None"
+						onChangeText={(text) => handleChange('featureType', text || null)}
+					/>
+				</View>
+			</View>
+		</View>
 	);
 
 	if (compact) {

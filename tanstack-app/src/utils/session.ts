@@ -1,4 +1,4 @@
-import { useSession } from '@tanstack/react-start/server'
+import { useSession } from '@tanstack/react-start/server';
 
 export type AuthUser = {
   id: string
@@ -14,18 +14,18 @@ export type AuthSessionData = {
 }
 
 const getSessionPassword = () => {
-  return process.env.SESSION_SECRET || 'dev-session-secret'
-}
+	return process.env.SESSION_SECRET || 'dev-session-secret';
+};
 
 export const useAuthSession = () => {
-  return useSession<AuthSessionData>({
-    name: 'ai-dnd-session',
-    password: getSessionPassword(),
-    cookie: {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-    },
-  })
-}
+	return useSession<AuthSessionData>({
+		name: 'ai-dnd-session',
+		password: getSessionPassword(),
+		cookie: {
+			httpOnly: true,
+			sameSite: 'lax',
+			secure: process.env.NODE_ENV === 'production',
+			path: '/',
+		},
+	});
+};

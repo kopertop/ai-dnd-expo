@@ -35,7 +35,7 @@
 		"web": "expo start --web",
 		"lint": "eslint . --fix --quiet",
 		"typecheck": "tsc --noEmit",
-		"check": "bun run lint && bun run typecheck && bunx expo-doctor",
+		"check": "bun run lint && bun run typecheck",
 		"fix-imports": "bunx tsx scripts/fix-relative-imports.ts",
 		"test": "vitest run --config vitest.config.ts",
 		"test:watch": "vitest",

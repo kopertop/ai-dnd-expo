@@ -1,10 +1,11 @@
-import { QueryClient } from '@tanstack/react-query'
-import { createRouter } from '@tanstack/react-router'
-import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
-import { routeTree } from './routeTree.gen'
-import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
-import { NotFound } from './components/NotFound'
-import type { AuthUser } from './utils/session'
+import { QueryClient } from '@tanstack/react-query';
+import { createRouter } from '@tanstack/react-router';
+import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query';
+
+import { routeTree } from './routeTree.gen';
+import { DefaultCatchBoundary } from './components/default-catch-boundary';
+import { NotFound } from './components/not-found';
+import type { AuthUser } from './utils/session';
 
 export type RouterContext = {
   queryClient: QueryClient
@@ -12,21 +13,21 @@ export type RouterContext = {
 }
 
 export function getRouter() {
-  const queryClient = new QueryClient()
+	const queryClient = new QueryClient();
 
-  const router = createRouter({
-    routeTree,
-    context: { queryClient, user: null },
-    defaultPreload: 'intent',
-    defaultErrorComponent: DefaultCatchBoundary,
-    defaultNotFoundComponent: () => <NotFound />,
-  })
-  setupRouterSsrQueryIntegration({
-    router,
-    queryClient,
-  })
+	const router = createRouter({
+		routeTree,
+		context: { queryClient, user: null },
+		defaultPreload: 'intent',
+		defaultErrorComponent: DefaultCatchBoundary,
+		defaultNotFoundComponent: () => <NotFound />,
+	});
+	setupRouterSsrQueryIntegration({
+		router,
+		queryClient,
+	});
 
-  return router
+	return router;
 }
 
 declare module '@tanstack/react-router' {

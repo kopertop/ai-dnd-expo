@@ -1,6 +1,7 @@
 import { handleGoogleCallback, useAuth } from 'expo-auth-template/backend';
-import { Hono } from 'hono';
 import { partyserverMiddleware } from 'hono-party';
+
+import { Hono } from 'hono';
 
 import { corsMiddleware } from './cors';
 import type { HonoContext } from './env';

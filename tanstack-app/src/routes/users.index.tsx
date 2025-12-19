@@ -1,8 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/users/')({
-  component: UsersIndexComponent,
-})
+import { createFileRoute } from '@tanstack/react-router';
 
-function UsersIndexComponent() {
-  return <div>Select a user.</div>
-}
+const UsersIndexComponent = () => {
+	return <div>Select a user.</div>;
+};
+
+export const Route = createFileRoute('/users/')({
+	component: UsersIndexComponent,
+});

@@ -8,6 +8,9 @@
 		"esModuleInterop": true,
 		"baseUrl": ".",
 		"paths": {
+			"~/*": [
+				"./tanstack-app/src/*"
+			],
 			"@/*": [
 				"./*"
 			],

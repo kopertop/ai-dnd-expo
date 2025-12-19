@@ -1,14 +1,11 @@
-import { User } from 'expo-auth-template/backend';
 import { Hono } from 'hono';
 
-import type { CloudflareBindings } from '@/api/src/env';
+import type { HonoContext } from '@/api/src/env';
 import { createId } from '@/api/src/utils/games-utils';
 import { generateImageKey, validateImageFile } from '@/api/src/utils/image-upload';
 import { createDatabase } from '@/api/src/utils/repository';
 
-type Bindings = CloudflareBindings;
-
-const images = new Hono<{ Bindings: Bindings; Variables: { user: User | null } }>();
+const images = new Hono<HonoContext>();
 
 /**
  * List uploaded images

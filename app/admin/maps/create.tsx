@@ -1,6 +1,6 @@
 import { Picker } from '@react-native-picker/picker';
 import { apiService } from 'expo-auth-template/frontend';
-import { Stack, router } from 'expo-router';
+import { Stack, router, type Href } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
 	ActivityIndicator,
@@ -86,7 +86,7 @@ const CreateMapScreen: React.FC = () => {
 			});
 
 			// Redirect to the editor
-			router.replace(`/admin/maps/${response.id}`);
+			router.replace({ pathname: '/admin/maps/[id]', params: { id: response.id } } as unknown as Href);
 		} catch (error: any) {
 			Alert.alert('Error', error.message || 'Failed to create map');
 		} finally {
@@ -147,7 +147,7 @@ const CreateMapScreen: React.FC = () => {
 					<View style={styles.pickerContainer}>
 						<Picker
 							selectedValue={formData.world_id}
-							onValueChange={(itemValue) => setFormData(prev => ({ ...prev, world_id: itemValue }))}
+							onValueChange={(itemValue: string) => setFormData(prev => ({ ...prev, world_id: itemValue }))}
 							style={styles.picker}
 						>
 							{worlds.map((world) => (
@@ -223,7 +223,7 @@ const CreateMapScreen: React.FC = () => {
 					<View style={styles.pickerContainer}>
 						<Picker
 							selectedValue={formData.default_terrain_type}
-							onValueChange={(itemValue) => setFormData(prev => ({ ...prev, default_terrain_type: itemValue }))}
+							onValueChange={(itemValue: string) => setFormData(prev => ({ ...prev, default_terrain_type: itemValue }))}
 							style={styles.picker}
 						>
 							{TERRAIN_TYPES.map((terrain) => (
