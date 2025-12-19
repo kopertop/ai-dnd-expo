@@ -4,13 +4,19 @@ import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query
 import { routeTree } from './routeTree.gen'
 import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
 import { NotFound } from './components/NotFound'
+import type { AuthUser } from './utils/session'
+
+export type RouterContext = {
+  queryClient: QueryClient
+  user: AuthUser | null
+}
 
 export function getRouter() {
   const queryClient = new QueryClient()
 
   const router = createRouter({
     routeTree,
-    context: { queryClient },
+    context: { queryClient, user: null },
     defaultPreload: 'intent',
     defaultErrorComponent: DefaultCatchBoundary,
     defaultNotFoundComponent: () => <NotFound />,

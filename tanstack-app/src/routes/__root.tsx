@@ -5,6 +5,7 @@ import {
   Outlet,
   Scripts,
   createRootRouteWithContext,
+  redirect,
 } from '@tanstack/react-router'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
@@ -14,10 +15,33 @@ import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
+import { fetchCurrentUser } from '~/utils/auth'
+import type { AuthUser } from '~/utils/session'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
+  user: AuthUser | null
 }>()({
+  beforeLoad: async ({ location }) => {
+    const user = await fetchCurrentUser()
+    const isPublic =
+      location.pathname.startsWith('/login') ||
+      location.pathname.startsWith('/auth') ||
+      location.pathname.startsWith('/party-test')
+
+    if (!user && !isPublic) {
+      throw redirect({
+        to: '/login',
+        search: {
+          redirect: location.pathname,
+        },
+      })
+    }
+
+    return {
+      user,
+    }
+  },
   head: () => ({
     meta: [
       {
@@ -76,6 +100,8 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const { user } = Route.useRouteContext()
+
   return (
     <html>
       <head>
@@ -124,15 +150,30 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           >
             Deferred
           </Link>{' '}
-          <Link
-            // @ts-expect-error
-            to="/this-route-does-not-exist"
-            activeProps={{
-              className: 'font-bold',
-            }}
-          >
-            This Route Does Not Exist
-          </Link>
+          <div className="ml-auto flex gap-2">
+            {user ? (
+              <>
+                <span className="text-sm text-gray-700">{user.email}</span>
+                <Link
+                  to="/logout"
+                  activeProps={{
+                    className: 'font-bold',
+                  }}
+                >
+                  Logout
+                </Link>
+              </>
+            ) : (
+              <Link
+                to="/login"
+                activeProps={{
+                  className: 'font-bold',
+                }}
+              >
+                Login
+              </Link>
+            )}
+          </div>
         </div>
         <hr />
         {children}
