@@ -321,6 +321,17 @@ const MapEditorScreen: React.FC = () => {
 		featureType: tile.feature_type || null,
 	});
 
+	const getDefaultTileProperties = (): ReturnType<typeof tileDataToProperties> => ({
+		terrainType: 'none',
+		movementCost: 1,
+		isBlocked: false,
+		isDifficult: false,
+		providesCover: false,
+		coverType: null,
+		elevation: 0,
+		featureType: null,
+	});
+
 	// Merge properties from multiple tiles - returns common values or null if mixed
 	const mergeTileProperties = (tileKeys: Set<string>): {
 		properties: ReturnType<typeof tileDataToProperties>;
@@ -328,16 +339,7 @@ const MapEditorScreen: React.FC = () => {
 	} => {
 		if (tileKeys.size === 0) {
 			return {
-				properties: {
-					terrainType: 'none',
-					movementCost: 1,
-					isBlocked: false,
-					isDifficult: false,
-					providesCover: false,
-					coverType: null,
-					elevation: 0,
-					featureType: null,
-				},
+				properties: getDefaultTileProperties(),
 				hasMixedValues: false,
 			};
 		}
@@ -345,16 +347,7 @@ const MapEditorScreen: React.FC = () => {
 		const tileArray = Array.from(tileKeys).map(key => tiles[key]).filter(Boolean);
 		if (tileArray.length === 0) {
 			return {
-				properties: {
-					terrainType: 'none',
-					movementCost: 1,
-					isBlocked: false,
-					isDifficult: false,
-					providesCover: false,
-					coverType: null,
-					elevation: 0,
-					featureType: null,
-				},
+				properties: getDefaultTileProperties(),
 				hasMixedValues: false,
 			};
 		}

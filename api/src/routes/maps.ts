@@ -3,8 +3,140 @@ import { Hono } from 'hono';
 import type { HonoContext } from '../env';
 
 import { createDatabase } from '@/api/src/utils/repository';
+import type { Database, MapRow } from '@/shared/workers/db';
 
 const maps = new Hono<HonoContext>();
+
+type JsonValue = Record<string, unknown> | unknown[];
+type JsonField = string | JsonValue | null;
+
+type MapTileInput = {
+	x: number;
+	y: number;
+	terrain_type?: string;
+	terrain?: string;
+	elevation?: number;
+	movement_cost?: number;
+	is_blocked?: boolean;
+	is_difficult?: boolean;
+	has_fog?: boolean;
+	provides_cover?: boolean;
+	cover_type?: string | null;
+	feature_type?: string | null;
+	metadata?: Record<string, unknown> | null;
+};
+
+type MapTokenInput = {
+	id?: string;
+	label?: string | null;
+	image_url?: string | null;
+	x?: number;
+	y?: number;
+	metadata?: Record<string, unknown> | null;
+};
+
+type MapUpsertPayload = Partial<Omit<MapRow, 'default_terrain' | 'fog_of_war' | 'terrain_layers' | 'metadata' | 'created_at' | 'updated_at'>> & {
+	default_terrain?: JsonField;
+	fog_of_war?: JsonField;
+	terrain_layers?: JsonField;
+	metadata?: JsonField;
+	created_at?: number;
+	updated_at?: number;
+	tiles?: MapTileInput[];
+	tokens?: MapTokenInput[];
+};
+
+type MapTileWrite = Parameters<Database['replaceMapTiles']>[1][number];
+type MapTokenWrite = Parameters<Database['saveMapToken']>[0];
+type MapUpdateFields = Omit<MapUpsertPayload, 'tiles' | 'tokens'>;
+
+const normalizeJsonField = (value: JsonField | undefined, fallback: JsonValue): string => {
+	const resolved = value ?? fallback;
+	return typeof resolved === 'string' ? resolved : JSON.stringify(resolved);
+};
+
+const normalizeMapUpdate = (update: MapUpdateFields): Partial<MapRow> => {
+	const {
+		default_terrain,
+		fog_of_war,
+		terrain_layers,
+		metadata,
+		...rest
+	} = update;
+
+	const normalized: Partial<MapRow> = { ...rest };
+
+	if (default_terrain !== undefined) {
+		normalized.default_terrain = normalizeJsonField(default_terrain, {});
+	}
+	if (fog_of_war !== undefined) {
+		normalized.fog_of_war = normalizeJsonField(fog_of_war, []);
+	}
+	if (terrain_layers !== undefined) {
+		normalized.terrain_layers = normalizeJsonField(terrain_layers, []);
+	}
+	if (metadata !== undefined) {
+		normalized.metadata = normalizeJsonField(metadata, {});
+	}
+
+	return normalized;
+};
+
+const toMapTileWrite = (tile: MapTileInput): MapTileWrite => ({
+	x: tile.x,
+	y: tile.y,
+	terrain_type: tile.terrain_type || tile.terrain || 'none',
+	elevation: tile.elevation,
+	movement_cost: tile.movement_cost,
+	is_blocked: tile.is_blocked ? 1 : 0,
+	is_difficult: tile.is_difficult ? 1 : 0,
+	has_fog: tile.has_fog ? 1 : 0,
+	provides_cover: tile.provides_cover ? 1 : 0,
+	cover_type: tile.cover_type,
+	feature_type: tile.feature_type,
+	metadata: JSON.stringify(tile.metadata ?? {}),
+});
+
+const saveMapTiles = async (db: Database, mapId: string, tiles?: MapTileInput[]) => {
+	if (!Array.isArray(tiles) || tiles.length === 0) {
+		return;
+	}
+
+	await db.replaceMapTiles(mapId, tiles.map(toMapTileWrite));
+};
+
+const toMapTokenWrite = (mapId: string, token: MapTokenInput): MapTokenWrite => ({
+	id: token.id ?? `token_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+	game_id: null,
+	map_id: mapId,
+	character_id: null,
+	npc_id: null,
+	token_type: 'prop',
+	label: token.label ?? 'Object',
+	image_url: token.image_url ?? null,
+	x: token.x ?? 0,
+	y: token.y ?? 0,
+	facing: 0,
+	color: null,
+	status: 'active',
+	is_visible: 1,
+	hit_points: null,
+	max_hit_points: null,
+	status_effects: null,
+	metadata: JSON.stringify(token.metadata ?? {}),
+});
+
+const savePropTokens = async (db: Database, mapId: string, tokens?: MapTokenInput[]) => {
+	if (!Array.isArray(tokens) || tokens.length === 0) {
+		return;
+	}
+
+	await db.deletePropTokensForMap(mapId);
+
+	for (const token of tokens) {
+		await db.saveMapToken(toMapTokenWrite(mapId, token));
+	}
+};
 
 /**
  * List all available maps in the system
@@ -88,65 +220,17 @@ maps.patch('/:id', async (c) => {
 	if (!map) {
 		return c.json({ error: 'Map not found' }, 404);
 	}
-	const body = await c.req.json();
+	const body = await c.req.json<MapUpsertPayload>();
+	const { tiles, tokens, ...mapUpdate } = body;
+	const normalizedUpdate = normalizeMapUpdate(mapUpdate);
 	const resp = await db.saveMap({
 		...map,
-		...body,
+		...normalizedUpdate,
 		id,
 	});
 
-	// Process tiles if provided
-	if (body.tiles && Array.isArray(body.tiles)) {
-		await db.replaceMapTiles(
-			id,
-			body.tiles.map((t: any) => ({
-				x: t.x,
-				y: t.y,
-				terrain_type: t.terrain_type || t.terrain,
-				elevation: t.elevation,
-				movement_cost: t.movement_cost,
-				is_blocked: t.is_blocked ? 1 : 0,
-				is_difficult: t.is_difficult ? 1 : 0,
-				has_fog: t.has_fog ? 1 : 0,
-				provides_cover: t.provides_cover ? 1 : 0,
-				cover_type: t.cover_type,
-				feature_type: t.feature_type,
-				metadata: JSON.stringify(t.metadata || {}),
-			})),
-		);
-	}
-
-	// Process tokens if provided in the body
-	if (body.tokens && Array.isArray(body.tokens)) {
-		// First, remove existing "prop" tokens for this map.
-		// This ensures that if the user deleted a prop in the editor, it's gone from DB.
-		// We only target tokens with game_id IS NULL (template tokens) and token_type = 'prop'.
-		// This avoids accidentally deleting player tokens if they were somehow associated with this map id directly (though usually they have game_id).
-		await db.deletePropTokensForMap(id);
-
-		for (const token of body.tokens) {
-			await db.saveMapToken({
-				id: token.id || `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-				game_id: null, // Map Editor tokens don't belong to a specific game yet
-				map_id: id,
-				character_id: null,
-				npc_id: null,
-				token_type: 'prop', // Default to prop for editor placed items
-				label: token.label || 'Object',
-				image_url: token.image_url,
-				x: token.x || 0,
-				y: token.y || 0,
-				facing: 0,
-				color: null,
-				status: 'active',
-				is_visible: 1,
-				hit_points: null,
-				max_hit_points: null,
-				status_effects: null,
-				metadata: JSON.stringify(token.metadata || {}),
-			});
-		}
-	}
+	await saveMapTiles(db, id, tiles);
+	await savePropTokens(db, id, tokens);
 
 	return c.json({ success: true, id, map: resp });
 });
@@ -163,7 +247,7 @@ maps.post('/', async (c) => {
 	}
 
 	const db = createDatabase(c.env);
-	const body = await c.req.json();
+	const body = await c.req.json<MapUpsertPayload>();
 
 	// Basic validation
 	if (!body.name || !body.slug) {
@@ -172,19 +256,28 @@ maps.post('/', async (c) => {
 
 	const id = body.id || `map_${body.slug}_${Date.now()}`;
 	const now = Date.now();
+	const { tiles, tokens, ...mapUpdate } = body;
 
 	try {
+		const normalizedUpdate = normalizeMapUpdate({
+			...mapUpdate,
+			default_terrain: mapUpdate.default_terrain ?? {},
+			fog_of_war: mapUpdate.fog_of_war ?? [],
+			terrain_layers: mapUpdate.terrain_layers ?? [],
+			metadata: mapUpdate.metadata ?? {},
+		});
+
 		await db.saveMap({
 			id,
 			slug: body.slug,
 			name: body.name,
-			description: body.description,
+			description: body.description ?? null,
 			width: body.width || 0,
 			height: body.height || 0,
-			default_terrain: JSON.stringify(body.default_terrain || {}),
-			fog_of_war: JSON.stringify(body.fog_of_war || []),
-			terrain_layers: JSON.stringify(body.terrain_layers || []),
-			metadata: JSON.stringify(body.metadata || {}),
+			default_terrain: normalizedUpdate.default_terrain ?? JSON.stringify({}),
+			fog_of_war: normalizedUpdate.fog_of_war ?? JSON.stringify([]),
+			terrain_layers: normalizedUpdate.terrain_layers ?? JSON.stringify([]),
+			metadata: normalizedUpdate.metadata ?? JSON.stringify({}),
 			generator_preset: body.generator_preset || 'static',
 			seed: body.seed || 'static',
 			theme: body.theme || 'neutral',
@@ -202,58 +295,8 @@ maps.post('/', async (c) => {
 			world: body.world ?? null,
 		});
 
-		// Process tiles if provided
-		if (body.tiles && Array.isArray(body.tiles)) {
-			await db.replaceMapTiles(
-				id,
-				body.tiles.map((t: any) => ({
-					x: t.x,
-					y: t.y,
-					terrain_type: t.terrain_type || t.terrain,
-					elevation: t.elevation,
-					movement_cost: t.movement_cost,
-					is_blocked: t.is_blocked ? 1 : 0,
-					is_difficult: t.is_difficult ? 1 : 0,
-					has_fog: t.has_fog ? 1 : 0,
-					provides_cover: t.provides_cover ? 1 : 0,
-					cover_type: t.cover_type,
-					feature_type: t.feature_type,
-					metadata: JSON.stringify(t.metadata || {}),
-				})),
-			);
-		}
-
-		// Process tokens if provided in the body
-		if (body.tokens && Array.isArray(body.tokens)) {
-			// First, remove existing "prop" tokens for this map.
-			// This ensures that if the user deleted a prop in the editor, it's gone from DB.
-			// We only target tokens with game_id IS NULL (template tokens) and token_type = 'prop'.
-			// This avoids accidentally deleting player tokens if they were somehow associated with this map id directly (though usually they have game_id).
-			await db.deletePropTokensForMap(id);
-
-			for (const token of body.tokens) {
-				await db.saveMapToken({
-					id: token.id || `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-					game_id: null, // Map Editor tokens don't belong to a specific game yet
-					map_id: id,
-					character_id: null,
-					npc_id: null,
-					token_type: 'prop', // Default to prop for editor placed items
-					label: token.label || 'Object',
-					image_url: token.image_url,
-					x: token.x || 0,
-					y: token.y || 0,
-					facing: 0,
-					color: null,
-					status: 'active',
-					is_visible: 1,
-					hit_points: null,
-					max_hit_points: null,
-					status_effects: null,
-					metadata: JSON.stringify(token.metadata || {}),
-				});
-			}
-		}
+		await saveMapTiles(db, id, tiles);
+		await savePropTokens(db, id, tokens);
 
 		return c.json({ success: true, id });
 	} catch (error: any) {

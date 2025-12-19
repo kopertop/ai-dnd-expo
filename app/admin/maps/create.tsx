@@ -1,6 +1,6 @@
 import { Picker } from '@react-native-picker/picker';
 import { apiService } from 'expo-auth-template/frontend';
-import { Stack, router, type Href } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
 	ActivityIndicator,
@@ -86,7 +86,7 @@ const CreateMapScreen: React.FC = () => {
 			});
 
 			// Redirect to the editor
-			router.replace({ pathname: '/admin/maps/[id]', params: { id: response.id } } as unknown as Href);
+			router.replace(`/admin/maps/${response.id}`);
 		} catch (error: any) {
 			Alert.alert('Error', error.message || 'Failed to create map');
 		} finally {

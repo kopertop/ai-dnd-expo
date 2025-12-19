@@ -1,5 +1,4 @@
 import { env } from 'cloudflare:test';
-
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Hono } from 'hono';
 

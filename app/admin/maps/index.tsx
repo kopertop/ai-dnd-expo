@@ -1,5 +1,5 @@
 import { apiService } from 'expo-auth-template/frontend';
-import { Stack, router, type Href } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 
@@ -39,7 +39,7 @@ const MapsListScreen = () => {
 	const renderItem = ({ item }: { item: MapItem }) => (
 		<TouchableOpacity
 			style={styles.card}
-			onPress={() => router.push({ pathname: '/admin/maps/[id]', params: { id: item.id } } as unknown as Href)}
+			onPress={() => router.push(`/admin/maps/${item.id}`)}
 		>
 			<View style={styles.cardContent}>
 				<ThemedText style={styles.cardTitle}>{item.name}</ThemedText>
@@ -82,7 +82,7 @@ const MapsListScreen = () => {
 					/>
 					<TouchableOpacity
 						style={styles.fab}
-						onPress={() => router.push('/admin/maps/create' as Href)}
+						onPress={() => router.push('/admin/maps/create')}
 						accessibilityLabel="Create Map"
 					>
 						<ExpoIcon icon="Feather:plus" size={24} color="#FFF" />
