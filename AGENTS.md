@@ -16,22 +16,30 @@
 
 This project uses Backlog.md MCP for all task and project management activities.
 
-**CRITICAL GUIDANCE**
+**COMPREHENSIVE GUIDE**: See `.cursor/rules/backlog-workflow.md` for complete workflow documentation including:
+- When to create tasks (decision framework)
+- Task creation workflow (search first, assess scope, choose structure)
+- Task execution workflow (planning phase, execution, scope changes)
+- Task completion workflow (Definition of Done, completion steps)
+- Task structure reference (fields, editing operations)
+- Common workflows and troubleshooting
 
-- If your client supports MCP resources, read `backlog://workflow/overview` to understand when and how to use Backlog for this project.
-- If your client only supports tools or the above request fails, call `backlog.get_workflow_overview()` tool to load the tool-oriented overview (it lists the matching guide tools).
+**QUICK START**:
 
-- **First time working here?** Read the overview resource IMMEDIATELY to learn the workflow
-- **Already familiar?** You should have the overview cached ("## Backlog.md Overview (MCP)")
-- **When to read it**: BEFORE creating tasks, or when you're unsure whether to track work
+- **First time working here?** Read `.cursor/rules/backlog-workflow.md` IMMEDIATELY
+- **Need MCP tool details?** Call `get_workflow_overview()` for tool-oriented overview
+- **When to read**: BEFORE creating tasks, or when you're unsure whether to track work
 
-These guides cover:
-- Decision framework for when to create tasks
-- Search-first workflow to avoid duplicates
-- Links to detailed guides for task creation, execution, and completion
-- MCP tools reference
+**Key Principles**:
+- Always search before creating tasks (use filters, avoid listing all)
+- Plan before coding (non-negotiable: plan must be in task before implementation)
+- Never edit backlog markdown files directly - always use MCP tools
+- Never autonomously create or start new tasks after completion
 
-You MUST read the overview resource to understand the complete workflow. The information is NOT summarized here.
+**MCP Tools Quick Reference**:
+- Guides: `get_workflow_overview`, `get_task_creation_guide`, `get_task_execution_guide`, `get_task_completion_guide`
+- Tasks: `task_list`, `task_search`, `task_view`, `task_create`, `task_edit`, `task_archive`
+- Documents: `document_list`, `document_view`, `document_create`, `document_update`, `document_search`
 
 </CRITICAL_INSTRUCTION>
 
