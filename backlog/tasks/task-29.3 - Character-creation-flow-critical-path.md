@@ -4,7 +4,7 @@ title: Character creation flow (critical path)
 status: Done
 assignee: []
 created_date: '2025-12-19 14:23'
-updated_date: '2025-12-20 14:53'
+updated_date: '2025-12-20 14:58'
 labels: []
 dependencies: []
 parent_task_id: task-29
@@ -34,4 +34,6 @@ Implement the character creation experience in the TanStack Start app with parit
 - Added asset-backed icons for races/classes/traits/skills in `src/data/character-options.ts`, enforced 4-skill selection limit, and defaulted attribute selection to the standard array in `src/components/character-creation-flow.tsx`.
 
 - Added ability score/modifier summary on the skills step with bonus highlighting, and show ability modifiers on each skill card in `src/components/character-creation-flow.tsx`.
+
+Added random name/background buttons on the Character step using existing generators from `constants/character-names.ts` and `constants/backgrounds.ts`.
 <!-- SECTION:NOTES:END -->

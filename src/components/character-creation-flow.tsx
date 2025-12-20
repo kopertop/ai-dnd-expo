@@ -1,7 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Link, useRouter, useRouterState } from '@tanstack/react-router';
+import { useRouter, useRouterState } from '@tanstack/react-router';
 import * as React from 'react';
 
+import { generateRandomBackground } from '@/constants/backgrounds';
+import { generateRandomName } from '@/constants/character-names';
 import type { ClassOption } from '@/types/class-option';
 import type { RaceOption } from '@/types/race-option';
 import type { Skill } from '@/types/skill';
@@ -11,8 +13,8 @@ import type { TraitOption } from '@/types/trait-option';
 import { addIconsToInventoryItems } from '@/utils/add-equipment-icons';
 import { generateStartingEquipment } from '@/utils/starting-equipment';
 
-import { WEB_CLASSES, WEB_RACES, WEB_SKILLS, WEB_TRAITS } from '~/data/character-options';
 import RouteShell from '~/components/route-shell';
+import { WEB_CLASSES, WEB_RACES, WEB_SKILLS, WEB_TRAITS } from '~/data/character-options';
 import { charactersQueryOptions, createCharacter } from '~/utils/characters';
 
 const STANDARD_ARRAY: StatBlock = {
@@ -296,6 +298,16 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 		});
 	};
 
+	const handleRandomName = () => {
+		if (!selectedRace || !selectedClass) return;
+		setCharacterName(generateRandomName(selectedRace.name, selectedClass.name));
+	};
+
+	const handleRandomBackground = () => {
+		if (!selectedRace || !selectedClass) return;
+		setCustomStory(generateRandomBackground(selectedRace.name, selectedClass.name));
+	};
+
 	const handleNext = () => {
 		const currentIndex = getStepIndex(steps, currentStep);
 		if (currentIndex === -1 || currentIndex === steps.length - 1) return;
@@ -555,7 +567,16 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 		<div className="space-y-4">
 			<div className="grid gap-4 sm:grid-cols-2">
 				<label className="flex flex-col gap-1">
-					<span className="text-xs font-semibold text-slate-500">Name</span>
+					<div className="flex items-center justify-between text-xs font-semibold text-slate-500">
+						<span>Name</span>
+						<button
+							type="button"
+							onClick={handleRandomName}
+							className="text-[11px] font-semibold text-amber-700 hover:text-amber-600"
+						>
+							Random
+						</button>
+					</div>
 					<input
 						type="text"
 						value={characterName}
@@ -576,7 +597,16 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 				</label>
 			</div>
 			<label className="flex flex-col gap-1">
-				<span className="text-xs font-semibold text-slate-500">Background</span>
+				<div className="flex items-center justify-between text-xs font-semibold text-slate-500">
+					<span>Background</span>
+					<button
+						type="button"
+						onClick={handleRandomBackground}
+						className="text-[11px] font-semibold text-amber-700 hover:text-amber-600"
+					>
+						Random
+					</button>
+				</div>
 				<textarea
 					rows={4}
 					value={customStory}
@@ -658,13 +688,6 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 						Continue
 					</button>
 				)}
-			</div>
-			<div className="mt-4 text-xs text-slate-500">
-				Need help? Visit the{' '}
-				<Link to="/licenses" className="font-semibold text-amber-700">
-					licenses
-				</Link>{' '}
-				page for additional references.
 			</div>
 		</RouteShell>
 	);
