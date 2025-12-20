@@ -4,7 +4,7 @@ title: Revamp character sheet to 5e layout with editable equipment
 status: To Do
 assignee: []
 created_date: '2025-12-04 20:45'
-updated_date: '2025-12-05 03:22'
+updated_date: '2025-12-20 18:15'
 labels:
   - feature
   - ui
@@ -27,3 +27,9 @@ Redesign the character detail page to mirror the core layout of the official 5e 
 - [ ] #3 Equipment section shows owned items and supports equip/unequip from the sheet; updates persist to the backend and reflect in derived stats/bonuses.
 - [ ] #4 Sheet loads with current character data and shows loading/error states; navigation back to My Characters still works.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+NOTE: Equipment icons currently use individual image files and some sprite sheet references. For web implementation, need to add proper sprite sheet rendering support using CSS background-position or canvas-based sprite rendering. See components/equipment-spritesheet.ts and components/sprite-icon.tsx for React Native implementation that needs web equivalent.
+<!-- SECTION:NOTES:END -->

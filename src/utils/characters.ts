@@ -97,3 +97,75 @@ export const createCharacter = createServerFn({ method: 'POST' })
 
 		return (await response.json()) as Character;
 	});
+
+export const updateCharacter = createServerFn({ method: 'PUT' })
+	.inputValidator((data: { path: string; data: Character }) => data)
+	.handler(async ({ data }) => {
+		const session = await useAuthSession();
+		const token = session.data.deviceToken;
+
+		if (!token) {
+			throw new Error('Not authenticated');
+		}
+
+		const response = await fetch(
+			joinApiPath(getServerApiBaseUrl(), data.path),
+			{
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Device ${token}`,
+				},
+				body: JSON.stringify(data.data),
+			},
+		);
+
+		if (response.status === 401 || response.status === 404) {
+			await session.clear();
+			throw new Error('Not authenticated');
+		}
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			throw new Error(
+				`Failed to update character: ${response.status} ${errorText}`,
+			);
+		}
+
+		return (await response.json()) as Character;
+	});
+
+export const deleteCharacter = createServerFn({ method: 'DELETE' })
+	.inputValidator((data: { path: string }) => data)
+	.handler(async ({ data }) => {
+		const session = await useAuthSession();
+		const token = session.data.deviceToken;
+
+		if (!token) {
+			throw new Error('Not authenticated');
+		}
+
+		const response = await fetch(
+			joinApiPath(getServerApiBaseUrl(), data.path),
+			{
+				method: 'DELETE',
+				headers: {
+					Authorization: `Device ${token}`,
+				},
+			},
+		);
+
+		if (response.status === 401 || response.status === 404) {
+			await session.clear();
+			throw new Error('Not authenticated');
+		}
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			throw new Error(
+				`Failed to delete character: ${response.status} ${errorText}`,
+			);
+		}
+
+		return { success: true };
+	});
