@@ -15,6 +15,9 @@ import { CharacterInventory } from '~/components/character-detail/character-inve
 import { CharacterSkills } from '~/components/character-detail/character-skills';
 import RouteShell from '~/components/route-shell';
 import { charactersQueryOptions, deleteCharacter, updateCharacter } from '~/utils/characters';
+import { deleteImage, uploadedImagesQueryOptions, uploadImage } from '~/utils/images';
+
+import { PortraitSelectorModal } from '~/components/portrait-selector-modal';
 
 const CharacterDetail: React.FC = () => {
 	const { id } = Route.useParams();
@@ -25,6 +28,11 @@ const CharacterDetail: React.FC = () => {
 
 	const [isSaving, setIsSaving] = React.useState(false);
 	const [isDeleting, setIsDeleting] = React.useState(false);
+	const [isPortraitModalOpen, setIsPortraitModalOpen] = React.useState(false);
+	const [isUploadModalOpen, setIsUploadModalOpen] = React.useState(false);
+
+	const uploadedImagesQuery = useSuspenseQuery(uploadedImagesQueryOptions('both'));
+	const uploadedImages = uploadedImagesQuery.data || [];
 
 	if (!character) {
 		return (
@@ -139,6 +147,55 @@ const CharacterDetail: React.FC = () => {
 		}
 	};
 
+	const handlePortraitSelect = async (imageUrl: string) => {
+		if (!character) return;
+
+		try {
+			await updateCharacter({
+				data: {
+					path: `/characters/${character.id}`,
+					data: { icon: imageUrl } as Partial<Character>,
+				},
+			});
+			await queryClient.invalidateQueries({ queryKey: charactersQueryOptions().queryKey });
+			setIsPortraitModalOpen(false);
+		} catch (error) {
+			console.error('Failed to update portrait:', error);
+			alert(`Failed to update portrait: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
+	};
+
+	const handleImageUpload = async (file: File) => {
+		try {
+			const uploaded = await uploadImage({
+				data: {
+					file,
+					image_type: 'character',
+				},
+			});
+			await queryClient.invalidateQueries({ queryKey: uploadedImagesQueryOptions('both').queryKey });
+			await handlePortraitSelect(uploaded.public_url);
+			setIsUploadModalOpen(false);
+		} catch (error) {
+			console.error('Failed to upload image:', error);
+			alert(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
+	};
+
+	const handleDeleteImage = async (imageId: string) => {
+		try {
+			await deleteImage({
+				data: {
+					path: `/images/${imageId}`,
+				},
+			});
+			await queryClient.invalidateQueries({ queryKey: uploadedImagesQueryOptions('both').queryKey });
+		} catch (error) {
+			console.error('Failed to delete image:', error);
+			alert(`Failed to delete image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
+	};
+
 	return (
 		<RouteShell
 			title=""
@@ -148,7 +205,12 @@ const CharacterDetail: React.FC = () => {
 				{/* Header Section */}
 				<div className="flex items-start gap-4 rounded-lg border border-slate-200 bg-white/80 p-4 shadow-sm">
 					{/* Avatar */}
-					<div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-slate-100">
+					<button
+						type="button"
+						onClick={() => setIsPortraitModalOpen(true)}
+						className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-all hover:bg-slate-200 hover:ring-2 hover:ring-amber-400"
+						title="Click to change portrait"
+					>
 						{character.icon ? (
 							<img src={character.icon} alt={character.name} className="h-full w-full rounded-full object-cover" />
 						) : (
@@ -156,7 +218,7 @@ const CharacterDetail: React.FC = () => {
 								{character.name.charAt(0).toUpperCase()}
 							</span>
 						)}
-					</div>
+					</button>
 
 					{/* Character Info */}
 					<div className="flex-1">
@@ -234,6 +296,73 @@ const CharacterDetail: React.FC = () => {
 					{isDeleting ? 'Deleting...' : 'Delete Character'}
 				</button>
 			</div>
+
+			{/* Portrait Selector Modal */}
+			<PortraitSelectorModal
+				isOpen={isPortraitModalOpen}
+				onClose={() => setIsPortraitModalOpen(false)}
+				onSelect={handlePortraitSelect}
+				uploadedImages={uploadedImages}
+				onUploadClick={() => {
+					setIsPortraitModalOpen(false);
+					setIsUploadModalOpen(true);
+				}}
+				onDeleteImage={handleDeleteImage}
+				isAdmin={false} // TODO: Get from user context
+			/>
+
+			{/* Image Upload Modal */}
+			{isUploadModalOpen && (
+				<div
+					className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+					onClick={() => setIsUploadModalOpen(false)}
+				>
+					<div
+						className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<div className="mb-4 flex items-center justify-between">
+							<h3 className="text-lg font-bold text-slate-900">Upload Portrait</h3>
+							<button
+								type="button"
+								onClick={() => setIsUploadModalOpen(false)}
+								className="text-slate-400 hover:text-slate-600"
+							>
+								×
+							</button>
+						</div>
+						<label className="mb-4 block">
+							<div className="flex cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 transition-colors hover:border-slate-400 hover:bg-slate-100">
+								<div className="text-center">
+									<div className="mb-2 text-2xl">📤</div>
+									<div className="text-sm font-semibold text-slate-700">Click to select image</div>
+									<div className="mt-1 text-xs text-slate-500">PNG, JPG, or GIF up to 10MB</div>
+								</div>
+							</div>
+							<input
+								type="file"
+								accept="image/*"
+								onChange={(e) => {
+									const file = e.target.files?.[0];
+									if (file) {
+										handleImageUpload(file);
+									}
+								}}
+								className="hidden"
+							/>
+						</label>
+						<div className="flex justify-end gap-3">
+							<button
+								type="button"
+								onClick={() => setIsUploadModalOpen(false)}
+								className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+							>
+								Cancel
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</RouteShell>
 	);
 };
@@ -241,6 +370,7 @@ const CharacterDetail: React.FC = () => {
 export const Route = createFileRoute('/characters/$id')({
 	loader: async ({ context }) => {
 		await context.queryClient.ensureQueryData(charactersQueryOptions());
+		await context.queryClient.ensureQueryData(uploadedImagesQueryOptions('both'));
 	},
 	component: CharacterDetail,
 });
