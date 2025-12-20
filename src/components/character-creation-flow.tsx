@@ -901,17 +901,56 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 
 					{/* Combat Stats */}
 					<div className="flex flex-col gap-2">
-						<div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-center">
+						<div className="relative rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-center">
+							<div className="absolute right-2 top-2">
+								<Tooltip
+									content="AC is the roll value someone needs to pass to 'hit' you"
+									position="bottom"
+								>
+									<button
+										type="button"
+										className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-600 bg-slate-100 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200"
+									>
+										?
+									</button>
+								</Tooltip>
+							</div>
 							<div className="text-xs font-semibold text-slate-600">AC</div>
 							<div className="mt-1 text-lg font-bold text-slate-900">{armorClass}</div>
 						</div>
-						<div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-center">
+						<div className="relative rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-center">
+							<div className="absolute right-2 top-2">
+								<Tooltip
+									content="Initiative is a bonus to your initiative roll, which determines when you will go"
+									position="bottom"
+								>
+									<button
+										type="button"
+										className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-600 bg-slate-100 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200"
+									>
+										?
+									</button>
+								</Tooltip>
+							</div>
 							<div className="text-xs font-semibold text-slate-600">INITIATIVE</div>
 							<div className="mt-1 text-lg font-bold text-slate-900">
 								{initiative >= 0 ? '+' : ''}{initiative}
 							</div>
 						</div>
-						<div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-center">
+						<div className="relative rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-center">
+							<div className="absolute right-2 top-2">
+								<Tooltip
+									content="Passive perception is your ability to notice things without directly looking/inspecting them"
+									position="bottom"
+								>
+									<button
+										type="button"
+										className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-600 bg-slate-100 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200"
+									>
+										?
+									</button>
+								</Tooltip>
+							</div>
 							<div className="text-xs font-semibold text-slate-600">PASSIVE PERCEPTION</div>
 							<div className="mt-1 text-lg font-bold text-slate-900">{passivePerception}</div>
 						</div>

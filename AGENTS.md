@@ -10,6 +10,37 @@
 
 - For `react/function-component-definition`, prefer `const MyComponent: React.FC<PropType> = (props) => { ... }; export default MyComponent;` instead of `function MyComponent() { ... }`.
 
+## Tooltip/Helper Pattern
+
+When adding tooltips or help text to UI elements, use the standard pattern with a "?" button in the top-right corner:
+
+```tsx
+<div className="relative rounded-lg border border-slate-200 bg-slate-50 px-4 py-2">
+	{/* Help icon */}
+	<div className="absolute right-2 top-2">
+		<Tooltip
+			content="Your help text here"
+			position="bottom"
+		>
+			<button
+				type="button"
+				className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-600 bg-slate-100 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200"
+			>
+				?
+			</button>
+		</Tooltip>
+	</div>
+	{/* Your content here */}
+</div>
+```
+
+**Key points:**
+- Parent container must have `relative` class
+- Help button container uses `absolute right-2 top-2` (or `right-1 top-1` for smaller cards)
+- Button styling: `flex h-6 w-6 items-center justify-center rounded-full border border-slate-600 bg-slate-100 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200`
+- Tooltip position is typically `"bottom"` but can be `"top"`, `"left"`, or `"right"` as needed
+- Never wrap the entire card/component in a Tooltip - always use the "?" button pattern
+
 <!-- BACKLOG.MD MCP GUIDELINES START -->
 
 <CRITICAL_INSTRUCTION>
