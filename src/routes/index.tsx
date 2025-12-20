@@ -18,7 +18,9 @@ const Home: React.FC = () => {
 			<div className="space-y-6">
 				<div className="flex flex-wrap gap-3">
 					<Link
-						to="/host-game"
+						to="/host-game/$id"
+						params={{ id: 'new' }}
+						search={{ step: 'world', worldId: undefined, campaignId: undefined, locationId: undefined }}
 						className="rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500"
 					>
 						New Game

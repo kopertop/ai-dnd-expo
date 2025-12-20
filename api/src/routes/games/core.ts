@@ -205,6 +205,8 @@ core.get('/:inviteCode', async (c) => {
 			gameWorld: sessionData.gameWorld || game.world,
 			// Ensure startingArea is set
 			startingArea: sessionData.startingArea || game.starting_area,
+			// Add world field for frontend compatibility (frontend expects session.world)
+			world: game.world || sessionData.gameWorld,
 		};
 
 		return c.json(response);
@@ -411,7 +413,7 @@ core.patch('/:inviteCode/stop', async (c) => {
  * DELETE /api/games/:inviteCode
  *
  * Permanently deletes a game and all related data.
- * Only the host can delete a game.
+ * Only the host or an admin can delete a game.
  *
  * @returns Success response
  */
@@ -429,8 +431,11 @@ core.delete('/:inviteCode', async (c) => {
 		return c.json({ error: 'Game not found' }, 404);
 	}
 
-	if (!isHostUser(game, user)) {
-		return c.json({ error: 'Forbidden - Only the host can delete this game' }, 403);
+	const isAdmin = user.is_admin ?? false;
+	const isHost = isHostUser(game, user);
+
+	if (!isHost && !isAdmin) {
+		return c.json({ error: 'Forbidden - Only the host or an admin can delete this game' }, 403);
 	}
 
 	// Delete the game and all related data

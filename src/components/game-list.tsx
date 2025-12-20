@@ -1,5 +1,8 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useRouteContext } from '@tanstack/react-router';
 import * as React from 'react';
+
+import { deleteGame } from '~/utils/games';
 
 import type { HostedGameSummary, JoinedGameSummary } from '~/types/api/multiplayer-api';
 
@@ -47,18 +50,38 @@ const isGameActive = (game: GameItem) => {
 	return game.status === 'active' || game.status === 'waiting';
 };
 
-const GameListItem: React.FC<{ game: GameItem; currentUserId?: string }> = ({ game, currentUserId }) => {
+const GameListItem: React.FC<{ game: GameItem; currentUserId?: string; currentUserIsAdmin?: boolean }> = ({ game, currentUserId, currentUserIsAdmin }) => {
+	const queryClient = useQueryClient();
 	const isActive = isGameActive(game);
 	const isHost = game.isHosted && game.hostId === currentUserId;
+	const canDelete = isHost || currentUserIsAdmin;
 	const gameUrl = isHost
 		? game.status === 'waiting'
 			? `/host-game/${game.inviteCode}`
 			: `/multiplayer-game?inviteCode=${game.inviteCode}&hostId=${game.hostId}`
 		: `/game/${game.inviteCode}`;
 
+	const deleteGameMutation = useMutation({
+		mutationFn: deleteGame,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['games', 'me'] });
+		},
+		onError: (error) => {
+			alert(error instanceof Error ? error.message : 'Failed to delete game');
+		},
+	});
+
+	const handleDelete = (e: React.MouseEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+		if (!confirm('Are you sure you want to delete this game? This action cannot be undone.')) {
+			return;
+		}
+		deleteGameMutation.mutate({ data: { inviteCode: game.inviteCode } });
+	};
+
 	return (
-		<Link
-			to={gameUrl}
+		<div
 			className={`block rounded-lg border p-4 transition hover:shadow-md ${
 				isActive
 					? 'border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-900/20'
@@ -66,7 +89,10 @@ const GameListItem: React.FC<{ game: GameItem; currentUserId?: string }> = ({ ga
 			}`}
 		>
 			<div className="flex items-start justify-between gap-4">
-				<div className="flex-1 min-w-0">
+				<Link
+					to={gameUrl}
+					className="flex-1 min-w-0"
+				>
 					<div className="flex items-center gap-2 mb-2">
 						<h3 className="font-semibold text-slate-900 dark:text-slate-100 truncate">
 							{game.quest.title || game.quest.name || 'Untitled Quest'}
@@ -90,18 +116,32 @@ const GameListItem: React.FC<{ game: GameItem; currentUserId?: string }> = ({ ga
 					<div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
 						{game.world} • {game.startingArea}
 					</div>
-				</div>
-				<div className="flex-shrink-0 text-xs text-slate-500 dark:text-slate-400">
-					{formatDate(game.updatedAt)}
+				</Link>
+				<div className="flex flex-col items-end gap-2 flex-shrink-0">
+					<div className="text-xs text-slate-500 dark:text-slate-400">
+						{formatDate(game.updatedAt)}
+					</div>
+					{canDelete && (
+						<button
+							type="button"
+							onClick={handleDelete}
+							disabled={deleteGameMutation.isPending}
+							className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
+							title="Delete game"
+						>
+							{deleteGameMutation.isPending ? 'Deleting...' : 'Delete'}
+						</button>
+					)}
 				</div>
 			</div>
-		</Link>
+		</div>
 	);
 };
 
 export const GameList: React.FC<GameListProps> = ({ hostedGames, joinedGames, isLoading }) => {
 	const { user } = useRouteContext({ from: '__root__' });
 	const currentUserId = user?.id;
+	const currentUserIsAdmin = user?.is_admin ?? false;
 
 	const sortedGames = React.useMemo(() => {
 		const allGames: GameItem[] = [
@@ -139,7 +179,12 @@ export const GameList: React.FC<GameListProps> = ({ hostedGames, joinedGames, is
 	return (
 		<div className="space-y-3">
 			{sortedGames.map(game => (
-				<GameListItem key={game.id} game={game} currentUserId={currentUserId} />
+				<GameListItem
+					key={game.id}
+					game={game}
+					currentUserId={currentUserId}
+					currentUserIsAdmin={currentUserIsAdmin}
+				/>
 			))}
 		</div>
 	);

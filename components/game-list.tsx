@@ -1,9 +1,12 @@
 import { router } from 'expo-router';
 import React, { useMemo } from 'react';
-import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
+
+import { useDeleteGame, useMyGames } from '@/hooks/api/use-game-queries';
+import { useAuth } from '@/hooks/use-auth';
 
 import type { HostedGameSummary, JoinedGameSummary } from '@/types/api/multiplayer-api';
 
@@ -52,10 +55,13 @@ const isGameActive = (game: GameItem) => {
 	return game.status === 'active' || game.status === 'waiting';
 };
 
-const GameListItem: React.FC<{ game: GameItem; currentUserId?: string }> = ({ game, currentUserId }) => {
+const GameListItem: React.FC<{ game: GameItem; currentUserId?: string; currentUserIsAdmin?: boolean }> = ({ game, currentUserId, currentUserIsAdmin }) => {
 	const isActive = isGameActive(game);
 	const isHost = game.isHosted && game.hostId === currentUserId;
+	const canDelete = isHost || currentUserIsAdmin;
 	const statusColor = getStatusColor(game.status);
+	const deleteGameMutation = useDeleteGame();
+	const { refetch: refetchGames } = useMyGames();
 
 	const handlePress = () => {
 		if (isHost) {
@@ -69,15 +75,37 @@ const GameListItem: React.FC<{ game: GameItem; currentUserId?: string }> = ({ ga
 		}
 	};
 
+	const handleDelete = () => {
+		Alert.alert(
+			'Delete Game',
+			'Are you sure you want to delete this game? This action cannot be undone.',
+			[
+				{ text: 'Cancel', style: 'cancel' },
+				{
+					text: 'Delete',
+					style: 'destructive',
+					onPress: async () => {
+						try {
+							await deleteGameMutation.mutateAsync({
+								path: `/games/${game.inviteCode}`,
+								body: undefined,
+							});
+							await refetchGames();
+						} catch (error) {
+							Alert.alert('Error', error instanceof Error ? error.message : 'Failed to delete game');
+						}
+					},
+				},
+			],
+		);
+	};
+
 	return (
-		<TouchableOpacity
-			style={[
-				styles.gameCard,
-				isActive && styles.activeGameCard,
-			]}
-			onPress={handlePress}
-		>
-			<View style={styles.gameCardContent}>
+		<View style={[styles.gameCard, isActive && styles.activeGameCard]}>
+			<TouchableOpacity
+				style={styles.gameCardContent}
+				onPress={handlePress}
+			>
 				<View style={styles.gameCardHeader}>
 					<ThemedText style={styles.gameTitle}>
 						{game.quest.title || game.quest.name || 'Untitled Quest'}
@@ -103,13 +131,28 @@ const GameListItem: React.FC<{ game: GameItem; currentUserId?: string }> = ({ ga
 				<ThemedText style={styles.gameLocation}>
 					{game.world} • {game.startingArea}
 				</ThemedText>
-				<ThemedText style={styles.gameDate}>{formatDate(game.updatedAt)}</ThemedText>
-			</View>
-		</TouchableOpacity>
+				<View style={styles.gameCardFooter}>
+					<ThemedText style={styles.gameDate}>{formatDate(game.updatedAt)}</ThemedText>
+					{canDelete && (
+						<TouchableOpacity
+							onPress={handleDelete}
+							disabled={deleteGameMutation.isPending}
+							style={styles.deleteButton}
+						>
+							<ThemedText style={[styles.deleteButtonText, deleteGameMutation.isPending && styles.deleteButtonTextDisabled]}>
+								{deleteGameMutation.isPending ? 'Deleting...' : 'Delete'}
+							</ThemedText>
+						</TouchableOpacity>
+					)}
+				</View>
+			</TouchableOpacity>
+		</View>
 	);
 };
 
 export const GameList: React.FC<GameListProps> = ({ hostedGames, joinedGames, isLoading, currentUserId }) => {
+	const { user } = useAuth();
+	const currentUserIsAdmin = user?.is_admin ?? false;
 	const sortedGames = useMemo(() => {
 		const allGames: GameItem[] = [
 			...hostedGames.map(g => ({ ...g, isHosted: true })),
@@ -146,7 +189,12 @@ export const GameList: React.FC<GameListProps> = ({ hostedGames, joinedGames, is
 	return (
 		<View style={styles.listContainer}>
 			{sortedGames.map(game => (
-				<GameListItem key={game.id} game={game} currentUserId={currentUserId} />
+				<GameListItem
+					key={game.id}
+					game={game}
+					currentUserId={currentUserId}
+					currentUserIsAdmin={currentUserIsAdmin}
+				/>
 			))}
 		</View>
 	);
@@ -224,9 +272,26 @@ const styles = StyleSheet.create({
 		color: '#6B5B3D',
 		marginBottom: 4,
 	},
+	gameCardFooter: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+	},
 	gameDate: {
 		fontSize: 11,
 		color: '#8B6914',
+	},
+	deleteButton: {
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+	},
+	deleteButtonText: {
+		fontSize: 12,
+		color: '#EF4444',
+		fontWeight: '600',
+	},
+	deleteButtonTextDisabled: {
+		opacity: 0.5,
 	},
 	loadingContainer: {
 		padding: 32,

@@ -75,6 +75,8 @@ const HostGameLobbyScreen: React.FC = () => {
 	const updateNpcInstanceMutation = useUpdateNpcInstance(inviteCode || '');
 	const switchMapMutation = useSwitchMap(inviteCode || '');
 	const cloneMapMutation = useCloneMap();
+	const deleteGameMutation = useDeleteGame();
+	const { refetch: refetchMyGames } = useMyGames();
 
 	const playerRosterKey = useMemo(() => {
 		if (!session?.players?.length) {
@@ -549,6 +551,42 @@ const HostGameLobbyScreen: React.FC = () => {
 										>
 											<ThemedText style={styles.buttonText}>Create New Map</ThemedText>
 										</TouchableOpacity>
+										{(hostId === user?.id || user?.is_admin) && (
+											<TouchableOpacity
+												style={[styles.button, { marginTop: 12, backgroundColor: '#EF4444' }]}
+												onPress={async () => {
+													if (!inviteCode) return;
+													Alert.alert(
+														'Delete Game',
+														'Are you sure you want to delete this game? This action cannot be undone.',
+														[
+															{ text: 'Cancel', style: 'cancel' },
+															{
+																text: 'Delete',
+																style: 'destructive',
+																onPress: async () => {
+																	try {
+																		await deleteGameMutation.mutateAsync({
+																			path: `/games/${inviteCode}`,
+																			body: undefined,
+																		});
+																		await refetchMyGames();
+																		router.replace('/host-game');
+																	} catch (error) {
+																		Alert.alert('Error', error instanceof Error ? error.message : 'Failed to delete game');
+																	}
+																},
+															},
+														],
+													);
+												}}
+												disabled={deleteGameMutation.isPending}
+											>
+												<ThemedText style={styles.buttonText}>
+													{deleteGameMutation.isPending ? 'Deleting...' : 'Delete Game'}
+												</ThemedText>
+											</TouchableOpacity>
+										)}
 									</View>
 								</View>
 							</>
