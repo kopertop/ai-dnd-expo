@@ -35,3 +35,7 @@ WHERE `is_blocked` = 0
   AND `terrain_type` IN ('road', 'path', 'gravel', 'floor');
 
 
+
+
+
+
