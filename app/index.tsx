@@ -1,52 +1,19 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, router } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { AppFooter } from '@/components/app-footer';
-import { CharacterList } from '@/components/character-list';
+import { GameList } from '@/components/game-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useUserInfo } from '@/hooks/api/use-auth-queries';
-import { useAllCharacters, useMyCharacters } from '@/hooks/api/use-character-queries';
+import { useMyGames } from '@/hooks/api/use-game-queries';
 
 const IndexScreen: React.FC = () => {
-	const [hasSavedGame, setHasSavedGame] = useState(false);
-	const [loading, setLoading] = useState(true);
-	const [activeTab, setActiveTab] = useState('my');
 	const { data: userInfo } = useUserInfo();
-
-	const { data: myCharactersData, isLoading: myCharactersLoading } = useMyCharacters();
-	const myCharacters = Array.isArray(myCharactersData) ? myCharactersData : (myCharactersData?.characters || []);
-	const sortedMyCharacters = useMemo(
-		() => [...myCharacters].sort((a, b) => a.name.localeCompare(b.name)),
-		[myCharacters],
-	);
-
-	const { data: allCharactersData, isLoading: allCharactersLoading } = useAllCharacters();
-	const allCharacters = Array.isArray(allCharactersData) ? allCharactersData : (allCharactersData?.characters || []);
-	const myCharacterIds = useMemo(() => new Set(myCharacters.map(c => c.id)), [myCharacters]);
-	const otherCharacters = useMemo(
-		() => allCharacters.filter(c => !myCharacterIds.has(c.id)),
-		[allCharacters, myCharacterIds],
-	);
-	const sortedOtherCharacters = useMemo(
-		() => [...otherCharacters].sort((a, b) => a.name.localeCompare(b.name)),
-		[otherCharacters],
-	);
-
-	useEffect(() => {
-		const checkSavedGame = async () => {
-			try {
-				const saved = await AsyncStorage.getItem('gameState');
-				setHasSavedGame(!!saved);
-			} catch {
-				setHasSavedGame(false);
-			}
-			setLoading(false);
-		};
-		checkSavedGame();
-	}, []);
+	const { data: gamesData, isLoading: gamesLoading } = useMyGames();
+	const hostedGames = gamesData?.hostedGames || [];
+	const joinedGames = gamesData?.joinedGames || [];
 
 	return (
 		<ThemedView style={styles.container}>
@@ -58,7 +25,7 @@ const IndexScreen: React.FC = () => {
 			/>
 			<ScrollView contentContainerStyle={styles.content}>
 				<ThemedText type="title" style={styles.welcome}>
-					Welcome to the AI D&D Platform
+					Welcome to the D&D Platform
 				</ThemedText>
 				<ThemedText style={styles.subtitle}>
 					Host a multiplayer session for your party, or join an existing adventure with your character.
@@ -68,7 +35,7 @@ const IndexScreen: React.FC = () => {
 						style={styles.multiplayerBtn}
 						onPress={() => router.push('/host-game')}
 					>
-						<ThemedText style={styles.multiplayerBtnText}>Host Game</ThemedText>
+						<ThemedText style={styles.multiplayerBtnText}>New Game</ThemedText>
 					</TouchableOpacity>
 					<TouchableOpacity
 						style={styles.multiplayerBtn}
@@ -77,56 +44,16 @@ const IndexScreen: React.FC = () => {
 						<ThemedText style={styles.multiplayerBtnText}>Join Game</ThemedText>
 					</TouchableOpacity>
 				</View>
-				{!loading && hasSavedGame && (
-					<TouchableOpacity
-						style={styles.continueBtn}
-						onPress={() => router.push('/game')}
-					>
-						<ThemedText style={styles.continueBtnText}>Continue Solo Adventure</ThemedText>
-					</TouchableOpacity>
-				)}
 				<View style={styles.section}>
-					<View style={styles.sectionHeader}>
-						<View style={styles.tabs}>
-							<TouchableOpacity
-								style={[styles.tab, activeTab === 'my' && styles.activeTab]}
-								onPress={() => setActiveTab('my')}
-							>
-								<ThemedText style={[styles.tabLabel, activeTab === 'my' && styles.activeTabLabel]}>My Characters</ThemedText>
-							</TouchableOpacity>
-							<TouchableOpacity
-								style={[styles.tab, activeTab === 'all' && styles.activeTab]}
-								onPress={() => setActiveTab('all')}
-							>
-								<ThemedText style={[styles.tabLabel, activeTab === 'all' && styles.activeTabLabel]}>Other Characters</ThemedText>
-							</TouchableOpacity>
-						</View>
-						<TouchableOpacity
-							style={styles.addBtn}
-							onPress={() => router.push({ pathname: '/new-character', params: { mode: 'character' } } as never)}
-						>
-							<ThemedText style={styles.addLabel}>+ New Character</ThemedText>
-						</TouchableOpacity>
-					</View>
-
-					{activeTab === 'my' && (
-						<CharacterList
-							characters={sortedMyCharacters}
-							isLoading={myCharactersLoading}
-							isAllCharactersView={false}
-							currentUserId={userInfo?.id}
-							isAdmin={userInfo?.is_admin}
-						/>
-					)}
-					{activeTab === 'all' && (
-						<CharacterList
-							characters={sortedOtherCharacters}
-							isLoading={allCharactersLoading}
-							isAllCharactersView={true}
-							currentUserId={userInfo?.id}
-							isAdmin={userInfo?.is_admin}
-						/>
-					)}
+					<ThemedText type="subtitle" style={styles.sectionTitle}>
+						My Games
+					</ThemedText>
+					<GameList
+						hostedGames={hostedGames}
+						joinedGames={joinedGames}
+						isLoading={gamesLoading}
+						currentUserId={userInfo?.id}
+					/>
 				</View>
 			</ScrollView>
 			<AppFooter />
@@ -171,59 +98,16 @@ const styles = StyleSheet.create({
 		fontWeight: 'bold',
 		fontSize: 18,
 	},
-	continueBtn: {
-		backgroundColor: '#C9B037',
-		paddingVertical: 15,
-		paddingHorizontal: 32,
-		borderRadius: 8,
-		alignItems: 'center',
-		alignSelf: 'center',
-	},
-	continueBtnText: {
-		color: '#3B2F1B',
-		fontWeight: 'bold',
-		fontSize: 16,
-	},
 	section: {
 		padding: 16,
 		borderRadius: 12,
 		backgroundColor: 'rgba(0,0,0,0.04)',
 		gap: 10,
 	},
-	sectionHeader: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'space-between',
-	},
-	tabs: {
-		flexDirection: 'row',
-		backgroundColor: '#E6D5B8',
-		borderRadius: 8,
-		padding: 4,
-	},
-	tab: {
-		paddingHorizontal: 12,
-		paddingVertical: 8,
-		borderRadius: 6,
-	},
-	activeTab: {
-		backgroundColor: '#fff',
-	},
-	tabLabel: {
+	sectionTitle: {
+		marginBottom: 8,
 		color: '#3B2F1B',
-		fontWeight: '600',
-	},
-	activeTabLabel: {
-		color: '#8B6914',
-	},
-	addBtn: {
-		paddingHorizontal: 12,
-		paddingVertical: 8,
-		borderRadius: 8,
-		backgroundColor: '#E6D5B8',
-	},
-	addLabel: {
-		color: '#3B2F1B',
+		fontSize: 20,
 		fontWeight: '600',
 	},
 });

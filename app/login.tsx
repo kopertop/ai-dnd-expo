@@ -43,7 +43,7 @@ const LoginScreen: React.FC = () => {
 	return (
 		<ThemedView style={styles.container}>
 			<ThemedText type="title" style={styles.title}>
-				Welcome to AI D&D
+				Welcome to Dungeons & Dragons
 			</ThemedText>
 			<ThemedText style={styles.subtitle}>
 				Sign in to continue your adventure

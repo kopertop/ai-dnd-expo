@@ -122,7 +122,7 @@ export const mockLinking = {
  */
 export const mockExpoConstants = {
 	expoConfig: {
-		name: 'AI D&D Test App',
+		name: 'Dungeons & Dragons Test App',
 		slug: 'ai-dnd-test',
 		version: '1.0.0',
 	},
@@ -228,7 +228,6 @@ export {
 	mockExpoFont as ExpoFontMock,
 	mockExpoImage as ExpoImageMock,
 	mockLinking as LinkingMock,
-	mockPlatform as PlatformMock,
-	mockReactNativeSVG as SVGMock,
-	mockStyleSheet as StyleSheetMock,
+	mockPlatform as PlatformMock, mockStyleSheet as StyleSheetMock, mockReactNativeSVG as SVGMock
 };
+

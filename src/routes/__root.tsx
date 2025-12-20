@@ -2,12 +2,12 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import {
-    HeadContent,
-    Outlet,
-    Scripts,
-    createRootRouteWithContext,
-    redirect,
-    useRouterState,
+	HeadContent,
+	Outlet,
+	Scripts,
+	createRootRouteWithContext,
+	redirect,
+	useRouterState,
 } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import * as React from 'react';
@@ -96,8 +96,8 @@ export const Route = createRootRouteWithContext<{
 				content: 'width=device-width, initial-scale=1',
 			},
 			...seo({
-				title: 'AI D&D Platform',
-				description: 'AI-powered tabletop adventures for solo and multiplayer play.',
+				title: 'Dungeons & Dragons',
+				description: 'Tabletop adventures for solo and multiplayer play.',
 			}),
 		],
 		links: [

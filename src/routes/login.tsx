@@ -1,5 +1,4 @@
-import { createFileRoute, useRouteContext } from '@tanstack/react-router';
-import { useRouter } from '@tanstack/react-router';
+import { createFileRoute, useRouteContext, useRouter } from '@tanstack/react-router';
 import * as React from 'react';
 
 import { completeGoogleLogin } from '~/utils/auth';
@@ -137,7 +136,7 @@ const LoginRoute = () => {
 		<div className="min-h-screen bg-slate-50 text-slate-900">
 			<div className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-6 px-6 text-center">
 				<div className="space-y-2">
-					<h1 className="text-3xl font-semibold">Welcome to AI D&D</h1>
+					<h1 className="text-3xl font-semibold">Welcome to Dungeons & Dragons</h1>
 					<p className="text-sm text-slate-600">
             Sign in to continue your adventure.
 					</p>

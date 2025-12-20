@@ -2,22 +2,22 @@ import { useAuth } from 'expo-auth-template/frontend';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-	ActivityIndicator,
-	Alert,
-	ScrollView,
-	StyleSheet,
-	TouchableOpacity,
-	View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppFooter } from '@/components/app-footer';
+import { CampaignSelector } from '@/components/campaign-selector';
 import { ConnectionStatusIndicator } from '@/components/connection-status-indicator';
 import { InviteCodeDisplay } from '@/components/invite-code-display';
 import { LocationChooser } from '@/components/location-chooser';
 import { MapManagementPanel } from '@/components/map-management-panel';
 import { PlayerList } from '@/components/player-list';
-import { QuestSelector } from '@/components/quest-selector';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WorldChooser } from '@/components/world-chooser';
@@ -28,12 +28,12 @@ import { LocationOption } from '@/types/location-option';
 import { Quest } from '@/types/quest';
 import { WorldOption } from '@/types/world-option';
 
-type HostStep = 'quest' | 'world' | 'location' | 'ready' | 'waiting';
+type HostStep = 'world' | 'campaign' | 'location' | 'ready' | 'waiting';
 
 const HostGameLobbyScreen: React.FC = () => {
 	const params = useLocalSearchParams<{ id: string }>();
 	const inviteCode = params.id;
-	const [currentStep, setCurrentStep] = useState<HostStep>('quest');
+	const [currentStep, setCurrentStep] = useState<HostStep>('world');
 	const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
 	const [selectedWorld, setSelectedWorld] = useState<WorldOption | null>(null);
 	const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(null);
@@ -92,9 +92,9 @@ const HostGameLobbyScreen: React.FC = () => {
 	useEffect(() => {
 		if (!inviteCode) return;
 
-		// Handle 'new' route - start from quest selection
+		// Handle 'new' route - start from world selection
 		if (inviteCode === 'new') {
-			setCurrentStep('quest');
+			setCurrentStep('world');
 			setLoading(false);
 			return;
 		}
@@ -115,13 +115,13 @@ const HostGameLobbyScreen: React.FC = () => {
 		}
 	}, [inviteCode, session, sessionCurrentMapId, sessionQuest, currentMapId, selectedQuest]);
 
-	const handleQuestSelect = (quest: Quest) => {
-		setSelectedQuest(quest);
-		setCurrentStep('world');
-	};
-
 	const handleWorldSelect = (world: WorldOption) => {
 		setSelectedWorld(world);
+		setCurrentStep('campaign');
+	};
+
+	const handleCampaignSelect = (quest: Quest) => {
+		setSelectedQuest(quest);
 		setCurrentStep('location');
 	};
 
@@ -401,8 +401,6 @@ const HostGameLobbyScreen: React.FC = () => {
 
 	const renderStepContent = () => {
 		switch (currentStep) {
-			case 'quest':
-				return <QuestSelector onSelect={handleQuestSelect} selectedQuest={selectedQuest} />;
 			case 'world':
 				return (
 					<View style={styles.chooserContainer}>
@@ -410,6 +408,15 @@ const HostGameLobbyScreen: React.FC = () => {
 							Select World
 						</ThemedText>
 						<WorldChooser onSelect={handleWorldSelect} />
+					</View>
+				);
+			case 'campaign':
+				return (
+					<View style={styles.chooserContainer}>
+						<ThemedText type="title" style={styles.stepTitle}>
+							Select a Campaign
+						</ThemedText>
+						<CampaignSelector onSelect={handleCampaignSelect} selectedCampaign={selectedQuest} />
 					</View>
 				);
 			case 'location':
@@ -427,7 +434,7 @@ const HostGameLobbyScreen: React.FC = () => {
 						<ThemedText type="title" style={styles.stepTitle}>
 							Ready to Host
 						</ThemedText>
-						<ThemedText style={styles.summaryText}>Quest: {selectedQuest?.name}</ThemedText>
+						<ThemedText style={styles.summaryText}>Campaign: {selectedQuest?.name}</ThemedText>
 						<ThemedText style={styles.summaryText}>World: {selectedWorld?.name}</ThemedText>
 						<ThemedText style={styles.summaryText}>Location: {selectedLocation?.name}</ThemedText>
 						<TouchableOpacity

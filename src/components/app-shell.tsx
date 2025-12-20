@@ -138,33 +138,15 @@ const AppShell: React.FC<AppShellProps> = ({ user, children }) => {
 						>
 							Characters
 						</Link>
-						<Link
-							to="/host-game"
-							activeProps={{ className: 'text-amber-700' }}
-						>
-							Host Game
-						</Link>
-						<Link
-							to="/join-game"
-							activeProps={{ className: 'text-amber-700' }}
-						>
-							Join Game
-						</Link>
-					<Link
-						to="/new-game"
-						activeProps={{ className: 'text-amber-700' }}
-					>
-						New Game
-					</Link>
-					{user?.is_admin ? (
-						<Link
-							to="/admin"
-							activeProps={{ className: 'text-amber-700' }}
-						>
-							Admin
-						</Link>
-					) : null}
-				</nav>
+						{user?.is_admin ? (
+							<Link
+								to="/admin"
+								activeProps={{ className: 'text-amber-700' }}
+							>
+								Admin
+							</Link>
+						) : null}
+					</nav>
 					<UserMenu user={user} />
 				</div>
 			</header>

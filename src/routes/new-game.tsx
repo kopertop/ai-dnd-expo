@@ -7,7 +7,7 @@ const NewGame: React.FC = () => {
 	return (
 		<RouteShell
 			title="New Game"
-			description="Configure a new single-player adventure."
+			description="Configure a new multiplayer adventure."
 		>
 			<p className="text-sm text-slate-600 dark:text-slate-300">
 				New game setup will be migrated from Expo.
