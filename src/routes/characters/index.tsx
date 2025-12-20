@@ -39,8 +39,16 @@ const CharactersIndex: React.FC = () => {
 						className="rounded-lg border border-slate-200 bg-white/80 p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md dark:border-slate-700 dark:bg-slate-900/40"
 					>
 						<div className="flex items-center gap-3">
-							<div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-amber-900">
-								{character.name.slice(0, 1).toUpperCase()}
+							<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-amber-900">
+								{character.icon ? (
+									<img
+										src={character.icon}
+										alt={character.name}
+										className="h-full w-full rounded-full object-cover"
+									/>
+								) : (
+									character.name.slice(0, 1).toUpperCase()
+								)}
 							</div>
 							<div>
 								<div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
