@@ -580,10 +580,11 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 						<button
 							type="button"
 							onClick={handleRandomName}
-							className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+							className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1.5 transition-colors hover:bg-slate-100"
 							title="Random name"
+							style={{ color: 'rgb(201, 176, 55)' }}
 						>
-							<DiceIcon size={16} className="text-current" />
+							<DiceIcon size={24} className="text-current" />
 						</button>
 					</div>
 				</label>
@@ -611,10 +612,11 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 					<button
 						type="button"
 						onClick={handleRandomBackground}
-						className="absolute right-2 top-2 rounded p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+						className="absolute right-2 top-2 rounded p-1.5 transition-colors hover:bg-slate-100"
 						title="Random background"
+						style={{ color: 'rgb(201, 176, 55)' }}
 					>
-						<DiceIcon size={16} className="text-current" />
+						<DiceIcon size={24} className="text-current" />
 					</button>
 				</div>
 			</label>
