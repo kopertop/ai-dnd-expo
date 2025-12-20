@@ -1,17 +1,17 @@
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-	Alert,
-	Image,
-	ImageSourcePropType,
-	Modal,
-	Pressable,
-	ScrollView,
-	StyleSheet,
-	Text,
-	TextInput,
-	TouchableOpacity,
-	View,
+    Alert,
+    Image,
+    ImageSourcePropType,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 import { getEquipmentSpritesheet } from '@/components/equipment-spritesheet';
@@ -25,9 +25,9 @@ import { Character } from '@/types/character';
 import { CHARACTER_IMAGE_OPTIONS } from '@/types/character-figure';
 import { GEAR_SLOTS, GearSlot, StatKey } from '@/types/stats';
 import {
-	calculateAC,
-	calculatePassivePerception,
-	calculateProficiencyBonus,
+    calculateAC,
+    calculatePassivePerception,
+    calculateProficiencyBonus,
 } from '@/utils/combat-utils';
 
 interface CharacterSheet5eProps {
@@ -40,6 +40,9 @@ interface CharacterSheet5eProps {
 	editableBackground?: boolean;
 	onBackgroundChange?: (description: string) => void;
 	onRandomizeBackground?: () => void;
+	// Read-only mode for viewing other players' characters
+	readOnly?: boolean;
+	isAdminViewingOther?: boolean;
 }
 
 type InventoryEntry = {
@@ -72,6 +75,8 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 	editableBackground = false,
 	onBackgroundChange,
 	onRandomizeBackground,
+	readOnly = false,
+	isAdminViewingOther = false,
 }) => {
 	const [sheetCharacter, setSheetCharacter] = useState<Character>(character);
 	const [infoAttribute, setInfoAttribute] = useState<StatKey | null>(null);
@@ -158,6 +163,11 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 	};
 
 	const persistUpdate = async (updates: Partial<Character>) => {
+		if (readOnly) {
+			Alert.alert('Read-only', 'You cannot modify this character.');
+			return;
+		}
+
 		const previous = sheetCharacter;
 		const optimistic = { ...sheetCharacter, ...updates };
 		setSheetCharacter(optimistic);
@@ -187,12 +197,14 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 	};
 
 	const handleEquip = async (slot: GearSlot, item: InventoryEntry) => {
+		if (readOnly) return;
 		const updatedEquipped = { ...equippedLookup, [slot]: item.id };
 		await persistUpdate({ equipped: updatedEquipped as Character['equipped'] });
 		setActiveSlot(null);
 	};
 
 	const handleUnequip = async (slot: GearSlot) => {
+		if (readOnly) return;
 		const updatedEquipped = { ...equippedLookup, [slot]: null };
 		await persistUpdate({ equipped: updatedEquipped as Character['equipped'] });
 		setActiveSlot(null);
@@ -231,8 +243,10 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 					styles.equipTile,
 					wide ? styles.equipTileWide : styles.equipTileSquare,
 					activeSlot === slot && styles.equipmentSlotActive,
+					readOnly && styles.readOnlyTile,
 				]}
-				onPress={() => setActiveSlot(prev => (prev === slot ? null : slot))}
+				onPress={readOnly ? undefined : () => setActiveSlot(prev => (prev === slot ? null : slot))}
+				disabled={readOnly}
 			>
 				<Text style={styles.slotLabel}>{displayLabel}</Text>
 				{equippedItem?.icon ? (
@@ -271,20 +285,22 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 						{equippedItem?.name || '—'}
 					</Text>
 				)}
-				{equippedItem ? (
-					<Pressable
-						style={styles.slotActionPill}
-						onPress={() => handleUnequip(slot)}
-					>
-						<Text style={styles.slotActionText}>Unequip</Text>
-					</Pressable>
-				) : (
-					<Pressable
-						style={[styles.slotActionPill, styles.assignPill]}
-						onPress={() => setActiveSlot(slot)}
-					>
-						<Text style={styles.slotActionText}>Assign</Text>
-					</Pressable>
+				{!readOnly && (
+					equippedItem ? (
+						<Pressable
+							style={styles.slotActionPill}
+							onPress={() => handleUnequip(slot)}
+						>
+							<Text style={styles.slotActionText}>Unequip</Text>
+						</Pressable>
+					) : (
+						<Pressable
+							style={[styles.slotActionPill, styles.assignPill]}
+							onPress={() => setActiveSlot(slot)}
+						>
+							<Text style={styles.slotActionText}>Assign</Text>
+						</Pressable>
+					)
 				)}
 			</Pressable>
 		);
@@ -305,6 +321,7 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 	}, [sheetCharacter.class]);
 
 	const handlePortraitSelect = async (image: any, label?: string) => {
+		if (readOnly) return;
 		// image can be ImageSourcePropType (number) or { uri: string }
 		let iconValue = '';
 		if (typeof image === 'object' && image.uri) {
@@ -330,7 +347,7 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 					<View style={styles.portraitFrame}>
 						<PortraitSelector
 							selectedImage={headerImage as any}
-							onSelect={handlePortraitSelect}
+							onSelect={readOnly ? undefined : handlePortraitSelect}
 							race={{ name: sheetCharacter.race }}
 							classOption={classDetails}
 							skills={sheetCharacter.skills || []}
@@ -466,12 +483,18 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 						<View style={styles.storyBlock}>
 							<Text style={styles.blockHeading}>Background / Goals / Notes</Text>
 							<TextInput
-								style={[styles.textArea, styles.fullWidthInput, { minHeight: storyBlockHeight }]}
+								style={[
+									styles.textArea,
+									styles.fullWidthInput,
+									{ minHeight: storyBlockHeight },
+									readOnly && styles.readOnlyInput,
+								]}
 								multiline
 								placeholder="Tell this hero's story, goals, and notes..."
 								placeholderTextColor="#8a6c5a"
 								value={editableBackground ? (sheetCharacter.description ?? '') : notesDraft}
 								onChangeText={(text) => {
+									if (readOnly) return;
 									if (editableBackground) {
 										const updated = { ...sheetCharacter, description: text };
 										setSheetCharacter(updated);
@@ -482,18 +505,31 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 									}
 								}}
 								textAlignVertical="top"
+								editable={!readOnly}
 							/>
-							<View style={styles.actionButtonsRow}>
-								{editableBackground && onRandomizeBackground ? (
-									<>
+							{!readOnly && (
+								<View style={styles.actionButtonsRow}>
+									{editableBackground && onRandomizeBackground ? (
+										<>
+											<Pressable
+												style={[styles.randomizeBackgroundButton, styles.actionButtonHalf]}
+												onPress={onRandomizeBackground}
+											>
+												<Text style={styles.randomizeBackgroundButtonText}>🎲 Randomize</Text>
+											</Pressable>
+											<Pressable
+												style={[styles.saveBackgroundButton, styles.actionButtonHalf, updateCharacter.isPending && styles.buttonDisabled]}
+												onPress={saveNotes}
+												disabled={updateCharacter.isPending}
+											>
+												<Text style={styles.saveBackgroundButtonText}>
+													{updateCharacter.isPending ? 'Saving...' : 'Save'}
+												</Text>
+											</Pressable>
+										</>
+									) : (
 										<Pressable
-											style={[styles.randomizeBackgroundButton, styles.actionButtonHalf]}
-											onPress={onRandomizeBackground}
-										>
-											<Text style={styles.randomizeBackgroundButtonText}>🎲 Randomize</Text>
-										</Pressable>
-										<Pressable
-											style={[styles.saveBackgroundButton, styles.actionButtonHalf, updateCharacter.isPending && styles.buttonDisabled]}
+											style={[styles.saveBackgroundButton, updateCharacter.isPending && styles.buttonDisabled]}
 											onPress={saveNotes}
 											disabled={updateCharacter.isPending}
 										>
@@ -501,19 +537,9 @@ export const CharacterSheet5e: React.FC<CharacterSheet5eProps> = ({
 												{updateCharacter.isPending ? 'Saving...' : 'Save'}
 											</Text>
 										</Pressable>
-									</>
-								) : (
-									<Pressable
-										style={[styles.saveBackgroundButton, updateCharacter.isPending && styles.buttonDisabled]}
-										onPress={saveNotes}
-										disabled={updateCharacter.isPending}
-									>
-										<Text style={styles.saveBackgroundButtonText}>
-											{updateCharacter.isPending ? 'Saving...' : 'Save'}
-										</Text>
-									</Pressable>
-								)}
-							</View>
+									)}
+								</View>
+							)}
 						</View>
 					</View>
 
@@ -1253,6 +1279,13 @@ const styles = StyleSheet.create({
 	inventoryDescription: { color: '#6b4c35', fontFamily: baseFont },
 	smallButton: { paddingVertical: 8, paddingHorizontal: 10, alignSelf: 'flex-start' },
 	tagline: { color: '#7b5a3a', fontFamily: baseFont },
+	readOnlyTile: {
+		opacity: 0.6,
+	},
+	readOnlyInput: {
+		backgroundColor: '#f5f5f5',
+		color: '#666',
+	},
 });
 
 export default CharacterSheet5e;

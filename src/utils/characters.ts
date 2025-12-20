@@ -61,6 +61,119 @@ export const charactersQueryOptions = () =>
 		queryFn: () => fetchCharacters(),
 	});
 
+export const fetchAllCharacters = createServerFn({ method: 'GET' }).handler(
+	async () => {
+		const session = await useAuthSession();
+		const token = session.data.deviceToken;
+
+		if (!token) {
+			return [] as Character[];
+		}
+
+		const response = await fetch(
+			joinApiPath(getServerApiBaseUrl(), '/characters/all'),
+			{
+				headers: {
+					Authorization: `Device ${token}`,
+				},
+			},
+		);
+
+		if (response.status === 401 || response.status === 404) {
+			await session.clear();
+			return [] as Character[];
+		}
+
+		if (!response.ok) {
+			throw new Error(`Failed to fetch all characters: ${response.status}`);
+		}
+
+		const data = (await response.json()) as CharacterListResponse | Character[];
+		return Array.isArray(data) ? data : data.characters;
+	},
+);
+
+export const allCharactersQueryOptions = () =>
+	queryOptions({
+		queryKey: ['characters', 'all'],
+		queryFn: () => fetchAllCharacters(),
+	});
+
+export const fetchCharacterById = createServerFn({ method: 'GET' })
+	.inputValidator((data: { id: string }) => data)
+	.handler(async ({ data }) => {
+		const session = await useAuthSession();
+		const token = session.data.deviceToken;
+
+		if (!token) {
+			return null;
+		}
+
+		const response = await fetch(
+			joinApiPath(getServerApiBaseUrl(), `/characters/${data.id}`),
+			{
+				headers: {
+					Authorization: `Device ${token}`,
+				},
+			},
+		);
+
+		if (response.status === 401 || response.status === 404) {
+			await session.clear();
+			return null;
+		}
+
+		if (!response.ok) {
+			throw new Error(`Failed to fetch character: ${response.status}`);
+		}
+
+		const result = (await response.json()) as { character: Character };
+		return result.character;
+	});
+
+export const characterByIdQueryOptions = (id: string) =>
+	queryOptions({
+		queryKey: ['characters', id],
+		queryFn: () => fetchCharacterById({ data: { id } }),
+	});
+
+export const cloneCharacter = createServerFn({ method: 'POST' })
+	.inputValidator((data: { characterId: string }) => data)
+	.handler(async ({ data }) => {
+		const session = await useAuthSession();
+		const token = session.data.deviceToken;
+
+		if (!token) {
+			throw new Error('Not authenticated');
+		}
+
+		const response = await fetch(
+			joinApiPath(getServerApiBaseUrl(), `/characters/${data.characterId}/clone`),
+			{
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Device ${token}`,
+				},
+			},
+		);
+
+		if (response.status === 401 || response.status === 404) {
+			await session.clear();
+			throw new Error('Not authenticated');
+		}
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			throw new Error(
+				`Failed to clone character: ${response.status} ${errorText}`,
+			);
+		}
+
+		const result = await response.json();
+		return (result.character || result) as Character;
+	});
+
 export const createCharacter = createServerFn({ method: 'POST' })
 	.inputValidator((data: Character) => data)
 	.handler(async ({ data }) => {

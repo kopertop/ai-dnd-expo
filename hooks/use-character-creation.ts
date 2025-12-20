@@ -53,6 +53,8 @@ export const useCharacterCreation = () => {
 		selections?: string | string[];
 		attrs?: string | string[];
 		skills?: string | string[];
+		cloneFrom?: string;
+		clonedData?: string;
 	}>();
 	const segments = useSegments();
 
@@ -284,6 +286,70 @@ export const useCharacterCreation = () => {
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [selectionsParam.length, isCharacterMode, params.attrs]); // Only depend on length and attrs to avoid infinite loops
+
+	// Handle cloned character data
+	useEffect(() => {
+		const clonedDataParam = params.clonedData;
+		if (!clonedDataParam || !isCharacterMode) return;
+
+		try {
+			const clonedCharacter: Character = JSON.parse(
+				Array.isArray(clonedDataParam) ? clonedDataParam[0] : clonedDataParam
+			);
+
+			// Find matching race
+			const race = RACES.find(r => r.name === clonedCharacter.race);
+			if (race) {
+				setSelectedRace(race);
+			}
+
+			// Find matching class
+			const classOption = CLASSES.find(c => c.name === clonedCharacter.class);
+			if (classOption) {
+				setSelectedClass(classOption);
+			}
+
+			// Find matching trait
+			if (clonedCharacter.trait) {
+				const trait = TRAITS.find(t => t.name === clonedCharacter.trait);
+				if (trait) {
+					setSelectedTrait(trait);
+				}
+			}
+
+			// Set attributes
+			if (clonedCharacter.stats) {
+				setSelectedAttributes(clonedCharacter.stats);
+			}
+
+			// Set skills
+			if (clonedCharacter.skills && Array.isArray(clonedCharacter.skills)) {
+				const skills = clonedCharacter.skills
+					.map(id => SKILL_LIST.find(s => s.id === id))
+					.filter(Boolean) as Skill[];
+				setSelectedSkills(skills);
+			}
+
+			// Set character details
+			if (clonedCharacter.name) {
+				// Remove "(Copy)" suffix if present
+				const name = clonedCharacter.name.replace(/\s*\(Copy\)\s*$/, '');
+				setCharacterName(name);
+			}
+			if (clonedCharacter.icon) {
+				setCharacterIcon(clonedCharacter.icon);
+			}
+			if (clonedCharacter.description) {
+				setCustomStory(clonedCharacter.description);
+			}
+
+			// Navigate to character step (final step) so user can customize
+			setCurrentStep('character');
+		} catch (error) {
+			console.error('Failed to parse cloned character data:', error);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [params.clonedData, isCharacterMode]);
 
 	// Only reset to first step if we're not in character mode or if we have no selections
 	// This should NOT run if we're in character mode with selections

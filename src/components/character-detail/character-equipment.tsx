@@ -8,9 +8,10 @@ import { EquipmentSelectorModal } from './equipment-selector-modal';
 type CharacterEquipmentProps = {
 	character: Character;
 	onEquip?: (slot: GearSlot, itemId: string | null) => void;
+	readOnly?: boolean;
 };
 
-export const CharacterEquipment: React.FC<CharacterEquipmentProps> = ({ character, onEquip }) => {
+export const CharacterEquipment: React.FC<CharacterEquipmentProps> = ({ character, onEquip, readOnly = false }) => {
 	const [selectedSlot, setSelectedSlot] = React.useState<GearSlot | null>(null);
 
 	const getEquipmentItem = (slot: GearSlot) => {
@@ -34,6 +35,7 @@ export const CharacterEquipment: React.FC<CharacterEquipmentProps> = ({ characte
 	}, []);
 
 	const handleSlotClick = (slot: GearSlot) => {
+		if (readOnly) return;
 		setSelectedSlot(slot);
 	};
 

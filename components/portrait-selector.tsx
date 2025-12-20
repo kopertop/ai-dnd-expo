@@ -80,7 +80,9 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({
 	}, [uploadedImages]);
 
 	const handleSelect = (option: PortraitOption) => {
-		onSelect(option.source, option.label);
+		if (onSelect) {
+			onSelect(option.source, option.label);
+		}
 		setPickerVisible(false);
 	};
 
@@ -108,7 +110,9 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({
 	const handleUploadSuccess = (url: string) => {
 		refetchUploadedImages();
 		// Automatically select the newly uploaded image
-		onSelect({ uri: url }, 'Uploaded Portrait');
+		if (onSelect) {
+			onSelect({ uri: url }, 'Uploaded Portrait');
+		}
 		setPickerVisible(false);
 		setUploadModalVisible(false);
 	};
@@ -119,6 +123,7 @@ export const PortraitSelector: React.FC<PortraitSelectorProps> = ({
 				style={styles.currentPortraitContainer}
 				onPress={() => setPickerVisible(true)}
 				activeOpacity={0.8}
+				disabled={!onSelect}
 			>
 				<View style={styles.portraitInnerContainer}>
 					{selectedImage ? (

@@ -13,23 +13,40 @@ import { CharacterCombat } from '~/components/character-detail/character-combat'
 import { CharacterEquipment } from '~/components/character-detail/character-equipment';
 import { CharacterInventory } from '~/components/character-detail/character-inventory';
 import { CharacterSkills } from '~/components/character-detail/character-skills';
-import RouteShell from '~/components/route-shell';
-import { charactersQueryOptions, deleteCharacter, updateCharacter } from '~/utils/characters';
-import { deleteImage, uploadedImagesQueryOptions, uploadImage } from '~/utils/images';
-
+import DiceIcon from '~/components/dice-icon';
 import { PortraitSelectorModal } from '~/components/portrait-selector-modal';
+import RouteShell from '~/components/route-shell';
+import { generateRandomName } from '@/constants/character-names';
+import { currentUserQueryOptions } from '~/utils/auth';
+import { characterByIdQueryOptions, charactersQueryOptions, cloneCharacter, deleteCharacter, updateCharacter } from '~/utils/characters';
+import { deleteImage, uploadedImagesQueryOptions, uploadImage } from '~/utils/images';
 
 const CharacterDetail: React.FC = () => {
 	const { id } = Route.useParams();
 	const router = useRouter();
 	const queryClient = useQueryClient();
-	const charactersQuery = useSuspenseQuery(charactersQueryOptions());
-	const character = charactersQuery.data.find((item) => item.id === id);
+
+	const userQuery = useSuspenseQuery(currentUserQueryOptions());
+	const user = userQuery.data;
+	const isAdmin = user?.is_admin === true;
+
+	const characterQuery = useSuspenseQuery(characterByIdQueryOptions(id));
+	const character = characterQuery.data;
+
+	const myCharactersQuery = useSuspenseQuery(charactersQueryOptions());
+	const myCharacters = myCharactersQuery.data || [];
+	const myCharacterIds = new Set(myCharacters.map(c => c.id));
+	const isOwned = character ? myCharacterIds.has(character.id) : false;
+	const isReadOnly = !isOwned && !isAdmin;
+	const isAdminViewingOther = isAdmin && !isOwned;
 
 	const [isSaving, setIsSaving] = React.useState(false);
 	const [isDeleting, setIsDeleting] = React.useState(false);
+	const [isCloning, setIsCloning] = React.useState(false);
 	const [isPortraitModalOpen, setIsPortraitModalOpen] = React.useState(false);
 	const [isUploadModalOpen, setIsUploadModalOpen] = React.useState(false);
+	const [localCharacterName, setLocalCharacterName] = React.useState(character?.name || '');
+	const nameChangeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
 	const uploadedImagesQuery = useSuspenseQuery(uploadedImagesQueryOptions('both'));
 	const uploadedImages = uploadedImagesQuery.data || [];
@@ -56,12 +73,57 @@ const CharacterDetail: React.FC = () => {
 		}, {} as Record<StatKey, number>);
 	}, [character.stats]);
 
+	// Update local name when character changes
+	React.useEffect(() => {
+		if (character) {
+			setLocalCharacterName(character.name);
+		}
+	}, [character]);
+
 	// Calculate combat stats
 	const armorClass = React.useMemo(() => calculateAC(character), [character]);
 	const initiative = abilityMods.DEX ?? 0;
 	const passivePerception = React.useMemo(() => calculatePassivePerception(character), [character]);
 
+	const handleNameChange = React.useCallback((newName: string) => {
+		if (isReadOnly || !character) return;
+		
+		// Clear existing timeout
+		if (nameChangeTimeoutRef.current) {
+			clearTimeout(nameChangeTimeoutRef.current);
+		}
+		
+		// Debounce the save - save after user stops typing
+		nameChangeTimeoutRef.current = setTimeout(async () => {
+			try {
+				await updateCharacter({
+					data: {
+						path: `/characters/${character.id}`,
+						data: { name: newName } as Partial<Character>,
+					},
+				});
+				queryClient.invalidateQueries({ queryKey: characterByIdQueryOptions(id).queryKey });
+				queryClient.invalidateQueries({ queryKey: charactersQueryOptions().queryKey });
+			} catch (error) {
+				console.error('Failed to update name:', error);
+				// Revert on error
+				setLocalCharacterName(character.name);
+			}
+		}, 500);
+	}, [character, id, isReadOnly, queryClient]);
+
+	const handleRandomName = React.useCallback(() => {
+		if (isReadOnly || !character) return;
+		const randomName = generateRandomName(character.race, character.class);
+		setLocalCharacterName(randomName);
+		handleNameChange(randomName);
+	}, [isReadOnly, character, handleNameChange]);
+
 	const handleSave = async () => {
+		if (isReadOnly) {
+			alert('You cannot modify this character.');
+			return;
+		}
 		setIsSaving(true);
 		try {
 			await updateCharacter({
@@ -71,6 +133,7 @@ const CharacterDetail: React.FC = () => {
 				},
 			});
 			await queryClient.invalidateQueries({ queryKey: charactersQueryOptions().queryKey });
+			await queryClient.invalidateQueries({ queryKey: characterByIdQueryOptions(id).queryKey });
 		} catch (error) {
 			console.error('Failed to save character:', error);
 		} finally {
@@ -101,7 +164,7 @@ const CharacterDetail: React.FC = () => {
 	};
 
 	const handleEquip = async (slot: GearSlot, itemId: string | null) => {
-		if (!character) return;
+		if (!character || isReadOnly) return;
 
 		// Ensure we have all slots in the equipped object, preserving existing values
 		// Convert undefined to null explicitly to avoid serialization issues
@@ -148,7 +211,7 @@ const CharacterDetail: React.FC = () => {
 	};
 
 	const handlePortraitSelect = async (imageUrl: string) => {
-		if (!character) return;
+		if (!character || isReadOnly) return;
 
 		try {
 			await updateCharacter({
@@ -196,46 +259,124 @@ const CharacterDetail: React.FC = () => {
 		}
 	};
 
+	const handleClone = async () => {
+		if (!character) return;
+
+		setIsCloning(true);
+		try {
+			const clonedCharacter = await cloneCharacter({ data: { characterId: character.id } });
+			await queryClient.invalidateQueries({ queryKey: charactersQueryOptions().queryKey });
+			// Navigate to character creation with pre-filled data
+			router.navigate({
+				to: '/new-character',
+				search: {
+					mode: 'character',
+					clonedData: JSON.stringify(clonedCharacter),
+				},
+			});
+		} catch (error) {
+			console.error('Failed to clone character:', error);
+			alert(`Failed to clone character: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		} finally {
+			setIsCloning(false);
+		}
+	};
+
 	return (
 		<RouteShell
 			title=""
 			description=""
 		>
 			<div className="space-y-6">
+				{/* Admin/Read-only Banner */}
+				{isAdminViewingOther && (
+					<div className="flex items-center justify-between rounded-lg border-2 border-amber-500 bg-amber-50 p-3 text-sm font-semibold text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
+						<span>Admin View - Editing {character.name} (owned by another player)</span>
+						<button
+							type="button"
+							onClick={handleClone}
+							disabled={isCloning}
+							className="ml-4 rounded-md border border-amber-600 bg-white px-3 py-1.5 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-900/60"
+						>
+							{isCloning ? 'Cloning...' : 'Clone Character'}
+						</button>
+					</div>
+				)}
+				{isReadOnly && (
+					<div className="flex items-center justify-between rounded-lg border-2 border-slate-300 bg-slate-50 p-3 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+						<span>Read-only view - This character belongs to another player</span>
+						<button
+							type="button"
+							onClick={handleClone}
+							disabled={isCloning}
+							className="ml-4 rounded-md border border-slate-600 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+						>
+							{isCloning ? 'Cloning...' : 'Clone Character'}
+						</button>
+					</div>
+				)}
+
 				{/* Header Section */}
 				<div className="flex items-start gap-4 rounded-lg border border-slate-200 bg-white/80 p-4 shadow-sm">
-					{/* Avatar */}
-					<button
-						type="button"
-						onClick={() => setIsPortraitModalOpen(true)}
-						className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-all hover:bg-slate-200 hover:ring-2 hover:ring-amber-400"
-						title="Click to change portrait"
-					>
-						{character.icon ? (
-							<img src={character.icon} alt={character.name} className="h-full w-full rounded-full object-cover" />
-						) : (
-							<span className="text-2xl font-semibold text-slate-400">
-								{character.name.charAt(0).toUpperCase()}
-							</span>
-						)}
-					</button>
+					{/* Portrait with Race Banner */}
+					<div className="relative shrink-0">
+						<button
+							type="button"
+							onClick={() => !isReadOnly && setIsPortraitModalOpen(true)}
+							disabled={isReadOnly}
+							className={`relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg bg-slate-100 transition-all ${
+								isReadOnly
+									? 'cursor-not-allowed opacity-60'
+									: 'hover:bg-slate-200 hover:ring-2 hover:ring-amber-400'
+							}`}
+							title={isReadOnly ? 'Read-only view' : 'Click to change portrait'}
+						>
+							{character.icon ? (
+								<img src={character.icon} alt={character.name} className="h-full w-full object-cover" />
+							) : (
+								<span className="text-2xl font-semibold text-slate-400">
+									{character.name.charAt(0).toUpperCase()}
+								</span>
+							)}
+							{/* Race Banner Overlay */}
+							<div className="absolute bottom-0 left-0 right-0 bg-slate-900 px-2 py-1 text-center">
+								<span className="text-xs font-bold uppercase text-white">{character.race}</span>
+							</div>
+						</button>
+					</div>
 
-					{/* Character Info */}
+					{/* Character Name and Summary */}
 					<div className="flex-1">
-						<h1 className="text-2xl font-bold text-slate-900">{character.name}</h1>
+						<div className="flex items-center gap-2">
+							<input
+								type="text"
+								value={localCharacterName}
+								onChange={(e) => {
+									setLocalCharacterName(e.target.value);
+									handleNameChange(e.target.value);
+								}}
+								disabled={isReadOnly}
+								className="flex-1 border-none bg-transparent text-2xl font-bold text-slate-900 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-60"
+								placeholder="Character Name"
+							/>
+							{!isReadOnly && (
+								<button
+									type="button"
+									onClick={handleRandomName}
+									className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-amber-500 transition-colors hover:bg-amber-600"
+									title="Random name"
+								>
+									<DiceIcon size={16} className="text-white" />
+								</button>
+							)}
+						</div>
 						<p className="mt-1 text-sm text-slate-600">
 							{character.class} • {character.race} • Level {character.level}
 						</p>
-						{character.trait && (
-							<div className="mt-2 inline-flex items-center gap-1 rounded-full border-2 border-slate-800 bg-red-700 px-3 py-1">
-								<span className="text-xs font-semibold text-white">!</span>
-								<span className="text-xs font-semibold text-white">{character.trait}</span>
-							</div>
-						)}
 					</div>
 
 					{/* Combat Stats */}
-					<div className="flex gap-3">
+					<div className="flex flex-col gap-2">
 						<div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-center">
 							<div className="text-xs font-semibold text-slate-600">AC</div>
 							<div className="mt-1 text-lg font-bold text-slate-900">{armorClass}</div>
@@ -262,14 +403,16 @@ const CharacterDetail: React.FC = () => {
 						<CharacterBackground character={character} />
 
 						{/* Save Button */}
-						<button
-							type="button"
-							onClick={handleSave}
-							disabled={isSaving}
-							className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
-						>
-							{isSaving ? 'Saving...' : 'Save'}
-						</button>
+						{!isReadOnly && (
+							<button
+								type="button"
+								onClick={handleSave}
+								disabled={isSaving}
+								className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+							>
+								{isSaving ? 'Saving...' : 'Save'}
+							</button>
+						)}
 					</div>
 
 					{/* Right Column */}
@@ -280,21 +423,23 @@ const CharacterDetail: React.FC = () => {
 							initiative={initiative}
 							passivePerception={passivePerception}
 						/>
-						<CharacterEquipment character={character} onEquip={handleEquip} />
+						<CharacterEquipment character={character} onEquip={handleEquip} readOnly={isReadOnly} />
 						<CharacterInventory character={character} />
 						<CharacterAttacks character={character} />
 					</div>
 				</div>
 
 				{/* Delete Character Button */}
-				<button
-					type="button"
-					onClick={handleDelete}
-					disabled={isDeleting}
-					className="w-full rounded-lg bg-red-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
-				>
-					{isDeleting ? 'Deleting...' : 'Delete Character'}
-				</button>
+				{isOwned && (
+					<button
+						type="button"
+						onClick={handleDelete}
+						disabled={isDeleting}
+						className="w-full rounded-lg bg-red-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+					>
+						{isDeleting ? 'Deleting...' : 'Delete Character'}
+					</button>
+				)}
 			</div>
 
 			{/* Portrait Selector Modal */}
@@ -368,8 +513,10 @@ const CharacterDetail: React.FC = () => {
 };
 
 export const Route = createFileRoute('/characters/$id')({
-	loader: async ({ context }) => {
+	loader: async ({ context, params }) => {
+		await context.queryClient.ensureQueryData(characterByIdQueryOptions(params.id));
 		await context.queryClient.ensureQueryData(charactersQueryOptions());
+		await context.queryClient.ensureQueryData(currentUserQueryOptions());
 		await context.queryClient.ensureQueryData(uploadedImagesQueryOptions('both'));
 	},
 	component: CharacterDetail,

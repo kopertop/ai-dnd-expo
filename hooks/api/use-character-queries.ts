@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useMutationApi, useQueryApi } from 'expo-auth-template/frontend';
 
-import { useUserInfo } from './use-auth-queries';
 
 import type { CharacterListResponse } from '@/types/api/multiplayer-api';
 import type { Character } from '@/types/character';
@@ -15,13 +14,7 @@ export function useMyCharacters() {
 }
 
 export function useAllCharacters() {
-	const { data: userInfo } = useUserInfo();
-	return useQueryApi<CharacterListResponse>(
-		'/admin/characters',
-		{
-			enabled: userInfo?.is_admin,
-		},
-	);
+	return useQueryApi<CharacterListResponse>('/characters/all');
 }
 
 
@@ -78,6 +71,22 @@ export function useDeleteCharacter() {
 		onSuccess: () => {
 			// Invalidate my characters list
 			queryClient.invalidateQueries({ queryKey: ['/characters'] });
+		},
+	});
+}
+
+/**
+ * Clone a character
+ */
+export function useCloneCharacter() {
+	const queryClient = useQueryClient();
+
+	return useMutationApi<Character>({
+		method: 'POST',
+		onSuccess: () => {
+			// Invalidate character lists
+			queryClient.invalidateQueries({ queryKey: ['/characters'] });
+			queryClient.invalidateQueries({ queryKey: ['/characters/all'] });
 		},
 	});
 }

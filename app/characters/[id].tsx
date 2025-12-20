@@ -1,11 +1,12 @@
-import { Stack, useLocalSearchParams, router } from 'expo-router';
+import { useQueryApi } from 'expo-auth-template/frontend';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
-import { useQueryApi } from 'expo-auth-template/frontend';
 
 import CharacterSheet5e from '@/components/character-sheet-5e';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useUserInfo } from '@/hooks/api/use-auth-queries';
 import { useDeleteCharacter, useMyCharacters } from '@/hooks/api/use-character-queries';
 import { Character } from '@/types/character';
 
@@ -13,6 +14,7 @@ const CharacterSheetScreen: React.FC = () => {
 	const params = useLocalSearchParams<{ id?: string }>();
 	const characterIdParam = Array.isArray(params.id) ? params.id[0] : params.id;
 
+	const { data: userInfo } = useUserInfo();
 	const { data: myCharactersData, isLoading: listLoading } = useMyCharacters();
 	const myCharacters = Array.isArray(myCharactersData)
 		? myCharactersData
@@ -42,8 +44,20 @@ const CharacterSheetScreen: React.FC = () => {
 
 	const character = localCharacter || characterData?.character || initialCharacter || null;
 	const isLoading = listLoading || detailLoading;
+
+	// Check if character is owned by current user
+	const isOwned = useMemo(() => {
+		if (!character) return false;
+		return myCharacters.some(char => char.id === character.id);
+	}, [character, myCharacters]);
+
+	const isAdmin = userInfo?.is_admin === true;
+	const isAdminViewingOther = isAdmin && !isOwned;
+	const isReadOnly = !isOwned && !isAdmin;
+
 	const deleteDisabled =
 		!character ||
+		!isOwned ||
 		deleteMutation.isPending ||
 		confirmInput.trim().toLowerCase() !== character.name.trim().toLowerCase();
 
@@ -91,21 +105,39 @@ const CharacterSheetScreen: React.FC = () => {
 			)}
 			{!isLoading && character && (
 				<View style={styles.sheetWrapper}>
+					{isAdminViewingOther && (
+						<View style={styles.adminBanner}>
+							<ThemedText style={styles.adminBannerText}>
+								Admin View - Editing {character.name} (owned by another player)
+							</ThemedText>
+						</View>
+					)}
+					{isReadOnly && (
+						<View style={styles.readOnlyBanner}>
+							<ThemedText style={styles.readOnlyBannerText}>
+								Read-only view - This character belongs to another player
+							</ThemedText>
+						</View>
+					)}
 					<CharacterSheet5e
 						character={character}
 						onCharacterUpdated={updated => setLocalCharacter(updated)}
+						readOnly={isReadOnly}
+						isAdminViewingOther={isAdminViewingOther}
 					/>
-					<View style={styles.actionsRow}>
-						<Pressable
-							style={styles.deleteButton}
-							onPress={() => {
-								setConfirmInput('');
-								setConfirmOpen(true);
-							}}
-						>
-							<ThemedText style={styles.deleteButtonText}>Delete Character</ThemedText>
-						</Pressable>
-					</View>
+					{isOwned && (
+						<View style={styles.actionsRow}>
+							<Pressable
+								style={styles.deleteButton}
+								onPress={() => {
+									setConfirmInput('');
+									setConfirmOpen(true);
+								}}
+							>
+								<ThemedText style={styles.deleteButtonText}>Delete Character</ThemedText>
+							</Pressable>
+						</View>
+					)}
 				</View>
 			)}
 			<Modal visible={confirmOpen} transparent animationType="fade" onRequestClose={() => setConfirmOpen(false)}>
@@ -248,5 +280,29 @@ const styles = StyleSheet.create({
 	},
 	disabledButton: {
 		opacity: 0.6,
+	},
+	adminBanner: {
+		backgroundColor: '#FFE5B4',
+		padding: 12,
+		borderBottomWidth: 2,
+		borderBottomColor: '#FFA500',
+		marginBottom: 8,
+	},
+	adminBannerText: {
+		color: '#8B4513',
+		fontWeight: '600',
+		textAlign: 'center',
+	},
+	readOnlyBanner: {
+		backgroundColor: '#E8E8E8',
+		padding: 12,
+		borderBottomWidth: 2,
+		borderBottomColor: '#999',
+		marginBottom: 8,
+	},
+	readOnlyBannerText: {
+		color: '#666',
+		fontWeight: '600',
+		textAlign: 'center',
 	},
 });

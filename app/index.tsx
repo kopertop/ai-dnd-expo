@@ -25,9 +25,14 @@ const IndexScreen: React.FC = () => {
 
 	const { data: allCharactersData, isLoading: allCharactersLoading } = useAllCharacters();
 	const allCharacters = Array.isArray(allCharactersData) ? allCharactersData : (allCharactersData?.characters || []);
-	const sortedAllCharacters = useMemo(
-		() => [...allCharacters].sort((a, b) => a.name.localeCompare(b.name)),
-		[allCharacters],
+	const myCharacterIds = useMemo(() => new Set(myCharacters.map(c => c.id)), [myCharacters]);
+	const otherCharacters = useMemo(
+		() => allCharacters.filter(c => !myCharacterIds.has(c.id)),
+		[allCharacters, myCharacterIds],
+	);
+	const sortedOtherCharacters = useMemo(
+		() => [...otherCharacters].sort((a, b) => a.name.localeCompare(b.name)),
+		[otherCharacters],
 	);
 
 	useEffect(() => {
@@ -82,24 +87,20 @@ const IndexScreen: React.FC = () => {
 				)}
 				<View style={styles.section}>
 					<View style={styles.sectionHeader}>
-						{userInfo?.is_admin ? (
-							<View style={styles.tabs}>
-								<TouchableOpacity
-									style={[styles.tab, activeTab === 'my' && styles.activeTab]}
-									onPress={() => setActiveTab('my')}
-								>
-									<ThemedText style={[styles.tabLabel, activeTab === 'my' && styles.activeTabLabel]}>My Characters</ThemedText>
-								</TouchableOpacity>
-								<TouchableOpacity
-									style={[styles.tab, activeTab === 'all' && styles.activeTab]}
-									onPress={() => setActiveTab('all')}
-								>
-									<ThemedText style={[styles.tabLabel, activeTab === 'all' && styles.activeTabLabel]}>All Characters</ThemedText>
-								</TouchableOpacity>
-							</View>
-						) : (
-							<ThemedText type="subtitle">My Characters</ThemedText>
-						)}
+						<View style={styles.tabs}>
+							<TouchableOpacity
+								style={[styles.tab, activeTab === 'my' && styles.activeTab]}
+								onPress={() => setActiveTab('my')}
+							>
+								<ThemedText style={[styles.tabLabel, activeTab === 'my' && styles.activeTabLabel]}>My Characters</ThemedText>
+							</TouchableOpacity>
+							<TouchableOpacity
+								style={[styles.tab, activeTab === 'all' && styles.activeTab]}
+								onPress={() => setActiveTab('all')}
+							>
+								<ThemedText style={[styles.tabLabel, activeTab === 'all' && styles.activeTabLabel]}>Other Characters</ThemedText>
+							</TouchableOpacity>
+						</View>
 						<TouchableOpacity
 							style={styles.addBtn}
 							onPress={() => router.push({ pathname: '/new-character', params: { mode: 'character' } } as never)}
@@ -109,10 +110,22 @@ const IndexScreen: React.FC = () => {
 					</View>
 
 					{activeTab === 'my' && (
-						<CharacterList characters={sortedMyCharacters} isLoading={myCharactersLoading} />
+						<CharacterList
+							characters={sortedMyCharacters}
+							isLoading={myCharactersLoading}
+							isAllCharactersView={false}
+							currentUserId={userInfo?.id}
+							isAdmin={userInfo?.is_admin}
+						/>
 					)}
 					{activeTab === 'all' && (
-						<CharacterList characters={sortedAllCharacters} isLoading={allCharactersLoading} />
+						<CharacterList
+							characters={sortedOtherCharacters}
+							isLoading={allCharactersLoading}
+							isAllCharactersView={true}
+							currentUserId={userInfo?.id}
+							isAdmin={userInfo?.is_admin}
+						/>
 					)}
 				</View>
 			</ScrollView>

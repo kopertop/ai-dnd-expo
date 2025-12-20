@@ -70,10 +70,35 @@ characters.post('/', async (c) => {
 });
 
 /**
+ * List all characters (for all authenticated users)
+ * GET /api/characters/all
+ *
+ * Returns all characters. Available to all authenticated users for viewing.
+ *
+ * @returns Object with characters array
+ */
+characters.get('/all', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const db = createDatabase(c.env);
+	const characterRows = await db.getAllCharacters();
+	const characters = characterRows.map(row => ({
+		...deserializeCharacter(row),
+		owner_id: row.player_id,
+		owner_email: row.player_email,
+	}));
+
+	return c.json({ characters });
+});
+
+/**
  * Get a single character
  * GET /api/characters/:id
  *
- * Returns the requested character if the authenticated user owns it.
+ * Returns the requested character. All authenticated users can view any character.
  */
 characters.get('/:id', async (c) => {
 	const user = c.get('user');
@@ -89,14 +114,7 @@ characters.get('/:id', async (c) => {
 		return c.json({ error: 'Character not found' }, 404);
 	}
 
-	if (
-		existing.player_id !== user.id &&
-		existing.player_email !== user.email &&
-		!user.isAdmin
-	) {
-		return c.json({ error: 'Forbidden' }, 403);
-	}
-
+	// All authenticated users can view any character
 	return c.json({ character: deserializeCharacter(existing) });
 });
 
@@ -183,6 +201,49 @@ characters.delete('/:id', async (c) => {
 
 	await db.deleteCharacter(characterId);
 	return c.json({ ok: true });
+});
+
+/**
+ * Clone a character
+ * POST /api/characters/:id/clone
+ *
+ * Creates a copy of the specified character with new ownership.
+ * Any authenticated user can clone any character.
+ *
+ * @returns Object with cloned character
+ */
+characters.post('/:id/clone', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const characterId = c.req.param('id');
+	const db = createDatabase(c.env);
+	const sourceCharacter = await db.getCharacterById(characterId);
+
+	if (!sourceCharacter) {
+		return c.json({ error: 'Character not found' }, 404);
+	}
+
+	// Deserialize the source character
+	const source = deserializeCharacter(sourceCharacter);
+
+	// Create new character with new ID and current user's ownership
+	const clonedId = createId('char');
+	const clonedCharacter: Character = {
+		...source,
+		id: clonedId,
+		// Name will be modified by user in creation flow, but set a default
+		name: `${source.name} (Copy)`,
+	};
+
+	// Serialize with new ownership
+	const serialized = serializeCharacter(clonedCharacter, user.id, user.email);
+	await db.createCharacter(serialized);
+
+	const saved = await db.getCharacterById(clonedId);
+	return c.json({ character: saved ? deserializeCharacter(saved) : clonedCharacter });
 });
 
 /**

@@ -44,5 +44,8 @@ export const CharacterSchema = z.object({
 	weaknesses: z.array(DamageTypeSchema).optional(),
 	resistances: z.array(DamageTypeSchema).optional(),
 	immunities: z.array(DamageTypeSchema).optional(),
+	// Optional owner information (included when fetching all characters)
+	owner_id: z.string().optional(),
+	owner_email: z.string().optional(),
 });
 export type Character = z.infer<typeof CharacterSchema>;
