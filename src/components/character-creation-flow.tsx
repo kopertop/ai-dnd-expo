@@ -1,0 +1,573 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { Link, useRouter, useRouterState } from '@tanstack/react-router';
+import * as React from 'react';
+
+import type { ClassOption } from '@/types/class-option';
+import type { RaceOption } from '@/types/race-option';
+import type { Skill } from '@/types/skill';
+import type { StatBlock, StatKey } from '@/types/stats';
+import { STAT_KEYS } from '@/types/stats';
+import type { TraitOption } from '@/types/trait-option';
+import { addIconsToInventoryItems } from '@/utils/add-equipment-icons';
+import { generateStartingEquipment } from '@/utils/starting-equipment';
+
+import { WEB_CLASSES, WEB_RACES, WEB_SKILLS, WEB_TRAITS } from '~/data/character-options';
+import RouteShell from '~/components/route-shell';
+import { charactersQueryOptions, createCharacter } from '~/utils/characters';
+
+const DEFAULT_ATTRIBUTES: StatBlock = {
+	STR: 10,
+	DEX: 10,
+	CON: 10,
+	INT: 10,
+	WIS: 10,
+	CHA: 10,
+};
+
+const STANDARD_ARRAY: StatBlock = {
+	STR: 15,
+	DEX: 14,
+	CON: 13,
+	INT: 12,
+	WIS: 10,
+	CHA: 8,
+};
+
+type WizardStep = 'race' | 'class' | 'trait' | 'attributes' | 'skills' | 'character';
+
+const STEP_LABELS: Record<WizardStep, string> = {
+	race: 'Race',
+	class: 'Class',
+	trait: 'Trait',
+	attributes: 'Attributes',
+	skills: 'Skills',
+	character: 'Character',
+};
+
+type CharacterCreationFlowProps = {
+	selections: string[]
+};
+
+const createSlug = (value: string) =>
+	value
+		.toLowerCase()
+		.replace(/\s+/g, '-')
+		.replace(/[^a-z0-9-]/g, '');
+
+const findBySlug = <T extends { name: string }>(
+	options: T[],
+	slug?: string,
+) => {
+	if (!slug) return null;
+	return options.find((option) => createSlug(option.name) === slug) ?? null;
+};
+
+const getStepIndex = (steps: WizardStep[], step: WizardStep) =>
+	steps.indexOf(step);
+
+const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
+	selections,
+}) => {
+	const router = useRouter();
+	const location = useRouterState({ select: (state) => state.location });
+	const queryClient = useQueryClient();
+	const steps = React.useMemo<WizardStep[]>(
+		() => ['race', 'class', 'trait', 'attributes', 'skills', 'character'],
+		[],
+	);
+
+	const [currentStep, setCurrentStep] = React.useState<WizardStep>('race');
+	const [selectedRace, setSelectedRace] = React.useState<RaceOption | null>(null);
+	const [selectedClass, setSelectedClass] = React.useState<ClassOption | null>(null);
+	const [selectedTrait, setSelectedTrait] = React.useState<TraitOption | null>(null);
+	const [selectedAttributes, setSelectedAttributes] = React.useState<StatBlock | null>(null);
+	const [selectedSkillIds, setSelectedSkillIds] = React.useState<string[]>([]);
+	const [characterName, setCharacterName] = React.useState('');
+	const [customStory, setCustomStory] = React.useState('');
+	const [characterIcon, setCharacterIcon] = React.useState('');
+	const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+	const [isSaving, setIsSaving] = React.useState(false);
+
+	const restoringRef = React.useRef(false);
+	const lastRestoredRef = React.useRef('');
+	const lastSerializedRef = React.useRef('');
+
+	const updateUrl = React.useCallback(
+		(
+			race: RaceOption | null,
+			classOption: ClassOption | null,
+			trait: TraitOption | null,
+			attributes: StatBlock | null,
+			skills: string[],
+		) => {
+			if (restoringRef.current) return;
+
+			const segments: string[] = [];
+			if (race) segments.push(createSlug(race.name));
+			if (classOption) segments.push(createSlug(classOption.name));
+			if (trait) segments.push(createSlug(trait.name));
+
+			const queryParams = new URLSearchParams();
+			if (attributes) {
+				queryParams.set(
+					'attrs',
+					STAT_KEYS.map((key) => attributes[key]).join(','),
+				);
+			}
+			if (skills.length > 0) {
+				queryParams.set('skills', skills.join(','));
+			}
+
+			const queryString = queryParams.toString();
+			const basePath = segments.length
+				? `/new-character/${segments.join('/')}`
+				: '/new-character';
+			const nextPath = queryString ? `${basePath}?${queryString}` : basePath;
+			const stateKey = `${segments.join('/')}${queryString ? `?${queryString}` : ''}`;
+
+			if (lastSerializedRef.current === stateKey) return;
+
+			lastSerializedRef.current = stateKey;
+			const currentPath = `${location.pathname}${location.search}`;
+			if (currentPath !== nextPath) {
+				router.navigate({ to: nextPath, replace: true });
+			}
+		},
+		[location.pathname, location.search, router],
+	);
+
+	React.useEffect(() => {
+		updateUrl(
+			selectedRace,
+			selectedClass,
+			selectedTrait,
+			selectedAttributes,
+			selectedSkillIds,
+		);
+	}, [
+		selectedRace,
+		selectedClass,
+		selectedTrait,
+		selectedAttributes,
+		selectedSkillIds,
+		updateUrl,
+	]);
+
+	React.useEffect(() => {
+		const locationKey = `${selections.join('/')}${location.search}`;
+		if (lastRestoredRef.current === locationKey) return;
+
+		restoringRef.current = true;
+		lastRestoredRef.current = locationKey;
+
+		const [raceSlug, classSlug, traitSlug] = selections;
+		const nextRace = findBySlug(WEB_RACES, raceSlug);
+		const nextClass = findBySlug(WEB_CLASSES, classSlug);
+		const nextTrait = findBySlug(WEB_TRAITS, traitSlug);
+
+		setSelectedRace(nextRace);
+		setSelectedClass(nextClass);
+		setSelectedTrait(nextTrait);
+
+		const searchParams = new URLSearchParams(location.search);
+		const attrsParam = searchParams.get('attrs');
+		const skillsParam = searchParams.get('skills');
+
+		if (attrsParam) {
+			const values = attrsParam.split(',').map((value) => Number(value));
+			if (values.length === STAT_KEYS.length && values.every((value) => Number.isFinite(value))) {
+				const attributes = STAT_KEYS.reduce<StatBlock>((acc, key, index) => {
+					acc[key] = values[index] ?? DEFAULT_ATTRIBUTES[key];
+					return acc;
+				}, { ...DEFAULT_ATTRIBUTES });
+				setSelectedAttributes(attributes);
+			}
+		}
+
+		if (skillsParam) {
+			const skills = skillsParam.split(',').filter(Boolean);
+			setSelectedSkillIds(skills);
+		}
+
+		const stepOrder: WizardStep[] = [
+			'race',
+			'class',
+			'trait',
+			'attributes',
+			'skills',
+			'character',
+		];
+		let nextStep: WizardStep = 'race';
+		if (nextRace) nextStep = 'class';
+		if (nextClass) nextStep = 'trait';
+		if (nextTrait) nextStep = 'attributes';
+		if (attrsParam) nextStep = 'skills';
+		if (skillsParam) nextStep = 'character';
+		if (!stepOrder.includes(nextStep)) nextStep = 'race';
+
+		setCurrentStep(nextStep);
+		restoringRef.current = false;
+	}, [location.search, selections]);
+
+	const setStep = (step: WizardStep) => {
+		setErrorMessage(null);
+		setCurrentStep(step);
+	};
+
+	const handleBack = () => {
+		const currentIndex = getStepIndex(steps, currentStep);
+		if (currentIndex <= 0) {
+			router.navigate({ to: '/characters' });
+			return;
+		}
+
+		const previousStep = steps[currentIndex - 1];
+		setStep(previousStep);
+
+		if (previousStep === 'race') {
+			setSelectedRace(null);
+			setSelectedClass(null);
+			setSelectedTrait(null);
+			setSelectedAttributes(null);
+			setSelectedSkillIds([]);
+		} else if (previousStep === 'class') {
+			setSelectedClass(null);
+			setSelectedTrait(null);
+			setSelectedAttributes(null);
+			setSelectedSkillIds([]);
+		} else if (previousStep === 'trait') {
+			setSelectedTrait(null);
+			setSelectedAttributes(null);
+			setSelectedSkillIds([]);
+		} else if (previousStep === 'attributes') {
+			setSelectedAttributes(null);
+			setSelectedSkillIds([]);
+		} else if (previousStep === 'skills') {
+			setSelectedSkillIds([]);
+		}
+	};
+
+	const handleRaceSelect = (race: RaceOption) => {
+		setSelectedRace(race);
+		setSelectedClass(null);
+		setSelectedTrait(null);
+		setSelectedAttributes(null);
+		setSelectedSkillIds([]);
+		setStep('class');
+	};
+
+	const handleClassSelect = (classOption: ClassOption) => {
+		setSelectedClass(classOption);
+		setSelectedTrait(null);
+		setSelectedAttributes(null);
+		setSelectedSkillIds([]);
+		setStep('trait');
+	};
+
+	const handleTraitSelect = (trait: TraitOption) => {
+		setSelectedTrait(trait);
+		setSelectedAttributes(null);
+		setSelectedSkillIds([]);
+		setStep('attributes');
+	};
+
+	const handleAttributeChange = (key: StatKey, value: number) => {
+		const nextAttributes = { ...(selectedAttributes ?? DEFAULT_ATTRIBUTES) };
+		nextAttributes[key] = value;
+		setSelectedAttributes(nextAttributes);
+	};
+
+	const handleSkillToggle = (skill: Skill) => {
+		setSelectedSkillIds((prev) => {
+			if (prev.includes(skill.id)) {
+				return prev.filter((id) => id !== skill.id);
+			}
+			return [...prev, skill.id];
+		});
+	};
+
+	const handleNext = () => {
+		const currentIndex = getStepIndex(steps, currentStep);
+		if (currentIndex === -1 || currentIndex === steps.length - 1) return;
+
+		if (currentStep === 'race' && !selectedRace) {
+			setErrorMessage('Select a race to continue.');
+			return;
+		}
+		if (currentStep === 'class' && !selectedClass) {
+			setErrorMessage('Select a class to continue.');
+			return;
+		}
+		if (currentStep === 'trait' && !selectedTrait) {
+			setErrorMessage('Select a trait to continue.');
+			return;
+		}
+		if (currentStep === 'attributes' && !selectedAttributes) {
+			setSelectedAttributes({ ...DEFAULT_ATTRIBUTES });
+		}
+
+		setStep(steps[currentIndex + 1]);
+	};
+
+	const handleFinalize = async () => {
+		setErrorMessage(null);
+
+		if (!selectedRace || !selectedClass || !selectedTrait) {
+			setErrorMessage('Complete race, class, and trait selections first.');
+			return;
+		}
+
+		const attributes = selectedAttributes ?? DEFAULT_ATTRIBUTES;
+		const name = characterName.trim();
+		const description = customStory.trim();
+
+		if (!name || !description) {
+			setErrorMessage('Enter a character name and background.');
+			return;
+		}
+
+		setIsSaving(true);
+
+		const { inventory, equipped } = generateStartingEquipment(
+			selectedClass.id,
+			selectedRace.id,
+		);
+
+		const payload = {
+			id: `character-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+			level: 1,
+			race: selectedRace.name,
+			name,
+			class: selectedClass.name,
+			trait: selectedTrait.name,
+			icon: characterIcon.trim() || undefined,
+			description,
+			stats: attributes,
+			skills: selectedSkillIds,
+			inventory: addIconsToInventoryItems(inventory),
+			equipped,
+			health: 10,
+			maxHealth: 10,
+			actionPoints: 3,
+			maxActionPoints: 3,
+			statusEffects: [],
+			preparedSpells: [],
+		};
+
+		try {
+			await createCharacter({ data: payload });
+			queryClient.invalidateQueries({ queryKey: charactersQueryOptions().queryKey });
+			await router.navigate({ to: '/characters' });
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Failed to create character.';
+			setErrorMessage(message);
+		} finally {
+			setIsSaving(false);
+		}
+	};
+
+	const renderOptionsGrid = <T extends { id: string; name: string; description: string }>(
+		options: T[],
+		selectedId: string | null,
+		onSelect: (option: T) => void,
+	) => (
+		<div className="grid gap-4 md:grid-cols-2">
+			{options.map((option) => (
+				<button
+					key={option.id}
+					type="button"
+					onClick={() => onSelect(option)}
+					className={`rounded-lg border px-4 py-3 text-left transition ${
+						selectedId === option.id
+							? 'border-amber-400 bg-amber-50'
+							: 'border-slate-200 bg-white hover:border-amber-200'
+					}`}
+				>
+					<div className="text-sm font-semibold text-slate-900">
+						{option.name}
+					</div>
+					<p className="mt-1 text-xs text-slate-600">
+						{option.description}
+					</p>
+				</button>
+			))}
+		</div>
+	);
+
+	const renderAttributes = () => {
+		const attributes = selectedAttributes ?? DEFAULT_ATTRIBUTES;
+		return (
+			<div className="space-y-4">
+				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+					{STAT_KEYS.map((key) => (
+						<label key={key} className="flex flex-col gap-1">
+							<span className="text-xs font-semibold text-slate-500">{key}</span>
+							<input
+								type="number"
+								min={3}
+								max={20}
+								value={attributes[key]}
+								onChange={(event) =>
+									handleAttributeChange(key, Number(event.target.value))
+								}
+								className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+							/>
+						</label>
+					))}
+				</div>
+				<div className="flex flex-wrap gap-2">
+					<button
+						type="button"
+						onClick={() => setSelectedAttributes({ ...STANDARD_ARRAY })}
+						className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-amber-200"
+					>
+						Use Standard Array
+					</button>
+				</div>
+			</div>
+		);
+	};
+
+	const renderSkills = () => (
+		<div className="grid gap-3 sm:grid-cols-2">
+			{WEB_SKILLS.map((skill) => (
+				<label
+					key={skill.id}
+					className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2"
+				>
+					<input
+						type="checkbox"
+						checked={selectedSkillIds.includes(skill.id)}
+						onChange={() => handleSkillToggle(skill)}
+						className="h-4 w-4 rounded border-slate-300"
+					/>
+					<span className="text-sm font-medium text-slate-800">
+						{skill.name}
+					</span>
+					<span className="text-xs text-slate-500">{skill.ability}</span>
+				</label>
+			))}
+		</div>
+	);
+
+	const renderCharacterDetails = () => (
+		<div className="space-y-4">
+			<div className="grid gap-4 sm:grid-cols-2">
+				<label className="flex flex-col gap-1">
+					<span className="text-xs font-semibold text-slate-500">Name</span>
+					<input
+						type="text"
+						value={characterName}
+						onChange={(event) => setCharacterName(event.target.value)}
+						className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+						placeholder="Aria Stormcaller"
+					/>
+				</label>
+				<label className="flex flex-col gap-1">
+					<span className="text-xs font-semibold text-slate-500">Icon URL (optional)</span>
+					<input
+						type="text"
+						value={characterIcon}
+						onChange={(event) => setCharacterIcon(event.target.value)}
+						className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+						placeholder="https://"
+					/>
+				</label>
+			</div>
+			<label className="flex flex-col gap-1">
+				<span className="text-xs font-semibold text-slate-500">Background</span>
+				<textarea
+					rows={4}
+					value={customStory}
+					onChange={(event) => setCustomStory(event.target.value)}
+					className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+					placeholder="Share a brief backstory and motivation."
+				/>
+			</label>
+			<div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+				<div className="font-semibold text-slate-700">Summary</div>
+				<div className="mt-1">
+					{selectedRace?.name ?? 'Race'} / {selectedClass?.name ?? 'Class'} /{' '}
+					{selectedTrait?.name ?? 'Trait'}
+				</div>
+			</div>
+		</div>
+	);
+
+	return (
+		<RouteShell
+			title="New Character"
+			description="Build a hero for your next adventure."
+		>
+			<div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
+				{steps.map((step) => (
+					<button
+						key={step}
+						type="button"
+						onClick={() => setStep(step)}
+						className={`rounded-full border px-3 py-1 ${
+							step === currentStep
+								? 'border-amber-400 bg-amber-50 text-amber-800'
+								: 'border-slate-200 bg-white text-slate-500'
+						}`}
+					>
+						{STEP_LABELS[step]}
+					</button>
+				))}
+			</div>
+			<div className="mt-6">
+				{currentStep === 'race' &&
+					renderOptionsGrid(WEB_RACES, selectedRace?.id ?? null, handleRaceSelect)}
+				{currentStep === 'class' &&
+					renderOptionsGrid(WEB_CLASSES, selectedClass?.id ?? null, handleClassSelect)}
+				{currentStep === 'trait' &&
+					renderOptionsGrid(WEB_TRAITS, selectedTrait?.id ?? null, handleTraitSelect)}
+				{currentStep === 'attributes' && renderAttributes()}
+				{currentStep === 'skills' && renderSkills()}
+				{currentStep === 'character' && renderCharacterDetails()}
+			</div>
+			{errorMessage ? (
+				<div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+					{errorMessage}
+				</div>
+			) : null}
+			<div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+				<button
+					type="button"
+					onClick={handleBack}
+					className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300"
+				>
+					Back
+				</button>
+				{currentStep === 'character' ? (
+					<button
+						type="button"
+						onClick={handleFinalize}
+						disabled={isSaving}
+						className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+					>
+						{isSaving ? 'Saving...' : 'Create Character'}
+					</button>
+				) : (
+					<button
+						type="button"
+						onClick={handleNext}
+						className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
+					>
+						Continue
+					</button>
+				)}
+			</div>
+			<div className="mt-4 text-xs text-slate-500">
+				Need help? Visit the{' '}
+				<Link to="/licenses" className="font-semibold text-amber-700">
+					licenses
+				</Link>{' '}
+				page for additional references.
+			</div>
+		</RouteShell>
+	);
+};
+
+export default CharacterCreationFlow;
