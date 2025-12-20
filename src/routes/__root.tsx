@@ -1,7 +1,6 @@
 /// <reference types="vite/client" />
 import {
 	HeadContent,
-	Link,
 	Outlet,
 	Scripts,
 	createRootRouteWithContext,
@@ -28,85 +27,19 @@ const RootComponent = () => {
 };
 
 const RootDocument = ({ children }: { children: React.ReactNode }) => {
-	const { user } = Route.useRouteContext();
-
 	return (
-		<html>
+		<html lang="en">
 			<head>
 				<HeadContent />
 			</head>
-			<body>
-				<div className="p-2 flex gap-2 text-lg">
-					<Link
-						to="/"
-						activeProps={{
-							className: 'font-bold',
-						}}
-						activeOptions={{ exact: true }}
-					>
-            Home
-					</Link>{' '}
-					<Link
-						to="/posts"
-						activeProps={{
-							className: 'font-bold',
-						}}
-					>
-            Posts
-					</Link>{' '}
-					<Link
-						to="/users"
-						activeProps={{
-							className: 'font-bold',
-						}}
-					>
-            Users
-					</Link>{' '}
-					<Link
-						to="/route-a"
-						activeProps={{
-							className: 'font-bold',
-						}}
-					>
-            Pathless Layout
-					</Link>{' '}
-					<Link
-						to="/deferred"
-						activeProps={{
-							className: 'font-bold',
-						}}
-					>
-            Deferred
-					</Link>{' '}
-					<div className="ml-auto flex gap-2">
-						{user ? (
-							<>
-								<span className="text-sm text-gray-700">{user.email}</span>
-								<Link
-									to="/logout"
-									activeProps={{
-										className: 'font-bold',
-									}}
-								>
-                  Logout
-								</Link>
-							</>
-						) : (
-							<Link
-								to="/login"
-								activeProps={{
-									className: 'font-bold',
-								}}
-							>
-                Login
-							</Link>
-						)}
-					</div>
-				</div>
-				<hr />
+			<body className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
 				{children}
-				<TanStackRouterDevtools position="bottom-right" />
-				<ReactQueryDevtools buttonPosition="bottom-left" />
+				{import.meta.env.DEV ? (
+					<TanStackRouterDevtools position="bottom-right" />
+				) : null}
+				{import.meta.env.DEV ? (
+					<ReactQueryDevtools buttonPosition="bottom-left" />
+				) : null}
 				<Scripts />
 			</body>
 		</html>
@@ -147,9 +80,8 @@ export const Route = createRootRouteWithContext<{
 				content: 'width=device-width, initial-scale=1',
 			},
 			...seo({
-				title:
-          'TanStack Start | Type-Safe, Client-First, Full-Stack React Framework',
-				description: 'TanStack Start is a type-safe, client-first, full-stack React framework. ',
+				title: 'AI D&D Platform',
+				description: 'AI-powered tabletop adventures for solo and multiplayer play.',
 			}),
 		],
 		links: [

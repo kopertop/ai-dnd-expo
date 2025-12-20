@@ -9,28 +9,59 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RedirectRouteImport } from './routes/redirect'
+import { Route as SqlRouteImport } from './routes/sql'
+import { Route as PartyTestRouteImport } from './routes/party-test'
+import { Route as NewGameRouteImport } from './routes/new-game'
+import { Route as MultiplayerGameRouteImport } from './routes/multiplayer-game'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as DeferredRouteImport } from './routes/deferred'
-import { Route as PathlessLayoutRouteImport } from './routes/_pathless-layout'
-import { Route as UsersRouteRouteImport } from './routes/users.route'
-import { Route as PostsRouteRouteImport } from './routes/posts.route'
+import { Route as LicensesRouteImport } from './routes/licenses'
+import { Route as JoinGameRouteImport } from './routes/join-game'
+import { Route as GameRouteRouteImport } from './routes/game/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as UsersIndexRouteImport } from './routes/users.index'
-import { Route as PostsIndexRouteImport } from './routes/posts.index'
-import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
-import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
-import { Route as ApiUsersRouteImport } from './routes/api/users'
-import { Route as PathlessLayoutNestedLayoutRouteImport } from './routes/_pathless-layout/_nested-layout'
-import { Route as PostsPostIdDeepRouteImport } from './routes/posts.$postId.deep'
-import { Route as ApiUsersIdRouteImport } from './routes/api/users.$id'
-import { Route as PathlessLayoutNestedLayoutRouteBRouteImport } from './routes/_pathless-layout/_nested-layout/route-b'
-import { Route as PathlessLayoutNestedLayoutRouteARouteImport } from './routes/_pathless-layout/_nested-layout/route-a'
+import { Route as NewCharacterIndexRouteImport } from './routes/new-character/index'
+import { Route as HostGameIndexRouteImport } from './routes/host-game/index'
+import { Route as CharactersIndexRouteImport } from './routes/characters/index'
+import { Route as AuthIndexRouteImport } from './routes/auth/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as NewCharacterSplatRouteImport } from './routes/new-character/$'
+import { Route as HostGameIdRouteImport } from './routes/host-game/$id'
+import { Route as GameInviteCodeRouteImport } from './routes/game/$invite-code'
+import { Route as CharactersIdRouteImport } from './routes/characters/$id'
+import { Route as AuthErrorRouteImport } from './routes/auth/error'
+import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as AdminImagesRouteImport } from './routes/admin/images'
+import { Route as GametabsRouteRouteImport } from './routes/game/(tabs)/route'
+import { Route as GametabsIndexRouteImport } from './routes/game/(tabs)/index'
+import { Route as AdminWorldsIndexRouteImport } from './routes/admin/worlds/index'
+import { Route as AdminMapsIndexRouteImport } from './routes/admin/maps/index'
+import { Route as HostGameIdMapIdRouteImport } from './routes/host-game/$id/$map-id'
+import { Route as GametabsSettingsRouteImport } from './routes/game/(tabs)/settings'
+import { Route as GametabsMapRouteImport } from './routes/game/(tabs)/map'
+import { Route as GametabsDndModelRouteImport } from './routes/game/(tabs)/dnd-model'
+import { Route as GametabsCharacterRouteImport } from './routes/game/(tabs)/character'
+import { Route as AdminWorldsIdRouteImport } from './routes/admin/worlds/$id'
+import { Route as AdminMapsCreateRouteImport } from './routes/admin/maps/create'
+import { Route as AdminMapsIdRouteImport } from './routes/admin/maps/$id'
 
-const RedirectRoute = RedirectRouteImport.update({
-  id: '/redirect',
-  path: '/redirect',
+const SqlRoute = SqlRouteImport.update({
+  id: '/sql',
+  path: '/sql',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PartyTestRoute = PartyTestRouteImport.update({
+  id: '/party-test',
+  path: '/party-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewGameRoute = NewGameRouteImport.update({
+  id: '/new-game',
+  path: '/new-game',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MultiplayerGameRoute = MultiplayerGameRouteImport.update({
+  id: '/multiplayer-game',
+  path: '/multiplayer-game',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LogoutRoute = LogoutRouteImport.update({
@@ -43,23 +74,19 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DeferredRoute = DeferredRouteImport.update({
-  id: '/deferred',
-  path: '/deferred',
+const LicensesRoute = LicensesRouteImport.update({
+  id: '/licenses',
+  path: '/licenses',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PathlessLayoutRoute = PathlessLayoutRouteImport.update({
-  id: '/_pathless-layout',
+const JoinGameRoute = JoinGameRouteImport.update({
+  id: '/join-game',
+  path: '/join-game',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UsersRouteRoute = UsersRouteRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PostsRouteRoute = PostsRouteRouteImport.update({
-  id: '/posts',
-  path: '/posts',
+const GameRouteRoute = GameRouteRouteImport.update({
+  id: '/game',
+  path: '/game',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -67,190 +94,397 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UsersIndexRoute = UsersIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => UsersRouteRoute,
-} as any)
-const PostsIndexRoute = PostsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => PostsRouteRoute,
-} as any)
-const UsersUserIdRoute = UsersUserIdRouteImport.update({
-  id: '/$userId',
-  path: '/$userId',
-  getParentRoute: () => UsersRouteRoute,
-} as any)
-const PostsPostIdRoute = PostsPostIdRouteImport.update({
-  id: '/$postId',
-  path: '/$postId',
-  getParentRoute: () => PostsRouteRoute,
-} as any)
-const ApiUsersRoute = ApiUsersRouteImport.update({
-  id: '/api/users',
-  path: '/api/users',
+const NewCharacterIndexRoute = NewCharacterIndexRouteImport.update({
+  id: '/new-character/',
+  path: '/new-character/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PathlessLayoutNestedLayoutRoute =
-  PathlessLayoutNestedLayoutRouteImport.update({
-    id: '/_nested-layout',
-    getParentRoute: () => PathlessLayoutRoute,
-  } as any)
-const PostsPostIdDeepRoute = PostsPostIdDeepRouteImport.update({
-  id: '/deep',
-  path: '/deep',
-  getParentRoute: () => PostsPostIdRoute,
+const HostGameIndexRoute = HostGameIndexRouteImport.update({
+  id: '/host-game/',
+  path: '/host-game/',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ApiUsersIdRoute = ApiUsersIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => ApiUsersRoute,
+const CharactersIndexRoute = CharactersIndexRouteImport.update({
+  id: '/characters/',
+  path: '/characters/',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const PathlessLayoutNestedLayoutRouteBRoute =
-  PathlessLayoutNestedLayoutRouteBRouteImport.update({
-    id: '/route-b',
-    path: '/route-b',
-    getParentRoute: () => PathlessLayoutNestedLayoutRoute,
-  } as any)
-const PathlessLayoutNestedLayoutRouteARoute =
-  PathlessLayoutNestedLayoutRouteARouteImport.update({
-    id: '/route-a',
-    path: '/route-a',
-    getParentRoute: () => PathlessLayoutNestedLayoutRoute,
-  } as any)
+const AuthIndexRoute = AuthIndexRouteImport.update({
+  id: '/auth/',
+  path: '/auth/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewCharacterSplatRoute = NewCharacterSplatRouteImport.update({
+  id: '/new-character/$',
+  path: '/new-character/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HostGameIdRoute = HostGameIdRouteImport.update({
+  id: '/host-game/$id',
+  path: '/host-game/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GameInviteCodeRoute = GameInviteCodeRouteImport.update({
+  id: '/$invite-code',
+  path: '/$invite-code',
+  getParentRoute: () => GameRouteRoute,
+} as any)
+const CharactersIdRoute = CharactersIdRouteImport.update({
+  id: '/characters/$id',
+  path: '/characters/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthErrorRoute = AuthErrorRouteImport.update({
+  id: '/auth/error',
+  path: '/auth/error',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminImagesRoute = AdminImagesRouteImport.update({
+  id: '/admin/images',
+  path: '/admin/images',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GametabsRouteRoute = GametabsRouteRouteImport.update({
+  id: '/(tabs)',
+  getParentRoute: () => GameRouteRoute,
+} as any)
+const GametabsIndexRoute = GametabsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => GametabsRouteRoute,
+} as any)
+const AdminWorldsIndexRoute = AdminWorldsIndexRouteImport.update({
+  id: '/admin/worlds/',
+  path: '/admin/worlds/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminMapsIndexRoute = AdminMapsIndexRouteImport.update({
+  id: '/admin/maps/',
+  path: '/admin/maps/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HostGameIdMapIdRoute = HostGameIdMapIdRouteImport.update({
+  id: '/$map-id',
+  path: '/$map-id',
+  getParentRoute: () => HostGameIdRoute,
+} as any)
+const GametabsSettingsRoute = GametabsSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => GametabsRouteRoute,
+} as any)
+const GametabsMapRoute = GametabsMapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => GametabsRouteRoute,
+} as any)
+const GametabsDndModelRoute = GametabsDndModelRouteImport.update({
+  id: '/dnd-model',
+  path: '/dnd-model',
+  getParentRoute: () => GametabsRouteRoute,
+} as any)
+const GametabsCharacterRoute = GametabsCharacterRouteImport.update({
+  id: '/character',
+  path: '/character',
+  getParentRoute: () => GametabsRouteRoute,
+} as any)
+const AdminWorldsIdRoute = AdminWorldsIdRouteImport.update({
+  id: '/admin/worlds/$id',
+  path: '/admin/worlds/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminMapsCreateRoute = AdminMapsCreateRouteImport.update({
+  id: '/admin/maps/create',
+  path: '/admin/maps/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminMapsIdRoute = AdminMapsIdRouteImport.update({
+  id: '/admin/maps/$id',
+  path: '/admin/maps/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/posts': typeof PostsRouteRouteWithChildren
-  '/users': typeof UsersRouteRouteWithChildren
-  '/deferred': typeof DeferredRoute
+  '/game': typeof GametabsRouteRouteWithChildren
+  '/join-game': typeof JoinGameRoute
+  '/licenses': typeof LicensesRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
-  '/redirect': typeof RedirectRoute
-  '/api/users': typeof ApiUsersRouteWithChildren
-  '/posts/$postId': typeof PostsPostIdRouteWithChildren
-  '/users/$userId': typeof UsersUserIdRoute
-  '/posts/': typeof PostsIndexRoute
-  '/users/': typeof UsersIndexRoute
-  '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
-  '/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
-  '/api/users/$id': typeof ApiUsersIdRoute
-  '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/multiplayer-game': typeof MultiplayerGameRoute
+  '/new-game': typeof NewGameRoute
+  '/party-test': typeof PartyTestRoute
+  '/sql': typeof SqlRoute
+  '/admin/images': typeof AdminImagesRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/error': typeof AuthErrorRoute
+  '/characters/$id': typeof CharactersIdRoute
+  '/game/$invite-code': typeof GameInviteCodeRoute
+  '/host-game/$id': typeof HostGameIdRouteWithChildren
+  '/new-character/$': typeof NewCharacterSplatRoute
+  '/admin': typeof AdminIndexRoute
+  '/auth': typeof AuthIndexRoute
+  '/characters': typeof CharactersIndexRoute
+  '/host-game': typeof HostGameIndexRoute
+  '/new-character': typeof NewCharacterIndexRoute
+  '/admin/maps/$id': typeof AdminMapsIdRoute
+  '/admin/maps/create': typeof AdminMapsCreateRoute
+  '/admin/worlds/$id': typeof AdminWorldsIdRoute
+  '/game/character': typeof GametabsCharacterRoute
+  '/game/dnd-model': typeof GametabsDndModelRoute
+  '/game/map': typeof GametabsMapRoute
+  '/game/settings': typeof GametabsSettingsRoute
+  '/host-game/$id/$map-id': typeof HostGameIdMapIdRoute
+  '/admin/maps': typeof AdminMapsIndexRoute
+  '/admin/worlds': typeof AdminWorldsIndexRoute
+  '/game/': typeof GametabsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/deferred': typeof DeferredRoute
+  '/game': typeof GametabsIndexRoute
+  '/join-game': typeof JoinGameRoute
+  '/licenses': typeof LicensesRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
-  '/redirect': typeof RedirectRoute
-  '/api/users': typeof ApiUsersRouteWithChildren
-  '/posts/$postId': typeof PostsPostIdRouteWithChildren
-  '/users/$userId': typeof UsersUserIdRoute
-  '/posts': typeof PostsIndexRoute
-  '/users': typeof UsersIndexRoute
-  '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
-  '/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
-  '/api/users/$id': typeof ApiUsersIdRoute
-  '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/multiplayer-game': typeof MultiplayerGameRoute
+  '/new-game': typeof NewGameRoute
+  '/party-test': typeof PartyTestRoute
+  '/sql': typeof SqlRoute
+  '/admin/images': typeof AdminImagesRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/error': typeof AuthErrorRoute
+  '/characters/$id': typeof CharactersIdRoute
+  '/game/$invite-code': typeof GameInviteCodeRoute
+  '/host-game/$id': typeof HostGameIdRouteWithChildren
+  '/new-character/$': typeof NewCharacterSplatRoute
+  '/admin': typeof AdminIndexRoute
+  '/auth': typeof AuthIndexRoute
+  '/characters': typeof CharactersIndexRoute
+  '/host-game': typeof HostGameIndexRoute
+  '/new-character': typeof NewCharacterIndexRoute
+  '/admin/maps/$id': typeof AdminMapsIdRoute
+  '/admin/maps/create': typeof AdminMapsCreateRoute
+  '/admin/worlds/$id': typeof AdminWorldsIdRoute
+  '/game/character': typeof GametabsCharacterRoute
+  '/game/dnd-model': typeof GametabsDndModelRoute
+  '/game/map': typeof GametabsMapRoute
+  '/game/settings': typeof GametabsSettingsRoute
+  '/host-game/$id/$map-id': typeof HostGameIdMapIdRoute
+  '/admin/maps': typeof AdminMapsIndexRoute
+  '/admin/worlds': typeof AdminWorldsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/posts': typeof PostsRouteRouteWithChildren
-  '/users': typeof UsersRouteRouteWithChildren
-  '/_pathless-layout': typeof PathlessLayoutRouteWithChildren
-  '/deferred': typeof DeferredRoute
+  '/game': typeof GameRouteRouteWithChildren
+  '/join-game': typeof JoinGameRoute
+  '/licenses': typeof LicensesRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
-  '/redirect': typeof RedirectRoute
-  '/_pathless-layout/_nested-layout': typeof PathlessLayoutNestedLayoutRouteWithChildren
-  '/api/users': typeof ApiUsersRouteWithChildren
-  '/posts/$postId': typeof PostsPostIdRouteWithChildren
-  '/users/$userId': typeof UsersUserIdRoute
-  '/posts/': typeof PostsIndexRoute
-  '/users/': typeof UsersIndexRoute
-  '/_pathless-layout/_nested-layout/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
-  '/_pathless-layout/_nested-layout/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
-  '/api/users/$id': typeof ApiUsersIdRoute
-  '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/multiplayer-game': typeof MultiplayerGameRoute
+  '/new-game': typeof NewGameRoute
+  '/party-test': typeof PartyTestRoute
+  '/sql': typeof SqlRoute
+  '/game/(tabs)': typeof GametabsRouteRouteWithChildren
+  '/admin/images': typeof AdminImagesRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/error': typeof AuthErrorRoute
+  '/characters/$id': typeof CharactersIdRoute
+  '/game/$invite-code': typeof GameInviteCodeRoute
+  '/host-game/$id': typeof HostGameIdRouteWithChildren
+  '/new-character/$': typeof NewCharacterSplatRoute
+  '/admin/': typeof AdminIndexRoute
+  '/auth/': typeof AuthIndexRoute
+  '/characters/': typeof CharactersIndexRoute
+  '/host-game/': typeof HostGameIndexRoute
+  '/new-character/': typeof NewCharacterIndexRoute
+  '/admin/maps/$id': typeof AdminMapsIdRoute
+  '/admin/maps/create': typeof AdminMapsCreateRoute
+  '/admin/worlds/$id': typeof AdminWorldsIdRoute
+  '/game/(tabs)/character': typeof GametabsCharacterRoute
+  '/game/(tabs)/dnd-model': typeof GametabsDndModelRoute
+  '/game/(tabs)/map': typeof GametabsMapRoute
+  '/game/(tabs)/settings': typeof GametabsSettingsRoute
+  '/host-game/$id/$map-id': typeof HostGameIdMapIdRoute
+  '/admin/maps/': typeof AdminMapsIndexRoute
+  '/admin/worlds/': typeof AdminWorldsIndexRoute
+  '/game/(tabs)/': typeof GametabsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/posts'
-    | '/users'
-    | '/deferred'
+    | '/game'
+    | '/join-game'
+    | '/licenses'
     | '/login'
     | '/logout'
-    | '/redirect'
-    | '/api/users'
-    | '/posts/$postId'
-    | '/users/$userId'
-    | '/posts/'
-    | '/users/'
-    | '/route-a'
-    | '/route-b'
-    | '/api/users/$id'
-    | '/posts/$postId/deep'
+    | '/multiplayer-game'
+    | '/new-game'
+    | '/party-test'
+    | '/sql'
+    | '/admin/images'
+    | '/auth/callback'
+    | '/auth/error'
+    | '/characters/$id'
+    | '/game/$invite-code'
+    | '/host-game/$id'
+    | '/new-character/$'
+    | '/admin'
+    | '/auth'
+    | '/characters'
+    | '/host-game'
+    | '/new-character'
+    | '/admin/maps/$id'
+    | '/admin/maps/create'
+    | '/admin/worlds/$id'
+    | '/game/character'
+    | '/game/dnd-model'
+    | '/game/map'
+    | '/game/settings'
+    | '/host-game/$id/$map-id'
+    | '/admin/maps'
+    | '/admin/worlds'
+    | '/game/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/deferred'
+    | '/game'
+    | '/join-game'
+    | '/licenses'
     | '/login'
     | '/logout'
-    | '/redirect'
-    | '/api/users'
-    | '/posts/$postId'
-    | '/users/$userId'
-    | '/posts'
-    | '/users'
-    | '/route-a'
-    | '/route-b'
-    | '/api/users/$id'
-    | '/posts/$postId/deep'
+    | '/multiplayer-game'
+    | '/new-game'
+    | '/party-test'
+    | '/sql'
+    | '/admin/images'
+    | '/auth/callback'
+    | '/auth/error'
+    | '/characters/$id'
+    | '/game/$invite-code'
+    | '/host-game/$id'
+    | '/new-character/$'
+    | '/admin'
+    | '/auth'
+    | '/characters'
+    | '/host-game'
+    | '/new-character'
+    | '/admin/maps/$id'
+    | '/admin/maps/create'
+    | '/admin/worlds/$id'
+    | '/game/character'
+    | '/game/dnd-model'
+    | '/game/map'
+    | '/game/settings'
+    | '/host-game/$id/$map-id'
+    | '/admin/maps'
+    | '/admin/worlds'
   id:
     | '__root__'
     | '/'
-    | '/posts'
-    | '/users'
-    | '/_pathless-layout'
-    | '/deferred'
+    | '/game'
+    | '/join-game'
+    | '/licenses'
     | '/login'
     | '/logout'
-    | '/redirect'
-    | '/_pathless-layout/_nested-layout'
-    | '/api/users'
-    | '/posts/$postId'
-    | '/users/$userId'
-    | '/posts/'
-    | '/users/'
-    | '/_pathless-layout/_nested-layout/route-a'
-    | '/_pathless-layout/_nested-layout/route-b'
-    | '/api/users/$id'
-    | '/posts/$postId/deep'
+    | '/multiplayer-game'
+    | '/new-game'
+    | '/party-test'
+    | '/sql'
+    | '/game/(tabs)'
+    | '/admin/images'
+    | '/auth/callback'
+    | '/auth/error'
+    | '/characters/$id'
+    | '/game/$invite-code'
+    | '/host-game/$id'
+    | '/new-character/$'
+    | '/admin/'
+    | '/auth/'
+    | '/characters/'
+    | '/host-game/'
+    | '/new-character/'
+    | '/admin/maps/$id'
+    | '/admin/maps/create'
+    | '/admin/worlds/$id'
+    | '/game/(tabs)/character'
+    | '/game/(tabs)/dnd-model'
+    | '/game/(tabs)/map'
+    | '/game/(tabs)/settings'
+    | '/host-game/$id/$map-id'
+    | '/admin/maps/'
+    | '/admin/worlds/'
+    | '/game/(tabs)/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  PostsRouteRoute: typeof PostsRouteRouteWithChildren
-  UsersRouteRoute: typeof UsersRouteRouteWithChildren
-  PathlessLayoutRoute: typeof PathlessLayoutRouteWithChildren
-  DeferredRoute: typeof DeferredRoute
+  GameRouteRoute: typeof GameRouteRouteWithChildren
+  JoinGameRoute: typeof JoinGameRoute
+  LicensesRoute: typeof LicensesRoute
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
-  RedirectRoute: typeof RedirectRoute
-  ApiUsersRoute: typeof ApiUsersRouteWithChildren
+  MultiplayerGameRoute: typeof MultiplayerGameRoute
+  NewGameRoute: typeof NewGameRoute
+  PartyTestRoute: typeof PartyTestRoute
+  SqlRoute: typeof SqlRoute
+  AdminImagesRoute: typeof AdminImagesRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthErrorRoute: typeof AuthErrorRoute
+  CharactersIdRoute: typeof CharactersIdRoute
+  HostGameIdRoute: typeof HostGameIdRouteWithChildren
+  NewCharacterSplatRoute: typeof NewCharacterSplatRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+  AuthIndexRoute: typeof AuthIndexRoute
+  CharactersIndexRoute: typeof CharactersIndexRoute
+  HostGameIndexRoute: typeof HostGameIndexRoute
+  NewCharacterIndexRoute: typeof NewCharacterIndexRoute
+  AdminMapsIdRoute: typeof AdminMapsIdRoute
+  AdminMapsCreateRoute: typeof AdminMapsCreateRoute
+  AdminWorldsIdRoute: typeof AdminWorldsIdRoute
+  AdminMapsIndexRoute: typeof AdminMapsIndexRoute
+  AdminWorldsIndexRoute: typeof AdminWorldsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/redirect': {
-      id: '/redirect'
-      path: '/redirect'
-      fullPath: '/redirect'
-      preLoaderRoute: typeof RedirectRouteImport
+    '/sql': {
+      id: '/sql'
+      path: '/sql'
+      fullPath: '/sql'
+      preLoaderRoute: typeof SqlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/party-test': {
+      id: '/party-test'
+      path: '/party-test'
+      fullPath: '/party-test'
+      preLoaderRoute: typeof PartyTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/new-game': {
+      id: '/new-game'
+      path: '/new-game'
+      fullPath: '/new-game'
+      preLoaderRoute: typeof NewGameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/multiplayer-game': {
+      id: '/multiplayer-game'
+      path: '/multiplayer-game'
+      fullPath: '/multiplayer-game'
+      preLoaderRoute: typeof MultiplayerGameRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/logout': {
@@ -267,32 +501,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/deferred': {
-      id: '/deferred'
-      path: '/deferred'
-      fullPath: '/deferred'
-      preLoaderRoute: typeof DeferredRouteImport
+    '/licenses': {
+      id: '/licenses'
+      path: '/licenses'
+      fullPath: '/licenses'
+      preLoaderRoute: typeof LicensesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_pathless-layout': {
-      id: '/_pathless-layout'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof PathlessLayoutRouteImport
+    '/join-game': {
+      id: '/join-game'
+      path: '/join-game'
+      fullPath: '/join-game'
+      preLoaderRoute: typeof JoinGameRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/users': {
-      id: '/users'
-      path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: typeof UsersRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof PostsRouteRouteImport
+    '/game': {
+      id: '/game'
+      path: '/game'
+      fullPath: '/game'
+      preLoaderRoute: typeof GameRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -302,171 +529,250 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/users/': {
-      id: '/users/'
-      path: '/'
-      fullPath: '/users/'
-      preLoaderRoute: typeof UsersIndexRouteImport
-      parentRoute: typeof UsersRouteRoute
-    }
-    '/posts/': {
-      id: '/posts/'
-      path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof PostsIndexRouteImport
-      parentRoute: typeof PostsRouteRoute
-    }
-    '/users/$userId': {
-      id: '/users/$userId'
-      path: '/$userId'
-      fullPath: '/users/$userId'
-      preLoaderRoute: typeof UsersUserIdRouteImport
-      parentRoute: typeof UsersRouteRoute
-    }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdRouteImport
-      parentRoute: typeof PostsRouteRoute
-    }
-    '/api/users': {
-      id: '/api/users'
-      path: '/api/users'
-      fullPath: '/api/users'
-      preLoaderRoute: typeof ApiUsersRouteImport
+    '/new-character/': {
+      id: '/new-character/'
+      path: '/new-character'
+      fullPath: '/new-character'
+      preLoaderRoute: typeof NewCharacterIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_pathless-layout/_nested-layout': {
-      id: '/_pathless-layout/_nested-layout'
+    '/host-game/': {
+      id: '/host-game/'
+      path: '/host-game'
+      fullPath: '/host-game'
+      preLoaderRoute: typeof HostGameIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/characters/': {
+      id: '/characters/'
+      path: '/characters'
+      fullPath: '/characters'
+      preLoaderRoute: typeof CharactersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/': {
+      id: '/auth/'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/new-character/$': {
+      id: '/new-character/$'
+      path: '/new-character/$'
+      fullPath: '/new-character/$'
+      preLoaderRoute: typeof NewCharacterSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/host-game/$id': {
+      id: '/host-game/$id'
+      path: '/host-game/$id'
+      fullPath: '/host-game/$id'
+      preLoaderRoute: typeof HostGameIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/game/$invite-code': {
+      id: '/game/$invite-code'
+      path: '/$invite-code'
+      fullPath: '/game/$invite-code'
+      preLoaderRoute: typeof GameInviteCodeRouteImport
+      parentRoute: typeof GameRouteRoute
+    }
+    '/characters/$id': {
+      id: '/characters/$id'
+      path: '/characters/$id'
+      fullPath: '/characters/$id'
+      preLoaderRoute: typeof CharactersIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/error': {
+      id: '/auth/error'
+      path: '/auth/error'
+      fullPath: '/auth/error'
+      preLoaderRoute: typeof AuthErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/images': {
+      id: '/admin/images'
+      path: '/admin/images'
+      fullPath: '/admin/images'
+      preLoaderRoute: typeof AdminImagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/game/(tabs)': {
+      id: '/game/(tabs)'
       path: ''
-      fullPath: ''
-      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteImport
-      parentRoute: typeof PathlessLayoutRoute
+      fullPath: '/game'
+      preLoaderRoute: typeof GametabsRouteRouteImport
+      parentRoute: typeof GameRouteRoute
     }
-    '/posts/$postId/deep': {
-      id: '/posts/$postId/deep'
-      path: '/deep'
-      fullPath: '/posts/$postId/deep'
-      preLoaderRoute: typeof PostsPostIdDeepRouteImport
-      parentRoute: typeof PostsPostIdRoute
+    '/game/(tabs)/': {
+      id: '/game/(tabs)/'
+      path: '/'
+      fullPath: '/game/'
+      preLoaderRoute: typeof GametabsIndexRouteImport
+      parentRoute: typeof GametabsRouteRoute
     }
-    '/api/users/$id': {
-      id: '/api/users/$id'
-      path: '/$id'
-      fullPath: '/api/users/$id'
-      preLoaderRoute: typeof ApiUsersIdRouteImport
-      parentRoute: typeof ApiUsersRoute
+    '/admin/worlds/': {
+      id: '/admin/worlds/'
+      path: '/admin/worlds'
+      fullPath: '/admin/worlds'
+      preLoaderRoute: typeof AdminWorldsIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_pathless-layout/_nested-layout/route-b': {
-      id: '/_pathless-layout/_nested-layout/route-b'
-      path: '/route-b'
-      fullPath: '/route-b'
-      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteBRouteImport
-      parentRoute: typeof PathlessLayoutNestedLayoutRoute
+    '/admin/maps/': {
+      id: '/admin/maps/'
+      path: '/admin/maps'
+      fullPath: '/admin/maps'
+      preLoaderRoute: typeof AdminMapsIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_pathless-layout/_nested-layout/route-a': {
-      id: '/_pathless-layout/_nested-layout/route-a'
-      path: '/route-a'
-      fullPath: '/route-a'
-      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteARouteImport
-      parentRoute: typeof PathlessLayoutNestedLayoutRoute
+    '/host-game/$id/$map-id': {
+      id: '/host-game/$id/$map-id'
+      path: '/$map-id'
+      fullPath: '/host-game/$id/$map-id'
+      preLoaderRoute: typeof HostGameIdMapIdRouteImport
+      parentRoute: typeof HostGameIdRoute
+    }
+    '/game/(tabs)/settings': {
+      id: '/game/(tabs)/settings'
+      path: '/settings'
+      fullPath: '/game/settings'
+      preLoaderRoute: typeof GametabsSettingsRouteImport
+      parentRoute: typeof GametabsRouteRoute
+    }
+    '/game/(tabs)/map': {
+      id: '/game/(tabs)/map'
+      path: '/map'
+      fullPath: '/game/map'
+      preLoaderRoute: typeof GametabsMapRouteImport
+      parentRoute: typeof GametabsRouteRoute
+    }
+    '/game/(tabs)/dnd-model': {
+      id: '/game/(tabs)/dnd-model'
+      path: '/dnd-model'
+      fullPath: '/game/dnd-model'
+      preLoaderRoute: typeof GametabsDndModelRouteImport
+      parentRoute: typeof GametabsRouteRoute
+    }
+    '/game/(tabs)/character': {
+      id: '/game/(tabs)/character'
+      path: '/character'
+      fullPath: '/game/character'
+      preLoaderRoute: typeof GametabsCharacterRouteImport
+      parentRoute: typeof GametabsRouteRoute
+    }
+    '/admin/worlds/$id': {
+      id: '/admin/worlds/$id'
+      path: '/admin/worlds/$id'
+      fullPath: '/admin/worlds/$id'
+      preLoaderRoute: typeof AdminWorldsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/maps/create': {
+      id: '/admin/maps/create'
+      path: '/admin/maps/create'
+      fullPath: '/admin/maps/create'
+      preLoaderRoute: typeof AdminMapsCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/maps/$id': {
+      id: '/admin/maps/$id'
+      path: '/admin/maps/$id'
+      fullPath: '/admin/maps/$id'
+      preLoaderRoute: typeof AdminMapsIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
-interface PostsPostIdRouteChildren {
-  PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
+interface GametabsRouteRouteChildren {
+  GametabsCharacterRoute: typeof GametabsCharacterRoute
+  GametabsDndModelRoute: typeof GametabsDndModelRoute
+  GametabsMapRoute: typeof GametabsMapRoute
+  GametabsSettingsRoute: typeof GametabsSettingsRoute
+  GametabsIndexRoute: typeof GametabsIndexRoute
 }
 
-const PostsPostIdRouteChildren: PostsPostIdRouteChildren = {
-  PostsPostIdDeepRoute: PostsPostIdDeepRoute,
+const GametabsRouteRouteChildren: GametabsRouteRouteChildren = {
+  GametabsCharacterRoute: GametabsCharacterRoute,
+  GametabsDndModelRoute: GametabsDndModelRoute,
+  GametabsMapRoute: GametabsMapRoute,
+  GametabsSettingsRoute: GametabsSettingsRoute,
+  GametabsIndexRoute: GametabsIndexRoute,
 }
 
-const PostsPostIdRouteWithChildren = PostsPostIdRoute._addFileChildren(
-  PostsPostIdRouteChildren,
+const GametabsRouteRouteWithChildren = GametabsRouteRoute._addFileChildren(
+  GametabsRouteRouteChildren,
 )
 
-interface PostsRouteRouteChildren {
-  PostsPostIdRoute: typeof PostsPostIdRouteWithChildren
-  PostsIndexRoute: typeof PostsIndexRoute
+interface GameRouteRouteChildren {
+  GametabsRouteRoute: typeof GametabsRouteRouteWithChildren
+  GameInviteCodeRoute: typeof GameInviteCodeRoute
 }
 
-const PostsRouteRouteChildren: PostsRouteRouteChildren = {
-  PostsPostIdRoute: PostsPostIdRouteWithChildren,
-  PostsIndexRoute: PostsIndexRoute,
+const GameRouteRouteChildren: GameRouteRouteChildren = {
+  GametabsRouteRoute: GametabsRouteRouteWithChildren,
+  GameInviteCodeRoute: GameInviteCodeRoute,
 }
 
-const PostsRouteRouteWithChildren = PostsRouteRoute._addFileChildren(
-  PostsRouteRouteChildren,
+const GameRouteRouteWithChildren = GameRouteRoute._addFileChildren(
+  GameRouteRouteChildren,
 )
 
-interface UsersRouteRouteChildren {
-  UsersUserIdRoute: typeof UsersUserIdRoute
-  UsersIndexRoute: typeof UsersIndexRoute
+interface HostGameIdRouteChildren {
+  HostGameIdMapIdRoute: typeof HostGameIdMapIdRoute
 }
 
-const UsersRouteRouteChildren: UsersRouteRouteChildren = {
-  UsersUserIdRoute: UsersUserIdRoute,
-  UsersIndexRoute: UsersIndexRoute,
+const HostGameIdRouteChildren: HostGameIdRouteChildren = {
+  HostGameIdMapIdRoute: HostGameIdMapIdRoute,
 }
 
-const UsersRouteRouteWithChildren = UsersRouteRoute._addFileChildren(
-  UsersRouteRouteChildren,
-)
-
-interface PathlessLayoutNestedLayoutRouteChildren {
-  PathlessLayoutNestedLayoutRouteARoute: typeof PathlessLayoutNestedLayoutRouteARoute
-  PathlessLayoutNestedLayoutRouteBRoute: typeof PathlessLayoutNestedLayoutRouteBRoute
-}
-
-const PathlessLayoutNestedLayoutRouteChildren: PathlessLayoutNestedLayoutRouteChildren =
-  {
-    PathlessLayoutNestedLayoutRouteARoute:
-      PathlessLayoutNestedLayoutRouteARoute,
-    PathlessLayoutNestedLayoutRouteBRoute:
-      PathlessLayoutNestedLayoutRouteBRoute,
-  }
-
-const PathlessLayoutNestedLayoutRouteWithChildren =
-  PathlessLayoutNestedLayoutRoute._addFileChildren(
-    PathlessLayoutNestedLayoutRouteChildren,
-  )
-
-interface PathlessLayoutRouteChildren {
-  PathlessLayoutNestedLayoutRoute: typeof PathlessLayoutNestedLayoutRouteWithChildren
-}
-
-const PathlessLayoutRouteChildren: PathlessLayoutRouteChildren = {
-  PathlessLayoutNestedLayoutRoute: PathlessLayoutNestedLayoutRouteWithChildren,
-}
-
-const PathlessLayoutRouteWithChildren = PathlessLayoutRoute._addFileChildren(
-  PathlessLayoutRouteChildren,
-)
-
-interface ApiUsersRouteChildren {
-  ApiUsersIdRoute: typeof ApiUsersIdRoute
-}
-
-const ApiUsersRouteChildren: ApiUsersRouteChildren = {
-  ApiUsersIdRoute: ApiUsersIdRoute,
-}
-
-const ApiUsersRouteWithChildren = ApiUsersRoute._addFileChildren(
-  ApiUsersRouteChildren,
+const HostGameIdRouteWithChildren = HostGameIdRoute._addFileChildren(
+  HostGameIdRouteChildren,
 )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  PostsRouteRoute: PostsRouteRouteWithChildren,
-  UsersRouteRoute: UsersRouteRouteWithChildren,
-  PathlessLayoutRoute: PathlessLayoutRouteWithChildren,
-  DeferredRoute: DeferredRoute,
+  GameRouteRoute: GameRouteRouteWithChildren,
+  JoinGameRoute: JoinGameRoute,
+  LicensesRoute: LicensesRoute,
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
-  RedirectRoute: RedirectRoute,
-  ApiUsersRoute: ApiUsersRouteWithChildren,
+  MultiplayerGameRoute: MultiplayerGameRoute,
+  NewGameRoute: NewGameRoute,
+  PartyTestRoute: PartyTestRoute,
+  SqlRoute: SqlRoute,
+  AdminImagesRoute: AdminImagesRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
+  AuthErrorRoute: AuthErrorRoute,
+  CharactersIdRoute: CharactersIdRoute,
+  HostGameIdRoute: HostGameIdRouteWithChildren,
+  NewCharacterSplatRoute: NewCharacterSplatRoute,
+  AdminIndexRoute: AdminIndexRoute,
+  AuthIndexRoute: AuthIndexRoute,
+  CharactersIndexRoute: CharactersIndexRoute,
+  HostGameIndexRoute: HostGameIndexRoute,
+  NewCharacterIndexRoute: NewCharacterIndexRoute,
+  AdminMapsIdRoute: AdminMapsIdRoute,
+  AdminMapsCreateRoute: AdminMapsCreateRoute,
+  AdminWorldsIdRoute: AdminWorldsIdRoute,
+  AdminMapsIndexRoute: AdminMapsIndexRoute,
+  AdminWorldsIndexRoute: AdminWorldsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
