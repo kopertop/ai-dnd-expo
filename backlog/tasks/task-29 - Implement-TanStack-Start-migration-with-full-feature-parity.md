@@ -4,6 +4,7 @@ title: Implement TanStack Start migration with full feature parity
 status: To Do
 assignee: []
 created_date: '2025-12-19 14:23'
+updated_date: '2025-12-20 00:12'
 labels: []
 dependencies: []
 priority: high
@@ -23,4 +24,6 @@ Deliver a full-featured TanStack Start web app (SSR day 1) that matches current 
 - [ ] #4 Character creation flow completes end-to-end and persists data.
 - [ ] #5 Core gameplay flows (join/host game, map interactions, actions, chat) are functional.
 - [ ] #6 Feature parity is validated via the defined test plan/E2E coverage.
+
+- [ ] #7 Expo app is removed/decommissioned and TanStack Start is the primary runtime/entrypoint
 <!-- AC:END -->

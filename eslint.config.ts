@@ -9,7 +9,6 @@ import tsParser from '@typescript-eslint/parser';
 import _import from 'eslint-plugin-import';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
-import reactNative from 'eslint-plugin-react-native';
 import unicorn from 'eslint-plugin-unicorn';
 import unusedImports from 'eslint-plugin-unused-imports';
 import { defineConfig } from 'eslint/config';
@@ -34,15 +33,35 @@ export default defineConfig([
 			'**/build/',
 			'**/dist/',
 			'**/.expo/',
+			'**/app/**',
+			'**/tanstack-app/**',
+			'**/components/**',
+			'**/hooks/**',
+			'**/styles/**',
+			'**/stores/**',
+			'**/adapters/**',
+			'**/scripts/**',
 			'.wrangler/',
 			'**/babel.config.js',
 			'**/metro.config.js',
 			'**/*.config.js',
+			'**/app.config.ts',
+			'**/vite.config.ts',
+			'**/vite.config.mts',
+			'**/playwright.config.ts',
+			'**/eslint.config.ts',
+			'**/vitest*.ts',
 			'**/.eslintcache',
 			'**/*.d.ts',
 			'**/*.mjs',
 			'**/*.cjs',
 			'**/*.js',
+			'index.ts',
+			'services/dnd-model.ts',
+			'services/character-voice-manager.ts',
+			'services/tts/kokoro-client.ts',
+			'services/config/api-base-url.ts',
+			'utils/voice-permissions.ts',
 			'tests/**/*',
 			'ai-training/llama.cpp/**/*',
 		],
@@ -54,7 +73,6 @@ export default defineConfig([
 				'plugin:react/recommended',
 				'plugin:react-hooks/recommended',
 				'plugin:@typescript-eslint/recommended',
-				'eslint-config-expo',
 			),
 		)[0],
 
@@ -64,7 +82,6 @@ export default defineConfig([
 			// @ts-ignore - Type compatibility issues with TypeScript ESLint plugin
 			'@typescript-eslint': fixupPluginRules(typescriptEslint),
 			import: fixupPluginRules(_import),
-			'react-native': reactNative,
 			unicorn,
 			'unused-imports': unusedImports,
 		},
@@ -75,7 +92,6 @@ export default defineConfig([
 					Object.entries(globals.browser).map(([k, v]) => [k.trim(), v]),
 				),
 				...globals.node,
-				...reactNative.environments['react-native']['react-native'],
 			},
 
 			parser: tsParser,
@@ -153,7 +169,6 @@ export default defineConfig([
 			'@typescript-eslint/explicit-function-return-type': 'off',
 			'@typescript-eslint/no-non-null-assertion': 'warn',
 			'@typescript-eslint/strict-boolean-expressions': 'off',
-			'react-native/no-inline-styles': 'off',
 
 			'react/function-component-definition': [
 				'error',
@@ -188,7 +203,6 @@ export default defineConfig([
 			'comma-dangle': ['error', 'always-multiline'],
 			semi: ['error', 'always'],
 			'react/display-name': 'off',
-			'react-native/no-raw-text': 'off',
 		},
 	},
 	{

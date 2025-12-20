@@ -54,25 +54,22 @@ An open-source platform for playing Dungeons and Dragons online with AI assistan
    EXPO_PUBLIC_TTS_BASE_URL=http://localhost:5000
 
    # Google OAuth (for authentication)
-   EXPO_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
-   EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB=your-google-client-id-web
+   VITE_GOOGLE_CLIENT_ID=your-google-client-id
+   GOOGLE_CLIENT_ID=your-google-client-id
 
    # Apple OAuth (for iOS authentication)
    EXPO_PUBLIC_APPLE_CLIENT_ID=your-apple-client-id
+
+   # Session secret (min 32 characters)
+   SESSION_SECRET=your-long-random-session-secret
    ```
 
 3. **Start the development server**
 
    ```bash
-   npm run dev
+   bun run start
    ```
-   This will start both the Expo web server and the Cloudflare Worker API server locally.
-
-4. **Choose your platform**
-   - Press `i` for iOS simulator
-   - Press `a` for Android emulator
-   - Press `w` for web browser (runs at http://localhost:8081)
-   - Scan QR code with Expo Go app
+   This will start the TanStack Start web app and the Cloudflare Worker API server locally.
 
 ### Web Platform Setup
 
@@ -199,9 +196,7 @@ We welcome contributions! Please see our [AI-INSTRUCTIONS.md](./AI-INSTRUCTIONS.
 
 ## 📱 Platform Support
 
-- ✅ iOS (iPhone & iPad)
-- ✅ Android
-- ✅ Web (Progressive Web App)
+- ✅ Web (TanStack Start)
 - 🔄 Desktop (future: Electron)
 
 ## 🛡️ Privacy & Security
@@ -219,35 +214,9 @@ MIT License - see [LICENSE](./LICENSE) for details.
 
 Ready to embark on your AI-assisted D&D adventure? Install the app and let the AI guide you through epic quests, memorable characters, and unforgettable stories.
 
-## 🚀 Automated TestFlight Releases
+## 🚀 Deployment
 
-Pushes to the `main` branch automatically trigger the **Release iOS to TestFlight** GitHub Action. The workflow installs dependencies, builds the iOS binary with the Expo Application Services (EAS) production profile, and submits the build to TestFlight.
-
-### 1. Create the required credentials
-
-1. **Expo access token** – Generate a long-lived token from your Expo account settings (`https://expo.dev/accounts/<account>/settings/access-tokens>`).
-2. **App Store Connect API key (recommended)** – Create an API key with *App Manager* access in App Store Connect, then download the `.p8` file. Combine the key details into JSON and base64-encode it so it can be stored as a secret:
-   ```bash
-   cat <<'JSON' > asc-api-key.json
-   {
-     "keyId": "<KEY_ID>",
-     "issuerId": "<ISSUER_ID>",
-     "key": "$(tr -d '\n' < AuthKey_<KEY_ID>.p8)"
-   }
-   JSON
-
-   base64 asc-api-key.json | pbcopy  # macOS example
-   ```
-   > You can alternatively provide an **App Store Connect app-specific password** if you cannot use an API key.
-3. **Team and App identifiers** – Note your Apple Developer Team ID (available in the Apple Developer portal) and the App Store Connect App ID (the numeric ID shown on the app’s App Information page).
-
-### 2. Add GitHub Action secrets
-
-Store the following secrets in **Settings → Secrets and variables → Actions**:
-
-| Secret name | Required | Description |
-| --- | --- | --- |
-| `EXPO_TOKEN` | ✅ | Expo access token used by the workflow to authenticate with EAS. |
+Use `bun run deploy:web` to build and deploy the TanStack Start web app, and `bun run deploy:api` for the Cloudflare Worker API.
 | `EXPO_APP_STORE_CONNECT_API_KEY` | ✅ (recommended) | Base64-encoded App Store Connect API key JSON as shown above. |
 | `EXPO_APPLE_APP_SPECIFIC_PASSWORD` | ⚠️ (optional) | App-specific password for Apple ID. Only needed if you are not providing an API key. |
 | `APPLE_TEAM_ID` | ✅ | Apple Developer Team ID used for signing. |

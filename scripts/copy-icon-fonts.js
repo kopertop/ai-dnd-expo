@@ -4,8 +4,12 @@
  * Since Cloudflare Pages doesn't upload node_modules, we need to copy the fonts manually
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const fontsDir = path.join(__dirname, '../node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts');
 const distFontsDir = path.join(__dirname, '../dist/assets/fonts');
@@ -54,4 +58,3 @@ for (const font of requiredFonts) {
 }
 
 console.log(`\nDone! Copied ${copied} fonts to dist/assets/fonts and assets/fonts, skipped ${skipped} missing fonts.`);
-

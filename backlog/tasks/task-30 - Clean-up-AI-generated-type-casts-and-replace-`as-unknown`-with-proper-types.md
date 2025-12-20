@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - codex
 created_date: '2025-12-19 23:24'
-updated_date: '2025-12-19 23:52'
+updated_date: '2025-12-20 00:12'
 labels: []
 dependencies: []
 priority: medium
@@ -42,4 +42,6 @@ Removed new `as unknown` route casts by reverting to string routes in admin maps
 Added typed map upsert payload + helpers to normalize JSON fields and dedupe map tile/token processing; replaced `any` tile mapping and extracted default tile property helper.
 
 `bun run check` fails due to missing TanStack Start dependencies/types (`@tanstack/react-router`, `@tanstack/react-start`, `redaxios`, etc.) and related implicit-anys in `tanstack-app/*`. Our changes no longer show type errors in `api/src/routes/maps.ts`.
+
+User clarified that defensive checks are desired; scope focuses on duplicate logic and `any`/`unknown` casts. Typecheck failures currently tied to missing TanStack Start deps; will resolve once migration lands.
 <!-- SECTION:NOTES:END -->

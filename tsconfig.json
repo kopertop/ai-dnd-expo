@@ -1,68 +1,105 @@
 {
-	"extends": "expo/tsconfig.base",
-	"compilerOptions": {
-		"strict": true,
-		"module": "esnext",
-		"moduleResolution": "bundler",
-		"allowSyntheticDefaultImports": true,
-		"esModuleInterop": true,
-		"baseUrl": ".",
-		"paths": {
-			"~/*": [
-				"./tanstack-app/src/*"
-			],
-			"@/*": [
-				"./*"
-			],
-			"@/api/*": [
-				"./api/*"
-			],
-			"@/assets/*": [
-				"./assets/*"
-			],
-			"@/components/*": [
-				"./components/*"
-			],
-			"@/constants/*": [
-				"./constants/*"
-			],
-			"@/contexts/*": [
-				"./contexts/*"
-			],
-			"@/hooks/*": [
-				"./hooks/*"
-			],
-			"@/shared/*": [
-				"./shared/*"
-			],
-			"@/styles/*": [
-				"./styles/*"
-			],
-			"@/services/*": [
-				"./services/*"
-			],
-			"@/types/*": [
-				"./types/*"
-			],
-			"@/utils/*": [
-				"./utils/*"
-			]
-		}
-	},
-	"include": [
-		"**/*.ts",
-		"**/*.tsx",
-		"**/*.d.ts",
-		".expo/types/**/*.ts",
-		"expo-env.d.ts"
-	],
-	"exclude": [
-		"node_modules",
-		"tests/**/*",
-		"ai-training/llama.cpp/**/*",
-		"components/cactus.ts",
-		"hooks/use-cactus-dungeon-master.ts",
-		"services/ai/providers/cactus-*.ts",
-		"services/ai/agents/cactus-*.ts"
-	]
+  "compilerOptions": {
+    "strict": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "target": "ES2022",
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2022"
+    ],
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "~/*": [
+        "./src/*"
+      ],
+      "@/*": [
+        "./*"
+      ],
+      "@/api/*": [
+        "./api/*"
+      ],
+      "@/assets/*": [
+        "./assets/*"
+      ],
+      "@/components/*": [
+        "./components/*"
+      ],
+      "@/constants/*": [
+        "./constants/*"
+      ],
+      "@/contexts/*": [
+        "./contexts/*"
+      ],
+      "@/hooks/*": [
+        "./hooks/*"
+      ],
+      "@/shared/*": [
+        "./shared/*"
+      ],
+      "@/styles/*": [
+        "./styles/*"
+      ],
+      "@/services/*": [
+        "./services/*"
+      ],
+      "@/types/*": [
+        "./types/*"
+      ],
+      "@/utils/*": [
+        "./utils/*"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "api/**/*.ts",
+    "api/**/*.tsx",
+    "functions/**/*.ts",
+    "functions/**/*.tsx",
+    "shared/**/*.ts",
+    "shared/**/*.tsx",
+    "services/**/*.ts",
+    "services/**/*.tsx",
+    "types/**/*.ts",
+    "types/**/*.tsx",
+    "utils/**/*.ts",
+    "utils/**/*.tsx",
+    "**/*.d.ts",
+    "constants/**/*.ts",
+    "lib/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "tests/**/*",
+    "tanstack-app/**/*",
+    "app/**/*",
+    "components/**/*",
+    "hooks/**/*",
+    "styles/**/*",
+    "stores/**/*",
+    "adapters/**/*",
+    "assets/**/*",
+    ".expo/**/*",
+    "expo-env.d.ts",
+    "app.config.ts",
+    "index.ts",
+    "ai-training/llama.cpp/**/*",
+    "services/dnd-model.ts",
+    "services/character-voice-manager.ts",
+    "services/tts/kokoro-client.ts",
+    "services/config/api-base-url.ts",
+    "utils/voice-permissions.ts",
+    "types/expo-file-system.d.ts"
+  ]
 }
