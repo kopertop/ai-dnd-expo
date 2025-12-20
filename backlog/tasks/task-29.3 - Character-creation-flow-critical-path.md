@@ -4,7 +4,7 @@ title: Character creation flow (critical path)
 status: Done
 assignee: []
 created_date: '2025-12-19 14:23'
-updated_date: '2025-12-20 02:00'
+updated_date: '2025-12-20 02:15'
 labels: []
 dependencies: []
 parent_task_id: task-29
@@ -30,4 +30,6 @@ Implement the character creation experience in the TanStack Start app with parit
 - Added web-safe character option data in `src/data/character-options.ts` and server helpers in `src/utils/characters.ts` for listing/creating characters via session auth.
 - Implemented TanStack Start character creation flow UI (`src/components/character-creation-flow.tsx`) and wired `/new-character` routes to persist characters and update URLs.
 - Updated character list/detail routes to fetch and display created characters with React Query loaders.
+
+- Added asset-backed icons for races/classes/traits/skills in `src/data/character-options.ts`, enforced 4-skill selection limit, and defaulted attribute selection to the standard array in `src/components/character-creation-flow.tsx`.
 <!-- SECTION:NOTES:END -->

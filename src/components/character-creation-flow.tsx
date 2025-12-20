@@ -15,15 +15,6 @@ import { WEB_CLASSES, WEB_RACES, WEB_SKILLS, WEB_TRAITS } from '~/data/character
 import RouteShell from '~/components/route-shell';
 import { charactersQueryOptions, createCharacter } from '~/utils/characters';
 
-const DEFAULT_ATTRIBUTES: StatBlock = {
-	STR: 10,
-	DEX: 10,
-	CON: 10,
-	INT: 10,
-	WIS: 10,
-	CHA: 10,
-};
-
 const STANDARD_ARRAY: StatBlock = {
 	STR: 15,
 	DEX: 14,
@@ -34,6 +25,8 @@ const STANDARD_ARRAY: StatBlock = {
 };
 
 type WizardStep = 'race' | 'class' | 'trait' | 'attributes' | 'skills' | 'character';
+
+const MAX_SKILLS = 4;
 
 const STEP_LABELS: Record<WizardStep, string> = {
 	race: 'Race',
@@ -177,15 +170,20 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 			const values = attrsParam.split(',').map((value) => Number(value));
 			if (values.length === STAT_KEYS.length && values.every((value) => Number.isFinite(value))) {
 				const attributes = STAT_KEYS.reduce<StatBlock>((acc, key, index) => {
-					acc[key] = values[index] ?? DEFAULT_ATTRIBUTES[key];
+					acc[key] = values[index] ?? STANDARD_ARRAY[key];
 					return acc;
-				}, { ...DEFAULT_ATTRIBUTES });
+				}, { ...STANDARD_ARRAY });
 				setSelectedAttributes(attributes);
 			}
+		} else if (nextTrait) {
+			setSelectedAttributes({ ...STANDARD_ARRAY });
 		}
 
 		if (skillsParam) {
-			const skills = skillsParam.split(',').filter(Boolean);
+			const skills = skillsParam
+				.split(',')
+				.filter(Boolean)
+				.slice(0, MAX_SKILLS);
 			setSelectedSkillIds(skills);
 		}
 
@@ -208,6 +206,12 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 		setCurrentStep(nextStep);
 		restoringRef.current = false;
 	}, [location.search, selections]);
+
+	React.useEffect(() => {
+		if (currentStep === 'attributes' && !selectedAttributes) {
+			setSelectedAttributes({ ...STANDARD_ARRAY });
+		}
+	}, [currentStep, selectedAttributes]);
 
 	const setStep = (step: WizardStep) => {
 		setErrorMessage(null);
@@ -266,13 +270,13 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 
 	const handleTraitSelect = (trait: TraitOption) => {
 		setSelectedTrait(trait);
-		setSelectedAttributes(null);
+		setSelectedAttributes({ ...STANDARD_ARRAY });
 		setSelectedSkillIds([]);
 		setStep('attributes');
 	};
 
 	const handleAttributeChange = (key: StatKey, value: number) => {
-		const nextAttributes = { ...(selectedAttributes ?? DEFAULT_ATTRIBUTES) };
+		const nextAttributes = { ...(selectedAttributes ?? STANDARD_ARRAY) };
 		nextAttributes[key] = value;
 		setSelectedAttributes(nextAttributes);
 	};
@@ -280,8 +284,14 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 	const handleSkillToggle = (skill: Skill) => {
 		setSelectedSkillIds((prev) => {
 			if (prev.includes(skill.id)) {
+				setErrorMessage(null);
 				return prev.filter((id) => id !== skill.id);
 			}
+			if (prev.length >= MAX_SKILLS) {
+				setErrorMessage(`Choose up to ${MAX_SKILLS} skills.`);
+				return prev;
+			}
+			setErrorMessage(null);
 			return [...prev, skill.id];
 		});
 	};
@@ -303,7 +313,7 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 			return;
 		}
 		if (currentStep === 'attributes' && !selectedAttributes) {
-			setSelectedAttributes({ ...DEFAULT_ATTRIBUTES });
+			setSelectedAttributes({ ...STANDARD_ARRAY });
 		}
 
 		setStep(steps[currentIndex + 1]);
@@ -317,7 +327,7 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 			return;
 		}
 
-		const attributes = selectedAttributes ?? DEFAULT_ATTRIBUTES;
+		const attributes = selectedAttributes ?? STANDARD_ARRAY;
 		const name = characterName.trim();
 		const description = customStory.trim();
 
@@ -367,36 +377,59 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 		}
 	};
 
-	const renderOptionsGrid = <T extends { id: string; name: string; description: string }>(
+	const renderOptionsGrid = <T extends { id: string; name: string; description: string; image?: unknown }>(
 		options: T[],
 		selectedId: string | null,
 		onSelect: (option: T) => void,
 	) => (
 		<div className="grid gap-4 md:grid-cols-2">
-			{options.map((option) => (
-				<button
-					key={option.id}
-					type="button"
-					onClick={() => onSelect(option)}
-					className={`rounded-lg border px-4 py-3 text-left transition ${
-						selectedId === option.id
-							? 'border-amber-400 bg-amber-50'
-							: 'border-slate-200 bg-white hover:border-amber-200'
-					}`}
-				>
-					<div className="text-sm font-semibold text-slate-900">
-						{option.name}
-					</div>
-					<p className="mt-1 text-xs text-slate-600">
-						{option.description}
-					</p>
-				</button>
-			))}
+			{options.map((option) => {
+				const imageSrc =
+					typeof option.image === 'string'
+						? option.image
+						: typeof (option.image as { uri?: string } | undefined)?.uri === 'string'
+							? (option.image as { uri: string }).uri
+							: null;
+				return (
+					<button
+						key={option.id}
+						type="button"
+						onClick={() => onSelect(option)}
+						className={`rounded-lg border px-4 py-3 text-left transition ${
+							selectedId === option.id
+								? 'border-amber-400 bg-amber-50'
+								: 'border-slate-200 bg-white hover:border-amber-200'
+						}`}
+					>
+						<div className="flex items-start gap-3">
+							<div className="flex h-14 w-14 items-center justify-center rounded-md bg-slate-100">
+								{imageSrc ? (
+									<img
+										src={imageSrc}
+										alt={option.name}
+										className="h-12 w-12 object-contain"
+									/>
+								) : (
+									<span className="text-xs text-slate-400">No image</span>
+								)}
+							</div>
+							<div>
+								<div className="text-sm font-semibold text-slate-900">
+									{option.name}
+								</div>
+								<p className="mt-1 text-xs text-slate-600">
+									{option.description}
+								</p>
+							</div>
+						</div>
+					</button>
+				);
+			})}
 		</div>
 	);
 
 	const renderAttributes = () => {
-		const attributes = selectedAttributes ?? DEFAULT_ATTRIBUTES;
+		const attributes = selectedAttributes ?? STANDARD_ARRAY;
 		return (
 			<div className="space-y-4">
 				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -430,24 +463,57 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 	};
 
 	const renderSkills = () => (
-		<div className="grid gap-3 sm:grid-cols-2">
-			{WEB_SKILLS.map((skill) => (
-				<label
-					key={skill.id}
-					className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2"
-				>
-					<input
-						type="checkbox"
-						checked={selectedSkillIds.includes(skill.id)}
-						onChange={() => handleSkillToggle(skill)}
-						className="h-4 w-4 rounded border-slate-300"
-					/>
-					<span className="text-sm font-medium text-slate-800">
-						{skill.name}
-					</span>
-					<span className="text-xs text-slate-500">{skill.ability}</span>
-				</label>
-			))}
+		<div>
+			<div className="mb-3 text-xs font-semibold text-slate-500">
+				Choose {MAX_SKILLS} skills ({selectedSkillIds.length}/{MAX_SKILLS})
+			</div>
+			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+				{WEB_SKILLS.map((skill) => {
+					const isSelected = selectedSkillIds.includes(skill.id);
+					const isDisabled = !isSelected && selectedSkillIds.length >= MAX_SKILLS;
+					const imageSrc =
+						typeof skill.image === 'string'
+							? skill.image
+							: typeof (skill.image as { uri?: string } | undefined)?.uri === 'string'
+								? (skill.image as { uri: string }).uri
+								: null;
+					return (
+						<label
+							key={skill.id}
+							className={`flex items-center gap-3 rounded-md border px-3 py-2 transition ${
+								isSelected
+									? 'border-amber-400 bg-amber-50'
+									: 'border-slate-200 bg-white'
+							} ${isDisabled ? 'opacity-50' : 'hover:border-amber-200'}`}
+						>
+							<input
+								type="checkbox"
+								checked={isSelected}
+								onChange={() => handleSkillToggle(skill)}
+								disabled={isDisabled}
+								className="h-4 w-4 rounded border-slate-300"
+							/>
+							<div className="flex h-12 w-12 items-center justify-center rounded-md bg-slate-100">
+								{imageSrc ? (
+									<img
+										src={imageSrc}
+										alt={skill.name}
+										className="h-10 w-10 object-contain"
+									/>
+								) : (
+									<span className="text-[10px] text-slate-400">No image</span>
+								)}
+							</div>
+							<div>
+								<div className="text-sm font-semibold text-slate-800">
+									{skill.name}
+								</div>
+								<div className="text-xs text-slate-500">{skill.ability}</div>
+							</div>
+						</label>
+					);
+				})}
+			</div>
 		</div>
 	);
 

@@ -1,3 +1,58 @@
+import customImage from '@/assets/images/custom.png';
+import artificerImage from '@/assets/images/classes/artificer.png';
+import barbarianImage from '@/assets/images/classes/barbarian.png';
+import bardImage from '@/assets/images/classes/bard.png';
+import clericImage from '@/assets/images/classes/cleric.png';
+import druidImage from '@/assets/images/classes/druid.png';
+import fighterImage from '@/assets/images/classes/fighter.png';
+import monkImage from '@/assets/images/classes/monk.png';
+import paladinImage from '@/assets/images/classes/paladin.png';
+import rangerImage from '@/assets/images/classes/ranger.png';
+import rogueImage from '@/assets/images/classes/rogue.png';
+import sorcererImage from '@/assets/images/classes/sorcerer.png';
+import warlockImage from '@/assets/images/classes/warlock.png';
+import wizardImage from '@/assets/images/classes/wizard.png';
+import acrobaticsImage from '@/assets/images/skills/acrobatics.png';
+import arcanaImage from '@/assets/images/skills/arcana.png';
+import athleticsImage from '@/assets/images/skills/athletics.png';
+import bluffImage from '@/assets/images/skills/bluff.png';
+import diplomacyImage from '@/assets/images/skills/diplomacy.png';
+import dungeoneeringImage from '@/assets/images/skills/dungeoneering.png';
+import enduranceImage from '@/assets/images/skills/endurance.png';
+import healImage from '@/assets/images/skills/heal.png';
+import historyImage from '@/assets/images/skills/history.png';
+import insightImage from '@/assets/images/skills/insight.png';
+import intimidateImage from '@/assets/images/skills/intimidate.png';
+import natureImage from '@/assets/images/skills/nature.png';
+import perceptionImage from '@/assets/images/skills/perception.png';
+import religionImage from '@/assets/images/skills/religion.png';
+import stealthImage from '@/assets/images/skills/stealth.png';
+import streetwiseImage from '@/assets/images/skills/streetwise.png';
+import thieveryImage from '@/assets/images/skills/thievery.png';
+import dragonbornImage from '@/assets/images/races/dragonborn.png';
+import dwarfImage from '@/assets/images/races/dwarf.png';
+import eladrinImage from '@/assets/images/races/eladrin.png';
+import elfImage from '@/assets/images/races/elf.png';
+import gnomeImage from '@/assets/images/races/gnome.png';
+import halfElfImage from '@/assets/images/races/half-elf.png';
+import halfOrcImage from '@/assets/images/races/half-orc.png';
+import halflingImage from '@/assets/images/races/halfling.png';
+import humanImage from '@/assets/images/races/human.png';
+import tieflingImage from '@/assets/images/races/tiefling.png';
+import arcaneTattooedImage from '@/assets/images/traits/arcane-tattooed.png';
+import artifactEmbeddedImage from '@/assets/images/traits/artifact-embedded.png';
+import celestialBloodImage from '@/assets/images/traits/celestial-blood.png';
+import draconicHeritageImage from '@/assets/images/traits/draconic-heritage.png';
+import elementalFireImage from '@/assets/images/traits/elemental-fire.png';
+import elementalIceImage from '@/assets/images/traits/elemental-ice.png';
+import feytouchedImage from '@/assets/images/traits/feytouched.png';
+import infernalTaintImage from '@/assets/images/traits/infernal-taint.png';
+import markedByDeathImage from '@/assets/images/traits/marked-by-death.png';
+import runebloodedImage from '@/assets/images/traits/runeblooded.png';
+import shadowboundImage from '@/assets/images/traits/shadowbound.png';
+import spellscaredImage from '@/assets/images/traits/spellscared.png';
+import starcursedImage from '@/assets/images/traits/starcursed.png';
+import stormtouchedImage from '@/assets/images/traits/stormtouched.png';
 import { getRaceBaseSpeed } from '@/constants/race-speed';
 import type { ClassOption } from '@/types/class-option';
 import type { RaceOption } from '@/types/race-option';
@@ -9,7 +64,7 @@ export const WEB_RACES: RaceOption[] = [
 		id: 'human',
 		name: 'Human',
 		description: 'Versatile and ambitious, humans are found throughout the world.',
-		image: null,
+		image: humanImage,
 		statBonuses: { STR: 1, DEX: 1, CON: 1, INT: 1, WIS: 1, CHA: 1 },
 		speed: getRaceBaseSpeed('human'),
 	},
@@ -17,7 +72,7 @@ export const WEB_RACES: RaceOption[] = [
 		id: 'elf',
 		name: 'Elf',
 		description: 'Graceful, swift, and attuned to nature and magic.',
-		image: null,
+		image: elfImage,
 		statBonuses: { DEX: 2 },
 		speed: getRaceBaseSpeed('elf'),
 	},
@@ -25,7 +80,7 @@ export const WEB_RACES: RaceOption[] = [
 		id: 'dwarf',
 		name: 'Dwarf',
 		description: 'Stout, hardy, and strong, dwarves are known for their resilience.',
-		image: null,
+		image: dwarfImage,
 		statBonuses: { CON: 2 },
 		speed: getRaceBaseSpeed('dwarf'),
 	},
@@ -33,7 +88,7 @@ export const WEB_RACES: RaceOption[] = [
 		id: 'dragonborn',
 		name: 'Dragonborn',
 		description: 'Proud, honorable warriors with draconic ancestry.',
-		image: null,
+		image: dragonbornImage,
 		statBonuses: { STR: 2, CHA: 1 },
 		speed: getRaceBaseSpeed('dragonborn'),
 	},
@@ -41,7 +96,7 @@ export const WEB_RACES: RaceOption[] = [
 		id: 'tiefling',
 		name: 'Tiefling',
 		description: 'Descendants of infernal pacts, marked by horns and tails.',
-		image: null,
+		image: tieflingImage,
 		statBonuses: { CHA: 2, INT: 1 },
 		speed: getRaceBaseSpeed('tiefling'),
 	},
@@ -49,7 +104,7 @@ export const WEB_RACES: RaceOption[] = [
 		id: 'halfling',
 		name: 'Halfling',
 		description: 'Small, nimble, and lucky, halflings are cheerful wanderers.',
-		image: null,
+		image: halflingImage,
 		statBonuses: { DEX: 2 },
 		speed: getRaceBaseSpeed('halfling'),
 	},
@@ -57,7 +112,7 @@ export const WEB_RACES: RaceOption[] = [
 		id: 'half-elf',
 		name: 'Half-Elf',
 		description: 'Blending human versatility and elven grace.',
-		image: null,
+		image: halfElfImage,
 		statBonuses: { CHA: 2, DEX: 1, CON: 1 },
 		speed: getRaceBaseSpeed('half-elf'),
 	},
@@ -65,7 +120,7 @@ export const WEB_RACES: RaceOption[] = [
 		id: 'half-orc',
 		name: 'Half-Orc',
 		description: 'Strong and fierce, half-orcs are often misunderstood.',
-		image: null,
+		image: halfOrcImage,
 		statBonuses: { STR: 2, CON: 1 },
 		speed: getRaceBaseSpeed('half-orc'),
 	},
@@ -73,7 +128,7 @@ export const WEB_RACES: RaceOption[] = [
 		id: 'gnome',
 		name: 'Gnome',
 		description: 'Inventive and magical, gnomes are clever tricksters.',
-		image: null,
+		image: gnomeImage,
 		statBonuses: { INT: 2 },
 		speed: getRaceBaseSpeed('gnome'),
 	},
@@ -81,7 +136,7 @@ export const WEB_RACES: RaceOption[] = [
 		id: 'eladrin',
 		name: 'Eladrin',
 		description: 'Fey-touched elves with strong ties to the arcane.',
-		image: null,
+		image: eladrinImage,
 		statBonuses: { DEX: 2, CHA: 1 },
 		speed: getRaceBaseSpeed('eladrin'),
 	},
@@ -89,7 +144,7 @@ export const WEB_RACES: RaceOption[] = [
 		id: 'custom',
 		name: 'Custom',
 		description: 'Create your own race and ancestry details.',
-		image: null,
+		image: customImage,
 		isCustom: true,
 		speed: getRaceBaseSpeed('custom'),
 	},
@@ -100,7 +155,7 @@ export const WEB_CLASSES: ClassOption[] = [
 		id: 'fighter',
 		name: 'Fighter',
 		description: 'Masters of combat, fighters excel with weapons and armor.',
-		image: null,
+		image: fighterImage,
 		primaryStats: ['STR'],
 		secondaryStats: ['CON', 'DEX'],
 	},
@@ -108,7 +163,7 @@ export const WEB_CLASSES: ClassOption[] = [
 		id: 'rogue',
 		name: 'Rogue',
 		description: 'Skilled in stealth, thievery, and precision strikes.',
-		image: null,
+		image: rogueImage,
 		primaryStats: ['DEX'],
 		secondaryStats: ['INT', 'CHA'],
 	},
@@ -116,7 +171,7 @@ export const WEB_CLASSES: ClassOption[] = [
 		id: 'wizard',
 		name: 'Wizard',
 		description: 'Arcane masters who wield powerful spells through study.',
-		image: null,
+		image: wizardImage,
 		primaryStats: ['INT'],
 		secondaryStats: ['CON', 'DEX'],
 	},
@@ -124,7 +179,7 @@ export const WEB_CLASSES: ClassOption[] = [
 		id: 'cleric',
 		name: 'Cleric',
 		description: 'Divine spellcasters who heal allies and smite enemies.',
-		image: null,
+		image: clericImage,
 		primaryStats: ['WIS'],
 		secondaryStats: ['STR', 'CON'],
 	},
@@ -132,7 +187,7 @@ export const WEB_CLASSES: ClassOption[] = [
 		id: 'ranger',
 		name: 'Ranger',
 		description: 'Skilled hunters and trackers who protect the wilds.',
-		image: null,
+		image: rangerImage,
 		primaryStats: ['DEX', 'WIS'],
 		secondaryStats: ['CON'],
 	},
@@ -140,7 +195,7 @@ export const WEB_CLASSES: ClassOption[] = [
 		id: 'paladin',
 		name: 'Paladin',
 		description: 'Holy warriors who fight for justice and righteousness.',
-		image: null,
+		image: paladinImage,
 		primaryStats: ['STR', 'CHA'],
 		secondaryStats: ['CON', 'WIS'],
 	},
@@ -148,7 +203,7 @@ export const WEB_CLASSES: ClassOption[] = [
 		id: 'warlock',
 		name: 'Warlock',
 		description: 'Wielders of dark magic gained through supernatural pacts.',
-		image: null,
+		image: warlockImage,
 		primaryStats: ['CHA'],
 		secondaryStats: ['CON', 'DEX'],
 	},
@@ -156,7 +211,7 @@ export const WEB_CLASSES: ClassOption[] = [
 		id: 'barbarian',
 		name: 'Barbarian',
 		description: 'Primal warriors who fight with rage and instinct.',
-		image: null,
+		image: barbarianImage,
 		primaryStats: ['STR'],
 		secondaryStats: ['CON'],
 	},
@@ -164,7 +219,7 @@ export const WEB_CLASSES: ClassOption[] = [
 		id: 'bard',
 		name: 'Bard',
 		description: 'Charismatic performers who weave magic through music.',
-		image: null,
+		image: bardImage,
 		primaryStats: ['CHA'],
 		secondaryStats: ['DEX', 'CON'],
 	},
@@ -172,7 +227,7 @@ export const WEB_CLASSES: ClassOption[] = [
 		id: 'sorcerer',
 		name: 'Sorcerer',
 		description: 'Innate spellcasters who channel raw magical power.',
-		image: null,
+		image: sorcererImage,
 		primaryStats: ['CHA'],
 		secondaryStats: ['CON', 'DEX'],
 	},
@@ -180,7 +235,7 @@ export const WEB_CLASSES: ClassOption[] = [
 		id: 'druid',
 		name: 'Druid',
 		description: 'Nature guardians who can shapeshift and command beasts.',
-		image: null,
+		image: druidImage,
 		primaryStats: ['WIS'],
 		secondaryStats: ['CON', 'DEX'],
 	},
@@ -188,7 +243,7 @@ export const WEB_CLASSES: ClassOption[] = [
 		id: 'monk',
 		name: 'Monk',
 		description: 'Disciplined warriors who harness inner power and martial arts.',
-		image: null,
+		image: monkImage,
 		primaryStats: ['DEX', 'WIS'],
 		secondaryStats: ['CON'],
 	},
@@ -196,7 +251,7 @@ export const WEB_CLASSES: ClassOption[] = [
 		id: 'artificer',
 		name: 'Artificer',
 		description: 'Magical inventors who create wondrous items and constructs.',
-		image: null,
+		image: artificerImage,
 		primaryStats: ['INT'],
 		secondaryStats: ['CON', 'DEX'],
 	},
@@ -204,7 +259,7 @@ export const WEB_CLASSES: ClassOption[] = [
 		id: 'custom',
 		name: 'Custom',
 		description: 'Create your own class and define your role.',
-		image: null,
+		image: customImage,
 		isCustom: true,
 		primaryStats: [],
 		secondaryStats: [],
@@ -216,7 +271,7 @@ export const WEB_TRAITS: TraitOption[] = [
 		id: 'stormtouched',
 		name: 'Stormtouched',
 		description: 'Born during a tempest, you have an innate connection to lightning and thunder.',
-		image: null,
+		image: stormtouchedImage,
 		action: {
 			name: 'Lightning Burst',
 			description: 'Channel the storm within you to unleash electrical fury.',
@@ -227,7 +282,7 @@ export const WEB_TRAITS: TraitOption[] = [
 		id: 'marked-by-death',
 		name: 'Marked by Death',
 		description: 'You survived a brush with death, gaining insight into the afterlife.',
-		image: null,
+		image: markedByDeathImage,
 		action: {
 			name: "Death's Embrace",
 			description: 'Channel the power of death to weaken your enemies.',
@@ -238,7 +293,7 @@ export const WEB_TRAITS: TraitOption[] = [
 		id: 'starcursed',
 		name: 'Starcursed',
 		description: 'A celestial event at your birth left you with mysterious cosmic powers.',
-		image: null,
+		image: starcursedImage,
 		action: {
 			name: 'Cosmic Alignment',
 			description: 'Align yourself with the stars to gain temporary insight.',
@@ -249,7 +304,7 @@ export const WEB_TRAITS: TraitOption[] = [
 		id: 'draconic-heritage',
 		name: 'Draconic Heritage',
 		description: 'Dragon blood flows through your veins, granting draconic resilience.',
-		image: null,
+		image: draconicHeritageImage,
 		action: {
 			name: "Dragon's Breath",
 			description: 'Unleash the fire within your draconic bloodline.',
@@ -260,7 +315,7 @@ export const WEB_TRAITS: TraitOption[] = [
 		id: 'infernal-taint',
 		name: 'Infernal Taint',
 		description: 'Your soul bears the mark of the Nine Hells, granting infernal powers.',
-		image: null,
+		image: infernalTaintImage,
 		action: {
 			name: 'Hellfire Strike',
 			description: 'Channel the fires of the Nine Hells through your weapon.',
@@ -271,7 +326,7 @@ export const WEB_TRAITS: TraitOption[] = [
 		id: 'celestial-blood',
 		name: 'Celestial Blood',
 		description: 'Divine ancestry flows through you, connecting you to the Upper Planes.',
-		image: null,
+		image: celestialBloodImage,
 		action: {
 			name: 'Divine Radiance',
 			description: 'Channel the light of the heavens to heal and protect.',
@@ -282,7 +337,7 @@ export const WEB_TRAITS: TraitOption[] = [
 		id: 'elemental-ice',
 		name: 'Elemental Ice',
 		description: 'You have a natural affinity for cold and ice magic.',
-		image: null,
+		image: elementalIceImage,
 		action: {
 			name: 'Frost Nova',
 			description: 'Unleash a burst of freezing cold energy.',
@@ -293,7 +348,7 @@ export const WEB_TRAITS: TraitOption[] = [
 		id: 'elemental-fire',
 		name: 'Elemental Fire',
 		description: 'Flames dance at your command, born from inner fire.',
-		image: null,
+		image: elementalFireImage,
 		action: {
 			name: 'Flame Surge',
 			description: 'Channel your inner fire to enhance your attacks.',
@@ -304,7 +359,7 @@ export const WEB_TRAITS: TraitOption[] = [
 		id: 'shadowbound',
 		name: 'Shadowbound',
 		description: 'Shadows cling to you, granting stealth and dark vision.',
-		image: null,
+		image: shadowboundImage,
 		action: {
 			name: 'Shadow Step',
 			description: 'Melt into the shadows to move unseen.',
@@ -315,7 +370,7 @@ export const WEB_TRAITS: TraitOption[] = [
 		id: 'feytouched',
 		name: 'Feytouched',
 		description: 'Fey magic has left its mark, making you unpredictable and charming.',
-		image: null,
+		image: feytouchedImage,
 		action: {
 			name: 'Fey Charm',
 			description: 'Use your fey magic to beguile and confuse enemies.',
@@ -326,7 +381,7 @@ export const WEB_TRAITS: TraitOption[] = [
 		id: 'arcane-tattooed',
 		name: 'Arcane Tattooed',
 		description: 'Mystical tattoos cover your body, channeling raw magical energy.',
-		image: null,
+		image: arcaneTattooedImage,
 		action: {
 			name: 'Tattoo Surge',
 			description: 'Activate your arcane tattoos to enhance your magic.',
@@ -337,7 +392,7 @@ export const WEB_TRAITS: TraitOption[] = [
 		id: 'spellscared',
 		name: 'Spellscared',
 		description: 'A magical accident left you with permanent arcane scars and power.',
-		image: null,
+		image: spellscaredImage,
 		action: {
 			name: 'Scar Resonance',
 			description: 'Channel residual magic from your scars.',
@@ -348,7 +403,7 @@ export const WEB_TRAITS: TraitOption[] = [
 		id: 'runeblooded',
 		name: 'Runeblooded',
 		description: 'Ancient runes pulse through your veins, granting mystical knowledge.',
-		image: null,
+		image: runebloodedImage,
 		action: {
 			name: 'Rune Awakening',
 			description: 'Awaken the ancient runes within your blood.',
@@ -359,7 +414,7 @@ export const WEB_TRAITS: TraitOption[] = [
 		id: 'artifact-embedded',
 		name: 'Artifact Embedded',
 		description: 'A powerful artifact has fused with your body, granting unique abilities.',
-		image: null,
+		image: artifactEmbeddedImage,
 		action: {
 			name: 'Artifact Surge',
 			description: 'Channel the power of the embedded artifact.',
@@ -370,27 +425,27 @@ export const WEB_TRAITS: TraitOption[] = [
 		id: 'custom',
 		name: 'Custom',
 		description: 'Create your own trait and define your unique characteristic.',
-		image: null,
+		image: customImage,
 		isCustom: true,
 	},
 ];
 
 export const WEB_SKILLS: Skill[] = [
-	{ id: 'athletics', name: 'Athletics', ability: 'STR', image: null },
-	{ id: 'acrobatics', name: 'Acrobatics', ability: 'DEX', image: null },
-	{ id: 'stealth', name: 'Stealth', ability: 'DEX', image: null },
-	{ id: 'thievery', name: 'Thievery', ability: 'DEX', image: null },
-	{ id: 'endurance', name: 'Endurance', ability: 'CON', image: null },
-	{ id: 'arcana', name: 'Arcana', ability: 'INT', image: null },
-	{ id: 'history', name: 'History', ability: 'INT', image: null },
-	{ id: 'religion', name: 'Religion', ability: 'INT', image: null },
-	{ id: 'dungeoneering', name: 'Dungeoneering', ability: 'WIS', image: null },
-	{ id: 'heal', name: 'Heal', ability: 'WIS', image: null },
-	{ id: 'insight', name: 'Insight', ability: 'WIS', image: null },
-	{ id: 'nature', name: 'Nature', ability: 'WIS', image: null },
-	{ id: 'perception', name: 'Perception', ability: 'WIS', image: null },
-	{ id: 'bluff', name: 'Bluff', ability: 'CHA', image: null },
-	{ id: 'diplomacy', name: 'Diplomacy', ability: 'CHA', image: null },
-	{ id: 'intimidate', name: 'Intimidate', ability: 'CHA', image: null },
-	{ id: 'streetwise', name: 'Streetwise', ability: 'CHA', image: null },
+	{ id: 'athletics', name: 'Athletics', ability: 'STR', image: athleticsImage },
+	{ id: 'acrobatics', name: 'Acrobatics', ability: 'DEX', image: acrobaticsImage },
+	{ id: 'stealth', name: 'Stealth', ability: 'DEX', image: stealthImage },
+	{ id: 'thievery', name: 'Thievery', ability: 'DEX', image: thieveryImage },
+	{ id: 'endurance', name: 'Endurance', ability: 'CON', image: enduranceImage },
+	{ id: 'arcana', name: 'Arcana', ability: 'INT', image: arcanaImage },
+	{ id: 'history', name: 'History', ability: 'INT', image: historyImage },
+	{ id: 'religion', name: 'Religion', ability: 'INT', image: religionImage },
+	{ id: 'dungeoneering', name: 'Dungeoneering', ability: 'WIS', image: dungeoneeringImage },
+	{ id: 'heal', name: 'Heal', ability: 'WIS', image: healImage },
+	{ id: 'insight', name: 'Insight', ability: 'WIS', image: insightImage },
+	{ id: 'nature', name: 'Nature', ability: 'WIS', image: natureImage },
+	{ id: 'perception', name: 'Perception', ability: 'WIS', image: perceptionImage },
+	{ id: 'bluff', name: 'Bluff', ability: 'CHA', image: bluffImage },
+	{ id: 'diplomacy', name: 'Diplomacy', ability: 'CHA', image: diplomacyImage },
+	{ id: 'intimidate', name: 'Intimidate', ability: 'CHA', image: intimidateImage },
+	{ id: 'streetwise', name: 'Streetwise', ability: 'CHA', image: streetwiseImage },
 ];
