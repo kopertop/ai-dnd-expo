@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2025-12-20 01:25'
-updated_date: '2025-12-20 01:44'
+updated_date: '2025-12-20 15:08'
 labels: []
 dependencies: []
 parent_task_id: task-29
@@ -32,4 +32,6 @@ Build the main TanStack Start app shell layout (header/navigation) and add the a
 - Updated `src/components/route-shell.tsx` to avoid nested `<main>` tags in the new layout.
 
 - Added Admin link to the top nav for admin users in `src/components/app-shell.tsx`.
+
+Added shared AppFooter with Licenses & Credits link and version number, wired into the app shell and public auth layout (`src/components/app-footer.tsx`, `src/components/app-shell.tsx`, `src/routes/__root.tsx`).
 <!-- SECTION:NOTES:END -->

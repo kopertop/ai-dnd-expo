@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
 
+import AppFooter from '~/components/app-footer';
 import type { AuthUser } from '~/utils/session';
 
 type AppShellProps = {
@@ -107,7 +108,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ user }) => {
 
 const AppShell: React.FC<AppShellProps> = ({ user, children }) => {
 	return (
-		<div className="min-h-screen">
+		<div className="flex min-h-screen flex-col">
 			<header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
 				<div className="mx-auto flex w-full max-w-6xl items-center gap-6 px-6 py-4">
 					<Link
@@ -160,9 +161,10 @@ const AppShell: React.FC<AppShellProps> = ({ user, children }) => {
 					<UserMenu user={user} />
 				</div>
 			</header>
-			<main className="mx-auto w-full max-w-6xl px-6 py-6">
+			<main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6">
 				{children}
 			</main>
+			<AppFooter />
 		</div>
 	);
 };

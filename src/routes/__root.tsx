@@ -14,6 +14,7 @@ import type { QueryClient } from '@tanstack/react-query';
 
 import { DefaultCatchBoundary } from '~/components/default-catch-boundary';
 import { NotFound } from '~/components/not-found';
+import AppFooter from '~/components/app-footer';
 import AppShell from '~/components/app-shell';
 import appCss from '~/styles/app.css?url';
 import { seo } from '~/utils/seo';
@@ -41,7 +42,16 @@ const RootDocument = ({ children }: { children: React.ReactNode }) => {
 				<HeadContent />
 			</head>
 			<body className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-				{hideChrome ? children : <AppShell user={user}>{children}</AppShell>}
+				{hideChrome ? (
+					<div className="flex min-h-screen flex-col">
+						<main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6">
+							{children}
+						</main>
+						<AppFooter />
+					</div>
+				) : (
+					<AppShell user={user}>{children}</AppShell>
+				)}
 				{import.meta.env.DEV ? (
 					<TanStackRouterDevtools position="bottom-right" />
 				) : null}
