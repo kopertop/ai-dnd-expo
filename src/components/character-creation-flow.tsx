@@ -467,10 +467,36 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 			<div className="mb-3 text-xs font-semibold text-slate-500">
 				Choose {MAX_SKILLS} skills ({selectedSkillIds.length}/{MAX_SKILLS})
 			</div>
+			<div className="mb-4 text-xs text-slate-500">
+				{STAT_KEYS.map((key) => {
+					const score = (selectedAttributes ?? STANDARD_ARRAY)[key];
+					const mod = Math.floor((score - 10) / 2);
+					const hasBonus = mod > 0;
+					const label = mod >= 0 ? `+${mod}` : `${mod}`;
+					return (
+						<span
+							key={key}
+							className={`mr-3 inline-flex items-center gap-1 ${
+								hasBonus ? 'font-semibold text-amber-700' : ''
+							}`}
+						>
+							{key}
+							<span className="text-[10px] text-slate-400">{label}</span>
+						</span>
+					);
+				})}
+			</div>
 			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 				{WEB_SKILLS.map((skill) => {
 					const isSelected = selectedSkillIds.includes(skill.id);
 					const isDisabled = !isSelected && selectedSkillIds.length >= MAX_SKILLS;
+					const abilityKey = skill.ability as StatKey;
+					const abilityScore =
+						(selectedAttributes ?? STANDARD_ARRAY)[abilityKey] ?? 10;
+					const abilityMod = Math.floor((abilityScore - 10) / 2);
+					const abilityLabel =
+						abilityMod >= 0 ? `+${abilityMod}` : `${abilityMod}`;
+					const abilityHasBonus = abilityMod > 0;
 					const imageSrc =
 						typeof skill.image === 'string'
 							? skill.image
@@ -508,7 +534,15 @@ const CharacterCreationFlow: React.FC<CharacterCreationFlowProps> = ({
 								<div className="text-sm font-semibold text-slate-800">
 									{skill.name}
 								</div>
-								<div className="text-xs text-slate-500">{skill.ability}</div>
+								<div
+									className={`text-xs ${
+										abilityHasBonus
+											? 'font-semibold text-amber-700'
+											: 'text-slate-500'
+									}`}
+								>
+									{skill.ability} {abilityLabel}
+								</div>
 							</div>
 						</label>
 					);
