@@ -142,13 +142,21 @@ const AppShell: React.FC<AppShellProps> = ({ user, children }) => {
 						>
 							Join Game
 						</Link>
+					<Link
+						to="/new-game"
+						activeProps={{ className: 'text-amber-700' }}
+					>
+						New Game
+					</Link>
+					{user?.is_admin ? (
 						<Link
-							to="/new-game"
+							to="/admin"
 							activeProps={{ className: 'text-amber-700' }}
 						>
-							New Game
+							Admin
 						</Link>
-					</nav>
+					) : null}
+				</nav>
 					<UserMenu user={user} />
 				</div>
 			</header>
