@@ -12,7 +12,7 @@ const RouteShell: React.FC<RouteShellProps> = ({
 	children,
 }) => {
 	return (
-		<main className="mx-auto w-full max-w-5xl space-y-6 px-6 py-8">
+		<section className="space-y-6">
 			<header className="space-y-1">
 				<h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
 					{title}
@@ -30,7 +30,7 @@ const RouteShell: React.FC<RouteShellProps> = ({
 					</p>
 				)}
 			</section>
-		</main>
+		</section>
 	);
 };
 

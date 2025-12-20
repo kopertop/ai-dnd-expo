@@ -5,6 +5,7 @@ import {
 	Scripts,
 	createRootRouteWithContext,
 	redirect,
+	useRouterState,
 } from '@tanstack/react-router';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
@@ -13,6 +14,7 @@ import type { QueryClient } from '@tanstack/react-query';
 
 import { DefaultCatchBoundary } from '~/components/default-catch-boundary';
 import { NotFound } from '~/components/not-found';
+import AppShell from '~/components/app-shell';
 import appCss from '~/styles/app.css?url';
 import { seo } from '~/utils/seo';
 import { fetchCurrentUser } from '~/utils/auth';
@@ -27,13 +29,19 @@ const RootComponent = () => {
 };
 
 const RootDocument = ({ children }: { children: React.ReactNode }) => {
+	const { user } = Route.useRouteContext();
+	const routerState = useRouterState();
+	const pathname = routerState.location.pathname;
+	const hideChrome =
+		pathname === '/login' || pathname.startsWith('/auth');
+
 	return (
 		<html lang="en">
 			<head>
 				<HeadContent />
 			</head>
 			<body className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-				{children}
+				{hideChrome ? children : <AppShell user={user}>{children}</AppShell>}
 				{import.meta.env.DEV ? (
 					<TanStackRouterDevtools position="bottom-right" />
 				) : null}
