@@ -94,6 +94,13 @@ const UserMenu: React.FC<UserMenuProps> = ({ user }) => {
 						</Link>
 					) : null}
 					<Link
+						to="/settings"
+						className="block rounded-lg px-3 py-2 font-medium text-slate-900 hover:bg-slate-100"
+						role="menuitem"
+					>
+						Settings
+					</Link>
+					<Link
 						to="/logout"
 						className="block rounded-lg px-3 py-2 font-medium text-rose-600 hover:bg-rose-50"
 						role="menuitem"

@@ -1,3 +1,4 @@
+import { queryOptions } from '@tanstack/react-query';
 import { createServerFn } from '@tanstack/react-start';
 import { getRequestUrl } from '@tanstack/react-start/server';
 
@@ -48,6 +49,12 @@ export const fetchCurrentUser = createServerFn({ method: 'GET' }).handler(
 	},
 );
 
+export const currentUserQueryOptions = () =>
+	queryOptions({
+		queryKey: ['current-user'],
+		queryFn: fetchCurrentUser,
+	});
+
 type GoogleCallbackPayload = {
   code: string
   redirectUri: string
@@ -97,3 +104,43 @@ export const logout = createServerFn({ method: 'POST' }).handler(async () => {
 	const session = await useAuthSession();
 	await session.clear();
 });
+
+export const updateUser = createServerFn({ method: 'POST' })
+	.inputValidator((data: { picture?: string; name?: string }) => data)
+	.handler(async ({ data }) => {
+		const session = await useAuthSession();
+		const token = session.data.deviceToken;
+
+		if (!token) {
+			throw new Error('Not authenticated');
+		}
+
+		const response = await fetch(joinApiPath(getServerApiBaseUrl(), '/me'), {
+			method: 'PATCH',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Device ${token}`,
+			},
+			body: JSON.stringify(data),
+		});
+
+		if (response.status === 401 || response.status === 404) {
+			await session.clear();
+			throw new Error('Not authenticated');
+		}
+
+		if (!response.ok) {
+			let errorText: string;
+			try {
+				const errorJson = await response.json();
+				errorText = errorJson.error || errorJson.message || JSON.stringify(errorJson);
+			} catch {
+				errorText = await response.text();
+			}
+			throw new Error(`Failed to update user: ${response.status} ${errorText}`);
+		}
+
+		const updatedUser = (await response.json()) as AuthUser;
+		await session.update({ user: updatedUser });
+		return updatedUser;
+	});

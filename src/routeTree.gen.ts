@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SqlRouteImport } from './routes/sql'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PartyTestRouteImport } from './routes/party-test'
 import { Route as NewGameRouteImport } from './routes/new-game'
 import { Route as MultiplayerGameRouteImport } from './routes/multiplayer-game'
@@ -47,6 +48,11 @@ import { Route as AdminMapsIdRouteImport } from './routes/admin/maps/$id'
 const SqlRoute = SqlRouteImport.update({
   id: '/sql',
   path: '/sql',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PartyTestRoute = PartyTestRouteImport.update({
@@ -224,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/multiplayer-game': typeof MultiplayerGameRoute
   '/new-game': typeof NewGameRoute
   '/party-test': typeof PartyTestRoute
+  '/settings': typeof SettingsRoute
   '/sql': typeof SqlRoute
   '/admin/images': typeof AdminImagesRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -259,6 +266,7 @@ export interface FileRoutesByTo {
   '/multiplayer-game': typeof MultiplayerGameRoute
   '/new-game': typeof NewGameRoute
   '/party-test': typeof PartyTestRoute
+  '/settings': typeof SettingsRoute
   '/sql': typeof SqlRoute
   '/admin/images': typeof AdminImagesRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -294,6 +302,7 @@ export interface FileRoutesById {
   '/multiplayer-game': typeof MultiplayerGameRoute
   '/new-game': typeof NewGameRoute
   '/party-test': typeof PartyTestRoute
+  '/settings': typeof SettingsRoute
   '/sql': typeof SqlRoute
   '/game/(tabs)': typeof GametabsRouteRouteWithChildren
   '/admin/images': typeof AdminImagesRoute
@@ -332,6 +341,7 @@ export interface FileRouteTypes {
     | '/multiplayer-game'
     | '/new-game'
     | '/party-test'
+    | '/settings'
     | '/sql'
     | '/admin/images'
     | '/auth/callback'
@@ -367,6 +377,7 @@ export interface FileRouteTypes {
     | '/multiplayer-game'
     | '/new-game'
     | '/party-test'
+    | '/settings'
     | '/sql'
     | '/admin/images'
     | '/auth/callback'
@@ -401,6 +412,7 @@ export interface FileRouteTypes {
     | '/multiplayer-game'
     | '/new-game'
     | '/party-test'
+    | '/settings'
     | '/sql'
     | '/game/(tabs)'
     | '/admin/images'
@@ -438,6 +450,7 @@ export interface RootRouteChildren {
   MultiplayerGameRoute: typeof MultiplayerGameRoute
   NewGameRoute: typeof NewGameRoute
   PartyTestRoute: typeof PartyTestRoute
+  SettingsRoute: typeof SettingsRoute
   SqlRoute: typeof SqlRoute
   AdminImagesRoute: typeof AdminImagesRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -464,6 +477,13 @@ declare module '@tanstack/react-router' {
       path: '/sql'
       fullPath: '/sql'
       preLoaderRoute: typeof SqlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/party-test': {
@@ -756,6 +776,7 @@ const rootRouteChildren: RootRouteChildren = {
   MultiplayerGameRoute: MultiplayerGameRoute,
   NewGameRoute: NewGameRoute,
   PartyTestRoute: PartyTestRoute,
+  SettingsRoute: SettingsRoute,
   SqlRoute: SqlRoute,
   AdminImagesRoute: AdminImagesRoute,
   AuthCallbackRoute: AuthCallbackRoute,

@@ -1,6 +1,6 @@
 import { handleGoogleCallback, useAuth } from 'expo-auth-template/backend';
-import { partyserverMiddleware } from 'hono-party';
 import { Hono } from 'hono';
+import { partyserverMiddleware } from 'hono-party';
 
 import { corsMiddleware } from './cors';
 import type { HonoContext } from './env';
@@ -139,6 +139,19 @@ app.post('/api/auth/google/callback', async (c) => {
 			googleClientId: c.env.GOOGLE_CLIENT_ID,
 			googleClientSecret: c.env.GOOGLE_CLIENT_SECRET,
 		});
+
+		// Preserve existing picture if user has already set one
+		if (result.user?.id) {
+			const existingUser = await c.env.DATABASE.prepare(`
+				SELECT picture FROM users WHERE id = ?
+			`).bind(result.user.id).first();
+
+			// If user already has a non-empty picture, preserve it instead of overwriting with OAuth picture
+			if (existingUser && existingUser.picture && existingUser.picture.trim() !== '') {
+				// Update the result to use the existing picture
+				result.user.picture = existingUser.picture;
+			}
+		}
 
 		return c.json(result);
 	} catch (error) {
