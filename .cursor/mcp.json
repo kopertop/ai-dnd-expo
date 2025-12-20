@@ -1,0 +1,12 @@
+{
+	"mcpServers": {
+		"backlog": {
+			"command": "bunx",
+			"args": [
+				"backlog",
+				"mcp",
+				"start"
+			]
+		}
+	}
+}
