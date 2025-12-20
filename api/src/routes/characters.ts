@@ -131,6 +131,15 @@ characters.put('/:id', async (c) => {
 		return c.json({ error: 'Forbidden' }, 403);
 	}
 
+	// Clean up equipped object to ensure all values are strings or null (not undefined)
+	if (updates.equipped) {
+		const cleanedEquipped: Record<string, string | null> = {};
+		for (const [key, value] of Object.entries(updates.equipped)) {
+			cleanedEquipped[key] = value === undefined ? null : value;
+		}
+		updates.equipped = cleanedEquipped as typeof updates.equipped;
+	}
+
 	const updatedCharacter = { ...deserializeCharacter(existing), ...updates, id: characterId };
 	const serializedUpdate = serializeCharacter(
 		updatedCharacter,

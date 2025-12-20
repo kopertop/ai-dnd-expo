@@ -2,6 +2,7 @@ import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import * as React from 'react';
 
+import type { Character } from '@/types/character';
 import type { GearSlot, StatKey } from '@/types/stats';
 import { STAT_KEYS } from '@/types/stats';
 import { calculateAC, calculatePassivePerception, getAbilityModifier } from '@/utils/combat-utils';
@@ -55,7 +56,12 @@ const CharacterDetail: React.FC = () => {
 	const handleSave = async () => {
 		setIsSaving(true);
 		try {
-			await updateCharacter({ path: `/characters/${character.id}`, data: character });
+			await updateCharacter({
+				data: {
+					path: `/characters/${character.id}`,
+					data: character,
+				},
+			});
 			await queryClient.invalidateQueries({ queryKey: charactersQueryOptions().queryKey });
 		} catch (error) {
 			console.error('Failed to save character:', error);
@@ -71,7 +77,11 @@ const CharacterDetail: React.FC = () => {
 
 		setIsDeleting(true);
 		try {
-			await deleteCharacter({ path: `/characters/${character.id}` });
+			await deleteCharacter({
+				data: {
+					path: `/characters/${character.id}`,
+				},
+			});
 			await queryClient.invalidateQueries({ queryKey: charactersQueryOptions().queryKey });
 			router.navigate({ to: '/characters' });
 		} catch (error) {
@@ -85,33 +95,46 @@ const CharacterDetail: React.FC = () => {
 	const handleEquip = async (slot: GearSlot, itemId: string | null) => {
 		if (!character) return;
 
-		// Ensure we have all slots in the equipped object
-		const updatedEquipped = {
-			helmet: null,
-			chest: null,
-			arms: null,
-			legs: null,
-			boots: null,
-			mainHand: null,
-			offHand: null,
-			accessory: null,
-			...character.equipped,
+		// Ensure we have all slots in the equipped object, preserving existing values
+		// Convert undefined to null explicitly to avoid serialization issues
+		const currentEquipped = character.equipped || {};
+		const updatedEquipped: Record<string, string | null> = {
+			helmet: currentEquipped.helmet ?? null,
+			chest: currentEquipped.chest ?? null,
+			arms: currentEquipped.arms ?? null,
+			legs: currentEquipped.legs ?? null,
+			boots: currentEquipped.boots ?? null,
+			mainHand: currentEquipped.mainHand ?? null,
+			offHand: currentEquipped.offHand ?? null,
+			accessory: currentEquipped.accessory ?? null,
+			none: null, // Always null for 'none' slot
 		};
 		updatedEquipped[slot] = itemId;
 
+		// Clean up: remove any undefined values and ensure all are null or string
+		const cleanedEquipped: Record<string, string | null> = {};
+		for (const [key, value] of Object.entries(updatedEquipped)) {
+			cleanedEquipped[key] = value === undefined ? null : value;
+		}
+
 		// Send only the equipped object as a partial update
 		const updates = {
-			equipped: updatedEquipped,
+			equipped: cleanedEquipped,
 		};
 
 		try {
-			console.log('Updating equipment:', { slot, itemId, updates });
-			await updateCharacter({ path: `/characters/${character.id}`, data: updates });
+			await updateCharacter({
+				data: {
+					path: `/characters/${character.id}`,
+					data: updates as Partial<Character>,
+				},
+			});
 			await queryClient.invalidateQueries({ queryKey: charactersQueryOptions().queryKey });
 		} catch (error) {
 			console.error('Failed to update equipment:', error);
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 			console.error('Error details:', errorMessage);
+			console.error('Full error object:', error);
 			alert(`Failed to update equipment: ${errorMessage}`);
 		}
 	};

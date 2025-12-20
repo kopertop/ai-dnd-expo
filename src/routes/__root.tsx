@@ -1,24 +1,24 @@
 /// <reference types="vite/client" />
-import {
-	HeadContent,
-	Outlet,
-	Scripts,
-	createRootRouteWithContext,
-	redirect,
-	useRouterState,
-} from '@tanstack/react-router';
+import type { QueryClient } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import {
+    HeadContent,
+    Outlet,
+    Scripts,
+    createRootRouteWithContext,
+    redirect,
+    useRouterState,
+} from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import * as React from 'react';
-import type { QueryClient } from '@tanstack/react-query';
 
-import { DefaultCatchBoundary } from '~/components/default-catch-boundary';
-import { NotFound } from '~/components/not-found';
 import AppFooter from '~/components/app-footer';
 import AppShell from '~/components/app-shell';
+import { DefaultCatchBoundary } from '~/components/default-catch-boundary';
+import { NotFound } from '~/components/not-found';
 import appCss from '~/styles/app.css?url';
-import { seo } from '~/utils/seo';
 import { fetchCurrentUser } from '~/utils/auth';
+import { seo } from '~/utils/seo';
 import type { AuthUser } from '~/utils/session';
 
 const RootComponent = () => {
@@ -39,6 +39,7 @@ const RootDocument = ({ children }: { children: React.ReactNode }) => {
 	return (
 		<html lang="en">
 			<head>
+				<meta charSet="utf-8" />
 				<HeadContent />
 			</head>
 			<body className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -90,9 +91,6 @@ export const Route = createRootRouteWithContext<{
 	},
 	head: () => ({
 		meta: [
-			{
-				charSet: 'utf-8',
-			},
 			{
 				name: 'viewport',
 				content: 'width=device-width, initial-scale=1',

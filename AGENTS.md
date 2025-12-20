@@ -3,6 +3,8 @@
 - Movement actions for DM/players rely on token lookup by both `entityId` and `id` because NPC turns use the token id as the active entity. Always resolve the active turn token id before action/movement decisions.
 - When resetting turns in the durable game session, ensure `activeTurn` usage fields are cleared and speeds are derived per-entity; also guard paused turn snapshots against nulls.
 - In `api-base-url` resolution, `expo-constants` typings don’t expose `expoConfig`; cast the config when reading `extra` values to keep typecheck happy.
+- TanStack Start `createServerFn` calls must pass input via the wrapper shape `fn({ data: payload })`. If you call a server fn like `fn(payload)` (or omit the `data:` wrapper), the handler will receive `data` as the wrong shape (e.g. `data.path` becomes `undefined`) and can crash in helpers like `joinApiPath`.
+- For TanStack Start mutations, the `createServerFn({ method: ... })` wrapper should be `POST` even if the internal `fetch` uses `PUT`/`DELETE` to hit the API.
 
 ## Lint Fixes
 

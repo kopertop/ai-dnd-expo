@@ -1,7 +1,7 @@
 /**
  * Frontend-only equipment icon mappings
  * This file contains PNG requires and should NEVER be imported by backend code
- * 
+ *
  * Icons are loaded via require() statements that will fail on backend.
  * This file should only be imported in frontend components.
  */
@@ -11,7 +11,7 @@ import type { ImageSourcePropType } from 'react-native';
 /**
  * Load equipment icons (frontend only)
  * This function contains all the require() statements for PNG files
- * 
+ *
  * ⚠️ DO NOT IMPORT THIS FILE IN api/ OR ANY BACKEND CODE
  */
 /**
@@ -20,7 +20,7 @@ import type { ImageSourcePropType } from 'react-native';
 export function getWeaponsSprite(): ImageSourcePropType | null {
 	try {
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		return require('@/assets/images/items/weapons-sprite.png');
+		return require('@/public/assets/images/items/weapons-sprite.png');
 	} catch {
 		return null;
 	}
@@ -32,43 +32,43 @@ export function loadEquipmentIcons(): Record<
 > {
 	// All require() statements are here - these will fail on backend
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const leatherHelmet = require('@/assets/images/items/leather-helmet.png');
+	const leatherHelmet = require('@/public/assets/images/items/leather-helmet.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const leatherHood = require('@/assets/images/items/leather-hood.png');
+	const leatherHood = require('@/public/assets/images/items/leather-hood.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const clothHelmet = require('@/assets/images/items/cloth-helmet.png');
+	const clothHelmet = require('@/public/assets/images/items/cloth-helmet.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const leatherChest = require('@/assets/images/items/leather-chest.png');
+	const leatherChest = require('@/public/assets/images/items/leather-chest.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const clothRobe = require('@/assets/images/items/cloth-robe.png');
+	const clothRobe = require('@/public/assets/images/items/cloth-robe.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const leatherGlove = require('@/assets/images/items/leather-glove.png');
+	const leatherGlove = require('@/public/assets/images/items/leather-glove.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const clothGlove = require('@/assets/images/items/cloth-glove.png');
+	const clothGlove = require('@/public/assets/images/items/cloth-glove.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const leatherLegs = require('@/assets/images/items/leather-legs.png');
+	const leatherLegs = require('@/public/assets/images/items/leather-legs.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const clothLegs = require('@/assets/images/items/cloth-legs.png');
+	const clothLegs = require('@/public/assets/images/items/cloth-legs.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const leatherBoots = require('@/assets/images/items/leather-boots.png');
+	const leatherBoots = require('@/public/assets/images/items/leather-boots.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const clothBoots = require('@/assets/images/items/cloth-boots.png');
+	const clothBoots = require('@/public/assets/images/items/cloth-boots.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const ironShield = require('@/assets/images/items/iron-shield.png');
+	const ironShield = require('@/public/assets/images/items/iron-shield.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const wizardTome = require('@/assets/images/items/wizard-tome.png');
+	const wizardTome = require('@/public/assets/images/items/wizard-tome.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const wand = require('@/assets/images/items/wand.png');
+	const wand = require('@/public/assets/images/items/wand.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const staff = require('@/assets/images/items/staff.png');
+	const staff = require('@/public/assets/images/items/staff.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const quiver = require('@/assets/images/items/quiver.png');
+	const quiver = require('@/public/assets/images/items/quiver.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const rations = require('@/assets/images/items/rations.png');
+	const rations = require('@/public/assets/images/items/rations.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const throwingKnives = require('@/assets/images/items/throwing-knives.png');
+	const throwingKnives = require('@/public/assets/images/items/throwing-knives.png');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const healthPotion = require('@/assets/images/items/health-potion.png');
+	const healthPotion = require('@/public/assets/images/items/health-potion.png');
 
 	return {
 		// Weapons - Row 1 (y: 0) - from spritesheet

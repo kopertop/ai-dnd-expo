@@ -58,8 +58,8 @@ async function main() {
 		// Construct Key: Characters:<Category>:<Name>
 		const key = `Characters:${category}:${namePascal}`;
 
-		// Source path: @/assets/images/characters/<file>
-		const sourcePath = `@/assets/images/characters/${file}`;
+		// Source path: @/public/assets/images/characters/<file>
+		const sourcePath = `@/public/assets/images/characters/${file}`;
 
 		return {
 			key,

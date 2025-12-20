@@ -1,9 +1,12 @@
 import * as React from 'react';
 
+import { SKILL_DESCRIPTIONS } from '@/constants/skill-descriptions';
 import type { Character } from '@/types/character';
 import type { StatKey } from '@/types/stats';
 import { calculateProficiencyBonus, getAbilityModifier, isSkillProficient } from '@/utils/combat-utils';
 import { WEB_SKILLS } from '~/data/character-options';
+
+import { Tooltip } from '~/components/tooltip';
 
 type CharacterSkillsProps = {
 	character: Character;
@@ -55,13 +58,19 @@ export const CharacterSkills: React.FC<CharacterSkillsProps> = ({ character }) =
 							key={skill.id}
 							className="relative rounded-lg border border-slate-200 bg-slate-50 p-2 text-center"
 						>
-							<button
-								type="button"
-								className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-300 text-[8px] font-semibold text-slate-700 hover:bg-slate-400"
-								title={`${skill.name} information`}
-							>
-								?
-							</button>
+							<div className="absolute right-1 top-1">
+								<Tooltip
+									content={SKILL_DESCRIPTIONS[skill.id] || `${skill.name} information`}
+									position="bottom"
+								>
+									<button
+										type="button"
+										className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-300 text-[8px] font-semibold text-slate-700 hover:bg-slate-400"
+									>
+										?
+									</button>
+								</Tooltip>
+							</div>
 							{imageSrc && (
 								<div className="mb-1 flex justify-center">
 									<img src={imageSrc} alt={skill.name} className="h-8 w-8 object-contain" />

@@ -1,0 +1,20 @@
+// Skill descriptions for tooltips
+export const SKILL_DESCRIPTIONS: Record<string, string> = {
+	athletics: 'Strength-based skill for climbing, jumping, swimming, and other physical feats.',
+	acrobatics: 'Dexterity-based skill for balance, tumbling, and graceful movement.',
+	stealth: 'Dexterity-based skill for hiding, moving silently, and avoiding detection.',
+	thievery: 'Dexterity-based skill for picking locks, disarming traps, and sleight of hand.',
+	endurance: 'Constitution-based skill for resisting fatigue, disease, and environmental hazards.',
+	arcana: 'Intelligence-based skill for knowledge of magic, magical creatures, and arcane lore.',
+	history: 'Intelligence-based skill for knowledge of past events, legends, and historical figures.',
+	religion: 'Intelligence-based skill for knowledge of deities, religious practices, and holy symbols.',
+	dungeoneering: 'Wisdom-based skill for navigating dungeons, recognizing hazards, and understanding underground environments.',
+	heal: 'Wisdom-based skill for treating wounds, diagnosing diseases, and providing medical care.',
+	insight: 'Wisdom-based skill for reading people, detecting lies, and understanding motives.',
+	nature: 'Wisdom-based skill for knowledge of plants, animals, weather, and natural environments.',
+	perception: 'Wisdom-based skill for noticing details, detecting hidden objects, and awareness of surroundings.',
+	bluff: 'Charisma-based skill for deception, misdirection, and convincing others of falsehoods.',
+	diplomacy: 'Charisma-based skill for negotiation, persuasion, and peaceful conflict resolution.',
+	intimidate: 'Charisma-based skill for coercion, threats, and forcing others to comply through fear.',
+	streetwise: 'Charisma-based skill for knowledge of local customs, finding information, and navigating urban environments.',
+};

@@ -1,9 +1,12 @@
 import * as React from 'react';
 
+import { ATTRIBUTE_DESCRIPTIONS } from '@/constants/stats';
 import type { Character } from '@/types/character';
 import type { StatKey } from '@/types/stats';
 import { STAT_KEYS } from '@/types/stats';
 import { getAbilityModifier } from '@/utils/combat-utils';
+
+import { Tooltip } from '~/components/tooltip';
 
 type CharacterAbilitiesProps = {
 	character: Character;
@@ -30,13 +33,19 @@ export const CharacterAbilities: React.FC<CharacterAbilitiesProps> = ({ characte
 							key={key}
 							className="relative rounded-lg border border-slate-200 bg-slate-50 p-3 text-center"
 						>
-							<button
-								type="button"
-								className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-slate-300 text-[10px] font-semibold text-slate-700 hover:bg-slate-400"
-								title={`${key} information`}
-							>
-								?
-							</button>
+							<div className="absolute right-1 top-1">
+								<Tooltip
+									content={ATTRIBUTE_DESCRIPTIONS[key] || `${key} information`}
+									position="bottom"
+								>
+									<button
+										type="button"
+										className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-300 text-[10px] font-semibold text-slate-700 hover:bg-slate-400"
+									>
+										?
+									</button>
+								</Tooltip>
+							</div>
 							<div className="text-xs font-semibold text-slate-600">{key}</div>
 							<div className="mt-1 text-2xl font-bold text-slate-900">{score}</div>
 							<div className="mt-1 text-sm font-semibold" style={{ color: 'rgb(201, 176, 55)' }}>

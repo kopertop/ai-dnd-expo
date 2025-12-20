@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import customImage from '@/assets/images/custom.png';
 import { RACES } from '@/constants/races';
+import customImage from '@/public/assets/images/custom.png';
 import { Character } from '@/types/character';
 import { GameState, GameStateSchema } from '@/types/game';
 
