@@ -10,7 +10,7 @@ import RouteShell from '~/components/route-shell';
 import { WorldChooser } from '~/components/world-chooser';
 import { useWebSocketBrowser } from '~/hooks/use-websocket-browser';
 import { currentUserQueryOptions } from '~/utils/auth';
-import { createGame, deleteGame, gameSessionQueryOptions } from '~/utils/games';
+import { createGame, deleteGame, gameSessionQueryOptions, startGame } from '~/utils/games';
 
 import type { LocationOption } from '@/types/location-option';
 import type { Quest } from '@/types/quest';
@@ -235,12 +235,101 @@ const HostGameDetail: React.FC = () => {
 		},
 	});
 
+	const startGameMutation = useMutation({
+		mutationFn: startGame,
+		onSuccess: () => {
+			// Invalidate game session and state queries
+			queryClient.invalidateQueries({ queryKey: ['games', inviteCode] });
+			queryClient.invalidateQueries({ queryKey: ['games', 'me'] });
+		},
+		onError: (error) => {
+			alert(error instanceof Error ? error.message : 'Failed to start game');
+		},
+	});
+
 	const handleDeleteGame = () => {
 		if (!inviteCode) return;
 		if (!confirm('Are you sure you want to delete this game? This action cannot be undone.')) {
 			return;
 		}
 		deleteGameMutation.mutate({ data: { inviteCode } });
+	};
+
+	const handleStartGame = async () => {
+		if (!session || !user) {
+			alert('Session or user information missing');
+			return;
+		}
+
+		if (session.status === 'active') {
+			// Game is already active, just navigate to it
+			navigate({
+				to: '/multiplayer-game',
+				search: { inviteCode: session.inviteCode, hostId: session.hostId },
+			});
+			return;
+		}
+
+		setLoading(true);
+		try {
+			// Build initial game state with DM mode
+			const characters = session.characters && session.characters.length > 0
+				? session.characters
+				: [];
+
+			const initialGameState = {
+				sessionId: session.sessionId,
+				inviteCode: session.inviteCode,
+				hostId: session.hostId,
+				quest: session.quest,
+				players: session.players || [],
+				characters,
+				playerCharacterId: session.players?.[0]?.characterId || '',
+				gameWorld: session.world || '',
+				startingArea: session.startingArea || '',
+				status: 'active' as const,
+				createdAt: session.createdAt || Date.now(),
+				lastUpdated: Date.now(),
+				messages: [],
+				// mapState is omitted - will be built by API's buildMapState method
+				activityLog: [],
+				// Start in DM Mode so players see a paused indicator until the DM resumes
+				activeTurn: {
+					type: 'dm' as const,
+					entityId: session.hostId,
+					turnNumber: 1,
+					startedAt: Date.now(),
+					movementUsed: 0,
+					majorActionUsed: false,
+					minorActionUsed: false,
+				},
+				pausedTurn: {
+					type: 'dm' as const,
+					entityId: session.hostId,
+					turnNumber: 1,
+					startedAt: Date.now(),
+				},
+			};
+
+			await startGameMutation.mutateAsync({
+				data: {
+					inviteCode: session.inviteCode,
+					hostId: session.hostId,
+					gameState: initialGameState,
+				},
+			});
+
+			// Navigate to multiplayer game screen
+			navigate({
+				to: '/multiplayer-game',
+				search: { inviteCode: session.inviteCode, hostId: session.hostId },
+			});
+		} catch (error) {
+			// Error is handled by mutation onError
+			console.error('Failed to start game:', error);
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	const handleCreateGame = async () => {
@@ -363,18 +452,14 @@ const HostGameDetail: React.FC = () => {
 								</div>
 								<div className="mt-6 space-y-3">
 									{session.status === 'waiting' && (
-										<>
-											<p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
-												Map management and game start functionality will be available here.
-											</p>
-											<button
-												type="button"
-												disabled
-												className="w-full rounded-md bg-slate-300 px-4 py-2 text-sm font-semibold text-slate-500 cursor-not-allowed"
-											>
-												Start Game (Coming Soon)
-											</button>
-										</>
+										<button
+											type="button"
+											onClick={handleStartGame}
+											disabled={loading || startGameMutation.isPending}
+											className="w-full rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
+										>
+											{loading || startGameMutation.isPending ? 'Starting...' : 'Start Game'}
+										</button>
 									)}
 									{session.status === 'active' && (
 										<button

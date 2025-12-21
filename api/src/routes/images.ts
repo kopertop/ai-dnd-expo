@@ -4,8 +4,26 @@ import type { HonoContext } from '@/api/src/env';
 import { createId } from '@/api/src/utils/games-utils';
 import { generateImageKey, validateImageFile } from '@/api/src/utils/image-upload';
 import { createDatabase } from '@/api/src/utils/repository';
+import type { UploadedImageCategory } from '@/shared/workers/db';
 
 const images = new Hono<HonoContext>();
+
+const isUploadedImageCategory = (value: unknown): value is UploadedImageCategory => {
+	return (
+		typeof value === 'string' &&
+		(value === 'Character' ||
+			value === 'Object' ||
+			value === 'Map' ||
+			value === 'World' ||
+			value === 'Other')
+	);
+};
+
+const isAdminUser = (user: unknown): boolean => {
+	if (!user || typeof user !== 'object') return false;
+	const u = user as Record<string, unknown>;
+	return u.role === 'admin' || u.isAdmin === true || u.is_admin === true;
+};
 
 /**
  * List uploaded images
@@ -50,6 +68,7 @@ images.post('/upload', async (c) => {
 		const title = body['title'] as string | undefined;
 		const description = body['description'] as string | undefined;
 		const imageType = (body['image_type'] as 'npc' | 'character' | 'both') || 'both';
+		const category = isUploadedImageCategory(body['category']) ? body['category'] : undefined;
 
 		if (!file || !(file instanceof File)) {
 			return c.json({ error: 'No file provided' }, 400);
@@ -90,6 +109,14 @@ images.post('/upload', async (c) => {
 		const origin = isLocalDev ? 'http://localhost:8787' : requestUrl.origin;
 		const publicUrl = `${origin}/api/images/${imageId}`;
 
+		const resolvedCategory: UploadedImageCategory =
+			category ??
+			(imageType === 'npc'
+				? 'Object'
+				: imageType === 'character' || imageType === 'both'
+					? 'Character'
+					: 'Other');
+
 		const imageRecord = {
 			id: imageId,
 			user_id: user.id,
@@ -99,6 +126,7 @@ images.post('/upload', async (c) => {
 			title: title || null,
 			description: description || null,
 			image_type: imageType,
+			category: resolvedCategory,
 			is_public: 1,
 			created_at: now,
 			updated_at: now,
@@ -133,7 +161,7 @@ images.get('/:id', async (c) => {
 		// Check if image is public or user is the owner/admin
 		const user = c.get('user');
 		const isOwner = user && image.user_id === user.id;
-		const isAdmin = user && (user.role === 'admin' || user.isAdmin);
+		const isAdmin = isAdminUser(user);
 
 		if (!image.is_public && !isOwner && !isAdmin) {
 			return c.json({ error: 'Forbidden' }, 403);
@@ -172,6 +200,73 @@ images.get('/:id', async (c) => {
 });
 
 /**
+ * Update image metadata (title, description, category, visibility)
+ * PATCH /api/images/:id
+ */
+images.patch('/:id', async (c) => {
+	const user = c.get('user');
+	if (!user) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const imageId = c.req.param('id');
+	const db = createDatabase(c.env);
+
+	try {
+		const image = await db.getUploadedImageById(imageId);
+		if (!image) {
+			return c.json({ error: 'Image not found' }, 404);
+		}
+
+		const isOwner = image.user_id === user.id;
+		const isAdmin = isAdminUser(user);
+		if (!isOwner && !isAdmin) {
+			return c.json({ error: 'Forbidden' }, 403);
+		}
+
+		const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+		const now = Date.now();
+
+		const updated = {
+			...image,
+			title:
+				'title' in body
+					? typeof body.title === 'string' || body.title === null
+						? (body.title as string | null)
+						: image.title
+					: image.title,
+			description:
+				'description' in body
+					? typeof body.description === 'string' || body.description === null
+						? (body.description as string | null)
+						: image.description
+					: image.description,
+			category:
+				'category' in body && isUploadedImageCategory(body.category)
+					? body.category
+					: image.category,
+			is_public:
+				'is_public' in body
+					? typeof body.is_public === 'boolean'
+						? body.is_public
+							? 1
+							: 0
+						: typeof body.is_public === 'number'
+							? body.is_public
+							: image.is_public
+					: image.is_public,
+			updated_at: now,
+		};
+
+		await db.saveUploadedImage(updated);
+		return c.json({ image: updated });
+	} catch (error) {
+		console.error('Failed to update image:', error);
+		return c.json({ error: 'Failed to update image' }, 500);
+	}
+});
+
+/**
  * Delete an image
  * DELETE /api/images/:id
  */
@@ -191,7 +286,7 @@ images.delete('/:id', async (c) => {
 		}
 
 		// Only owner or admin can delete
-		const isAdmin = user.role === 'admin' || user.isAdmin;
+		const isAdmin = isAdminUser(user);
 		if (image.user_id !== user.id && !isAdmin) {
 			return c.json({ error: 'Forbidden' }, 403);
 		}

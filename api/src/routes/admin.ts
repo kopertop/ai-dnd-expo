@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import type { HonoContext } from '@/api/src/env';
 import { deserializeCharacter } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
+import type { UploadedImageCategory } from '@/shared/workers/db';
 import { Quest } from '@/types/quest';
 
 const admin = new Hono<HonoContext>();
@@ -15,7 +16,12 @@ admin.use('*', async (c, next) => {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
 
-	if (!user.is_admin) {
+	const isAdmin =
+		(user as any).is_admin === true ||
+		(user as any).isAdmin === true ||
+		(user as any).role === 'admin';
+
+	if (!isAdmin) {
 		return c.json({ error: 'Forbidden - Admin access required' }, 403);
 	}
 
@@ -32,12 +38,21 @@ admin.get('/characters', async (c) => {
 admin.get('/images', async (c) => {
 	const db = createDatabase(c.env);
 	const imageType = c.req.query('type') as 'npc' | 'character' | 'both' | undefined;
+	const categoryQuery = c.req.query('category');
+	const category: UploadedImageCategory | undefined =
+		categoryQuery === 'Character' ||
+		categoryQuery === 'Object' ||
+		categoryQuery === 'Map' ||
+		categoryQuery === 'World' ||
+		categoryQuery === 'Other'
+			? categoryQuery
+			: undefined;
 	const limit = parseInt(c.req.query('limit') || '100', 10);
 	const offset = parseInt(c.req.query('offset') || '0', 10);
 
 	try {
 		// Get all images (no user filter for admin)
-		const result = await db.listUploadedImages(undefined, imageType, limit, offset);
+		const result = await db.listUploadedImages(undefined, imageType, limit, offset, category);
 		return c.json({ images: result });
 	} catch (error) {
 		console.error('Failed to list images:', error);

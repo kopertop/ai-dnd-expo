@@ -488,6 +488,7 @@ class InMemoryDatabase {
 		imageType?: 'npc' | 'character' | 'both',
 		limit: number = 50,
 		offset: number = 0,
+		category?: realDb.UploadedImageCategory,
 	): Promise<realDb.UploadedImageRow[]> {
 		let results = this.store.uploadedImages;
 
@@ -497,6 +498,10 @@ class InMemoryDatabase {
 
 		if (imageType && imageType !== 'both') {
 			results = results.filter(img => img.image_type === imageType || img.image_type === 'both');
+		}
+
+		if (category) {
+			results = results.filter(img => img.category === category);
 		}
 
 		results.sort((a, b) => b.created_at - a.created_at);

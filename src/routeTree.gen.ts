@@ -31,6 +31,7 @@ import { Route as GameInviteCodeRouteImport } from './routes/game/$invite-code'
 import { Route as CharactersIdRouteImport } from './routes/characters/$id'
 import { Route as AuthErrorRouteImport } from './routes/auth/error'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as AdminSqlRouteImport } from './routes/admin/sql'
 import { Route as AdminImagesRouteImport } from './routes/admin/images'
 import { Route as GametabsRouteRouteImport } from './routes/game/(tabs)/route'
 import { Route as GametabsIndexRouteImport } from './routes/game/(tabs)/index'
@@ -155,6 +156,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSqlRoute = AdminSqlRouteImport.update({
+  id: '/admin/sql',
+  path: '/admin/sql',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminImagesRoute = AdminImagesRouteImport.update({
   id: '/admin/images',
   path: '/admin/images',
@@ -233,6 +239,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/sql': typeof SqlRoute
   '/admin/images': typeof AdminImagesRoute
+  '/admin/sql': typeof AdminSqlRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/error': typeof AuthErrorRoute
   '/characters/$id': typeof CharactersIdRoute
@@ -269,6 +276,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/sql': typeof SqlRoute
   '/admin/images': typeof AdminImagesRoute
+  '/admin/sql': typeof AdminSqlRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/error': typeof AuthErrorRoute
   '/characters/$id': typeof CharactersIdRoute
@@ -306,6 +314,7 @@ export interface FileRoutesById {
   '/sql': typeof SqlRoute
   '/game/(tabs)': typeof GametabsRouteRouteWithChildren
   '/admin/images': typeof AdminImagesRoute
+  '/admin/sql': typeof AdminSqlRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/error': typeof AuthErrorRoute
   '/characters/$id': typeof CharactersIdRoute
@@ -344,6 +353,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sql'
     | '/admin/images'
+    | '/admin/sql'
     | '/auth/callback'
     | '/auth/error'
     | '/characters/$id'
@@ -380,6 +390,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sql'
     | '/admin/images'
+    | '/admin/sql'
     | '/auth/callback'
     | '/auth/error'
     | '/characters/$id'
@@ -416,6 +427,7 @@ export interface FileRouteTypes {
     | '/sql'
     | '/game/(tabs)'
     | '/admin/images'
+    | '/admin/sql'
     | '/auth/callback'
     | '/auth/error'
     | '/characters/$id'
@@ -453,6 +465,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SqlRoute: typeof SqlRoute
   AdminImagesRoute: typeof AdminImagesRoute
+  AdminSqlRoute: typeof AdminSqlRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthErrorRoute: typeof AuthErrorRoute
   CharactersIdRoute: typeof CharactersIdRoute
@@ -626,6 +639,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/sql': {
+      id: '/admin/sql'
+      path: '/admin/sql'
+      fullPath: '/admin/sql'
+      preLoaderRoute: typeof AdminSqlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/images': {
       id: '/admin/images'
       path: '/admin/images'
@@ -779,6 +799,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SqlRoute: SqlRoute,
   AdminImagesRoute: AdminImagesRoute,
+  AdminSqlRoute: AdminSqlRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   AuthErrorRoute: AuthErrorRoute,
   CharactersIdRoute: CharactersIdRoute,

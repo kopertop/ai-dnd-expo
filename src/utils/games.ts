@@ -5,8 +5,9 @@ import { getRequestUrl } from '@tanstack/react-start/server';
 import { resolveApiBaseUrl } from './api-base-url';
 import { useAuthSession } from './session';
 
-import type { GameSessionResponse, MyGamesResponse } from '@/types/api/multiplayer-api';
+import type { GameSessionResponse, GameStateResponse, MyGamesResponse } from '@/types/api/multiplayer-api';
 import type { CreateGameBody } from '@/types/games-api';
+import type { MultiplayerGameState } from '@/types/multiplayer-game';
 
 const joinApiPath = (baseUrl: string, path: string) => {
 	const trimmed = path.startsWith('/') ? path.slice(1) : path;
@@ -211,4 +212,43 @@ export const joinGame = createServerFn({ method: 'POST' })
 		}
 
 		return await response.json() as unknown as GameSessionResponse;
+	});
+
+export const startGame = createServerFn({ method: 'POST' })
+	.inputValidator((data: { inviteCode: string; hostId: string; gameState?: Partial<MultiplayerGameState> }) => data)
+	// @ts-expect-error - Type mismatch due to duplicate type definitions for activityLog.details
+	.handler(async ({ data }) => {
+		const session = await useAuthSession();
+		const token = session.data.deviceToken;
+
+		if (!token) {
+			throw new Error('Not authenticated');
+		}
+
+		const response = await fetch(
+			joinApiPath(getServerApiBaseUrl(), `/games/${data.inviteCode}/start`),
+			{
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Device ${token}`,
+				},
+				body: JSON.stringify({
+					hostId: data.hostId,
+					gameState: data.gameState,
+				}),
+			},
+		);
+
+		if (response.status === 401 || response.status === 404) {
+			await session.clear();
+			throw new Error('Not authenticated');
+		}
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			throw new Error(`Failed to start game: ${response.status} ${errorText}`);
+		}
+
+		return await response.json() as unknown as GameStateResponse;
 	});

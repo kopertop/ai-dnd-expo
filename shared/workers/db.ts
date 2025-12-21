@@ -107,6 +107,8 @@ export interface MapTileRow {
 	metadata?: string;
 }
 
+export type UploadedImageCategory = 'Character' | 'Object' | 'Map' | 'World' | 'Other';
+
 export interface UploadedImageRow {
 	id: string;
 	user_id: string;
@@ -116,6 +118,7 @@ export interface UploadedImageRow {
 	title: string | null;
 	description: string | null;
 	image_type: 'npc' | 'character' | 'both';
+	category: UploadedImageCategory;
 	is_public: number;
 	created_at: number;
 	updated_at: number;
@@ -1010,12 +1013,13 @@ export class Database {
 		await this.db.prepare(
 			`INSERT INTO uploaded_images (
 				id, user_id, filename, r2_key, public_url, title, description,
-				image_type, is_public, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				image_type, category, is_public, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(id) DO UPDATE SET
 				title = excluded.title,
 				description = excluded.description,
 				image_type = excluded.image_type,
+				category = excluded.category,
 				is_public = excluded.is_public,
 				updated_at = excluded.updated_at`,
 		).bind(
@@ -1027,6 +1031,7 @@ export class Database {
 			image.title,
 			image.description,
 			image.image_type,
+			image.category,
 			image.is_public,
 			image.created_at,
 			image.updated_at,
@@ -1042,6 +1047,7 @@ export class Database {
 		imageType?: 'npc' | 'character' | 'both',
 		limit: number = 50,
 		offset: number = 0,
+		category?: UploadedImageCategory,
 	): Promise<UploadedImageRow[]> {
 		let query = 'SELECT * FROM uploaded_images WHERE 1=1';
 		const params: any[] = [];
@@ -1058,6 +1064,11 @@ export class Database {
 				query += ' AND (image_type = ? OR image_type = "both")';
 				params.push(imageType);
 			}
+		}
+
+		if (category) {
+			query += ' AND category = ?';
+			params.push(category);
 		}
 
 		query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';

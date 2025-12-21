@@ -6,6 +6,7 @@ import { resolveApiBaseUrl } from './api-base-url';
 import { useAuthSession } from './session';
 
 import type { UploadedImage } from '@/hooks/api/use-image-queries';
+import type { UploadedImageCategory } from '@/shared/workers/db';
 
 const joinApiPath = (baseUrl: string, path: string) => {
 	const trimmed = path.startsWith('/') ? path.slice(1) : path;
@@ -61,7 +62,7 @@ export const uploadedImagesQueryOptions = (type?: 'npc' | 'character' | 'both') 
 	});
 
 export const uploadImage = createServerFn({ method: 'POST' })
-	.inputValidator((data: { file: File; title?: string; description?: string; image_type: 'npc' | 'character' | 'both' }) => data)
+	.inputValidator((data: { file: File; title?: string; description?: string; image_type: 'npc' | 'character' | 'both'; category?: UploadedImageCategory }) => data)
 	.handler(async ({ data }) => {
 		const session = await useAuthSession();
 		const token = session.data.deviceToken;
@@ -75,6 +76,7 @@ export const uploadImage = createServerFn({ method: 'POST' })
 		if (data.title) formData.append('title', data.title);
 		if (data.description) formData.append('description', data.description);
 		formData.append('image_type', data.image_type);
+		if (data.category) formData.append('category', data.category);
 
 		const response = await fetch(
 			joinApiPath(getServerApiBaseUrl(), '/images/upload'),
@@ -132,4 +134,90 @@ export const deleteImage = createServerFn({ method: 'POST' })
 		}
 
 		return { success: true };
+	});
+
+export const fetchAdminImages = createServerFn({ method: 'GET' })
+	.inputValidator((data: { category?: UploadedImageCategory; limit?: number; offset?: number }) => data)
+	.handler(async ({ data }) => {
+		const session = await useAuthSession();
+		const token = session.data.deviceToken;
+
+		if (!token) {
+			return [] as UploadedImage[];
+		}
+
+		const params = new URLSearchParams();
+		if (data.category) params.set('category', data.category);
+		if (typeof data.limit === 'number') params.set('limit', String(data.limit));
+		if (typeof data.offset === 'number') params.set('offset', String(data.offset));
+		const queryString = params.toString();
+
+		const response = await fetch(
+			joinApiPath(getServerApiBaseUrl(), `/admin/images${queryString ? `?${queryString}` : ''}`),
+			{
+				headers: {
+					Authorization: `Device ${token}`,
+				},
+			},
+		);
+
+		if (response.status === 401 || response.status === 404) {
+			await session.clear();
+			return [] as UploadedImage[];
+		}
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			throw new Error(`Failed to fetch admin images: ${response.status} ${errorText}`);
+		}
+
+		const result = (await response.json()) as { images: UploadedImage[] };
+		return result.images;
+	});
+
+export const adminImagesQueryOptions = (category?: UploadedImageCategory) =>
+	queryOptions({
+		queryKey: ['admin-images', category],
+		queryFn: () => fetchAdminImages({ data: { category } }),
+	});
+
+export const updateImage = createServerFn({ method: 'POST' })
+	.inputValidator((data: { id: string; title?: string | null; description?: string | null; category?: UploadedImageCategory; is_public?: boolean | number }) => data)
+	.handler(async ({ data }) => {
+		const session = await useAuthSession();
+		const token = session.data.deviceToken;
+
+		if (!token) {
+			throw new Error('Not authenticated');
+		}
+
+		const response = await fetch(
+			joinApiPath(getServerApiBaseUrl(), `/images/${data.id}`),
+			{
+				method: 'PATCH',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Device ${token}`,
+				},
+				body: JSON.stringify({
+					title: data.title,
+					description: data.description,
+					category: data.category,
+					is_public: data.is_public,
+				}),
+			},
+		);
+
+		if (response.status === 401 || response.status === 404) {
+			await session.clear();
+			throw new Error('Not authenticated');
+		}
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			throw new Error(`Failed to update image: ${response.status} ${errorText}`);
+		}
+
+		const result = (await response.json()) as { image: UploadedImage };
+		return result.image;
 	});

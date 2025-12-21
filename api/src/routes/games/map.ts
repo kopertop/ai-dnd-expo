@@ -4,11 +4,11 @@ import type { GamesContext } from './types';
 
 import { GameStateService } from '@/api/src/services/game-state';
 import {
-	buildMapState,
-	createId,
-	deserializeCharacter,
-	isHostUser,
-	resolveMapRow,
+    buildMapState,
+    createId,
+    deserializeCharacter,
+    isHostUser,
+    resolveMapRow,
 } from '@/api/src/utils/games-utils';
 import { createDatabase } from '@/api/src/utils/repository';
 import { DEFAULT_RACE_SPEED } from '@/constants/race-speed';
@@ -992,6 +992,7 @@ map.post('/:inviteCode/map/import-vtt', async (c) => {
 			title: name,
 			description: 'Imported VTT map background',
 			image_type: 'both', // Could be used for anything
+			category: 'Map',
 			is_public: 1,
 			created_at: timestamp,
 			updated_at: timestamp,

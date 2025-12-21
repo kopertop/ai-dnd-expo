@@ -11,6 +11,7 @@ export interface UploadedImage {
 	title: string | null;
 	description: string | null;
 	image_type: 'npc' | 'character' | 'both';
+	category?: 'Character' | 'Object' | 'Map' | 'World' | 'Other';
 	is_public: number;
 	created_at: number;
 	updated_at: number;
