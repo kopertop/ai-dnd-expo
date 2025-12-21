@@ -2,13 +2,11 @@ import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tansta
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import * as React from 'react';
 
+import ImageChooser from '~/components/image-chooser';
 import RouteShell from '~/components/route-shell';
 import { currentUserQueryOptions } from '~/utils/auth';
-import { uploadImage } from '~/utils/images';
 import { fetchMap, saveMap } from '~/utils/maps';
 import { worldsQueryOptions } from '~/utils/worlds';
-
-import type { UploadedImageCategory } from '@/shared/workers/db';
 
 type ToolId = 'properties' | 'grid' | 'objects' | 'terrain';
 
@@ -160,17 +158,6 @@ const AdminMapDetail: React.FC = () => {
 		};
 	}, [formData.background_image_url, formData.cover_image_url]);
 
-	const uploadMutation = useMutation({
-		mutationFn: async (payload: { file: File; title?: string; category: UploadedImageCategory }) =>
-			uploadImage({
-				data: {
-					file: payload.file,
-					title: payload.title,
-					image_type: 'both',
-					category: payload.category,
-				},
-			}),
-	});
 
 	const saveMutation = useMutation({
 		mutationFn: async () => {
@@ -391,60 +378,24 @@ const AdminMapDetail: React.FC = () => {
 
 							<div className="grid gap-3">
 								<div>
-									<div className="mb-1 text-xs font-semibold text-slate-700 dark:text-slate-200">
-										Background Image
-									</div>
-									<input
-										value={formData.background_image_url}
-										onChange={(e) => setFormData((prev) => ({ ...prev, background_image_url: e.target.value }))}
-										className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-amber-500/30"
-										placeholder="https://…"
-									/>
-									<input
-										type="file"
-										accept="image/*"
-										disabled={uploadMutation.isPending}
-										onChange={async (e) => {
-											const file = e.target.files?.[0];
-											if (!file) return;
-											const image = await uploadMutation.mutateAsync({
-												file,
-												title: formData.name.trim() || undefined,
-												category: 'Map',
-											});
-											setFormData((prev) => ({ ...prev, background_image_url: image.public_url }));
-											e.target.value = '';
-										}}
-										className="mt-2 block w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+									<ImageChooser
+										value={formData.background_image_url || null}
+										onChange={(url) => setFormData((prev) => ({ ...prev, background_image_url: url }))}
+										category="Map"
+										title="Background Image"
+										placeholder="No background image"
+										className="text-xs"
 									/>
 								</div>
 
 								<div>
-									<div className="mb-1 text-xs font-semibold text-slate-700 dark:text-slate-200">
-										Cover Image
-									</div>
-									<input
-										value={formData.cover_image_url}
-										onChange={(e) => setFormData((prev) => ({ ...prev, cover_image_url: e.target.value }))}
-										className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-amber-500/30"
-										placeholder="https://…"
-									/>
-									<input
-										type="file"
-										accept="image/*"
-										disabled={uploadMutation.isPending}
-										onChange={async (e) => {
-											const file = e.target.files?.[0];
-											if (!file) return;
-											const image = await uploadMutation.mutateAsync({
-												file,
-												title: formData.name.trim() || undefined,
-												category: 'Map',
-											});
-											setFormData((prev) => ({ ...prev, cover_image_url: image.public_url }));
-											e.target.value = '';
-										}}
-										className="mt-2 block w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+									<ImageChooser
+										value={formData.cover_image_url || null}
+										onChange={(url) => setFormData((prev) => ({ ...prev, cover_image_url: url }))}
+										category="Map"
+										title="Cover Image"
+										placeholder="No cover image"
+										className="text-xs"
 									/>
 								</div>
 							</div>
@@ -618,45 +569,22 @@ const AdminMapDetail: React.FC = () => {
 											/>
 										</label>
 
-										<label className="mt-2 block">
-											<div className="mb-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-												Image URL
-											</div>
-											<input
-												value={obj.image_url ?? ''}
-												onChange={(e) => {
-													const value = e.target.value;
+										<div className="mt-2">
+											<ImageChooser
+												value={obj.image_url ?? null}
+												onChange={(url) => {
 													setObjects((prev) => {
 														const next = [...prev];
-														next[idx] = { ...next[idx], image_url: value };
+														next[idx] = { ...next[idx], image_url: url };
 														return next;
 													});
 												}}
-												className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-												placeholder="https://…"
+												category="Object"
+												title=""
+												placeholder="No image"
+												className="text-xs"
 											/>
-											<input
-												type="file"
-												accept="image/*"
-												disabled={uploadMutation.isPending}
-												onChange={async (e) => {
-													const file = e.target.files?.[0];
-													if (!file) return;
-													const image = await uploadMutation.mutateAsync({
-														file,
-														title: obj.label ?? undefined,
-														category: 'Object',
-													});
-													setObjects((prev) => {
-														const next = [...prev];
-														next[idx] = { ...next[idx], image_url: image.public_url };
-														return next;
-													});
-													e.target.value = '';
-												}}
-												className="mt-2 block w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-											/>
-										</label>
+										</div>
 
 										<div className="mt-3 grid gap-3 sm:grid-cols-2">
 											<label className="block">

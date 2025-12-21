@@ -1,13 +1,10 @@
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { createServerFn } from '@tanstack/react-start';
-import { getRequestUrl } from '@tanstack/react-start/server';
 import * as React from 'react';
 
+import ImageChooser from '~/components/image-chooser';
 import RouteShell from '~/components/route-shell';
-import { resolveApiBaseUrl } from '~/utils/api-base-url';
 import { currentUserQueryOptions } from '~/utils/auth';
-import { useAuthSession } from '~/utils/session';
 import { deleteWorld, fetchWorld, saveWorld } from '~/utils/worlds';
 
 import type { WorldRow } from '@/shared/workers/db';
@@ -18,60 +15,6 @@ const slugify = (value: string) =>
 		.trim()
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-|-$/g, '');
-
-const joinApiPath = (baseUrl: string, path: string) => {
-	const trimmed = path.startsWith('/') ? path.slice(1) : path;
-	return `${baseUrl}${trimmed}`;
-};
-
-const getServerApiBaseUrl = () => {
-	const requestUrl = new URL(getRequestUrl({ xForwardedHost: true }));
-	const base = resolveApiBaseUrl(requestUrl.origin);
-	if (base.startsWith('http')) {
-		return base;
-	}
-	return `${requestUrl.origin}${base.startsWith('/') ? '' : '/'}${base}`;
-};
-
-const uploadWorldCover = createServerFn({ method: 'POST' })
-	.inputValidator((data: { file: File; title?: string }) => data)
-	.handler(async ({ data }) => {
-		const session = await useAuthSession();
-		const token = session.data.deviceToken;
-
-		if (!token) {
-			throw new Error('Not authenticated');
-		}
-
-		const formData = new FormData();
-		formData.append('file', data.file);
-		formData.append('image_type', 'both');
-		formData.append('category', 'World');
-		if (data.title) {
-			formData.append('title', data.title);
-		}
-
-		const response = await fetch(joinApiPath(getServerApiBaseUrl(), '/images/upload'), {
-			method: 'POST',
-			headers: {
-				Authorization: `Device ${token}`,
-			},
-			body: formData,
-		});
-
-		if (response.status === 401 || response.status === 404) {
-			await session.clear();
-			throw new Error('Not authenticated');
-		}
-
-		if (!response.ok) {
-			const errorText = await response.text();
-			throw new Error(`Failed to upload image: ${response.status} ${errorText}`);
-		}
-
-		const result = (await response.json()) as { image: { public_url: string } };
-		return result.image.public_url;
-	});
 
 const AdminWorldDetail: React.FC = () => {
 	const { id } = Route.useParams();
@@ -121,14 +64,6 @@ const AdminWorldDetail: React.FC = () => {
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ['worlds'] });
 			navigate({ to: '/admin/worlds' });
-		},
-	});
-
-	const uploadMutation = useMutation({
-		mutationFn: async (payload: { file: File; title?: string }) =>
-			uploadWorldCover({ data: payload }),
-		onSuccess: (url) => {
-			setFormData((prev) => ({ ...prev, image_url: url }));
 		},
 	});
 
@@ -313,66 +248,13 @@ const AdminWorldDetail: React.FC = () => {
 					</div>
 
 					<div className="space-y-4">
-						<div className="rounded-lg border border-slate-200 bg-white/80 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/40">
-							<div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
-								World Cover Image
-							</div>
-
-							{formData.image_url ? (
-								<img
-									src={formData.image_url}
-									alt="World cover"
-									className="mb-3 h-48 w-full rounded-md border border-slate-200 object-contain dark:border-slate-700"
-								/>
-							) : (
-								<div className="mb-3 flex h-48 items-center justify-center rounded-md border border-dashed border-slate-200 bg-white text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500">
-									No cover image set.
-								</div>
-							)}
-
-							<label className="block">
-								<div className="mb-1 text-xs font-semibold text-slate-700 dark:text-slate-200">
-									Image URL
-								</div>
-								<input
-									value={formData.image_url ?? ''}
-									onChange={(e) => setFormData((prev) => ({ ...prev, image_url: e.target.value }))}
-									className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-amber-500/30"
-									placeholder="https://…"
-								/>
-							</label>
-
-							<div className="mt-3">
-								<label className="block">
-									<div className="mb-1 text-xs font-semibold text-slate-700 dark:text-slate-200">
-										Upload New Image
-									</div>
-									<input
-										type="file"
-										accept="image/*"
-										disabled={uploadMutation.isPending}
-										onChange={async (e) => {
-											const file = e.target.files?.[0];
-											if (!file) return;
-											await uploadMutation.mutateAsync({
-												file,
-												title: formData.name?.trim() || undefined,
-											});
-											e.target.value = '';
-										}}
-										className="block w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-800 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:file:bg-slate-100 dark:file:text-slate-900 dark:hover:file:bg-white"
-									/>
-								</label>
-
-								{uploadMutation.isError ? (
-									<div className="mt-2 text-sm text-red-600">
-										{uploadMutation.error instanceof Error
-											? uploadMutation.error.message
-											: 'Failed to upload image'}
-									</div>
-								) : null}
-							</div>
-						</div>
+						<ImageChooser
+							value={formData.image_url ?? null}
+							onChange={(url) => setFormData((prev) => ({ ...prev, image_url: url }))}
+							category="World"
+							title="World Cover Image"
+							placeholder="No cover image set"
+						/>
 					</div>
 				</div>
 			</div>

@@ -2,13 +2,11 @@ import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tansta
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import * as React from 'react';
 
+import ImageChooser from '~/components/image-chooser';
 import RouteShell from '~/components/route-shell';
 import { currentUserQueryOptions } from '~/utils/auth';
-import { uploadImage } from '~/utils/images';
 import { saveMap } from '~/utils/maps';
 import { worldsQueryOptions } from '~/utils/worlds';
-
-import type { UploadedImageCategory } from '@/shared/workers/db';
 
 const slugify = (value: string) =>
 	value
@@ -49,21 +47,6 @@ const AdminMapCreate: React.FC = () => {
 			setFormData((prev) => ({ ...prev, world_id: worlds[0].id }));
 		}
 	}, [formData.world_id, worlds]);
-
-	const uploadMutation = useMutation({
-		mutationFn: async (payload: { file: File; title?: string; category: UploadedImageCategory }) =>
-			uploadImage({
-				data: {
-					file: payload.file,
-					title: payload.title,
-					image_type: 'both',
-					category: payload.category,
-				},
-			}),
-		onSuccess: (image) => {
-			setFormData((prev) => ({ ...prev, background_image_url: image.public_url }));
-		},
-	});
 
 	const createMutation = useMutation({
 		mutationFn: async () =>
@@ -209,65 +192,13 @@ const AdminMapCreate: React.FC = () => {
 					</div>
 
 					<div className="space-y-4">
-						<div className="rounded-lg border border-slate-200 bg-white/80 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/40">
-							<div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
-								Background Image
-							</div>
-
-							{formData.background_image_url ? (
-								<img
-									src={formData.background_image_url}
-									alt="Map background"
-									className="mb-3 h-48 w-full rounded-md border border-slate-200 object-contain dark:border-slate-700"
-								/>
-							) : (
-								<div className="mb-3 flex h-48 items-center justify-center rounded-md border border-dashed border-slate-200 bg-white text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500">
-									No background image set.
-								</div>
-							)}
-
-							<label className="block">
-								<div className="mb-1 text-xs font-semibold text-slate-700 dark:text-slate-200">
-									Image URL
-								</div>
-								<input
-									value={formData.background_image_url}
-									onChange={(e) => setFormData((prev) => ({ ...prev, background_image_url: e.target.value }))}
-									className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-amber-500/30"
-									placeholder="https://…"
-								/>
-							</label>
-
-							<label className="mt-3 block">
-								<div className="mb-1 text-xs font-semibold text-slate-700 dark:text-slate-200">
-									Upload Image
-								</div>
-								<input
-									type="file"
-									accept="image/*"
-									disabled={uploadMutation.isPending}
-									onChange={async (e) => {
-										const file = e.target.files?.[0];
-										if (!file) return;
-										await uploadMutation.mutateAsync({
-											file,
-											title: formData.name.trim() || undefined,
-											category: 'Map',
-										});
-										e.target.value = '';
-									}}
-									className="block w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-								/>
-							</label>
-
-							{uploadMutation.isError ? (
-								<div className="mt-2 text-sm text-red-600">
-									{uploadMutation.error instanceof Error
-										? uploadMutation.error.message
-										: 'Failed to upload image'}
-								</div>
-							) : null}
-						</div>
+						<ImageChooser
+							value={formData.background_image_url || null}
+							onChange={(url) => setFormData((prev) => ({ ...prev, background_image_url: url }))}
+							category="Map"
+							title="Background Image"
+							placeholder="No background image set"
+						/>
 
 						<div className="grid gap-4 sm:grid-cols-2">
 							<label className="block">

@@ -61,6 +61,73 @@ export const uploadedImagesQueryOptions = (type?: 'npc' | 'character' | 'both') 
 		queryFn: () => fetchUploadedImages({ data: { type } }),
 	});
 
+// Server function to get auth token (no File objects, so safe to serialize)
+const getAuthToken = createServerFn({ method: 'GET' }).handler(async () => {
+	const session = await useAuthSession();
+	return session.data.deviceToken || null;
+});
+
+// Client-side upload function that bypasses createServerFn to avoid File serialization
+export const uploadImageClient = async (payload: {
+	file: File;
+	title?: string;
+	description?: string;
+	image_type: 'npc' | 'character' | 'both';
+	category?: UploadedImageCategory;
+}): Promise<UploadedImage> => {
+	// Get token from server function (no File objects involved)
+	const token = await getAuthToken({ data: {} });
+	if (!token) {
+		throw new Error('Not authenticated');
+	}
+
+	const formData = new FormData();
+	formData.append('file', payload.file);
+	if (payload.title) formData.append('title', payload.title);
+	if (payload.description) formData.append('description', payload.description);
+	formData.append('image_type', payload.image_type);
+	if (payload.category) formData.append('category', payload.category);
+
+	// Construct API URL - check for explicit base URL first, then use default dev port
+	const explicitBase = process.env.VITE_API_BASE_URL || process.env.EXPO_PUBLIC_API_BASE_URL;
+	let apiBaseUrl: string;
+	if (explicitBase) {
+		apiBaseUrl = explicitBase.endsWith('/') ? explicitBase : `${explicitBase}/`;
+	} else {
+		// Default to localhost:8787 for development (API server port)
+		// In production, this would be handled by the proxy/routing
+		const isDev = process.env.NODE_ENV === 'development' || import.meta.env.DEV;
+		if (isDev) {
+			apiBaseUrl = 'http://localhost:8787/api/';
+		} else {
+			// Production: use relative path (will be proxied)
+			apiBaseUrl = '/api/';
+		}
+	}
+	const uploadUrl = joinApiPath(apiBaseUrl, '/images/upload');
+
+	const response = await fetch(uploadUrl, {
+		method: 'POST',
+		headers: {
+			Authorization: `Device ${token}`,
+		},
+		body: formData,
+	});
+
+	if (response.status === 401 || response.status === 404) {
+		throw new Error('Not authenticated');
+	}
+
+	if (!response.ok) {
+		const errorText = await response.text();
+		throw new Error(`Failed to upload image: ${response.status} ${errorText}`);
+	}
+
+	const result = (await response.json()) as { image: UploadedImage };
+	return result.image;
+};
+
+// Server-side version (kept for backward compatibility, but won't work with File objects)
 export const uploadImage = createServerFn({ method: 'POST' })
 	.inputValidator((data: { file: File; title?: string; description?: string; image_type: 'npc' | 'character' | 'both'; category?: UploadedImageCategory }) => data)
 	.handler(async ({ data }) => {
