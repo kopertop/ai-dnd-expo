@@ -115,6 +115,11 @@ const GameListItem: React.FC<{ game: GameItem; currentUserId?: string; currentUs
 					</div>
 					<div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
 						{game.world} • {game.startingArea}
+						{isActive && isHost && (
+							<span className="ml-2 text-amber-600 dark:text-amber-400">
+								• Click to see players
+							</span>
+						)}
 					</div>
 				</Link>
 				<div className="flex flex-col items-end gap-2 flex-shrink-0">

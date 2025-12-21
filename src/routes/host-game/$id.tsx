@@ -8,6 +8,7 @@ import { LocationChooser } from '~/components/location-chooser';
 import { PlayerList } from '~/components/player-list';
 import RouteShell from '~/components/route-shell';
 import { WorldChooser } from '~/components/world-chooser';
+import { useWebSocketBrowser } from '~/hooks/use-websocket-browser';
 import { currentUserQueryOptions } from '~/utils/auth';
 import { createGame, deleteGame, gameSessionQueryOptions } from '~/utils/games';
 
@@ -188,6 +189,28 @@ const HostGameDetail: React.FC = () => {
 	};
 
 	const queryClient = useQueryClient();
+
+	// WebSocket connection for real-time updates (host view)
+	const { isConnected: wsConnected } = useWebSocketBrowser({
+		inviteCode: inviteCode || '',
+		playerId: user?.id || '',
+		characterId: '', // Host doesn't need characterId
+		playerEmail: user?.email,
+		autoConnect: !isNewGame && !!inviteCode && !!user?.id,
+		onGameStateUpdate: (gameState) => {
+			// Update session query data when we receive state updates
+			if (inviteCode) {
+				queryClient.setQueryData(['games', inviteCode], (old: any) => {
+					if (!old) return old;
+					return {
+						...old,
+						gameState,
+						players: gameState.players || old.players,
+					};
+				});
+			}
+		},
+	});
 
 	const createGameMutation = useMutation({
 		mutationFn: createGame,

@@ -170,3 +170,45 @@ export const gameSessionQueryOptions = (inviteCode: string) =>
 			return fetchGameSession({ data: { inviteCode } });
 		},
 	});
+
+export const joinGame = createServerFn({ method: 'POST' })
+	.inputValidator((data: { inviteCode: string; character: any; characterId?: string; playerId: string; playerEmail?: string }) => data)
+	// @ts-expect-error - Type mismatch due to duplicate type definitions for activityLog.details
+	.handler(async ({ data }) => {
+		const session = await useAuthSession();
+		const token = session.data.deviceToken;
+
+		if (!token) {
+			throw new Error('Not authenticated');
+		}
+
+		const response = await fetch(
+			joinApiPath(getServerApiBaseUrl(), `/games/${data.inviteCode}/join`),
+			{
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Device ${token}`,
+				},
+				body: JSON.stringify({
+					inviteCode: data.inviteCode,
+					character: data.character,
+					characterId: data.characterId,
+					playerId: data.playerId,
+					playerEmail: data.playerEmail,
+				}),
+			},
+		);
+
+		if (response.status === 401 || response.status === 404) {
+			await session.clear();
+			throw new Error('Not authenticated');
+		}
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			throw new Error(`Failed to join game: ${response.status} ${errorText}`);
+		}
+
+		return await response.json() as unknown as GameSessionResponse;
+	});
