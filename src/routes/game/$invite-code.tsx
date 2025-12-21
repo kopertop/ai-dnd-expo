@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tansta
 import { createFileRoute, useNavigate, useRouteContext } from '@tanstack/react-router';
 import * as React from 'react';
 
+import { CharacterPortrait } from '~/components/character-portrait';
 import RouteShell from '~/components/route-shell';
 import { useWebSocketBrowser } from '~/hooks/use-websocket-browser';
 import { charactersQueryOptions } from '~/utils/characters';
@@ -59,12 +60,9 @@ const CHARACTER_TEMPLATES: CharacterTemplate[] = [
 const CharacterCard: React.FC<{
 	character: Character;
 	iconUrl: string | null;
-	traitImageUrl: string | null;
-	initials: string;
 	onClick: () => void;
 	loading: boolean;
-}> = ({ character, iconUrl, traitImageUrl, initials, onClick, loading }) => {
-	const [showFallback, setShowFallback] = React.useState(!iconUrl);
+}> = ({ character, iconUrl, onClick, loading }) => {
 	const [traitImageError, setTraitImageError] = React.useState(false);
 
 	return (
@@ -75,11 +73,11 @@ const CharacterCard: React.FC<{
 			className="group relative rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 text-left transition-all hover:border-amber-500 hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-slate-200 dark:disabled:hover:border-slate-700 disabled:hover:scale-100"
 		>
 			{/* Trait Background */}
-			{traitImageUrl && !traitImageError && (
+			{character.trait && !traitImageError && (
 				<div className="absolute inset-0 overflow-hidden rounded-lg opacity-20 group-hover:opacity-30 transition-opacity">
 					<img
-						src={traitImageUrl}
-						alt={character.trait || ''}
+						src={`/assets/images/traits/${character.trait.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}.png`}
+						alt={character.trait}
 						className="h-full w-full object-cover blur-sm"
 						onError={() => setTraitImageError(true)}
 					/>
@@ -90,20 +88,12 @@ const CharacterCard: React.FC<{
 			<div className="relative z-10 flex flex-col items-center">
 				{/* Character Portrait */}
 				<div className="mb-4 flex justify-center">
-					<div className="relative h-28 w-28 overflow-hidden rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 border-2 border-slate-300 dark:border-slate-600 group-hover:border-amber-500 transition-colors shadow-md">
-						{iconUrl && !showFallback ? (
-							<img
-								src={iconUrl}
-								alt={character.name}
-								className="h-full w-full object-contain p-1"
-								onError={() => setShowFallback(true)}
-							/>
-						) : (
-							<div className="h-full w-full flex items-center justify-center text-3xl font-bold text-slate-600 dark:text-slate-300">
-								{initials}
-							</div>
-						)}
-					</div>
+					<CharacterPortrait
+						character={character}
+						iconUrl={iconUrl}
+						size="lg"
+						className="group-hover:border-amber-500 transition-colors"
+					/>
 				</div>
 
 				{/* Character Info */}
@@ -455,30 +445,10 @@ const GameInvite: React.FC = () => {
 										}
 									}
 
-									// Resolve trait background image
-									let traitImageUrl: string | null = null;
-									if (character.trait) {
-										const traitName = character.trait
-											.toLowerCase()
-											.replace(/\s+/g, '-')
-											.replace(/[^a-z0-9-]/g, '');
-										traitImageUrl = `/assets/images/traits/${traitName}.png`;
-									}
-
-									// Fallback initials
-									const initials = character.name
-										.split(' ')
-										.map(n => n[0])
-										.join('')
-										.toUpperCase()
-										.slice(0, 2) || '?';
-
 									return <CharacterCard
 										key={character.id}
 										character={character}
 										iconUrl={iconUrl}
-										traitImageUrl={traitImageUrl}
-										initials={initials}
 										onClick={() => handleJoinWithCharacter(character)}
 										loading={loading}
 									/>;
