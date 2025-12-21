@@ -343,9 +343,18 @@ const MapEditorCanvas: React.FC<MapEditorCanvasProps> = ({
 										width={gridSize}
 										height={gridSize}
 										fill="none"
-										stroke="rgba(59, 130, 246, 0.8)"
-										strokeWidth={2}
-									/>
+										stroke="#FCD34D"
+										strokeWidth={6}
+										strokeDasharray="8 4"
+										opacity={1}
+									>
+										<animate
+											attributeName="stroke-dashoffset"
+											values="0;12"
+											dur="0.5s"
+											repeatCount="indefinite"
+										/>
+									</rect>
 								) : null}
 							</g>
 						);
